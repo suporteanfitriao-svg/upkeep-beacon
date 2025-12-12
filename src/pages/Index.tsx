@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react';
-import { Clock, PlayCircle, Search, CheckCircle2, AlertTriangle } from 'lucide-react';
+import { Clock, PlayCircle, Search, CheckCircle2, AlertTriangle, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { isToday, isTomorrow, isSameDay } from 'date-fns';
 
@@ -10,16 +10,16 @@ import { ScheduleRow } from '@/components/dashboard/ScheduleRow';
 import { ScheduleDetail } from '@/components/dashboard/ScheduleDetail';
 import { DashboardHeader } from '@/components/dashboard/DashboardHeader';
 import { ScheduleFilters, DateFilter } from '@/components/dashboard/ScheduleFilters';
-import { mockSchedules, calculateStats } from '@/data/mockSchedules';
+import { useSchedules, calculateStats } from '@/hooks/useSchedules';
 import { Schedule, ScheduleStatus } from '@/types/scheduling';
 
 const Index = () => {
-  const [schedules, setSchedules] = useState<Schedule[]>(mockSchedules);
+  const { schedules, loading, error, refetch, updateSchedule } = useSchedules();
   const [selectedSchedule, setSelectedSchedule] = useState<Schedule | null>(null);
   const [activeStatusFilter, setActiveStatusFilter] = useState<ScheduleStatus | 'all'>('all');
   
-  // New filters
-  const [dateFilter, setDateFilter] = useState<DateFilter>('today');
+  // Filters
+  const [dateFilter, setDateFilter] = useState<DateFilter>('all');
   const [customDate, setCustomDate] = useState<Date | undefined>(undefined);
   const [searchQuery, setSearchQuery] = useState('');
 
@@ -70,20 +70,60 @@ const Index = () => {
     return calculateStats(dateFiltered);
   }, [schedules, dateFilter, customDate]);
 
-  const handleRefresh = () => {
+  const handleRefresh = async () => {
+    await refetch();
     toast.success('Dashboard atualizado!');
   };
 
-  const handleUpdateSchedule = (updatedSchedule: Schedule) => {
-    setSchedules(prev => 
-      prev.map(s => s.id === updatedSchedule.id ? updatedSchedule : s)
-    );
-    setSelectedSchedule(updatedSchedule);
+  const handleUpdateSchedule = async (updatedSchedule: Schedule) => {
+    const success = await updateSchedule(updatedSchedule);
+    if (success) {
+      setSelectedSchedule(updatedSchedule);
+    } else {
+      toast.error('Erro ao atualizar agendamento');
+    }
   };
 
   const handleFilterByStatus = (status: ScheduleStatus | 'all') => {
     setActiveStatusFilter(status);
   };
+
+  if (loading) {
+    return (
+      <SidebarProvider>
+        <div className="min-h-screen flex w-full bg-background">
+          <AppSidebar />
+          <main className="flex-1 flex items-center justify-center">
+            <div className="flex flex-col items-center gap-3">
+              <Loader2 className="h-8 w-8 animate-spin text-primary" />
+              <p className="text-muted-foreground">Carregando agendamentos...</p>
+            </div>
+          </main>
+        </div>
+      </SidebarProvider>
+    );
+  }
+
+  if (error) {
+    return (
+      <SidebarProvider>
+        <div className="min-h-screen flex w-full bg-background">
+          <AppSidebar />
+          <main className="flex-1 flex items-center justify-center">
+            <div className="text-center">
+              <p className="text-destructive font-medium">{error}</p>
+              <button
+                onClick={refetch}
+                className="mt-4 px-4 py-2 bg-primary text-primary-foreground rounded-md hover:bg-primary/90"
+              >
+                Tentar novamente
+              </button>
+            </div>
+          </main>
+        </div>
+      </SidebarProvider>
+    );
+  }
 
   return (
     <SidebarProvider>
