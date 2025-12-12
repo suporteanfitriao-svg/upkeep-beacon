@@ -1,5 +1,8 @@
-import { Home, Users, HelpCircle, ClipboardCheck } from 'lucide-react';
+import { Home, Users, HelpCircle, ClipboardCheck, LogOut } from 'lucide-react';
 import { NavLink } from '@/components/NavLink';
+import { useAuth } from '@/hooks/useAuth';
+import { useNavigate } from 'react-router-dom';
+import { toast } from 'sonner';
 import {
   Sidebar,
   SidebarContent,
@@ -10,6 +13,7 @@ import {
   SidebarMenuButton,
   SidebarMenuItem,
   SidebarHeader,
+  SidebarFooter,
   useSidebar,
 } from '@/components/ui/sidebar';
 import logo from '@/assets/logo.png';
@@ -24,6 +28,14 @@ const menuItems = [
 export function AppSidebar() {
   const { state } = useSidebar();
   const collapsed = state === 'collapsed';
+  const { signOut, user } = useAuth();
+  const navigate = useNavigate();
+
+  const handleSignOut = async () => {
+    await signOut();
+    toast.success('Logout realizado com sucesso');
+    navigate('/auth');
+  };
 
   return (
     <Sidebar collapsible="icon">
@@ -60,6 +72,26 @@ export function AppSidebar() {
           </SidebarGroupContent>
         </SidebarGroup>
       </SidebarContent>
+
+      <SidebarFooter className="border-t p-2">
+        <SidebarMenu>
+          <SidebarMenuItem>
+            <SidebarMenuButton 
+              onClick={handleSignOut}
+              tooltip="Sair"
+              className="hover:bg-destructive/10 hover:text-destructive"
+            >
+              <LogOut className="h-5 w-5" />
+              <span>Sair</span>
+            </SidebarMenuButton>
+          </SidebarMenuItem>
+        </SidebarMenu>
+        {!collapsed && user && (
+          <div className="px-2 py-1 text-xs text-muted-foreground truncate">
+            {user.email}
+          </div>
+        )}
+      </SidebarFooter>
     </Sidebar>
   );
 }
