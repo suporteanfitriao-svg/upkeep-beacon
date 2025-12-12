@@ -19,7 +19,7 @@ interface ScheduleRowProps {
 
 const statusConfig: Record<ScheduleStatus, { label: string; className: string }> = {
   waiting: { 
-    label: 'Aguardando', 
+    label: 'Aguardando Liberação Hóspede', 
     className: 'bg-status-waiting-bg text-status-waiting border-status-waiting/30' 
   },
   cleaning: { 

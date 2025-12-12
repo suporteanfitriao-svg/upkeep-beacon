@@ -91,7 +91,7 @@ const Index = () => {
         {/* Status Cards */}
         <div className="grid grid-cols-2 lg:grid-cols-5 gap-3 mb-6">
           <StatusCard
-            title="Aguardando"
+            title="Aguardando Liberação"
             count={filteredStats.waiting}
             icon={Clock}
             variant="waiting"
@@ -150,7 +150,7 @@ const Index = () => {
               onClick={() => setActiveStatusFilter('all')}
               className="inline-flex items-center gap-1 px-2 py-1 bg-primary/10 text-primary rounded text-sm font-medium hover:bg-primary/20 transition-colors"
             >
-              {activeStatusFilter === 'waiting' && 'Aguardando'}
+              {activeStatusFilter === 'waiting' && 'Aguardando Liberação Hóspede'}
               {activeStatusFilter === 'cleaning' && 'Em Limpeza'}
               {activeStatusFilter === 'inspection' && 'Inspeção'}
               {activeStatusFilter === 'completed' && 'Finalizados'}
