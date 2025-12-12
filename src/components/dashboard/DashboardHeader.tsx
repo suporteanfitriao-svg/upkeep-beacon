@@ -6,7 +6,7 @@ import { SidebarTrigger } from '@/components/ui/sidebar';
 import logo from '@/assets/logo.png';
 
 interface DashboardHeaderProps {
-  onRefresh: () => void;
+  onRefresh?: () => void;
 }
 
 export function DashboardHeader({ onRefresh }: DashboardHeaderProps) {
@@ -35,10 +35,12 @@ export function DashboardHeader({ onRefresh }: DashboardHeaderProps) {
         </div>
       </div>
       
-      <Button variant="outline" size="sm" onClick={onRefresh} className="gap-2">
-        <RefreshCw className="w-4 h-4" />
-        <span className="hidden sm:inline">Atualizar</span>
-      </Button>
+      {onRefresh && (
+        <Button variant="outline" size="sm" onClick={onRefresh} className="gap-2">
+          <RefreshCw className="w-4 h-4" />
+          <span className="hidden sm:inline">Atualizar</span>
+        </Button>
+      )}
     </header>
   );
 }

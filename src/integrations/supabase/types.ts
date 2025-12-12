@@ -172,6 +172,45 @@ export type Database = {
           },
         ]
       }
+      team_members: {
+        Row: {
+          cpf: string
+          created_at: string
+          email: string
+          id: string
+          is_active: boolean
+          name: string
+          role: Database["public"]["Enums"]["app_role"]
+          updated_at: string
+          user_id: string | null
+          whatsapp: string
+        }
+        Insert: {
+          cpf: string
+          created_at?: string
+          email: string
+          id?: string
+          is_active?: boolean
+          name: string
+          role?: Database["public"]["Enums"]["app_role"]
+          updated_at?: string
+          user_id?: string | null
+          whatsapp: string
+        }
+        Update: {
+          cpf?: string
+          created_at?: string
+          email?: string
+          id?: string
+          is_active?: boolean
+          name?: string
+          role?: Database["public"]["Enums"]["app_role"]
+          updated_at?: string
+          user_id?: string | null
+          whatsapp?: string
+        }
+        Relationships: []
+      }
       user_roles: {
         Row: {
           created_at: string
