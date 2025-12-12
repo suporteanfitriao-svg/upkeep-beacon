@@ -109,9 +109,10 @@ export function ScheduleRow({ schedule, onClick }: ScheduleRowProps) {
                   <p className="font-semibold text-foreground">{schedule.propertyName}</p>
                   <p className="text-muted-foreground">{schedule.propertyAddress}</p>
                   <div className="flex gap-4 text-xs">
-                    <span><strong>Check-in:</strong> {format(schedule.checkIn, "HH:mm")}</span>
-                    <span><strong>Check-out:</strong> {format(schedule.checkOut, "HH:mm")}</span>
+                    <span><strong>Check-in:</strong> {format(schedule.checkIn, "dd/MM/yyyy")}</span>
+                    <span><strong>Check-out:</strong> {format(schedule.checkOut, "dd/MM/yyyy")}</span>
                   </div>
+                  <p className="text-xs"><strong>Hóspedes:</strong> {schedule.numberOfGuests}</p>
                   <p className="text-xs"><strong>Responsável:</strong> {schedule.cleanerName}</p>
                   <p className="text-xs"><strong>Duração:</strong> {schedule.estimatedDuration} min</p>
                   <p className="text-xs"><strong>Progresso:</strong> {completedTasks}/{totalTasks} tarefas</p>
@@ -178,7 +179,7 @@ export function ScheduleRow({ schedule, onClick }: ScheduleRowProps) {
             {schedule.propertyName}
           </h3>
           <p className="text-xs text-muted-foreground">
-            {format(schedule.checkOut, "dd/MM")} • {schedule.guestName} • {schedule.cleanerName}
+            {format(schedule.checkOut, "dd/MM")} • {schedule.numberOfGuests} hóspede(s) • {schedule.cleanerName}
           </p>
         </div>
         <div className="flex items-center gap-1 shrink-0">
