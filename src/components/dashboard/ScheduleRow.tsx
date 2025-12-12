@@ -114,7 +114,7 @@ export function ScheduleRow({ schedule, onClick }: ScheduleRowProps) {
           </Badge>
           {schedule.maintenanceStatus !== 'ok' && (
             <Badge className="text-xs bg-status-alert-bg text-status-alert border border-status-alert/30">
-              Manutenção
+              Avaria
             </Badge>
           )}
         </div>
