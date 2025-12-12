@@ -1,0 +1,402 @@
+import { Schedule, ScheduleStatus, ChecklistItem } from '@/types/scheduling';
+import { cn } from '@/lib/utils';
+import { 
+  X, 
+  Clock, 
+  MapPin, 
+  User, 
+  Camera,
+  AlertTriangle,
+  CheckCircle2,
+  Wrench,
+  Package,
+  MessageSquare,
+  LogIn,
+  LogOut,
+  Timer,
+  History,
+  Upload
+} from 'lucide-react';
+import { format } from 'date-fns';
+import { ptBR } from 'date-fns/locale';
+import { Button } from '@/components/ui/button';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Textarea } from '@/components/ui/textarea';
+import { Badge } from '@/components/ui/badge';
+import { Separator } from '@/components/ui/separator';
+import { ScrollArea } from '@/components/ui/scroll-area';
+import { useState } from 'react';
+import { toast } from 'sonner';
+
+interface ScheduleDetailProps {
+  schedule: Schedule;
+  onClose: () => void;
+  onUpdateSchedule: (schedule: Schedule) => void;
+}
+
+const statusConfig: Record<ScheduleStatus, { label: string; className: string; next?: ScheduleStatus; nextLabel?: string }> = {
+  waiting: { 
+    label: 'Aguardando Liberação', 
+    className: 'bg-status-waiting-bg text-status-waiting',
+    next: 'cleaning',
+    nextLabel: 'Iniciar Limpeza'
+  },
+  cleaning: { 
+    label: 'Em Limpeza', 
+    className: 'bg-status-progress-bg text-status-progress',
+    next: 'inspection',
+    nextLabel: 'Enviar para Inspeção'
+  },
+  inspection: { 
+    label: 'Em Inspeção', 
+    className: 'bg-status-inspection-bg text-status-inspection',
+    next: 'completed',
+    nextLabel: 'Finalizar'
+  },
+  completed: { 
+    label: 'Finalizado', 
+    className: 'bg-status-completed-bg text-status-completed'
+  },
+};
+
+export function ScheduleDetail({ schedule, onClose, onUpdateSchedule }: ScheduleDetailProps) {
+  const [notes, setNotes] = useState(schedule.notes);
+  const [checklist, setChecklist] = useState(schedule.checklist);
+  const statusStyle = statusConfig[schedule.status];
+
+  const handleChecklistToggle = (itemId: string) => {
+    const updatedChecklist = checklist.map(item =>
+      item.id === itemId ? { ...item, completed: !item.completed } : item
+    );
+    setChecklist(updatedChecklist);
+    onUpdateSchedule({ ...schedule, checklist: updatedChecklist });
+  };
+
+  const handleStatusChange = () => {
+    const nextStatus = statusConfig[schedule.status].next;
+    if (nextStatus) {
+      const updates: Partial<Schedule> = { status: nextStatus };
+      
+      if (nextStatus === 'cleaning' && !schedule.teamArrival) {
+        updates.teamArrival = new Date();
+        toast.success('Chegada da equipe registrada!');
+      }
+      
+      if (nextStatus === 'completed' && !schedule.teamDeparture) {
+        updates.teamDeparture = new Date();
+        toast.success('Saída da equipe registrada!');
+      }
+      
+      onUpdateSchedule({ ...schedule, ...updates });
+      toast.success(`Status atualizado para: ${statusConfig[nextStatus].label}`);
+    }
+  };
+
+  const handleReportIssue = () => {
+    toast.info('Funcionalidade de reportar avaria será implementada');
+  };
+
+  const handlePhotoUpload = (type: 'before' | 'after') => {
+    toast.info(`Upload de foto ${type === 'before' ? 'antes' : 'depois'} será implementado`);
+  };
+
+  const handleSaveNotes = () => {
+    onUpdateSchedule({ ...schedule, notes });
+    toast.success('Observações salvas!');
+  };
+
+  const completedTasks = checklist.filter(item => item.completed).length;
+  const totalTasks = checklist.length;
+  const progressPercent = totalTasks > 0 ? (completedTasks / totalTasks) * 100 : 0;
+
+  // Group checklist by category
+  const groupedChecklist = checklist.reduce((acc, item) => {
+    if (!acc[item.category]) {
+      acc[item.category] = [];
+    }
+    acc[item.category].push(item);
+    return acc;
+  }, {} as Record<string, ChecklistItem[]>);
+
+  return (
+    <div className="fixed inset-0 z-50 bg-background/80 backdrop-blur-sm">
+      <div className="fixed inset-y-0 right-0 w-full max-w-xl bg-card border-l shadow-xl animate-slide-in">
+        <div className="flex flex-col h-full">
+          {/* Header */}
+          <div className="flex items-center justify-between p-4 border-b">
+            <div>
+              <h2 className="text-xl font-semibold">{schedule.propertyName}</h2>
+              <div className="flex items-center gap-1.5 text-sm text-muted-foreground mt-1">
+                <MapPin className="w-4 h-4" />
+                <span>{schedule.propertyAddress}</span>
+              </div>
+            </div>
+            <Button variant="ghost" size="icon" onClick={onClose}>
+              <X className="w-5 h-5" />
+            </Button>
+          </div>
+
+          {/* Content */}
+          <ScrollArea className="flex-1 p-4">
+            <div className="space-y-6">
+              {/* Status & Time Info */}
+              <div className="flex flex-wrap items-center gap-3">
+                <Badge className={cn('text-sm py-1 px-3', statusStyle.className)}>
+                  {statusStyle.label}
+                </Badge>
+                <div className="flex items-center gap-1.5 text-sm text-muted-foreground">
+                  <Clock className="w-4 h-4" />
+                  <span>Check-in: {format(schedule.checkIn, "HH:mm", { locale: ptBR })}</span>
+                </div>
+                <div className="flex items-center gap-1.5 text-sm text-muted-foreground">
+                  <Timer className="w-4 h-4" />
+                  <span>Est.: {schedule.estimatedDuration} min</span>
+                </div>
+              </div>
+
+              {/* Cleaner Info */}
+              <div className="bg-muted/50 rounded-lg p-4">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
+                    <User className="w-5 h-5 text-primary" />
+                  </div>
+                  <div>
+                    <p className="font-medium">{schedule.cleanerName}</p>
+                    <p className="text-sm text-muted-foreground">Responsável pela limpeza</p>
+                  </div>
+                </div>
+                
+                {/* Team arrival/departure */}
+                <div className="mt-4 flex flex-wrap gap-4 text-sm">
+                  {schedule.teamArrival && (
+                    <div className="flex items-center gap-1.5 text-status-completed">
+                      <LogIn className="w-4 h-4" />
+                      <span>Chegada: {format(schedule.teamArrival, "HH:mm")}</span>
+                    </div>
+                  )}
+                  {schedule.teamDeparture && (
+                    <div className="flex items-center gap-1.5 text-status-completed">
+                      <LogOut className="w-4 h-4" />
+                      <span>Saída: {format(schedule.teamDeparture, "HH:mm")}</span>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Progress Bar */}
+              <div>
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-sm font-medium">Progresso do Checklist</span>
+                  <span className="text-sm text-muted-foreground">{completedTasks}/{totalTasks}</span>
+                </div>
+                <div className="h-3 bg-muted rounded-full overflow-hidden">
+                  <div 
+                    className="h-full bg-status-completed rounded-full transition-all duration-500"
+                    style={{ width: `${progressPercent}%` }}
+                  />
+                </div>
+              </div>
+
+              <Separator />
+
+              {/* Checklist */}
+              <div>
+                <h3 className="font-semibold mb-4 flex items-center gap-2">
+                  <CheckCircle2 className="w-5 h-5 text-primary" />
+                  Checklist de Limpeza
+                </h3>
+                <div className="space-y-4">
+                  {Object.entries(groupedChecklist).map(([category, items]) => (
+                    <div key={category}>
+                      <p className="text-sm font-medium text-muted-foreground mb-2">{category}</p>
+                      <div className="space-y-2">
+                        {items.map(item => (
+                          <label
+                            key={item.id}
+                            className={cn(
+                              'flex items-center gap-3 p-3 rounded-lg border cursor-pointer transition-colors',
+                              item.completed ? 'bg-status-completed-bg border-status-completed/30' : 'bg-card hover:bg-muted/50'
+                            )}
+                          >
+                            <Checkbox
+                              checked={item.completed}
+                              onCheckedChange={() => handleChecklistToggle(item.id)}
+                            />
+                            <span className={cn(item.completed && 'line-through text-muted-foreground')}>
+                              {item.title}
+                            </span>
+                          </label>
+                        ))}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              <Separator />
+
+              {/* Photos */}
+              <div>
+                <h3 className="font-semibold mb-4 flex items-center gap-2">
+                  <Camera className="w-5 h-5 text-primary" />
+                  Fotos
+                </h3>
+                <div className="grid grid-cols-2 gap-3">
+                  <button
+                    onClick={() => handlePhotoUpload('before')}
+                    className="flex flex-col items-center justify-center gap-2 p-6 border-2 border-dashed rounded-lg hover:bg-muted/50 transition-colors"
+                  >
+                    <Upload className="w-6 h-6 text-muted-foreground" />
+                    <span className="text-sm text-muted-foreground">Foto Antes</span>
+                    {schedule.photos.filter(p => p.type === 'before').length > 0 && (
+                      <Badge variant="secondary">
+                        {schedule.photos.filter(p => p.type === 'before').length} foto(s)
+                      </Badge>
+                    )}
+                  </button>
+                  <button
+                    onClick={() => handlePhotoUpload('after')}
+                    className="flex flex-col items-center justify-center gap-2 p-6 border-2 border-dashed rounded-lg hover:bg-muted/50 transition-colors"
+                  >
+                    <Upload className="w-6 h-6 text-muted-foreground" />
+                    <span className="text-sm text-muted-foreground">Foto Depois</span>
+                    {schedule.photos.filter(p => p.type === 'after').length > 0 && (
+                      <Badge variant="secondary">
+                        {schedule.photos.filter(p => p.type === 'after').length} foto(s)
+                      </Badge>
+                    )}
+                  </button>
+                </div>
+              </div>
+
+              <Separator />
+
+              {/* Maintenance Issues */}
+              <div>
+                <h3 className="font-semibold mb-4 flex items-center gap-2">
+                  <Wrench className="w-5 h-5 text-primary" />
+                  Manutenção
+                </h3>
+                {schedule.maintenanceIssues.length > 0 ? (
+                  <div className="space-y-2">
+                    {schedule.maintenanceIssues.map(issue => (
+                      <div 
+                        key={issue.id}
+                        className={cn(
+                          'p-3 rounded-lg border',
+                          issue.severity === 'high' ? 'bg-status-alert-bg border-status-alert/30' :
+                          issue.severity === 'medium' ? 'bg-status-progress-bg border-status-progress/30' :
+                          'bg-muted border-border'
+                        )}
+                      >
+                        <div className="flex items-start gap-2">
+                          <AlertTriangle className={cn(
+                            'w-4 h-4 mt-0.5',
+                            issue.severity === 'high' ? 'text-status-alert' :
+                            issue.severity === 'medium' ? 'text-status-progress' :
+                            'text-muted-foreground'
+                          )} />
+                          <div>
+                            <p className="text-sm font-medium">{issue.description}</p>
+                            <p className="text-xs text-muted-foreground mt-1">
+                              Reportado em {format(issue.reportedAt, "dd/MM HH:mm")}
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-sm text-muted-foreground">Nenhum problema reportado</p>
+                )}
+                <Button 
+                  variant="outline" 
+                  className="w-full mt-3"
+                  onClick={handleReportIssue}
+                >
+                  <AlertTriangle className="w-4 h-4 mr-2" />
+                  Reportar Avaria
+                </Button>
+              </div>
+
+              {/* Missing Materials */}
+              {schedule.missingMaterials.length > 0 && (
+                <>
+                  <Separator />
+                  <div>
+                    <h3 className="font-semibold mb-4 flex items-center gap-2">
+                      <Package className="w-5 h-5 text-status-progress" />
+                      Materiais Faltando
+                    </h3>
+                    <div className="flex flex-wrap gap-2">
+                      {schedule.missingMaterials.map(material => (
+                        <Badge key={material} variant="outline" className="bg-status-progress-bg text-status-progress border-status-progress/30">
+                          {material}
+                        </Badge>
+                      ))}
+                    </div>
+                  </div>
+                </>
+              )}
+
+              <Separator />
+
+              {/* Notes */}
+              <div>
+                <h3 className="font-semibold mb-4 flex items-center gap-2">
+                  <MessageSquare className="w-5 h-5 text-primary" />
+                  Observações
+                </h3>
+                <Textarea
+                  placeholder="Adicione observações sobre este agendamento..."
+                  value={notes}
+                  onChange={(e) => setNotes(e.target.value)}
+                  className="min-h-[100px]"
+                />
+                <Button 
+                  variant="secondary" 
+                  className="w-full mt-2"
+                  onClick={handleSaveNotes}
+                >
+                  Salvar Observações
+                </Button>
+              </div>
+
+              {/* History */}
+              <div>
+                <h3 className="font-semibold mb-4 flex items-center gap-2">
+                  <History className="w-5 h-5 text-primary" />
+                  Histórico
+                </h3>
+                <div className="text-sm text-muted-foreground">
+                  <p>• Agendamento criado</p>
+                  {schedule.teamArrival && <p>• Equipe chegou às {format(schedule.teamArrival, "HH:mm")}</p>}
+                  {schedule.teamDeparture && <p>• Equipe saiu às {format(schedule.teamDeparture, "HH:mm")}</p>}
+                </div>
+              </div>
+            </div>
+          </ScrollArea>
+
+          {/* Footer Actions */}
+          <div className="p-4 border-t bg-card">
+            {statusConfig[schedule.status].next && (
+              <Button 
+                className="w-full" 
+                size="lg"
+                onClick={handleStatusChange}
+              >
+                {statusConfig[schedule.status].nextLabel}
+              </Button>
+            )}
+            {schedule.status === 'completed' && (
+              <div className="flex items-center justify-center gap-2 text-status-completed">
+                <CheckCircle2 className="w-5 h-5" />
+                <span className="font-medium">Limpeza Finalizada</span>
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
