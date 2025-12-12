@@ -30,6 +30,7 @@ export interface Schedule {
   id: string;
   propertyName: string;
   propertyAddress: string;
+  guestName: string;
   checkIn: Date;
   checkOut: Date;
   status: ScheduleStatus;
