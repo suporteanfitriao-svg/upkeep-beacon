@@ -5,12 +5,19 @@ import {
   CheckCircle2, 
   Wrench,
   ChevronDown,
-  ChevronUp
+  ChevronUp,
+  Info
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { Badge } from '@/components/ui/badge';
 import { useState } from 'react';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from '@/components/ui/tooltip';
 
 interface ScheduleRowProps {
   schedule: Schedule;
@@ -66,7 +73,7 @@ export function ScheduleRow({ schedule, onClick }: ScheduleRowProps) {
       {/* Collapsed Row - Always Visible */}
       {/* Desktop: Grid layout matching header */}
       <div 
-        className="hidden md:grid grid-cols-[1fr_120px_100px_140px_100px_180px] gap-4 items-center p-3 cursor-pointer"
+        className="hidden md:grid grid-cols-[1fr_120px_100px_140px_100px_180px] gap-4 items-center p-3 cursor-pointer group"
         onClick={onClick}
       >
         {/* Property Name */}
@@ -85,6 +92,36 @@ export function ScheduleRow({ schedule, onClick }: ScheduleRowProps) {
           <h3 className="font-medium text-foreground truncate text-sm">
             {schedule.propertyName}
           </h3>
+          
+          {/* Info Tooltip */}
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <button 
+                  onClick={(e) => e.stopPropagation()}
+                  className="shrink-0 p-1 rounded hover:bg-muted transition-colors opacity-0 group-hover:opacity-100"
+                >
+                  <Info className="w-4 h-4 text-muted-foreground hover:text-primary" />
+                </button>
+              </TooltipTrigger>
+              <TooltipContent side="right" className="max-w-xs p-3 bg-popover border shadow-lg">
+                <div className="space-y-2 text-sm">
+                  <p className="font-semibold text-foreground">{schedule.propertyName}</p>
+                  <p className="text-muted-foreground">{schedule.propertyAddress}</p>
+                  <div className="flex gap-4 text-xs">
+                    <span><strong>Check-in:</strong> {format(schedule.checkIn, "HH:mm")}</span>
+                    <span><strong>Check-out:</strong> {format(schedule.checkOut, "HH:mm")}</span>
+                  </div>
+                  <p className="text-xs"><strong>Responsável:</strong> {schedule.cleanerName}</p>
+                  <p className="text-xs"><strong>Duração:</strong> {schedule.estimatedDuration} min</p>
+                  <p className="text-xs"><strong>Progresso:</strong> {completedTasks}/{totalTasks} tarefas</p>
+                  {schedule.notes && (
+                    <p className="text-xs text-muted-foreground italic">"{schedule.notes}"</p>
+                  )}
+                </div>
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
         </div>
 
         {/* Status */}
