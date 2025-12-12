@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Plus, RefreshCw, Home, Pencil, Trash2, ExternalLink } from 'lucide-react';
+import { Plus, RefreshCw, Home, Pencil, Trash2, ExternalLink, Users, Calendar } from 'lucide-react';
 import { SidebarProvider, SidebarInset, SidebarTrigger } from '@/components/ui/sidebar';
 import { AppSidebar } from '@/components/dashboard/AppSidebar';
 import { Button } from '@/components/ui/button';
@@ -21,10 +21,18 @@ interface Property {
   created_at: string;
 }
 
+interface PropertyStats {
+  propertyId: string;
+  listingNames: string[];
+  totalReservations: number;
+  totalGuests: number;
+}
+
 export default function Properties() {
   const { role, loading: isLoadingRole } = useUserRole();
   const navigate = useNavigate();
   const [properties, setProperties] = useState<Property[]>([]);
+  const [propertyStats, setPropertyStats] = useState<Record<string, PropertyStats>>({});
   const [isLoading, setIsLoading] = useState(true);
   const [isSyncing, setIsSyncing] = useState(false);
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -42,6 +50,7 @@ export default function Properties() {
   useEffect(() => {
     if (!isLoadingRole && role) {
       fetchProperties();
+      fetchPropertyStats();
     }
   }, [isLoadingRole, role]);
 
@@ -59,6 +68,41 @@ export default function Properties() {
       setProperties(data || []);
     }
     setIsLoading(false);
+  };
+
+  const fetchPropertyStats = async () => {
+    const { data, error } = await supabase
+      .from('reservations')
+      .select('property_id, listing_name, number_of_guests');
+
+    if (error) {
+      console.error('Error fetching stats:', error);
+      return;
+    }
+
+    const stats: Record<string, PropertyStats> = {};
+    
+    (data || []).forEach((reservation) => {
+      if (!reservation.property_id) return;
+      
+      if (!stats[reservation.property_id]) {
+        stats[reservation.property_id] = {
+          propertyId: reservation.property_id,
+          listingNames: [],
+          totalReservations: 0,
+          totalGuests: 0
+        };
+      }
+      
+      stats[reservation.property_id].totalReservations++;
+      stats[reservation.property_id].totalGuests += reservation.number_of_guests || 1;
+      
+      if (reservation.listing_name && !stats[reservation.property_id].listingNames.includes(reservation.listing_name)) {
+        stats[reservation.property_id].listingNames.push(reservation.listing_name);
+      }
+    });
+
+    setPropertyStats(stats);
   };
 
   const resetForm = () => {
@@ -144,7 +188,9 @@ export default function Properties() {
       if (error) throw error;
 
       toast.success(`Sincronização concluída: ${data.synced || 0} reservas processadas`);
+      fetchPropertyStats();
       fetchProperties();
+      fetchPropertyStats();
     } catch (error: any) {
       toast.error('Erro na sincronização: ' + (error.message || 'Erro desconhecido'));
       console.error(error);
@@ -331,6 +377,38 @@ export default function Properties() {
                       {property.address && (
                         <p className="text-sm text-muted-foreground">{property.address}</p>
                       )}
+                      
+                      {/* Listing names from Airbnb */}
+                      {propertyStats[property.id]?.listingNames.length > 0 && (
+                        <div className="space-y-1">
+                          <p className="text-xs font-medium text-muted-foreground">Anúncios encontrados:</p>
+                          <div className="flex flex-wrap gap-1">
+                            {propertyStats[property.id].listingNames.map((name, idx) => (
+                              <span 
+                                key={idx} 
+                                className="text-xs bg-primary/10 text-primary px-2 py-0.5 rounded-full"
+                              >
+                                {name}
+                              </span>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Stats */}
+                      {propertyStats[property.id] && (
+                        <div className="flex items-center gap-4 text-xs text-muted-foreground">
+                          <span className="flex items-center gap-1">
+                            <Calendar className="h-3 w-3" />
+                            {propertyStats[property.id].totalReservations} reservas
+                          </span>
+                          <span className="flex items-center gap-1">
+                            <Users className="h-3 w-3" />
+                            {propertyStats[property.id].totalGuests} hóspedes
+                          </span>
+                        </div>
+                      )}
+
                       <div className="flex items-center gap-2">
                         {property.airbnb_ical_url ? (
                           <span className="text-xs bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400 px-2 py-1 rounded-full flex items-center gap-1">
