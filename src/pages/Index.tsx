@@ -1,33 +1,65 @@
 import { useState, useMemo } from 'react';
 import { Clock, PlayCircle, Search, CheckCircle2, AlertTriangle } from 'lucide-react';
 import { toast } from 'sonner';
+import { isToday, isTomorrow, isSameDay } from 'date-fns';
 
 import { StatusCard } from '@/components/dashboard/StatusCard';
-import { ScheduleCard } from '@/components/dashboard/ScheduleCard';
+import { ScheduleRow } from '@/components/dashboard/ScheduleRow';
 import { ScheduleDetail } from '@/components/dashboard/ScheduleDetail';
 import { DashboardHeader } from '@/components/dashboard/DashboardHeader';
-import { FilterTabs } from '@/components/dashboard/FilterTabs';
+import { ScheduleFilters, DateFilter } from '@/components/dashboard/ScheduleFilters';
 import { mockSchedules, calculateStats } from '@/data/mockSchedules';
 import { Schedule, ScheduleStatus } from '@/types/scheduling';
 
 const Index = () => {
   const [schedules, setSchedules] = useState<Schedule[]>(mockSchedules);
   const [selectedSchedule, setSelectedSchedule] = useState<Schedule | null>(null);
-  const [activeFilter, setActiveFilter] = useState<ScheduleStatus | 'all'>('all');
+  const [activeStatusFilter, setActiveStatusFilter] = useState<ScheduleStatus | 'all'>('all');
+  
+  // New filters
+  const [dateFilter, setDateFilter] = useState<DateFilter>('today');
+  const [customDate, setCustomDate] = useState<Date | undefined>(undefined);
+  const [searchQuery, setSearchQuery] = useState('');
 
   const stats = useMemo(() => calculateStats(schedules), [schedules]);
 
+  // Apply all filters
   const filteredSchedules = useMemo(() => {
-    if (activeFilter === 'all') return schedules;
-    return schedules.filter(s => s.status === activeFilter);
-  }, [schedules, activeFilter]);
+    return schedules.filter(schedule => {
+      // Status filter
+      if (activeStatusFilter !== 'all' && schedule.status !== activeStatusFilter) {
+        return false;
+      }
 
-  const counts = useMemo(() => ({
-    waiting: stats.waiting,
-    cleaning: stats.cleaning,
-    inspection: stats.inspection,
-    completed: stats.completed,
-  }), [stats]);
+      // Date filter
+      const checkInDate = schedule.checkIn;
+      if (dateFilter === 'today' && !isToday(checkInDate)) return false;
+      if (dateFilter === 'tomorrow' && !isTomorrow(checkInDate)) return false;
+      if (dateFilter === 'custom' && customDate && !isSameDay(checkInDate, customDate)) return false;
+
+      // Search filter
+      if (searchQuery) {
+        const query = searchQuery.toLowerCase();
+        const matchesProperty = schedule.propertyName.toLowerCase().includes(query);
+        const matchesCleaner = schedule.cleanerName.toLowerCase().includes(query);
+        if (!matchesProperty && !matchesCleaner) return false;
+      }
+
+      return true;
+    });
+  }, [schedules, activeStatusFilter, dateFilter, customDate, searchQuery]);
+
+  // Filtered stats for current date filter
+  const filteredStats = useMemo(() => {
+    const dateFiltered = schedules.filter(schedule => {
+      const checkInDate = schedule.checkIn;
+      if (dateFilter === 'today') return isToday(checkInDate);
+      if (dateFilter === 'tomorrow') return isTomorrow(checkInDate);
+      if (dateFilter === 'custom' && customDate) return isSameDay(checkInDate, customDate);
+      return true;
+    });
+    return calculateStats(dateFiltered);
+  }, [schedules, dateFilter, customDate]);
 
   const handleRefresh = () => {
     toast.success('Dashboard atualizado!');
@@ -41,7 +73,7 @@ const Index = () => {
   };
 
   const handleFilterByStatus = (status: ScheduleStatus | 'all') => {
-    setActiveFilter(status);
+    setActiveStatusFilter(status);
   };
 
   return (
@@ -50,42 +82,42 @@ const Index = () => {
         <DashboardHeader onRefresh={handleRefresh} />
 
         {/* Status Cards */}
-        <div className="grid grid-cols-2 lg:grid-cols-5 gap-4 mb-8">
+        <div className="grid grid-cols-2 lg:grid-cols-5 gap-3 mb-6">
           <StatusCard
             title="Aguardando"
-            count={stats.waiting}
+            count={filteredStats.waiting}
             icon={Clock}
             variant="waiting"
-            onClick={() => handleFilterByStatus('waiting')}
+            onClick={() => handleFilterByStatus(activeStatusFilter === 'waiting' ? 'all' : 'waiting')}
           />
           <StatusCard
             title="Em Limpeza"
-            count={stats.cleaning}
+            count={filteredStats.cleaning}
             icon={PlayCircle}
             variant="progress"
-            onClick={() => handleFilterByStatus('cleaning')}
+            onClick={() => handleFilterByStatus(activeStatusFilter === 'cleaning' ? 'all' : 'cleaning')}
           />
           <StatusCard
             title="Inspeção"
-            count={stats.inspection}
+            count={filteredStats.inspection}
             icon={Search}
             variant="inspection"
-            onClick={() => handleFilterByStatus('inspection')}
+            onClick={() => handleFilterByStatus(activeStatusFilter === 'inspection' ? 'all' : 'inspection')}
           />
           <StatusCard
             title="Finalizados"
-            count={stats.completed}
+            count={filteredStats.completed}
             icon={CheckCircle2}
             variant="completed"
-            onClick={() => handleFilterByStatus('completed')}
+            onClick={() => handleFilterByStatus(activeStatusFilter === 'completed' ? 'all' : 'completed')}
           />
           <StatusCard
             title="Alertas"
-            count={stats.maintenanceAlerts}
+            count={filteredStats.maintenanceAlerts}
             icon={AlertTriangle}
             variant="alert"
             onClick={() => {
-              const alertSchedules = schedules.filter(s => s.maintenanceStatus !== 'ok');
+              const alertSchedules = filteredSchedules.filter(s => s.maintenanceStatus !== 'ok');
               if (alertSchedules.length > 0) {
                 setSelectedSchedule(alertSchedules[0]);
               }
@@ -93,27 +125,55 @@ const Index = () => {
           />
         </div>
 
-        {/* Filter Tabs */}
-        <FilterTabs 
-          activeFilter={activeFilter} 
-          onFilterChange={handleFilterByStatus}
-          counts={counts}
+        {/* Filters */}
+        <ScheduleFilters
+          dateFilter={dateFilter}
+          customDate={customDate}
+          searchQuery={searchQuery}
+          onDateFilterChange={setDateFilter}
+          onCustomDateChange={setCustomDate}
+          onSearchChange={setSearchQuery}
         />
 
-        {/* Schedules List */}
-        <div className="space-y-3">
+        {/* Active Filter Indicator */}
+        {activeStatusFilter !== 'all' && (
+          <div className="flex items-center gap-2 mb-4">
+            <span className="text-sm text-muted-foreground">Filtrando por status:</span>
+            <button
+              onClick={() => setActiveStatusFilter('all')}
+              className="inline-flex items-center gap-1 px-2 py-1 bg-primary/10 text-primary rounded text-sm font-medium hover:bg-primary/20 transition-colors"
+            >
+              {activeStatusFilter === 'waiting' && 'Aguardando'}
+              {activeStatusFilter === 'cleaning' && 'Em Limpeza'}
+              {activeStatusFilter === 'inspection' && 'Inspeção'}
+              {activeStatusFilter === 'completed' && 'Finalizados'}
+              <span className="ml-1">×</span>
+            </button>
+          </div>
+        )}
+
+        {/* Schedules List - Compact Rows */}
+        <div className="space-y-2">
           {filteredSchedules.length === 0 ? (
-            <div className="text-center py-12 text-muted-foreground">
-              <p>Nenhum agendamento encontrado</p>
+            <div className="text-center py-12 bg-card rounded-lg border">
+              <p className="text-muted-foreground">Nenhum agendamento encontrado</p>
+              <p className="text-sm text-muted-foreground mt-1">
+                Tente ajustar os filtros de data ou busca
+              </p>
             </div>
           ) : (
-            filteredSchedules.map(schedule => (
-              <ScheduleCard
-                key={schedule.id}
-                schedule={schedule}
-                onClick={() => setSelectedSchedule(schedule)}
-              />
-            ))
+            <>
+              <div className="text-sm text-muted-foreground mb-2">
+                {filteredSchedules.length} agendamento(s) encontrado(s)
+              </div>
+              {filteredSchedules.map(schedule => (
+                <ScheduleRow
+                  key={schedule.id}
+                  schedule={schedule}
+                  onClick={() => setSelectedSchedule(schedule)}
+                />
+              ))}
+            </>
           )}
         </div>
 
