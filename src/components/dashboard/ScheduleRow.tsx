@@ -1,8 +1,6 @@
 import { Schedule, ScheduleStatus } from '@/types/scheduling';
 import { cn } from '@/lib/utils';
 import { 
-  Clock, 
-  User, 
   AlertTriangle, 
   CheckCircle2, 
   Wrench,
@@ -66,11 +64,67 @@ export function ScheduleRow({ schedule, onClick }: ScheduleRowProps) {
   return (
     <div className="bg-card rounded-lg border overflow-hidden transition-all duration-200 hover:shadow-md">
       {/* Collapsed Row - Always Visible */}
+      {/* Desktop: Grid layout matching header */}
       <div 
-        className="flex items-center gap-3 p-3 cursor-pointer"
+        className="hidden md:grid grid-cols-[1fr_120px_100px_140px_100px_180px] gap-4 items-center p-3 cursor-pointer"
         onClick={onClick}
       >
-        {/* Expand Button */}
+        {/* Property Name */}
+        <div className="flex items-center gap-2 min-w-0">
+          <button
+            onClick={handleExpand}
+            className="shrink-0 p-1 rounded hover:bg-muted transition-colors"
+          >
+            {isExpanded ? (
+              <ChevronUp className="w-4 h-4 text-muted-foreground" />
+            ) : (
+              <ChevronDown className="w-4 h-4 text-muted-foreground" />
+            )}
+          </button>
+          {maintenanceIcons[schedule.maintenanceStatus]}
+          <h3 className="font-medium text-foreground truncate text-sm">
+            {schedule.propertyName}
+          </h3>
+        </div>
+
+        {/* Status */}
+        <Badge className={cn('text-xs border w-fit', statusStyle.className)}>
+          {statusStyle.label}
+        </Badge>
+
+        {/* Start Time (Check-in) */}
+        <span className="text-sm text-foreground">
+          {format(schedule.checkIn, "HH:mm", { locale: ptBR })}
+        </span>
+
+        {/* Cleaner */}
+        <span className="text-sm text-foreground truncate">
+          {schedule.cleanerName}
+        </span>
+
+        {/* End Time (Check-out) */}
+        <span className="text-sm text-foreground">
+          {format(schedule.checkOut, "HH:mm", { locale: ptBR })}
+        </span>
+
+        {/* Tags */}
+        <div className="flex items-center gap-1.5 flex-wrap">
+          <Badge variant="outline" className={cn('text-xs border', priorityStyle.className)}>
+            {priorityStyle.label}
+          </Badge>
+          {schedule.maintenanceStatus !== 'ok' && (
+            <Badge className="text-xs bg-status-alert-bg text-status-alert border border-status-alert/30">
+              Manutenção
+            </Badge>
+          )}
+        </div>
+      </div>
+
+      {/* Mobile: Compact layout */}
+      <div 
+        className="flex md:hidden items-center gap-3 p-3 cursor-pointer"
+        onClick={onClick}
+      >
         <button
           onClick={handleExpand}
           className="shrink-0 p-1 rounded hover:bg-muted transition-colors"
@@ -81,50 +135,21 @@ export function ScheduleRow({ schedule, onClick }: ScheduleRowProps) {
             <ChevronDown className="w-5 h-5 text-muted-foreground" />
           )}
         </button>
-
-        {/* Maintenance Icon */}
-        <div className="shrink-0">
-          {maintenanceIcons[schedule.maintenanceStatus]}
-        </div>
-
-        {/* Property Name */}
+        {maintenanceIcons[schedule.maintenanceStatus]}
         <div className="flex-1 min-w-0">
-          <h3 className="font-medium text-foreground truncate text-sm sm:text-base">
+          <h3 className="font-medium text-foreground truncate text-sm">
             {schedule.propertyName}
           </h3>
+          <p className="text-xs text-muted-foreground">
+            {format(schedule.checkOut, "HH:mm", { locale: ptBR })} • {schedule.cleanerName}
+          </p>
         </div>
-
-        {/* Checkout Time */}
-        <div className="hidden sm:flex items-center gap-1.5 shrink-0 text-sm text-muted-foreground">
-          <Clock className="w-4 h-4" />
-          <span>{format(schedule.checkOut, "HH:mm", { locale: ptBR })}</span>
-        </div>
-
-        {/* Cleaner Name */}
-        <div className="hidden md:flex items-center gap-1.5 shrink-0 text-sm">
-          <User className="w-4 h-4 text-muted-foreground" />
-          <span className="text-foreground max-w-[120px] truncate">{schedule.cleanerName}</span>
-        </div>
-
-        {/* Tags */}
-        <div className="flex items-center gap-2 shrink-0">
-          <Badge className={cn('text-xs border hidden sm:inline-flex', statusStyle.className)}>
-            {statusStyle.label}
-          </Badge>
-          <Badge variant="outline" className={cn('text-xs border hidden lg:inline-flex', priorityStyle.className)}>
-            {priorityStyle.label}
-          </Badge>
-          {schedule.maintenanceStatus !== 'ok' && (
-            <Badge className="text-xs bg-status-alert-bg text-status-alert border border-status-alert/30">
-              Manutenção
-            </Badge>
-          )}
-        </div>
-
-        {/* Mobile: Show minimal tags */}
-        <div className="flex sm:hidden items-center gap-1">
+        <div className="flex items-center gap-1 shrink-0">
           <Badge className={cn('text-[10px] px-1.5 py-0.5 border', statusStyle.className)}>
             {statusStyle.label.substring(0, 3)}
+          </Badge>
+          <Badge variant="outline" className={cn('text-[10px] px-1.5 py-0.5 border', priorityStyle.className)}>
+            {priorityStyle.label.substring(0, 1)}
           </Badge>
         </div>
       </div>
