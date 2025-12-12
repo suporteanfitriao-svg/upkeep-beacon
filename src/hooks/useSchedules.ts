@@ -19,10 +19,14 @@ interface ScheduleRow {
   maintenance_issues: Json | null;
   notes: string | null;
   guest_name: string | null;
+  listing_name: string | null;
+  number_of_guests: number | null;
   reservations?: {
     check_in: string;
     check_out: string;
     guest_name: string | null;
+    listing_name: string | null;
+    number_of_guests: number | null;
   } | null;
 }
 
@@ -86,12 +90,15 @@ const mapRowToSchedule = (row: ScheduleRow): Schedule => {
   const checkInSource = row.reservations?.check_in || row.check_in_time;
   const checkOutSource = row.reservations?.check_out || row.check_out_time;
   const guestNameSource = row.reservations?.guest_name || row.guest_name;
+  const listingNameSource = row.reservations?.listing_name || row.listing_name || row.property_name;
+  const numberOfGuestsSource = row.reservations?.number_of_guests || row.number_of_guests || 1;
 
   return {
     id: row.id,
-    propertyName: row.property_name,
+    propertyName: listingNameSource,
     propertyAddress: row.property_address || '',
     guestName: guestNameSource || 'Hóspede não informado',
+    numberOfGuests: numberOfGuestsSource,
     checkIn: new Date(checkInSource),
     checkOut: new Date(checkOutSource),
     status: mapStatus(row.status),
@@ -120,8 +127,8 @@ export function useSchedules() {
 
       const { data, error: fetchError } = await supabase
         .from('schedules')
-        .select('*, reservations(check_in, check_out, guest_name)')
-        .order('check_in_time', { ascending: true });
+        .select('*, reservations(check_in, check_out, guest_name, listing_name, number_of_guests)')
+        .order('check_out_time', { ascending: true });
 
       if (fetchError) throw fetchError;
 

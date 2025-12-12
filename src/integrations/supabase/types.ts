@@ -50,6 +50,8 @@ export type Database = {
           external_id: string | null
           guest_name: string | null
           id: string
+          listing_name: string | null
+          number_of_guests: number | null
           property_id: string | null
           status: string | null
           summary: string | null
@@ -63,6 +65,8 @@ export type Database = {
           external_id?: string | null
           guest_name?: string | null
           id?: string
+          listing_name?: string | null
+          number_of_guests?: number | null
           property_id?: string | null
           status?: string | null
           summary?: string | null
@@ -76,6 +80,8 @@ export type Database = {
           external_id?: string | null
           guest_name?: string | null
           id?: string
+          listing_name?: string | null
+          number_of_guests?: number | null
           property_id?: string | null
           status?: string | null
           summary?: string | null
@@ -102,9 +108,11 @@ export type Database = {
           estimated_duration: number | null
           guest_name: string | null
           id: string
+          listing_name: string | null
           maintenance_issues: Json | null
           maintenance_status: string | null
           notes: string | null
+          number_of_guests: number | null
           priority: string | null
           property_address: string | null
           property_id: string | null
@@ -123,9 +131,11 @@ export type Database = {
           estimated_duration?: number | null
           guest_name?: string | null
           id?: string
+          listing_name?: string | null
           maintenance_issues?: Json | null
           maintenance_status?: string | null
           notes?: string | null
+          number_of_guests?: number | null
           priority?: string | null
           property_address?: string | null
           property_id?: string | null
@@ -144,9 +154,11 @@ export type Database = {
           estimated_duration?: number | null
           guest_name?: string | null
           id?: string
+          listing_name?: string | null
           maintenance_issues?: Json | null
           maintenance_status?: string | null
           notes?: string | null
+          number_of_guests?: number | null
           priority?: string | null
           property_address?: string | null
           property_id?: string | null

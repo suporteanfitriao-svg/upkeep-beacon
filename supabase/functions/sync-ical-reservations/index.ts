@@ -12,6 +12,8 @@ interface ICalEvent {
   description: string;
   dtstart: Date;
   dtend: Date;
+  listingName?: string;
+  numberOfGuests?: number;
 }
 
 function parseICalDate(dateStr: string): Date {
@@ -45,6 +47,7 @@ function parseICalEvents(icalData: string): ICalEvent[] {
   let currentEvent: Partial<ICalEvent> | null = null;
   let currentKey = '';
   let currentValue = '';
+  let calendarName = '';
 
   for (const line of lines) {
     // Handle line folding (lines starting with space or tab are continuations)
@@ -64,6 +67,11 @@ function parseICalEvents(icalData: string): ICalEvent[] {
           break;
         case 'DESCRIPTION':
           currentEvent.description = currentValue;
+          // Try to extract number of guests from description
+          const guestsMatch = currentValue.match(/(\d+)\s*(guest|hóspede|pessoa)/i);
+          if (guestsMatch) {
+            currentEvent.numberOfGuests = parseInt(guestsMatch[1]);
+          }
           break;
         case 'DTSTART':
         case 'DTSTART;VALUE=DATE':
@@ -74,6 +82,9 @@ function parseICalEvents(icalData: string): ICalEvent[] {
           currentEvent.dtend = parseICalDate(currentValue);
           break;
       }
+    } else if (currentKey === 'X-WR-CALNAME' && calendarName === '') {
+      // Capture calendar name (usually the listing name in Airbnb)
+      calendarName = currentValue.trim();
     }
 
     // Parse new line
@@ -93,7 +104,7 @@ function parseICalEvents(icalData: string): ICalEvent[] {
     }
 
     if (line.startsWith('BEGIN:VEVENT')) {
-      currentEvent = {};
+      currentEvent = { listingName: calendarName };
     } else if (line.startsWith('END:VEVENT') && currentEvent) {
       if (currentEvent.uid && currentEvent.dtstart && currentEvent.dtend) {
         events.push(currentEvent as ICalEvent);
@@ -213,7 +224,7 @@ serve(async (req) => {
           const guestName = extractGuestName(event.summary, event.description);
           const externalId = `airbnb_${event.uid}`;
 
-          // Upsert reservation
+          // Upsert reservation with new fields
           const { data: reservation, error: reservationError } = await supabase
             .from('reservations')
             .upsert({
@@ -224,7 +235,9 @@ serve(async (req) => {
               check_out: event.dtend.toISOString(),
               summary: event.summary,
               description: event.description,
-              status: 'confirmed'
+              status: 'confirmed',
+              listing_name: event.listingName || property.name,
+              number_of_guests: event.numberOfGuests || 1
             }, {
               onConflict: 'external_id',
               ignoreDuplicates: false
@@ -237,7 +250,7 @@ serve(async (req) => {
             continue;
           }
 
-          // Create or update schedule for this reservation
+          // Create or update schedule for this reservation with new fields
           const { error: scheduleError } = await supabase
             .from('schedules')
             .upsert({
@@ -249,7 +262,9 @@ serve(async (req) => {
               check_in_time: event.dtstart.toISOString(),
               check_out_time: event.dtend.toISOString(),
               status: 'waiting',
-              priority: 'normal'
+              priority: 'normal',
+              listing_name: event.listingName || property.name,
+              number_of_guests: event.numberOfGuests || 1
             }, {
               onConflict: 'reservation_id',
               ignoreDuplicates: false

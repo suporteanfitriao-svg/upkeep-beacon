@@ -31,6 +31,7 @@ export interface Schedule {
   propertyName: string;
   propertyAddress: string;
   guestName: string;
+  numberOfGuests: number;
   checkIn: Date;
   checkOut: Date;
   status: ScheduleStatus;
