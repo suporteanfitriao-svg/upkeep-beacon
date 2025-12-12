@@ -76,7 +76,7 @@ export function ScheduleRow({ schedule, onClick }: ScheduleRowProps) {
         className="hidden md:grid grid-cols-[1fr_120px_100px_140px_100px_180px] gap-4 items-center p-3 cursor-pointer group"
         onClick={onClick}
       >
-        {/* Guest Name */}
+        {/* Property Name */}
         <div className="flex items-center gap-2 min-w-0">
           <button
             onClick={handleExpand}
@@ -90,7 +90,7 @@ export function ScheduleRow({ schedule, onClick }: ScheduleRowProps) {
           </button>
           {maintenanceIcons[schedule.maintenanceStatus]}
           <h3 className="font-medium text-foreground truncate text-sm">
-            {schedule.guestName}
+            {schedule.propertyName}
           </h3>
           
           {/* Info Tooltip */}
@@ -129,9 +129,9 @@ export function ScheduleRow({ schedule, onClick }: ScheduleRowProps) {
           {statusStyle.label}
         </Badge>
 
-        {/* Check-out Time */}
+        {/* Check-out Date */}
         <span className="text-sm text-foreground">
-          {format(schedule.checkOut, "HH:mm", { locale: ptBR })}
+          {format(schedule.checkOut, "dd/MM", { locale: ptBR })}
         </span>
 
         {/* Cleaner */}
@@ -139,9 +139,9 @@ export function ScheduleRow({ schedule, onClick }: ScheduleRowProps) {
           {schedule.cleanerName}
         </span>
 
-        {/* Check-in Time */}
+        {/* Check-in Date */}
         <span className="text-sm text-foreground">
-          {format(schedule.checkIn, "HH:mm", { locale: ptBR })}
+          {format(schedule.checkIn, "dd/MM", { locale: ptBR })}
         </span>
 
         {/* Tags */}
@@ -175,10 +175,10 @@ export function ScheduleRow({ schedule, onClick }: ScheduleRowProps) {
         {maintenanceIcons[schedule.maintenanceStatus]}
         <div className="flex-1 min-w-0">
           <h3 className="font-medium text-foreground truncate text-sm">
-            {schedule.guestName}
+            {schedule.propertyName}
           </h3>
           <p className="text-xs text-muted-foreground">
-            Out: {format(schedule.checkOut, "HH:mm")} → In: {format(schedule.checkIn, "HH:mm")} • {schedule.cleanerName}
+            {format(schedule.checkOut, "dd/MM")} • {schedule.guestName} • {schedule.cleanerName}
           </p>
         </div>
         <div className="flex items-center gap-1 shrink-0">
