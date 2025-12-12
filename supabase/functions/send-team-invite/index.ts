@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { Resend } from "https://esm.sh/resend@2.0.0";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const resend = new Resend(Deno.env.get("RESEND_API_KEY"));
 
@@ -21,6 +22,63 @@ const roleLabels: Record<string, string> = {
   cleaner: "Limpeza",
 };
 
+// Simple HTML escape function to prevent XSS
+function escapeHtml(text: string): string {
+  const htmlEntities: Record<string, string> = {
+    '&': '&amp;',
+    '<': '&lt;',
+    '>': '&gt;',
+    '"': '&quot;',
+    "'": '&#39;',
+  };
+  return text.replace(/[&<>"']/g, (char) => htmlEntities[char] || char);
+}
+
+// Validate input data
+function validateInput(data: any): { valid: boolean; error?: string; parsed?: TeamInviteRequest } {
+  if (!data || typeof data !== 'object') {
+    return { valid: false, error: 'Invalid request body' };
+  }
+
+  const { name, email, role, appUrl } = data;
+
+  // Validate name
+  if (!name || typeof name !== 'string' || name.length < 1 || name.length > 100) {
+    return { valid: false, error: 'Name must be between 1 and 100 characters' };
+  }
+
+  // Validate email
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  if (!email || typeof email !== 'string' || !emailRegex.test(email) || email.length > 255) {
+    return { valid: false, error: 'Invalid email address' };
+  }
+
+  // Validate role
+  const validRoles = ['admin', 'manager', 'cleaner'];
+  if (!role || !validRoles.includes(role)) {
+    return { valid: false, error: 'Role must be admin, manager, or cleaner' };
+  }
+
+  // Validate appUrl
+  if (!appUrl || typeof appUrl !== 'string') {
+    return { valid: false, error: 'Invalid app URL' };
+  }
+
+  try {
+    const url = new URL(appUrl);
+    if (url.protocol !== 'https:') {
+      return { valid: false, error: 'App URL must use HTTPS' };
+    }
+  } catch {
+    return { valid: false, error: 'Invalid app URL format' };
+  }
+
+  return { 
+    valid: true, 
+    parsed: { name: name.trim(), email: email.trim().toLowerCase(), role, appUrl } 
+  };
+}
+
 const handler = async (req: Request): Promise<Response> => {
   console.log("send-team-invite function called");
 
@@ -29,10 +87,66 @@ const handler = async (req: Request): Promise<Response> => {
   }
 
   try {
-    const { name, email, role, appUrl }: TeamInviteRequest = await req.json();
+    // Verify authentication and admin role
+    const authHeader = req.headers.get('Authorization');
+    if (!authHeader) {
+      console.error("No authorization header provided");
+      return new Response(
+        JSON.stringify({ success: false, error: "Unauthorized" }),
+        { status: 401, headers: { "Content-Type": "application/json", ...corsHeaders } }
+      );
+    }
+
+    const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
+    const supabaseAnonKey = Deno.env.get('SUPABASE_ANON_KEY')!;
+    const supabase = createClient(supabaseUrl, supabaseAnonKey, {
+      global: { headers: { Authorization: authHeader } }
+    });
+
+    // Get the authenticated user
+    const { data: { user }, error: userError } = await supabase.auth.getUser();
+    if (userError || !user) {
+      console.error("Failed to get user:", userError?.message);
+      return new Response(
+        JSON.stringify({ success: false, error: "Unauthorized" }),
+        { status: 401, headers: { "Content-Type": "application/json", ...corsHeaders } }
+      );
+    }
+
+    // Check if user has admin role
+    const { data: roleData, error: roleError } = await supabase
+      .from('user_roles')
+      .select('role')
+      .eq('user_id', user.id)
+      .eq('role', 'admin')
+      .single();
+
+    if (roleError || !roleData) {
+      console.error("User is not an admin:", roleError?.message);
+      return new Response(
+        JSON.stringify({ success: false, error: "Forbidden: Admin access required" }),
+        { status: 403, headers: { "Content-Type": "application/json", ...corsHeaders } }
+      );
+    }
+
+    // Validate input
+    const requestBody = await req.json();
+    const validation = validateInput(requestBody);
+    
+    if (!validation.valid || !validation.parsed) {
+      console.error("Validation failed:", validation.error);
+      return new Response(
+        JSON.stringify({ success: false, error: validation.error }),
+        { status: 400, headers: { "Content-Type": "application/json", ...corsHeaders } }
+      );
+    }
+
+    const { name, email, role, appUrl } = validation.parsed;
     console.log("Sending invite to:", email, "Role:", role);
 
     const roleLabel = roleLabels[role] || role;
+    const escapedName = escapeHtml(name);
+    const escapedEmail = escapeHtml(email);
 
     const emailResponse = await resend.emails.send({
       from: "Equipe <onboarding@resend.dev>",
@@ -68,7 +182,7 @@ const handler = async (req: Request): Promise<Response> => {
             </div>
             
             <div class="content">
-              <p>Olá <strong>${name}</strong>,</p>
+              <p>Olá <strong>${escapedName}</strong>,</p>
               <p>Você foi adicionado à equipe de gestão de propriedades.</p>
               
               <div class="info-row">
@@ -81,7 +195,7 @@ const handler = async (req: Request): Promise<Response> => {
                 <ol>
                   <li>Acesse o sistema clicando no botão abaixo</li>
                   <li>Clique em <strong>"Criar conta"</strong> na tela de login</li>
-                  <li>Use este email (<strong>${email}</strong>) para criar sua conta</li>
+                  <li>Use este email (<strong>${escapedEmail}</strong>) para criar sua conta</li>
                   <li>Defina uma senha segura</li>
                   <li>Após criar a conta, você terá acesso às funcionalidades da sua função</li>
                 </ol>
