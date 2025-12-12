@@ -1,1 +1,4 @@
 project_id = "itvnpqeymmcktqqohhsk"
+
+[functions.send-team-invite]
+verify_jwt = false

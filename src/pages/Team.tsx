@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Plus, Pencil, Trash2, Phone, Mail, UserCheck, UserX } from 'lucide-react';
+import { Plus, Pencil, Trash2, Phone, Mail, UserCheck, UserX, Building2, Loader2 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -8,13 +8,14 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Badge } from '@/components/ui/badge';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Switch } from '@/components/ui/switch';
 import { toast } from 'sonner';
 import { SidebarProvider } from '@/components/ui/sidebar';
 import { AppSidebar } from '@/components/dashboard/AppSidebar';
 import { DashboardHeader } from '@/components/dashboard/DashboardHeader';
 import { useUserRole } from '@/hooks/useUserRole';
 import { Navigate } from 'react-router-dom';
-import { Loader2 } from 'lucide-react';
 
 interface TeamMember {
   id: string;
@@ -24,7 +25,13 @@ interface TeamMember {
   whatsapp: string;
   role: 'admin' | 'manager' | 'cleaner';
   is_active: boolean;
+  has_all_properties: boolean;
   created_at: string;
+}
+
+interface Property {
+  id: string;
+  name: string;
 }
 
 const roleLabels: Record<string, string> = {
@@ -57,20 +64,25 @@ function formatWhatsApp(value: string): string {
 export default function Team() {
   const { isAdmin, loading: roleLoading } = useUserRole();
   const [members, setMembers] = useState<TeamMember[]>([]);
+  const [properties, setProperties] = useState<Property[]>([]);
   const [loading, setLoading] = useState(true);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingMember, setEditingMember] = useState<TeamMember | null>(null);
+  const [submitting, setSubmitting] = useState(false);
   const [formData, setFormData] = useState({
     name: '',
     email: '',
     cpf: '',
     whatsapp: '',
     role: 'cleaner' as 'admin' | 'manager' | 'cleaner',
+    hasAllProperties: true,
+    selectedProperties: [] as string[],
   });
 
   useEffect(() => {
     if (isAdmin) {
       fetchMembers();
+      fetchProperties();
     }
   }, [isAdmin]);
 
@@ -91,6 +103,35 @@ export default function Team() {
     }
   }
 
+  async function fetchProperties() {
+    try {
+      const { data, error } = await supabase
+        .from('properties')
+        .select('id, name')
+        .order('name');
+
+      if (error) throw error;
+      setProperties(data || []);
+    } catch (error) {
+      console.error('Error fetching properties:', error);
+    }
+  }
+
+  async function fetchMemberProperties(memberId: string): Promise<string[]> {
+    try {
+      const { data, error } = await supabase
+        .from('team_member_properties')
+        .select('property_id')
+        .eq('team_member_id', memberId);
+
+      if (error) throw error;
+      return data?.map(p => p.property_id) || [];
+    } catch (error) {
+      console.error('Error fetching member properties:', error);
+      return [];
+    }
+  }
+
   function resetForm() {
     setFormData({
       name: '',
@@ -98,35 +139,66 @@ export default function Team() {
       cpf: '',
       whatsapp: '',
       role: 'cleaner',
+      hasAllProperties: true,
+      selectedProperties: [],
     });
     setEditingMember(null);
   }
 
-  function handleEdit(member: TeamMember) {
+  async function handleEdit(member: TeamMember) {
+    const memberProperties = await fetchMemberProperties(member.id);
     setEditingMember(member);
     setFormData({
       name: member.name,
       email: member.email,
-      cpf: member.cpf,
-      whatsapp: member.whatsapp,
+      cpf: formatCPF(member.cpf),
+      whatsapp: formatWhatsApp(member.whatsapp),
       role: member.role,
+      hasAllProperties: member.has_all_properties,
+      selectedProperties: memberProperties,
     });
     setDialogOpen(true);
   }
 
+  async function sendInviteEmail(name: string, email: string, role: string) {
+    try {
+      const appUrl = window.location.origin;
+      const { data, error } = await supabase.functions.invoke('send-team-invite', {
+        body: { name, email, role, appUrl },
+      });
+
+      if (error) throw error;
+      if (!data.success) throw new Error(data.error);
+
+      console.log('Invite email sent successfully');
+    } catch (error) {
+      console.error('Error sending invite email:', error);
+      toast.error('Membro cadastrado, mas houve erro ao enviar email');
+    }
+  }
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
+    setSubmitting(true);
 
     const cleanCPF = formData.cpf.replace(/\D/g, '');
     const cleanWhatsApp = formData.whatsapp.replace(/\D/g, '');
 
     if (cleanCPF.length !== 11) {
       toast.error('CPF deve ter 11 dígitos');
+      setSubmitting(false);
       return;
     }
 
     if (cleanWhatsApp.length < 10) {
       toast.error('WhatsApp inválido');
+      setSubmitting(false);
+      return;
+    }
+
+    if (!formData.hasAllProperties && formData.selectedProperties.length === 0) {
+      toast.error('Selecione ao menos uma propriedade');
+      setSubmitting(false);
       return;
     }
 
@@ -140,13 +212,34 @@ export default function Team() {
             cpf: cleanCPF,
             whatsapp: cleanWhatsApp,
             role: formData.role,
+            has_all_properties: formData.hasAllProperties,
           })
           .eq('id', editingMember.id);
 
         if (error) throw error;
+
+        // Update property access
+        await supabase
+          .from('team_member_properties')
+          .delete()
+          .eq('team_member_id', editingMember.id);
+
+        if (!formData.hasAllProperties && formData.selectedProperties.length > 0) {
+          const propertyInserts = formData.selectedProperties.map(propertyId => ({
+            team_member_id: editingMember.id,
+            property_id: propertyId,
+          }));
+
+          const { error: propError } = await supabase
+            .from('team_member_properties')
+            .insert(propertyInserts);
+
+          if (propError) throw propError;
+        }
+
         toast.success('Membro atualizado com sucesso');
       } else {
-        const { error } = await supabase
+        const { data: newMember, error } = await supabase
           .from('team_members')
           .insert({
             name: formData.name,
@@ -154,10 +247,28 @@ export default function Team() {
             cpf: cleanCPF,
             whatsapp: cleanWhatsApp,
             role: formData.role,
-          });
+            has_all_properties: formData.hasAllProperties,
+          })
+          .select()
+          .single();
 
         if (error) throw error;
-        toast.success('Membro cadastrado com sucesso');
+
+        // Insert property access for new member
+        if (!formData.hasAllProperties && formData.selectedProperties.length > 0) {
+          const propertyInserts = formData.selectedProperties.map(propertyId => ({
+            team_member_id: newMember.id,
+            property_id: propertyId,
+          }));
+
+          await supabase
+            .from('team_member_properties')
+            .insert(propertyInserts);
+        }
+
+        // Send invite email
+        await sendInviteEmail(formData.name, formData.email, formData.role);
+        toast.success('Membro cadastrado e email enviado!');
       }
 
       resetForm();
@@ -170,6 +281,8 @@ export default function Team() {
       } else {
         toast.error('Erro ao salvar membro');
       }
+    } finally {
+      setSubmitting(false);
     }
   }
 
@@ -207,6 +320,29 @@ export default function Team() {
     }
   }
 
+  function toggleProperty(propertyId: string) {
+    setFormData(prev => ({
+      ...prev,
+      selectedProperties: prev.selectedProperties.includes(propertyId)
+        ? prev.selectedProperties.filter(id => id !== propertyId)
+        : [...prev.selectedProperties, propertyId],
+    }));
+  }
+
+  function selectAllProperties() {
+    setFormData(prev => ({
+      ...prev,
+      selectedProperties: properties.map(p => p.id),
+    }));
+  }
+
+  function deselectAllProperties() {
+    setFormData(prev => ({
+      ...prev,
+      selectedProperties: [],
+    }));
+  }
+
   if (roleLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
@@ -242,7 +378,7 @@ export default function Team() {
                     Novo Membro
                   </Button>
                 </DialogTrigger>
-                <DialogContent>
+                <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
                   <DialogHeader>
                     <DialogTitle>
                       {editingMember ? 'Editar Membro' : 'Novo Membro'}
@@ -313,11 +449,81 @@ export default function Team() {
                       </Select>
                     </div>
 
+                    <div className="space-y-4 pt-2 border-t">
+                      <div className="flex items-center justify-between">
+                        <div className="space-y-0.5">
+                          <Label className="flex items-center gap-2">
+                            <Building2 className="h-4 w-4" />
+                            Acesso às Propriedades
+                          </Label>
+                          <p className="text-sm text-muted-foreground">
+                            {formData.hasAllProperties ? 'Acesso a todas as propriedades' : 'Acesso restrito'}
+                          </p>
+                        </div>
+                        <Switch
+                          checked={formData.hasAllProperties}
+                          onCheckedChange={(checked) =>
+                            setFormData({ ...formData, hasAllProperties: checked, selectedProperties: [] })
+                          }
+                        />
+                      </div>
+
+                      {!formData.hasAllProperties && (
+                        <div className="space-y-3">
+                          <div className="flex items-center justify-between text-sm">
+                            <span className="text-muted-foreground">
+                              {formData.selectedProperties.length} de {properties.length} selecionadas
+                            </span>
+                            <div className="flex gap-2">
+                              <Button
+                                type="button"
+                                variant="ghost"
+                                size="sm"
+                                onClick={selectAllProperties}
+                              >
+                                Todas
+                              </Button>
+                              <Button
+                                type="button"
+                                variant="ghost"
+                                size="sm"
+                                onClick={deselectAllProperties}
+                              >
+                                Nenhuma
+                              </Button>
+                            </div>
+                          </div>
+
+                          <div className="border rounded-lg p-3 max-h-48 overflow-y-auto space-y-2">
+                            {properties.length === 0 ? (
+                              <p className="text-sm text-muted-foreground text-center py-4">
+                                Nenhuma propriedade cadastrada
+                              </p>
+                            ) : (
+                              properties.map((property) => (
+                                <label
+                                  key={property.id}
+                                  className="flex items-center gap-3 p-2 rounded-md hover:bg-muted/50 cursor-pointer"
+                                >
+                                  <Checkbox
+                                    checked={formData.selectedProperties.includes(property.id)}
+                                    onCheckedChange={() => toggleProperty(property.id)}
+                                  />
+                                  <span className="text-sm">{property.name}</span>
+                                </label>
+                              ))
+                            )}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+
                     <div className="flex justify-end gap-2 pt-4">
                       <Button type="button" variant="outline" onClick={() => setDialogOpen(false)}>
                         Cancelar
                       </Button>
-                      <Button type="submit">
+                      <Button type="submit" disabled={submitting}>
+                        {submitting && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
                         {editingMember ? 'Salvar' : 'Cadastrar'}
                       </Button>
                     </div>
@@ -349,9 +555,15 @@ export default function Team() {
                               <Badge variant="outline" className="text-xs">Inativo</Badge>
                             )}
                           </CardTitle>
-                          <Badge className={`mt-1 ${roleColors[member.role]}`}>
-                            {roleLabels[member.role]}
-                          </Badge>
+                          <div className="flex gap-2 mt-1 flex-wrap">
+                            <Badge className={roleColors[member.role]}>
+                              {roleLabels[member.role]}
+                            </Badge>
+                            <Badge variant="outline" className="text-xs">
+                              <Building2 className="h-3 w-3 mr-1" />
+                              {member.has_all_properties ? 'Todas' : 'Restrito'}
+                            </Badge>
+                          </div>
                         </div>
                         <div className="flex gap-1">
                           <Button
