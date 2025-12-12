@@ -19,6 +19,11 @@ interface ScheduleRow {
   maintenance_issues: Json | null;
   notes: string | null;
   guest_name: string | null;
+  reservations?: {
+    check_in: string;
+    check_out: string;
+    guest_name: string | null;
+  } | null;
 }
 
 const parseChecklist = (checklists: Json | null): ChecklistItem[] => {
@@ -77,25 +82,31 @@ const mapMaintenanceStatus = (status: string | null): MaintenanceStatus => {
   return statusMap[status || ''] || 'ok';
 };
 
-const mapRowToSchedule = (row: ScheduleRow): Schedule => ({
-  id: row.id,
-  propertyName: row.property_name,
-  propertyAddress: row.property_address || '',
-  guestName: row.guest_name || 'Hóspede não informado',
-  checkIn: new Date(row.check_in_time),
-  checkOut: new Date(row.check_out_time),
-  status: mapStatus(row.status),
-  maintenanceStatus: mapMaintenanceStatus(row.maintenance_status),
-  priority: mapPriority(row.priority),
-  cleanerName: row.cleaner_name || 'Não atribuído',
-  cleanerAvatar: row.cleaner_avatar || undefined,
-  estimatedDuration: row.estimated_duration || 120,
-  checklist: parseChecklist(row.checklists),
-  photos: [],
-  maintenanceIssues: parseMaintenanceIssues(row.maintenance_issues),
-  notes: row.notes || '',
-  missingMaterials: [],
-});
+const mapRowToSchedule = (row: ScheduleRow): Schedule => {
+  const checkInSource = row.reservations?.check_in || row.check_in_time;
+  const checkOutSource = row.reservations?.check_out || row.check_out_time;
+  const guestNameSource = row.reservations?.guest_name || row.guest_name;
+
+  return {
+    id: row.id,
+    propertyName: row.property_name,
+    propertyAddress: row.property_address || '',
+    guestName: guestNameSource || 'Hóspede não informado',
+    checkIn: new Date(checkInSource),
+    checkOut: new Date(checkOutSource),
+    status: mapStatus(row.status),
+    maintenanceStatus: mapMaintenanceStatus(row.maintenance_status),
+    priority: mapPriority(row.priority),
+    cleanerName: row.cleaner_name || 'Não atribuído',
+    cleanerAvatar: row.cleaner_avatar || undefined,
+    estimatedDuration: row.estimated_duration || 120,
+    checklist: parseChecklist(row.checklists),
+    photos: [],
+    maintenanceIssues: parseMaintenanceIssues(row.maintenance_issues),
+    notes: row.notes || '',
+    missingMaterials: [],
+  };
+};
 
 export function useSchedules() {
   const [schedules, setSchedules] = useState<Schedule[]>([]);
@@ -109,7 +120,7 @@ export function useSchedules() {
 
       const { data, error: fetchError } = await supabase
         .from('schedules')
-        .select('*')
+        .select('*, reservations(check_in, check_out, guest_name)')
         .order('check_in_time', { ascending: true });
 
       if (fetchError) throw fetchError;
