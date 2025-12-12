@@ -14,7 +14,164 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      properties: {
+        Row: {
+          address: string | null
+          airbnb_ical_url: string | null
+          created_at: string
+          id: string
+          name: string
+          updated_at: string
+        }
+        Insert: {
+          address?: string | null
+          airbnb_ical_url?: string | null
+          created_at?: string
+          id?: string
+          name: string
+          updated_at?: string
+        }
+        Update: {
+          address?: string | null
+          airbnb_ical_url?: string | null
+          created_at?: string
+          id?: string
+          name?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      reservations: {
+        Row: {
+          check_in: string
+          check_out: string
+          created_at: string
+          description: string | null
+          external_id: string | null
+          guest_name: string | null
+          id: string
+          property_id: string | null
+          status: string | null
+          summary: string | null
+          updated_at: string
+        }
+        Insert: {
+          check_in: string
+          check_out: string
+          created_at?: string
+          description?: string | null
+          external_id?: string | null
+          guest_name?: string | null
+          id?: string
+          property_id?: string | null
+          status?: string | null
+          summary?: string | null
+          updated_at?: string
+        }
+        Update: {
+          check_in?: string
+          check_out?: string
+          created_at?: string
+          description?: string | null
+          external_id?: string | null
+          guest_name?: string | null
+          id?: string
+          property_id?: string | null
+          status?: string | null
+          summary?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "reservations_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: false
+            referencedRelation: "properties"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      schedules: {
+        Row: {
+          check_in_time: string
+          check_out_time: string
+          checklists: Json | null
+          cleaner_avatar: string | null
+          cleaner_name: string | null
+          created_at: string
+          estimated_duration: number | null
+          guest_name: string | null
+          id: string
+          maintenance_issues: Json | null
+          maintenance_status: string | null
+          notes: string | null
+          priority: string | null
+          property_address: string | null
+          property_id: string | null
+          property_name: string
+          reservation_id: string | null
+          status: string | null
+          updated_at: string
+        }
+        Insert: {
+          check_in_time: string
+          check_out_time: string
+          checklists?: Json | null
+          cleaner_avatar?: string | null
+          cleaner_name?: string | null
+          created_at?: string
+          estimated_duration?: number | null
+          guest_name?: string | null
+          id?: string
+          maintenance_issues?: Json | null
+          maintenance_status?: string | null
+          notes?: string | null
+          priority?: string | null
+          property_address?: string | null
+          property_id?: string | null
+          property_name: string
+          reservation_id?: string | null
+          status?: string | null
+          updated_at?: string
+        }
+        Update: {
+          check_in_time?: string
+          check_out_time?: string
+          checklists?: Json | null
+          cleaner_avatar?: string | null
+          cleaner_name?: string | null
+          created_at?: string
+          estimated_duration?: number | null
+          guest_name?: string | null
+          id?: string
+          maintenance_issues?: Json | null
+          maintenance_status?: string | null
+          notes?: string | null
+          priority?: string | null
+          property_address?: string | null
+          property_id?: string | null
+          property_name?: string
+          reservation_id?: string | null
+          status?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "schedules_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: false
+            referencedRelation: "properties"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "schedules_reservation_id_fkey"
+            columns: ["reservation_id"]
+            isOneToOne: false
+            referencedRelation: "reservations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
