@@ -81,6 +81,7 @@ const mapRowToSchedule = (row: ScheduleRow): Schedule => ({
   id: row.id,
   propertyName: row.property_name,
   propertyAddress: row.property_address || '',
+  guestName: row.guest_name || 'Hóspede não informado',
   checkIn: new Date(row.check_in_time),
   checkOut: new Date(row.check_out_time),
   status: mapStatus(row.status),
