@@ -69,11 +69,11 @@ export function ScheduleRow({ schedule, onClick }: ScheduleRowProps) {
   };
 
   return (
-    <div className="bg-card rounded-lg border overflow-hidden transition-all duration-200 hover:shadow-md">
+    <div className="bg-card/90 backdrop-blur-sm rounded-xl border-2 border-border/50 overflow-hidden transition-all duration-300 hover:shadow-lg hover:border-primary/20 hover:bg-card">
       {/* Collapsed Row - Always Visible */}
       {/* Desktop: Grid layout matching header */}
       <div 
-        className="hidden md:grid grid-cols-[1fr_120px_100px_140px_100px_180px] gap-4 items-center p-3 cursor-pointer group"
+        className="hidden md:grid grid-cols-[1fr_120px_100px_140px_100px_180px] gap-4 items-center p-3 sm:p-4 cursor-pointer group"
         onClick={onClick}
       >
         {/* Property Name */}
