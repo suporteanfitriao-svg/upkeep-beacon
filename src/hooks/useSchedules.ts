@@ -48,15 +48,44 @@ const parseMaintenanceIssues = (issues: Json | null): MaintenanceIssue[] => {
   });
 };
 
+const mapPriority = (priority: string | null): Priority => {
+  const priorityMap: Record<string, Priority> = {
+    high: 'high',
+    medium: 'medium',
+    normal: 'medium',
+    low: 'low',
+  };
+  return priorityMap[priority || ''] || 'medium';
+};
+
+const mapStatus = (status: string | null): ScheduleStatus => {
+  const statusMap: Record<string, ScheduleStatus> = {
+    waiting: 'waiting',
+    cleaning: 'cleaning',
+    inspection: 'inspection',
+    completed: 'completed',
+  };
+  return statusMap[status || ''] || 'waiting';
+};
+
+const mapMaintenanceStatus = (status: string | null): MaintenanceStatus => {
+  const statusMap: Record<string, MaintenanceStatus> = {
+    ok: 'ok',
+    needs_maintenance: 'needs_maintenance',
+    in_progress: 'in_progress',
+  };
+  return statusMap[status || ''] || 'ok';
+};
+
 const mapRowToSchedule = (row: ScheduleRow): Schedule => ({
   id: row.id,
   propertyName: row.property_name,
   propertyAddress: row.property_address || '',
   checkIn: new Date(row.check_in_time),
   checkOut: new Date(row.check_out_time),
-  status: (row.status as ScheduleStatus) || 'waiting',
-  maintenanceStatus: (row.maintenance_status as MaintenanceStatus) || 'ok',
-  priority: (row.priority as Priority) || 'medium',
+  status: mapStatus(row.status),
+  maintenanceStatus: mapMaintenanceStatus(row.maintenance_status),
+  priority: mapPriority(row.priority),
   cleanerName: row.cleaner_name || 'Não atribuído',
   cleanerAvatar: row.cleaner_avatar || undefined,
   estimatedDuration: row.estimated_duration || 120,
