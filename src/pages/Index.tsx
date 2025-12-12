@@ -23,9 +23,9 @@ const Index = () => {
 
   const stats = useMemo(() => calculateStats(schedules), [schedules]);
 
-  // Apply all filters
+  // Apply all filters and sort (completed last)
   const filteredSchedules = useMemo(() => {
-    return schedules.filter(schedule => {
+    const filtered = schedules.filter(schedule => {
       // Status filter
       if (activeStatusFilter !== 'all' && schedule.status !== activeStatusFilter) {
         return false;
@@ -46,6 +46,13 @@ const Index = () => {
       }
 
       return true;
+    });
+
+    // Sort: completed schedules go to the end
+    return filtered.sort((a, b) => {
+      if (a.status === 'completed' && b.status !== 'completed') return 1;
+      if (a.status !== 'completed' && b.status === 'completed') return -1;
+      return 0;
     });
   }, [schedules, activeStatusFilter, dateFilter, customDate, searchQuery]);
 
@@ -166,6 +173,17 @@ const Index = () => {
               <div className="text-sm text-muted-foreground mb-2">
                 {filteredSchedules.length} agendamento(s) encontrado(s)
               </div>
+              
+              {/* Fixed Header Row */}
+              <div className="hidden md:grid grid-cols-[1fr_120px_100px_140px_100px_180px] gap-4 px-4 py-2 bg-muted/50 rounded-lg border text-sm font-medium text-muted-foreground">
+                <span>Propriedade</span>
+                <span>Status</span>
+                <span>Hora Início</span>
+                <span>Responsável</span>
+                <span>Hora Fim</span>
+                <span>Tags</span>
+              </div>
+
               {filteredSchedules.map(schedule => (
                 <ScheduleRow
                   key={schedule.id}
