@@ -10,19 +10,19 @@ interface StatusCardProps {
 }
 
 const variantStyles = {
-  waiting: 'bg-gradient-to-br from-status-waiting-bg to-status-waiting-bg/50 text-status-waiting border-status-waiting/30 shadow-status-waiting/10',
-  progress: 'bg-gradient-to-br from-status-progress-bg to-status-progress-bg/50 text-status-progress border-status-progress/30 shadow-status-progress/10',
-  inspection: 'bg-gradient-to-br from-status-inspection-bg to-status-inspection-bg/50 text-status-inspection border-status-inspection/30 shadow-status-inspection/10',
-  completed: 'bg-gradient-to-br from-status-completed-bg to-status-completed-bg/50 text-status-completed border-status-completed/30 shadow-status-completed/10',
-  alert: 'bg-gradient-to-br from-status-alert-bg to-status-alert-bg/50 text-status-alert border-status-alert/30 shadow-status-alert/10',
+  waiting: 'bg-status-waiting-bg text-status-waiting border-status-waiting/20',
+  progress: 'bg-status-progress-bg text-status-progress border-status-progress/20',
+  inspection: 'bg-status-inspection-bg text-status-inspection border-status-inspection/20',
+  completed: 'bg-status-completed-bg text-status-completed border-status-completed/20',
+  alert: 'bg-status-alert-bg text-status-alert border-status-alert/20',
 };
 
 const iconBgStyles = {
-  waiting: 'bg-status-waiting/15 shadow-inner',
-  progress: 'bg-status-progress/15 shadow-inner',
-  inspection: 'bg-status-inspection/15 shadow-inner',
-  completed: 'bg-status-completed/15 shadow-inner',
-  alert: 'bg-status-alert/15 shadow-inner animate-pulse',
+  waiting: 'bg-status-waiting/10',
+  progress: 'bg-status-progress/10',
+  inspection: 'bg-status-inspection/10',
+  completed: 'bg-status-completed/10',
+  alert: 'bg-status-alert/10',
 };
 
 export function StatusCard({ title, count, icon: Icon, variant, onClick }: StatusCardProps) {
@@ -30,18 +30,17 @@ export function StatusCard({ title, count, icon: Icon, variant, onClick }: Statu
     <button
       onClick={onClick}
       className={cn(
-        'flex items-center gap-3 sm:gap-4 p-3 sm:p-4 rounded-xl border-2 transition-all duration-300',
-        'hover:scale-[1.03] hover:shadow-xl cursor-pointer w-full text-left',
-        'shadow-lg backdrop-blur-sm',
+        'flex items-center gap-4 p-4 rounded-xl border transition-all duration-200',
+        'hover:scale-[1.02] hover:shadow-md cursor-pointer w-full text-left',
         variantStyles[variant]
       )}
     >
-      <div className={cn('p-2.5 sm:p-3 rounded-xl', iconBgStyles[variant])}>
-        <Icon className="w-5 h-5 sm:w-6 sm:h-6" />
+      <div className={cn('p-3 rounded-lg', iconBgStyles[variant])}>
+        <Icon className="w-6 h-6" />
       </div>
-      <div className="min-w-0 flex-1">
-        <p className="text-2xl sm:text-3xl font-bold tracking-tight">{count}</p>
-        <p className="text-xs sm:text-sm opacity-90 font-medium truncate">{title}</p>
+      <div>
+        <p className="text-3xl font-bold">{count}</p>
+        <p className="text-sm opacity-80 font-medium">{title}</p>
       </div>
     </button>
   );
