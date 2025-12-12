@@ -172,11 +172,48 @@ export type Database = {
           },
         ]
       }
+      team_member_properties: {
+        Row: {
+          created_at: string
+          id: string
+          property_id: string
+          team_member_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          property_id: string
+          team_member_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          property_id?: string
+          team_member_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "team_member_properties_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: false
+            referencedRelation: "properties"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "team_member_properties_team_member_id_fkey"
+            columns: ["team_member_id"]
+            isOneToOne: false
+            referencedRelation: "team_members"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       team_members: {
         Row: {
           cpf: string
           created_at: string
           email: string
+          has_all_properties: boolean
           id: string
           is_active: boolean
           name: string
@@ -189,6 +226,7 @@ export type Database = {
           cpf: string
           created_at?: string
           email: string
+          has_all_properties?: boolean
           id?: string
           is_active?: boolean
           name: string
@@ -201,6 +239,7 @@ export type Database = {
           cpf?: string
           created_at?: string
           email?: string
+          has_all_properties?: boolean
           id?: string
           is_active?: boolean
           name?: string
