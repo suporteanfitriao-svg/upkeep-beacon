@@ -221,7 +221,7 @@ const Index = () => {
                 
                 {/* Fixed Header Row */}
                 <div className="hidden md:grid grid-cols-[1fr_120px_100px_140px_100px_180px] gap-4 px-4 py-2 bg-muted/50 rounded-lg border text-sm font-medium text-muted-foreground">
-                  <span>Hóspede</span>
+                  <span>Propriedade</span>
                   <span>Status</span>
                   <span>Check-out</span>
                   <span>Responsável</span>
