@@ -87,14 +87,14 @@ const Index = () => {
 
   return (
     <SidebarProvider>
-      <div className="min-h-screen flex w-full bg-background">
+      <div className="min-h-screen flex w-full bg-gradient-to-br from-background via-background to-accent/20">
         <AppSidebar />
         
-        <main className="flex-1 px-4 sm:px-6 lg:px-8 py-6">
+        <main className="flex-1 px-3 sm:px-6 lg:px-8 py-4 sm:py-6 max-w-7xl mx-auto w-full">
           <DashboardHeader onRefresh={handleRefresh} />
 
           {/* Status Cards */}
-          <div className="grid grid-cols-2 lg:grid-cols-5 gap-3 mb-6">
+          <div className="grid grid-cols-2 lg:grid-cols-5 gap-2 sm:gap-4 mb-6 sm:mb-8">
             <StatusCard
               title="Aguardando Liberação"
               count={filteredStats.waiting}
@@ -164,23 +164,25 @@ const Index = () => {
             </div>
           )}
 
-          {/* Schedules List - Compact Rows */}
-          <div className="space-y-2">
+          {/* Schedules List */}
+          <div className="space-y-2 sm:space-y-3">
             {filteredSchedules.length === 0 ? (
-              <div className="text-center py-12 bg-card rounded-lg border">
-                <p className="text-muted-foreground">Nenhum agendamento encontrado</p>
+              <div className="text-center py-16 bg-card/50 rounded-xl border-2 border-dashed border-border/50">
+                <p className="text-muted-foreground font-medium">Nenhum agendamento encontrado</p>
                 <p className="text-sm text-muted-foreground mt-1">
                   Tente ajustar os filtros de data ou busca
                 </p>
               </div>
             ) : (
               <>
-                <div className="text-sm text-muted-foreground mb-2">
-                  {filteredSchedules.length} agendamento(s) encontrado(s)
+                <div className="flex items-center justify-between mb-3">
+                  <span className="text-sm font-medium text-muted-foreground">
+                    {filteredSchedules.length} agendamento(s)
+                  </span>
                 </div>
                 
                 {/* Fixed Header Row */}
-                <div className="hidden md:grid grid-cols-[1fr_120px_100px_140px_100px_180px] gap-4 px-4 py-2 bg-muted/50 rounded-lg border text-sm font-medium text-muted-foreground">
+                <div className="hidden md:grid grid-cols-[1fr_120px_100px_140px_100px_180px] gap-4 px-4 py-3 bg-gradient-to-r from-muted/80 to-muted/40 rounded-xl border-2 border-border/50 text-xs font-semibold text-muted-foreground uppercase tracking-wide">
                   <span>Propriedade</span>
                   <span>Status</span>
                   <span>Hora Início</span>
