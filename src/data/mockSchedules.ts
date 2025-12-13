@@ -7,6 +7,7 @@ tomorrow.setDate(tomorrow.getDate() + 1);
 export const mockSchedules: Schedule[] = [
   {
     id: '1',
+    propertyId: 'mock-1',
     propertyName: 'Casa Vista Mar',
     propertyAddress: 'Rua das Flores, 123 - Florianópolis',
     guestName: 'Carlos Silva',
@@ -35,6 +36,7 @@ export const mockSchedules: Schedule[] = [
   },
   {
     id: '2',
+    propertyId: 'mock-2',
     propertyName: 'Apartamento Centro',
     propertyAddress: 'Av. Beira Mar, 456 - Balneário Camboriú',
     guestName: 'Ana Rodrigues',
@@ -66,6 +68,7 @@ export const mockSchedules: Schedule[] = [
   },
   {
     id: '3',
+    propertyId: 'mock-3',
     propertyName: 'Chalé da Montanha',
     propertyAddress: 'Estrada do Vale, 789 - Gramado',
     guestName: 'Pedro Oliveira',
@@ -98,6 +101,7 @@ export const mockSchedules: Schedule[] = [
   },
   {
     id: '4',
+    propertyId: 'mock-4',
     propertyName: 'Cobertura Luxo',
     propertyAddress: 'Rua Principal, 100 - São Paulo',
     guestName: 'Mariana Costa',
@@ -131,6 +135,7 @@ export const mockSchedules: Schedule[] = [
   },
   {
     id: '5',
+    propertyId: 'mock-5',
     propertyName: 'Studio Praia',
     propertyAddress: 'Av. Atlântica, 200 - Rio de Janeiro',
     guestName: 'Lucas Ferreira',

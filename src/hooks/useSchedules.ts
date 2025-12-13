@@ -5,6 +5,7 @@ import { Json } from '@/integrations/supabase/types';
 
 interface ScheduleRow {
   id: string;
+  property_id: string | null;
   property_name: string;
   property_address: string | null;
   check_in_time: string;
@@ -95,6 +96,7 @@ const mapRowToSchedule = (row: ScheduleRow): Schedule => {
 
   return {
     id: row.id,
+    propertyId: row.property_id || '',
     propertyName: listingNameSource,
     propertyAddress: row.property_address || '',
     guestName: guestNameSource || 'Hóspede não informado',

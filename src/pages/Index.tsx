@@ -22,6 +22,7 @@ const Index = () => {
   const [dateFilter, setDateFilter] = useState<DateFilter>('all');
   const [customDate, setCustomDate] = useState<Date | undefined>(undefined);
   const [searchQuery, setSearchQuery] = useState('');
+  const [propertyFilter, setPropertyFilter] = useState('all');
 
   const stats = useMemo(() => calculateStats(schedules), [schedules]);
 
@@ -30,6 +31,11 @@ const Index = () => {
     const filtered = schedules.filter(schedule => {
       // Status filter
       if (activeStatusFilter !== 'all' && schedule.status !== activeStatusFilter) {
+        return false;
+      }
+
+      // Property filter
+      if (propertyFilter !== 'all' && schedule.propertyId !== propertyFilter) {
         return false;
       }
 
@@ -56,7 +62,7 @@ const Index = () => {
       if (a.status !== 'completed' && b.status === 'completed') return -1;
       return 0;
     });
-  }, [schedules, activeStatusFilter, dateFilter, customDate, searchQuery]);
+  }, [schedules, activeStatusFilter, propertyFilter, dateFilter, customDate, searchQuery]);
 
   // Filtered stats for current date filter
   const filteredStats = useMemo(() => {
@@ -182,9 +188,11 @@ const Index = () => {
             dateFilter={dateFilter}
             customDate={customDate}
             searchQuery={searchQuery}
+            propertyFilter={propertyFilter}
             onDateFilterChange={setDateFilter}
             onCustomDateChange={setCustomDate}
             onSearchChange={setSearchQuery}
+            onPropertyFilterChange={setPropertyFilter}
           />
 
           {/* Active Filter Indicator */}
