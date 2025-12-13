@@ -10,6 +10,8 @@ interface ICalEvent {
   uid: string;
   dtstart: Date;
   dtend: Date;
+  summary: string;
+  description: string;
 }
 
 function parseICalDate(dateStr: string): Date {
@@ -53,20 +55,35 @@ function parseICalEvents(icalData: string): ICalEvent[] {
   // Regex to find all VEVENT blocks
   const eventRegex = /BEGIN:VEVENT([\s\S]*?)END:VEVENT/g;
   
-  // Regex for specific fields - handle both formats:
-  // UID:value or UID;param=value:value
+  // Regex for specific fields
   const uidRegex = /UID[^:]*:(.+)/;
-  // DTSTART:20250310 or DTSTART;VALUE=DATE:20250310 or DTSTART:20250310T120000Z
   const dtstartRegex = /DTSTART[^:]*:(\d{8}(?:T\d{6}Z?)?)/;
   const dtendRegex = /DTEND[^:]*:(\d{8}(?:T\d{6}Z?)?)/;
+  const summaryRegex = /SUMMARY[^:]*:(.+)/;
+  const descriptionRegex = /DESCRIPTION[^:]*:(.+)/;
   
   let match;
   let eventCount = 0;
+  let reservedCount = 0;
+  let blockedCount = 0;
   
   while ((match = eventRegex.exec(unfoldedData)) !== null) {
     eventCount++;
     const eventBlock = match[1];
-    console.log(`Processing event block ${eventCount}: ${eventBlock.substring(0, 200)}...`);
+    
+    // Extract SUMMARY first to filter
+    const summaryMatch = eventBlock.match(summaryRegex);
+    const summary = summaryMatch ? summaryMatch[1].trim() : '';
+    
+    // FILTER: Only process "Reserved" events, ignore blocked events
+    if (summary !== 'Reserved') {
+      blockedCount++;
+      console.log(`Skipping blocked event ${eventCount}: SUMMARY = "${summary}"`);
+      continue;
+    }
+    
+    reservedCount++;
+    console.log(`Processing reserved event ${eventCount}: ${eventBlock.substring(0, 150)}...`);
     
     // Extract UID
     const uidMatch = eventBlock.match(uidRegex);
@@ -80,18 +97,22 @@ function parseICalEvents(icalData: string): ICalEvent[] {
     const dtendMatch = eventBlock.match(dtendRegex);
     const dtend = dtendMatch ? parseICalDate(dtendMatch[1]) : null;
     
-    console.log(`Event ${eventCount} - UID: ${uid}, DTSTART match: ${dtstartMatch?.[1]}, DTEND match: ${dtendMatch?.[1]}`);
+    // Extract DESCRIPTION (informational only)
+    const descriptionMatch = eventBlock.match(descriptionRegex);
+    const description = descriptionMatch ? descriptionMatch[1].trim() : '';
+    
+    console.log(`Event ${eventCount} - UID: ${uid}, DTSTART: ${dtstartMatch?.[1]}, DTEND: ${dtendMatch?.[1]}`);
     
     // Only add if we have all required fields
     if (uid && dtstart && dtend) {
-      events.push({ uid, dtstart, dtend });
-      console.log(`Added event - UID: ${uid}, Check-in: ${dtstart.toISOString()}, Check-out: ${dtend.toISOString()}`);
+      events.push({ uid, dtstart, dtend, summary, description });
+      console.log(`Added reservation - UID: ${uid}, Check-in: ${dtstart.toISOString()}, Check-out: ${dtend.toISOString()}`);
     } else {
       console.log(`Skipped event ${eventCount} - missing fields. UID: ${!!uid}, DTSTART: ${!!dtstart}, DTEND: ${!!dtend}`);
     }
   }
   
-  console.log(`Total event blocks found: ${eventCount}, valid events: ${events.length}`);
+  console.log(`Total events: ${eventCount}, Reserved: ${reservedCount}, Blocked/Ignored: ${blockedCount}, Valid reservations: ${events.length}`);
   
   return events;
 }
@@ -153,6 +174,7 @@ serve(async (req) => {
     }
 
     let totalSynced = 0;
+    let totalBlocked = 0;
 
     for (const property of properties) {
       if (!property.airbnb_ical_url) continue;
@@ -171,7 +193,7 @@ serve(async (req) => {
         console.log(`Fetched iCal data for ${property.name}, length: ${icalData.length}`);
         
         const events = parseICalEvents(icalData);
-        console.log(`Parsed ${events.length} events for ${property.name}`);
+        console.log(`Parsed ${events.length} reservations for ${property.name}`);
 
         for (const event of events) {
           // Skip past events (ended more than 30 days ago)
@@ -182,18 +204,18 @@ serve(async (req) => {
             continue;
           }
 
-          const externalId = `airbnb_${event.uid}`;
-
-          // Upsert reservation - only UID, check-in, check-out
+          // Upsert reservation with summary and description
           const { data: reservation, error: reservationError } = await supabase
             .from('reservations')
             .upsert({
-              external_id: externalId,
+              external_id: event.uid,
               property_id: property.id,
               check_in: event.dtstart.toISOString(),
               check_out: event.dtend.toISOString(),
               status: 'confirmed',
               listing_name: property.name,
+              summary: event.summary,
+              description: event.description,
               number_of_guests: 1
             }, {
               onConflict: 'external_id',
@@ -241,7 +263,7 @@ serve(async (req) => {
       }
     }
 
-    console.log(`Sync completed. Total synced: ${totalSynced}`);
+    console.log(`Sync completed. Total reservations synced: ${totalSynced}`);
 
     return new Response(
       JSON.stringify({ synced: totalSynced, message: 'Sincronização concluída' }),
