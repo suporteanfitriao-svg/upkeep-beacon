@@ -8,33 +8,27 @@ const corsHeaders = {
 
 interface ICalEvent {
   uid: string;
-  summary: string;
-  description: string;
   dtstart: Date;
   dtend: Date;
-  listingName?: string;
-  numberOfGuests?: number;
 }
 
 function parseICalDate(dateStr: string): Date {
-  // Handle both DATE and DATE-TIME formats
-  // DATE format: YYYYMMDD
-  // DATE-TIME format: YYYYMMDDTHHMMSSZ or YYYYMMDDTHHMMSS
+  // Handle both DATE (YYYYMMDD) and DATE-TIME (YYYYMMDDTHHMMSSZ) formats
   const cleanDate = dateStr.replace(/[^0-9TZ]/g, '');
   
   if (cleanDate.length === 8) {
-    // DATE only format
+    // DATE only format - set to noon UTC
     const year = parseInt(cleanDate.substring(0, 4));
     const month = parseInt(cleanDate.substring(4, 6)) - 1;
     const day = parseInt(cleanDate.substring(6, 8));
-    return new Date(Date.UTC(year, month, day, 12, 0, 0)); // Set to noon UTC
+    return new Date(Date.UTC(year, month, day, 12, 0, 0));
   }
   
   // DATE-TIME format
   const year = parseInt(cleanDate.substring(0, 4));
   const month = parseInt(cleanDate.substring(4, 6)) - 1;
   const day = parseInt(cleanDate.substring(6, 8));
-  const hour = parseInt(cleanDate.substring(9, 11)) || 0;
+  const hour = parseInt(cleanDate.substring(9, 11)) || 12;
   const minute = parseInt(cleanDate.substring(11, 13)) || 0;
   const second = parseInt(cleanDate.substring(13, 15)) || 0;
   
@@ -43,100 +37,39 @@ function parseICalDate(dateStr: string): Date {
 
 function parseICalEvents(icalData: string): ICalEvent[] {
   const events: ICalEvent[] = [];
-  const lines = icalData.split(/\r?\n/);
-  let currentEvent: Partial<ICalEvent> | null = null;
-  let currentKey = '';
-  let currentValue = '';
-  let calendarName = '';
-
-  for (const line of lines) {
-    // Handle line folding (lines starting with space or tab are continuations)
-    if (line.startsWith(' ') || line.startsWith('\t')) {
-      currentValue += line.substring(1);
-      continue;
-    }
-
-    // Process previous key-value if exists
-    if (currentKey && currentEvent) {
-      switch (currentKey) {
-        case 'UID':
-          currentEvent.uid = currentValue;
-          break;
-        case 'SUMMARY':
-          currentEvent.summary = currentValue;
-          break;
-        case 'DESCRIPTION':
-          currentEvent.description = currentValue;
-          // Try to extract number of guests from description
-          const guestsMatch = currentValue.match(/(\d+)\s*(guest|hóspede|pessoa)/i);
-          if (guestsMatch) {
-            currentEvent.numberOfGuests = parseInt(guestsMatch[1]);
-          }
-          break;
-        case 'DTSTART':
-        case 'DTSTART;VALUE=DATE':
-          currentEvent.dtstart = parseICalDate(currentValue);
-          break;
-        case 'DTEND':
-        case 'DTEND;VALUE=DATE':
-          currentEvent.dtend = parseICalDate(currentValue);
-          break;
-      }
-    } else if (currentKey === 'X-WR-CALNAME' && calendarName === '') {
-      // Capture calendar name (usually the listing name in Airbnb)
-      calendarName = currentValue.trim();
-    }
-
-    // Parse new line
-    const colonIndex = line.indexOf(':');
-    if (colonIndex === -1) continue;
-
-    currentKey = line.substring(0, colonIndex);
-    currentValue = line.substring(colonIndex + 1);
-
-    // Handle key with parameters (e.g., DTSTART;VALUE=DATE)
-    const semiIndex = currentKey.indexOf(';');
-    if (semiIndex !== -1) {
-      const baseKey = currentKey.substring(0, semiIndex);
-      if (baseKey === 'DTSTART' || baseKey === 'DTEND') {
-        currentKey = currentKey; // Keep the full key for date parsing
-      }
-    }
-
-    if (line.startsWith('BEGIN:VEVENT')) {
-      currentEvent = { listingName: calendarName };
-    } else if (line.startsWith('END:VEVENT') && currentEvent) {
-      if (currentEvent.uid && currentEvent.dtstart && currentEvent.dtend) {
-        events.push(currentEvent as ICalEvent);
-      }
-      currentEvent = null;
-    }
-  }
-
-  return events;
-}
-
-function extractGuestName(summary: string, description: string): string {
-  // Common patterns in Airbnb iCal
-  // Summary often contains: "Reserved - Guest Name" or just "Guest Name"
-  // Sometimes it's "Blocked" for owner blocks
   
-  if (summary.toLowerCase().includes('blocked') || summary.toLowerCase().includes('not available')) {
-    return 'Bloqueado';
+  // Regex to find all VEVENT blocks
+  const eventRegex = /BEGIN:VEVENT([\s\S]*?)END:VEVENT/g;
+  
+  // Regex for specific fields
+  const uidRegex = /UID:(.+)/;
+  const dtstartRegex = /DTSTART[:;](\d{8}(?:T\d{6}Z?)?)/;
+  const dtendRegex = /DTEND[:;](\d{8}(?:T\d{6}Z?)?)/;
+  
+  let match;
+  while ((match = eventRegex.exec(icalData)) !== null) {
+    const eventBlock = match[1];
+    
+    // Extract UID
+    const uidMatch = eventBlock.match(uidRegex);
+    const uid = uidMatch ? uidMatch[1].trim() : null;
+    
+    // Extract DTSTART (check-in)
+    const dtstartMatch = eventBlock.match(dtstartRegex);
+    const dtstart = dtstartMatch ? parseICalDate(dtstartMatch[1]) : null;
+    
+    // Extract DTEND (check-out)
+    const dtendMatch = eventBlock.match(dtendRegex);
+    const dtend = dtendMatch ? parseICalDate(dtendMatch[1]) : null;
+    
+    // Only add if we have all required fields
+    if (uid && dtstart && dtend) {
+      events.push({ uid, dtstart, dtend });
+      console.log(`Parsed event - UID: ${uid}, Check-in: ${dtstart.toISOString()}, Check-out: ${dtend.toISOString()}`);
+    }
   }
-
-  // Try to extract from summary
-  const reservedMatch = summary.match(/Reserved\s*[-–]\s*(.+)/i);
-  if (reservedMatch) {
-    return reservedMatch[1].trim();
-  }
-
-  // Check if summary is just a name
-  if (summary && !summary.toLowerCase().includes('reservation') && summary.length < 100) {
-    return summary.trim();
-  }
-
-  return summary || 'Hóspede';
+  
+  return events;
 }
 
 serve(async (req) => {
@@ -211,33 +144,33 @@ serve(async (req) => {
         }
 
         const icalData = await icalResponse.text();
+        console.log(`Fetched iCal data for ${property.name}, length: ${icalData.length}`);
+        
         const events = parseICalEvents(icalData);
-
-        console.log(`Found ${events.length} events for ${property.name}`);
+        console.log(`Parsed ${events.length} events for ${property.name}`);
 
         for (const event of events) {
           // Skip past events (ended more than 30 days ago)
           const thirtyDaysAgo = new Date();
           thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
-          if (event.dtend < thirtyDaysAgo) continue;
+          if (event.dtend < thirtyDaysAgo) {
+            console.log(`Skipping past event: ${event.uid}`);
+            continue;
+          }
 
-          const guestName = extractGuestName(event.summary, event.description);
           const externalId = `airbnb_${event.uid}`;
 
-          // Upsert reservation with new fields
+          // Upsert reservation - only UID, check-in, check-out
           const { data: reservation, error: reservationError } = await supabase
             .from('reservations')
             .upsert({
               external_id: externalId,
               property_id: property.id,
-              guest_name: guestName,
               check_in: event.dtstart.toISOString(),
               check_out: event.dtend.toISOString(),
-              summary: event.summary,
-              description: event.description,
               status: 'confirmed',
-              listing_name: event.listingName || property.name,
-              number_of_guests: event.numberOfGuests || 1
+              listing_name: property.name,
+              number_of_guests: 1
             }, {
               onConflict: 'external_id',
               ignoreDuplicates: false
@@ -246,11 +179,13 @@ serve(async (req) => {
             .single();
 
           if (reservationError) {
-            console.error(`Error upserting reservation:`, reservationError);
+            console.error(`Error upserting reservation for ${event.uid}:`, reservationError);
             continue;
           }
 
-          // Create or update schedule for this reservation with new fields
+          console.log(`Upserted reservation: ${reservation.id} for UID: ${event.uid}`);
+
+          // Create or update schedule for this reservation
           const { error: scheduleError } = await supabase
             .from('schedules')
             .upsert({
@@ -258,23 +193,23 @@ serve(async (req) => {
               property_id: property.id,
               property_name: property.name,
               property_address: property.address,
-              guest_name: guestName,
               check_in_time: event.dtstart.toISOString(),
               check_out_time: event.dtend.toISOString(),
               status: 'waiting',
               priority: 'normal',
-              listing_name: event.listingName || property.name,
-              number_of_guests: event.numberOfGuests || 1
+              listing_name: property.name,
+              number_of_guests: 1
             }, {
               onConflict: 'reservation_id',
               ignoreDuplicates: false
             });
 
           if (scheduleError) {
-            console.error(`Error upserting schedule:`, scheduleError);
+            console.error(`Error upserting schedule for reservation ${reservation.id}:`, scheduleError);
             continue;
           }
 
+          console.log(`Upserted schedule for reservation: ${reservation.id}`);
           totalSynced++;
         }
       } catch (error) {
