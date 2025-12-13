@@ -6,7 +6,8 @@ import {
   Wrench,
   ChevronDown,
   ChevronUp,
-  Info
+  Info,
+  Pencil
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
@@ -18,10 +19,18 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from '@/components/ui/tooltip';
+import { Input } from '@/components/ui/input';
+import { Button } from '@/components/ui/button';
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from '@/components/ui/popover';
 
 interface ScheduleRowProps {
   schedule: Schedule;
   onClick: () => void;
+  onUpdateTimes?: (scheduleId: string, checkInTime: string, checkOutTime: string) => void;
 }
 
 const statusConfig: Record<ScheduleStatus, { label: string; className: string }> = {
@@ -55,8 +64,12 @@ const maintenanceIcons = {
   in_progress: <Wrench className="w-4 h-4 text-status-progress" />,
 };
 
-export function ScheduleRow({ schedule, onClick }: ScheduleRowProps) {
+export function ScheduleRow({ schedule, onClick, onUpdateTimes }: ScheduleRowProps) {
   const [isExpanded, setIsExpanded] = useState(false);
+  const [isEditingTimes, setIsEditingTimes] = useState(false);
+  const [editCheckInTime, setEditCheckInTime] = useState(format(schedule.checkIn, "HH:mm"));
+  const [editCheckOutTime, setEditCheckOutTime] = useState(format(schedule.checkOut, "HH:mm"));
+  
   const statusStyle = statusConfig[schedule.status];
   const priorityStyle = priorityConfig[schedule.priority];
   const completedTasks = schedule.checklist.filter(item => item.completed).length;
@@ -66,6 +79,14 @@ export function ScheduleRow({ schedule, onClick }: ScheduleRowProps) {
   const handleExpand = (e: React.MouseEvent) => {
     e.stopPropagation();
     setIsExpanded(!isExpanded);
+  };
+
+  const handleSaveTimes = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (onUpdateTimes) {
+      onUpdateTimes(schedule.id, editCheckInTime, editCheckOutTime);
+    }
+    setIsEditingTimes(false);
   };
 
   return (
@@ -130,15 +151,60 @@ export function ScheduleRow({ schedule, onClick }: ScheduleRowProps) {
           {statusStyle.label}
         </Badge>
 
-        {/* Check-in Date */}
-        <span className="text-sm text-foreground">
-          {format(schedule.checkIn, "dd/MM", { locale: ptBR })}
-        </span>
+        {/* Check-in Date + Time */}
+        <div className="flex items-center gap-1">
+          <span className="text-sm text-foreground">
+            {format(schedule.checkIn, "dd/MM", { locale: ptBR })}
+            <span className="text-muted-foreground ml-1 text-xs">
+              {format(schedule.checkIn, "HH:mm")}
+            </span>
+          </span>
+        </div>
 
-        {/* Check-out Date */}
-        <span className="text-sm text-foreground">
-          {format(schedule.checkOut, "dd/MM", { locale: ptBR })}
-        </span>
+        {/* Check-out Date + Time - BOLD */}
+        <div className="flex items-center gap-1">
+          <span className="text-sm text-foreground font-bold">
+            {format(schedule.checkOut, "dd/MM", { locale: ptBR })}
+            <span className="text-foreground font-bold ml-1 text-xs">
+              {format(schedule.checkOut, "HH:mm")}
+            </span>
+          </span>
+          <Popover open={isEditingTimes} onOpenChange={setIsEditingTimes}>
+            <PopoverTrigger asChild>
+              <button 
+                onClick={(e) => e.stopPropagation()}
+                className="p-1 rounded hover:bg-muted transition-colors opacity-0 group-hover:opacity-100"
+              >
+                <Pencil className="w-3 h-3 text-muted-foreground hover:text-primary" />
+              </button>
+            </PopoverTrigger>
+            <PopoverContent className="w-56 p-3" onClick={(e) => e.stopPropagation()}>
+              <div className="space-y-3">
+                <div className="space-y-1">
+                  <label className="text-xs font-medium text-muted-foreground">Check-in</label>
+                  <Input
+                    type="time"
+                    value={editCheckInTime}
+                    onChange={(e) => setEditCheckInTime(e.target.value)}
+                    className="h-8 text-sm"
+                  />
+                </div>
+                <div className="space-y-1">
+                  <label className="text-xs font-medium text-muted-foreground">Check-out</label>
+                  <Input
+                    type="time"
+                    value={editCheckOutTime}
+                    onChange={(e) => setEditCheckOutTime(e.target.value)}
+                    className="h-8 text-sm"
+                  />
+                </div>
+                <Button size="sm" className="w-full" onClick={handleSaveTimes}>
+                  Salvar
+                </Button>
+              </div>
+            </PopoverContent>
+          </Popover>
+        </div>
 
         {/* Cleaner */}
         <span className="text-sm text-foreground truncate">
@@ -179,16 +245,53 @@ export function ScheduleRow({ schedule, onClick }: ScheduleRowProps) {
             {schedule.propertyName}
           </h3>
           <p className="text-xs text-muted-foreground">
-            {format(schedule.checkOut, "dd/MM")} • {schedule.numberOfGuests} hóspede(s) • {schedule.cleanerName}
+            <span className="font-bold">{format(schedule.checkOut, "dd/MM HH:mm")}</span> • {schedule.numberOfGuests} hóspede(s) • {schedule.cleanerName}
           </p>
         </div>
-        <div className="flex items-center gap-1 shrink-0">
-          <Badge className={cn('text-[10px] px-1.5 py-0.5 border', statusStyle.className)}>
-            {statusStyle.label.substring(0, 3)}
-          </Badge>
-          <Badge variant="outline" className={cn('text-[10px] px-1.5 py-0.5 border', priorityStyle.className)}>
-            {priorityStyle.label.substring(0, 1)}
-          </Badge>
+        <div className="flex items-center gap-2 shrink-0">
+          <Popover>
+            <PopoverTrigger asChild>
+              <button 
+                onClick={(e) => e.stopPropagation()}
+                className="p-1.5 rounded hover:bg-muted transition-colors"
+              >
+                <Pencil className="w-3.5 h-3.5 text-muted-foreground" />
+              </button>
+            </PopoverTrigger>
+            <PopoverContent className="w-56 p-3" onClick={(e) => e.stopPropagation()}>
+              <div className="space-y-3">
+                <div className="space-y-1">
+                  <label className="text-xs font-medium text-muted-foreground">Check-in</label>
+                  <Input
+                    type="time"
+                    value={editCheckInTime}
+                    onChange={(e) => setEditCheckInTime(e.target.value)}
+                    className="h-8 text-sm"
+                  />
+                </div>
+                <div className="space-y-1">
+                  <label className="text-xs font-medium text-muted-foreground">Check-out</label>
+                  <Input
+                    type="time"
+                    value={editCheckOutTime}
+                    onChange={(e) => setEditCheckOutTime(e.target.value)}
+                    className="h-8 text-sm"
+                  />
+                </div>
+                <Button size="sm" className="w-full" onClick={handleSaveTimes}>
+                  Salvar
+                </Button>
+              </div>
+            </PopoverContent>
+          </Popover>
+          <div className="flex items-center gap-1">
+            <Badge className={cn('text-[10px] px-1.5 py-0.5 border', statusStyle.className)}>
+              {statusStyle.label.substring(0, 3)}
+            </Badge>
+            <Badge variant="outline" className={cn('text-[10px] px-1.5 py-0.5 border', priorityStyle.className)}>
+              {priorityStyle.label.substring(0, 1)}
+            </Badge>
+          </div>
         </div>
       </div>
 
