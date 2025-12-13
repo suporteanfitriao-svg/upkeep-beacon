@@ -7,7 +7,8 @@ import {
   ChevronDown,
   ChevronUp,
   Info,
-  Pencil
+  Pencil,
+  Check
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
@@ -31,6 +32,7 @@ interface ScheduleRowProps {
   schedule: Schedule;
   onClick: () => void;
   onUpdateTimes?: (scheduleId: string, checkInTime: string, checkOutTime: string) => void;
+  onReleaseSchedule?: (scheduleId: string) => void;
 }
 
 const statusConfig: Record<ScheduleStatus, { label: string; className: string }> = {
@@ -38,13 +40,13 @@ const statusConfig: Record<ScheduleStatus, { label: string; className: string }>
     label: 'Aguardando', 
     className: 'bg-status-waiting-bg text-status-waiting border-status-waiting/30' 
   },
+  released: { 
+    label: 'Liberado', 
+    className: 'bg-status-released-bg text-status-released border-status-released/30' 
+  },
   cleaning: { 
     label: 'Em Limpeza', 
     className: 'bg-status-progress-bg text-status-progress border-status-progress/30' 
-  },
-  inspection: { 
-    label: 'Inspeção', 
-    className: 'bg-status-inspection-bg text-status-inspection border-status-inspection/30' 
   },
   completed: { 
     label: 'Finalizado', 
@@ -64,7 +66,7 @@ const maintenanceIcons = {
   in_progress: <Wrench className="w-4 h-4 text-status-progress" />,
 };
 
-export function ScheduleRow({ schedule, onClick, onUpdateTimes }: ScheduleRowProps) {
+export function ScheduleRow({ schedule, onClick, onUpdateTimes, onReleaseSchedule }: ScheduleRowProps) {
   const [isExpanded, setIsExpanded] = useState(false);
   const [isEditingTimes, setIsEditingTimes] = useState(false);
   const [editCheckInTime, setEditCheckInTime] = useState(format(schedule.checkIn, "HH:mm"));
@@ -87,6 +89,13 @@ export function ScheduleRow({ schedule, onClick, onUpdateTimes }: ScheduleRowPro
       onUpdateTimes(schedule.id, editCheckInTime, editCheckOutTime);
     }
     setIsEditingTimes(false);
+  };
+
+  const handleRelease = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (onReleaseSchedule) {
+      onReleaseSchedule(schedule.id);
+    }
   };
 
   return (
@@ -213,8 +222,25 @@ export function ScheduleRow({ schedule, onClick, onUpdateTimes }: ScheduleRowPro
           {schedule.cleanerName}
         </span>
 
-        {/* Tags */}
+        {/* Tags + Release Button */}
         <div className="flex items-center gap-1.5 flex-wrap">
+          {schedule.status === 'waiting' && onReleaseSchedule && (
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <button
+                    onClick={handleRelease}
+                    className="p-1.5 rounded-md bg-status-released text-white hover:bg-status-released/90 transition-colors"
+                  >
+                    <Check className="w-4 h-4" />
+                  </button>
+                </TooltipTrigger>
+                <TooltipContent>
+                  <p>Liberar para Limpeza</p>
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+          )}
           <Badge variant="outline" className={cn('text-xs border', priorityStyle.className)}>
             {priorityStyle.label}
           </Badge>
@@ -295,6 +321,14 @@ export function ScheduleRow({ schedule, onClick, onUpdateTimes }: ScheduleRowPro
         
         {/* Bottom row: tags - full width for better visibility */}
         <div className="flex items-center gap-2 pl-8 flex-wrap">
+          {schedule.status === 'waiting' && onReleaseSchedule && (
+            <button
+              onClick={handleRelease}
+              className="p-1.5 rounded-md bg-status-released text-white hover:bg-status-released/90 transition-colors"
+            >
+              <Check className="w-4 h-4" />
+            </button>
+          )}
           <Badge className={cn('text-xs px-2 py-0.5 border', statusStyle.className)}>
             {statusStyle.label}
           </Badge>

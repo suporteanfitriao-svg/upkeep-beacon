@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react';
-import { Clock, PlayCircle, Search, CheckCircle2, AlertTriangle, Loader2 } from 'lucide-react';
+import { Clock, PlayCircle, Search, CheckCircle2, AlertTriangle, Loader2, CheckSquare } from 'lucide-react';
 import { toast } from 'sonner';
 import { isToday, isTomorrow, isSameDay } from 'date-fns';
 
@@ -114,6 +114,18 @@ const Index = () => {
     }
   };
 
+  const handleReleaseSchedule = async (scheduleId: string) => {
+    const schedule = schedules.find(s => s.id === scheduleId);
+    if (schedule) {
+      const success = await updateSchedule({ ...schedule, status: 'released' }, 'waiting');
+      if (success) {
+        toast.success('Liberado para limpeza!');
+      } else {
+        toast.error('Erro ao liberar agendamento');
+      }
+    }
+  };
+
   if (loading) {
     return (
       <SidebarProvider>
@@ -169,18 +181,18 @@ const Index = () => {
               onClick={() => handleFilterByStatus(activeStatusFilter === 'waiting' ? 'all' : 'waiting')}
             />
             <StatusCard
+              title="Liberado"
+              count={filteredStats.released}
+              icon={CheckSquare}
+              variant="released"
+              onClick={() => handleFilterByStatus(activeStatusFilter === 'released' ? 'all' : 'released')}
+            />
+            <StatusCard
               title="Em Limpeza"
               count={filteredStats.cleaning}
               icon={PlayCircle}
               variant="progress"
               onClick={() => handleFilterByStatus(activeStatusFilter === 'cleaning' ? 'all' : 'cleaning')}
-            />
-            <StatusCard
-              title="Inspeção"
-              count={filteredStats.inspection}
-              icon={Search}
-              variant="inspection"
-              onClick={() => handleFilterByStatus(activeStatusFilter === 'inspection' ? 'all' : 'inspection')}
             />
             <StatusCard
               title="Finalizados"
@@ -224,8 +236,8 @@ const Index = () => {
                 className="inline-flex items-center gap-1 px-2 py-1 bg-primary/10 text-primary rounded text-sm font-medium hover:bg-primary/20 transition-colors"
               >
                 {activeStatusFilter === 'waiting' && 'Aguardando'}
+                {activeStatusFilter === 'released' && 'Liberado'}
                 {activeStatusFilter === 'cleaning' && 'Em Limpeza'}
-                {activeStatusFilter === 'inspection' && 'Inspeção'}
                 {activeStatusFilter === 'completed' && 'Finalizados'}
                 <span className="ml-1">×</span>
               </button>
@@ -265,6 +277,7 @@ const Index = () => {
                     schedule={schedule}
                     onClick={() => setSelectedSchedule(schedule)}
                     onUpdateTimes={handleUpdateTimes}
+                    onReleaseSchedule={handleReleaseSchedule}
                   />
                 ))}
               </>

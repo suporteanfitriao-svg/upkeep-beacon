@@ -5,22 +5,22 @@ interface StatusCardProps {
   title: string;
   count: number;
   icon: LucideIcon;
-  variant: 'waiting' | 'progress' | 'inspection' | 'completed' | 'alert';
+  variant: 'waiting' | 'released' | 'progress' | 'completed' | 'alert';
   onClick?: () => void;
 }
 
 const variantStyles = {
   waiting: 'bg-status-waiting-bg text-status-waiting border-status-waiting/20',
+  released: 'bg-status-released-bg text-status-released border-status-released/20',
   progress: 'bg-status-progress-bg text-status-progress border-status-progress/20',
-  inspection: 'bg-status-inspection-bg text-status-inspection border-status-inspection/20',
   completed: 'bg-status-completed-bg text-status-completed border-status-completed/20',
   alert: 'bg-status-alert-bg text-status-alert border-status-alert/20',
 };
 
 const iconBgStyles = {
   waiting: 'bg-status-waiting/10',
+  released: 'bg-status-released/10',
   progress: 'bg-status-progress/10',
-  inspection: 'bg-status-inspection/10',
   completed: 'bg-status-completed/10',
   alert: 'bg-status-alert/10',
 };

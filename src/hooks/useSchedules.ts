@@ -71,8 +71,8 @@ const mapPriority = (priority: string | null): Priority => {
 const mapStatus = (status: string | null): ScheduleStatus => {
   const statusMap: Record<string, ScheduleStatus> = {
     waiting: 'waiting',
+    released: 'released',
     cleaning: 'cleaning',
-    inspection: 'inspection',
     completed: 'completed',
   };
   return statusMap[status || ''] || 'waiting';
@@ -273,8 +273,8 @@ export function useSchedules() {
 export function calculateStats(schedules: Schedule[]) {
   return {
     waiting: schedules.filter(s => s.status === 'waiting').length,
+    released: schedules.filter(s => s.status === 'released').length,
     cleaning: schedules.filter(s => s.status === 'cleaning').length,
-    inspection: schedules.filter(s => s.status === 'inspection').length,
     completed: schedules.filter(s => s.status === 'completed').length,
     maintenanceAlerts: schedules.filter(s => s.maintenanceStatus !== 'ok').length,
   };

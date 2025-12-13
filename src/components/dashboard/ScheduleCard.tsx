@@ -24,13 +24,13 @@ const statusConfig: Record<ScheduleStatus, { label: string; className: string }>
     label: 'Aguardando', 
     className: 'bg-status-waiting-bg text-status-waiting border-status-waiting/30' 
   },
+  released: { 
+    label: 'Liberado', 
+    className: 'bg-status-released-bg text-status-released border-status-released/30' 
+  },
   cleaning: { 
     label: 'Em Limpeza', 
     className: 'bg-status-progress-bg text-status-progress border-status-progress/30' 
-  },
-  inspection: { 
-    label: 'Inspeção', 
-    className: 'bg-status-inspection-bg text-status-inspection border-status-inspection/30' 
   },
   completed: { 
     label: 'Finalizado', 

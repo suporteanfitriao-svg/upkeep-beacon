@@ -75,7 +75,7 @@ export const mockSchedules: Schedule[] = [
     numberOfGuests: 4,
     checkIn: new Date(today.setHours(16, 0, 0)),
     checkOut: new Date(today.setHours(12, 0, 0)),
-    status: 'inspection',
+    status: 'released',
     maintenanceStatus: 'ok',
     priority: 'medium',
     cleanerName: 'Ana Costa',
@@ -165,8 +165,8 @@ export const mockSchedules: Schedule[] = [
 export const calculateStats = (schedules: Schedule[]): DashboardStats => {
   return {
     waiting: schedules.filter(s => s.status === 'waiting').length,
+    released: schedules.filter(s => s.status === 'released').length,
     cleaning: schedules.filter(s => s.status === 'cleaning').length,
-    inspection: schedules.filter(s => s.status === 'inspection').length,
     completed: schedules.filter(s => s.status === 'completed').length,
     maintenanceAlerts: schedules.filter(s => s.maintenanceStatus !== 'ok').length,
   };

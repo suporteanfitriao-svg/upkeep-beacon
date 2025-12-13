@@ -58,18 +58,18 @@ const statusConfig: Record<ScheduleStatus, { label: string; className: string; n
   waiting: { 
     label: 'Aguardando Liberação', 
     className: 'bg-status-waiting-bg text-status-waiting',
+    next: 'released',
+    nextLabel: 'Liberar para Limpeza'
+  },
+  released: { 
+    label: 'Liberado para Limpeza', 
+    className: 'bg-status-released-bg text-status-released',
     next: 'cleaning',
     nextLabel: 'Iniciar Limpeza'
   },
   cleaning: { 
     label: 'Em Limpeza', 
     className: 'bg-status-progress-bg text-status-progress',
-    next: 'inspection',
-    nextLabel: 'Enviar para Inspeção'
-  },
-  inspection: { 
-    label: 'Em Inspeção', 
-    className: 'bg-status-inspection-bg text-status-inspection',
     next: 'completed',
     nextLabel: 'Finalizar'
   },
@@ -125,7 +125,7 @@ export function ScheduleDetail({ schedule, onClose, onUpdateSchedule }: Schedule
     const targetStatus = newStatus || statusConfig[schedule.status].next;
     if (targetStatus && targetStatus !== schedule.status) {
       // Block completion if checklist is not fully completed (only if checklist has items)
-      if ((targetStatus === 'completed' || targetStatus === 'inspection') && checklist.length > 0) {
+      if (targetStatus === 'completed' && checklist.length > 0) {
         const { allComplete, incompleteCategories } = getCategoryCompletion();
         if (!allComplete) {
           toast.error(
@@ -253,21 +253,21 @@ export function ScheduleDetail({ schedule, onClose, onUpdateSchedule }: Schedule
                       </div>
                     </DropdownMenuItem>
                     <DropdownMenuItem 
+                      onClick={() => handleDirectStatusChange('released')}
+                      className={schedule.status === 'released' ? 'bg-muted' : ''}
+                    >
+                      <div className="flex items-center gap-2">
+                        <div className="w-2 h-2 rounded-full bg-status-released" />
+                        Liberado para Limpeza
+                      </div>
+                    </DropdownMenuItem>
+                    <DropdownMenuItem 
                       onClick={() => handleDirectStatusChange('cleaning')}
                       className={schedule.status === 'cleaning' ? 'bg-muted' : ''}
                     >
                       <div className="flex items-center gap-2">
                         <div className="w-2 h-2 rounded-full bg-status-progress" />
                         Em Limpeza
-                      </div>
-                    </DropdownMenuItem>
-                    <DropdownMenuItem 
-                      onClick={() => handleDirectStatusChange('inspection')}
-                      className={schedule.status === 'inspection' ? 'bg-muted' : ''}
-                    >
-                      <div className="flex items-center gap-2">
-                        <div className="w-2 h-2 rounded-full bg-status-inspection" />
-                        Em Inspeção
                       </div>
                     </DropdownMenuItem>
                     <DropdownMenuItem 
