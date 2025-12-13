@@ -237,11 +237,13 @@ const Index = () => {
                 </div>
                 
                 {/* Fixed Header Row */}
-                <div className="hidden md:grid grid-cols-[1fr_120px_100px_100px_140px_180px] gap-4 px-4 py-2 bg-muted/50 rounded-lg border text-sm font-medium text-muted-foreground">
+                <div className="hidden md:grid grid-cols-[1fr_110px_90px_70px_90px_70px_130px_150px] gap-3 px-4 py-2 bg-muted/50 rounded-lg border text-sm font-medium text-muted-foreground">
                   <span>Propriedade</span>
                   <span>Status</span>
                   <span>Check-in</span>
-                  <span>Check-out</span>
+                  <span className="text-center">Hora</span>
+                  <span className="font-bold">Check-out</span>
+                  <span className="text-center font-bold">Hora</span>
                   <span>Responsável</span>
                   <span>Tags</span>
                 </div>
