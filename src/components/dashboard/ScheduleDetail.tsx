@@ -15,7 +15,8 @@ import {
   LogOut,
   Timer,
   History,
-  Upload
+  Upload,
+  ChevronDown
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
@@ -27,6 +28,12 @@ import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import { useState } from 'react';
 import { toast } from 'sonner';
 
@@ -98,24 +105,30 @@ export function ScheduleDetail({ schedule, onClose, onUpdateSchedule }: Schedule
     onUpdateSchedule({ ...schedule, checklist: updatedChecklist });
   };
 
-  const handleStatusChange = () => {
-    const nextStatus = statusConfig[schedule.status].next;
-    if (nextStatus) {
-      const updates: Partial<Schedule> = { status: nextStatus };
+  const handleStatusChange = (newStatus?: ScheduleStatus) => {
+    const targetStatus = newStatus || statusConfig[schedule.status].next;
+    if (targetStatus && targetStatus !== schedule.status) {
+      const updates: Partial<Schedule> = { status: targetStatus };
       
-      if (nextStatus === 'cleaning' && !schedule.teamArrival) {
+      // Register team arrival when starting cleaning
+      if (targetStatus === 'cleaning' && !schedule.teamArrival) {
         updates.teamArrival = new Date();
         toast.success('Chegada da equipe registrada!');
       }
       
-      if (nextStatus === 'completed' && !schedule.teamDeparture) {
+      // Register team departure when completing
+      if (targetStatus === 'completed' && !schedule.teamDeparture) {
         updates.teamDeparture = new Date();
         toast.success('Saída da equipe registrada!');
       }
       
       onUpdateSchedule({ ...schedule, ...updates });
-      toast.success(`Status atualizado para: ${statusConfig[nextStatus].label}`);
+      toast.success(`Status atualizado para: ${statusConfig[targetStatus].label}`);
     }
+  };
+
+  const handleDirectStatusChange = (newStatus: ScheduleStatus) => {
+    handleStatusChange(newStatus);
   };
 
   const handleSubmitIssue = () => {
@@ -191,9 +204,54 @@ export function ScheduleDetail({ schedule, onClose, onUpdateSchedule }: Schedule
             <div className="space-y-6">
               {/* Status & Time Info */}
               <div className="flex flex-wrap items-center gap-3">
-                <Badge className={cn('text-sm py-1 px-3', statusStyle.className)}>
-                  {statusStyle.label}
-                </Badge>
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <button className="focus:outline-none">
+                      <Badge className={cn('text-sm py-1 px-3 cursor-pointer hover:opacity-80 transition-opacity flex items-center gap-1', statusStyle.className)}>
+                        {statusStyle.label}
+                        <ChevronDown className="w-3 h-3" />
+                      </Badge>
+                    </button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="start">
+                    <DropdownMenuItem 
+                      onClick={() => handleDirectStatusChange('waiting')}
+                      className={schedule.status === 'waiting' ? 'bg-muted' : ''}
+                    >
+                      <div className="flex items-center gap-2">
+                        <div className="w-2 h-2 rounded-full bg-status-waiting" />
+                        Aguardando Liberação
+                      </div>
+                    </DropdownMenuItem>
+                    <DropdownMenuItem 
+                      onClick={() => handleDirectStatusChange('cleaning')}
+                      className={schedule.status === 'cleaning' ? 'bg-muted' : ''}
+                    >
+                      <div className="flex items-center gap-2">
+                        <div className="w-2 h-2 rounded-full bg-status-progress" />
+                        Em Limpeza
+                      </div>
+                    </DropdownMenuItem>
+                    <DropdownMenuItem 
+                      onClick={() => handleDirectStatusChange('inspection')}
+                      className={schedule.status === 'inspection' ? 'bg-muted' : ''}
+                    >
+                      <div className="flex items-center gap-2">
+                        <div className="w-2 h-2 rounded-full bg-status-inspection" />
+                        Em Inspeção
+                      </div>
+                    </DropdownMenuItem>
+                    <DropdownMenuItem 
+                      onClick={() => handleDirectStatusChange('completed')}
+                      className={schedule.status === 'completed' ? 'bg-muted' : ''}
+                    >
+                      <div className="flex items-center gap-2">
+                        <div className="w-2 h-2 rounded-full bg-status-completed" />
+                        Finalizado
+                      </div>
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
                 <div className="flex items-center gap-1.5 text-sm text-muted-foreground">
                   <Clock className="w-4 h-4" />
                   <span>Check-in: {format(schedule.checkIn, "HH:mm", { locale: ptBR })}</span>
@@ -512,7 +570,7 @@ export function ScheduleDetail({ schedule, onClose, onUpdateSchedule }: Schedule
               <Button 
                 className="w-full" 
                 size="lg"
-                onClick={handleStatusChange}
+                onClick={() => handleStatusChange()}
               >
                 {statusConfig[schedule.status].nextLabel}
               </Button>
