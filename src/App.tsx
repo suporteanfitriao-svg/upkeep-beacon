@@ -9,6 +9,8 @@ import Index from "./pages/Index";
 import Auth from "./pages/Auth";
 import Team from "./pages/Team";
 import Properties from "./pages/Properties";
+import Inspections from "./pages/Inspections";
+import Help from "./pages/Help";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -43,6 +45,22 @@ const App = () => (
               element={
                 <ProtectedRoute>
                   <Properties />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/inspecoes"
+              element={
+                <ProtectedRoute>
+                  <Inspections />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/ajuda"
+              element={
+                <ProtectedRoute>
+                  <Help />
                 </ProtectedRoute>
               }
             />
