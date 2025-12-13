@@ -14,7 +14,7 @@ import { useSchedules, calculateStats } from '@/hooks/useSchedules';
 import { Schedule, ScheduleStatus } from '@/types/scheduling';
 
 const Index = () => {
-  const { schedules, loading, error, refetch, updateSchedule } = useSchedules();
+  const { schedules, loading, error, refetch, updateSchedule, updateScheduleTimes } = useSchedules();
   const [selectedSchedule, setSelectedSchedule] = useState<Schedule | null>(null);
   const [activeStatusFilter, setActiveStatusFilter] = useState<ScheduleStatus | 'all'>('all');
   
@@ -92,6 +92,15 @@ const Index = () => {
 
   const handleFilterByStatus = (status: ScheduleStatus | 'all') => {
     setActiveStatusFilter(status);
+  };
+
+  const handleUpdateTimes = async (scheduleId: string, checkInTime: string, checkOutTime: string) => {
+    const success = await updateScheduleTimes(scheduleId, checkInTime, checkOutTime);
+    if (success) {
+      toast.success('Horários atualizados!');
+    } else {
+      toast.error('Erro ao atualizar horários');
+    }
   };
 
   if (loading) {
@@ -242,6 +251,7 @@ const Index = () => {
                     key={schedule.id}
                     schedule={schedule}
                     onClick={() => setSelectedSchedule(schedule)}
+                    onUpdateTimes={handleUpdateTimes}
                   />
                 ))}
               </>

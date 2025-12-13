@@ -172,6 +172,44 @@ export function useSchedules() {
     }
   }, []);
 
+  const updateScheduleTimes = useCallback(async (scheduleId: string, checkInTime: string, checkOutTime: string) => {
+    try {
+      // Find the current schedule to get existing dates
+      const schedule = schedules.find(s => s.id === scheduleId);
+      if (!schedule) return false;
+
+      // Update times on the existing dates
+      const checkInDate = new Date(schedule.checkIn);
+      const checkOutDate = new Date(schedule.checkOut);
+      
+      const [checkInHours, checkInMinutes] = checkInTime.split(':').map(Number);
+      const [checkOutHours, checkOutMinutes] = checkOutTime.split(':').map(Number);
+      
+      checkInDate.setHours(checkInHours, checkInMinutes, 0, 0);
+      checkOutDate.setHours(checkOutHours, checkOutMinutes, 0, 0);
+
+      const { error: updateError } = await supabase
+        .from('schedules')
+        .update({
+          check_in_time: checkInDate.toISOString(),
+          check_out_time: checkOutDate.toISOString(),
+        })
+        .eq('id', scheduleId);
+
+      if (updateError) throw updateError;
+
+      // Update local state
+      setSchedules(prev =>
+        prev.map(s => (s.id === scheduleId ? { ...s, checkIn: checkInDate, checkOut: checkOutDate } : s))
+      );
+
+      return true;
+    } catch (err) {
+      console.error('Error updating schedule times:', err);
+      return false;
+    }
+  }, [schedules]);
+
   useEffect(() => {
     fetchSchedules();
   }, [fetchSchedules]);
@@ -200,6 +238,7 @@ export function useSchedules() {
     error,
     refetch: fetchSchedules,
     updateSchedule,
+    updateScheduleTimes,
   };
 }
 
