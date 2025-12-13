@@ -28,6 +28,7 @@ export interface MaintenanceIssue {
 
 export interface Schedule {
   id: string;
+  propertyId: string;
   propertyName: string;
   propertyAddress: string;
   guestName: string;
