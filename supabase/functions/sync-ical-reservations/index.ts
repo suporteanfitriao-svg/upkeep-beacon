@@ -83,6 +83,20 @@ function parseICalEvents(icalData: string): ICalEvent[] {
   return events;
 }
 
+// Calculate priority based on check-in date proximity
+function calculatePriority(checkInDate: Date): string {
+  const now = new Date();
+  const diffMs = checkInDate.getTime() - now.getTime();
+  const diffHours = diffMs / (1000 * 60 * 60);
+  
+  if (diffHours <= 24) {
+    return 'high'; // Within 24 hours
+  } else if (diffHours <= 72) {
+    return 'medium'; // Within 3 days
+  }
+  return 'low'; // More than 3 days
+}
+
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
@@ -172,6 +186,9 @@ serve(async (req) => {
           const events = parseICalEvents(icalData);
           console.log(`Parsed ${events.length} reservations for ${source.custom_name || source.id}`);
 
+          // Track UIDs from this sync to detect removed reservations
+          const currentUIDs: string[] = [];
+
           for (const event of events) {
             const thirtyDaysAgo = new Date();
             thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
@@ -179,8 +196,9 @@ serve(async (req) => {
               continue;
             }
 
-            // Use source id + uid to ensure uniqueness across sources
-            const externalId = `${source.id}_${event.uid}`;
+            // Use original UID from Airbnb (consistent across syncs)
+            const externalId = event.uid;
+            currentUIDs.push(externalId);
 
             const { data: reservation, error: reservationError } = await supabase
               .from('reservations')
@@ -220,20 +238,41 @@ serve(async (req) => {
             const [checkOutHour, checkOutMin] = checkOutTime.split(':').map(Number);
             checkOutDate.setUTCHours(checkOutHour, checkOutMin, 0, 0);
 
+            // Calculate priority based on check-in proximity
+            const priority = calculatePriority(checkInDate);
+
+            // Check if schedule already exists
+            const { data: existingSchedule } = await supabase
+              .from('schedules')
+              .select('id, status')
+              .eq('reservation_id', reservation.id)
+              .maybeSingle();
+
+            // Only update priority if schedule is still in waiting status
+            const shouldUpdatePriority = !existingSchedule || existingSchedule.status === 'waiting';
+
+            const scheduleData: any = {
+              reservation_id: reservation.id,
+              property_id: property.id,
+              property_name: property.name,
+              property_address: property.address,
+              check_in_time: checkInDate.toISOString(),
+              check_out_time: checkOutDate.toISOString(),
+              listing_name: source.custom_name || property.name,
+              number_of_guests: 1
+            };
+
+            // Set status and priority for new schedules
+            if (!existingSchedule) {
+              scheduleData.status = 'waiting';
+              scheduleData.priority = priority;
+            } else if (shouldUpdatePriority) {
+              scheduleData.priority = priority;
+            }
+
             const { error: scheduleError } = await supabase
               .from('schedules')
-              .upsert({
-                reservation_id: reservation.id,
-                property_id: property.id,
-                property_name: property.name,
-                property_address: property.address,
-                check_in_time: checkInDate.toISOString(),
-                check_out_time: checkOutDate.toISOString(),
-                status: 'waiting',
-                priority: 'normal',
-                listing_name: source.custom_name || property.name,
-                number_of_guests: 1
-              }, {
+              .upsert(scheduleData, {
                 onConflict: 'reservation_id',
                 ignoreDuplicates: false
               });
@@ -261,6 +300,22 @@ serve(async (req) => {
           reservations_count: reservationsCount
         })
         .eq('id', source.id);
+    }
+
+    // Update priorities for all waiting schedules based on current date
+    const { data: waitingSchedules } = await supabase
+      .from('schedules')
+      .select('id, check_in_time')
+      .eq('status', 'waiting');
+
+    if (waitingSchedules) {
+      for (const schedule of waitingSchedules) {
+        const newPriority = calculatePriority(new Date(schedule.check_in_time));
+        await supabase
+          .from('schedules')
+          .update({ priority: newPriority })
+          .eq('id', schedule.id);
+      }
     }
 
     console.log(`Sync completed. Total reservations synced: ${totalSynced}`);
