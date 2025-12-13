@@ -225,18 +225,21 @@ serve(async (req) => {
               continue;
             }
 
-            // Apply default check-in/out times from property
+            // Apply default check-in/out times from property (in local time, not UTC)
             const checkInTime = property.default_check_in_time || '14:00:00';
             const checkOutTime = property.default_check_out_time || '11:00:00';
 
-            // Combine date with time
-            const checkInDate = new Date(event.dtstart);
+            // Parse the time strings
             const [checkInHour, checkInMin] = checkInTime.split(':').map(Number);
-            checkInDate.setUTCHours(checkInHour, checkInMin, 0, 0);
+            const [checkOutHour, checkOutMin] = checkOutTime.split(':').map(Number);
+
+            // Create dates with the correct local time (Brazil is UTC-3)
+            const checkInDate = new Date(event.dtstart);
+            // Set the hours directly without UTC conversion - add 3 hours to compensate for UTC-3
+            checkInDate.setUTCHours(checkInHour + 3, checkInMin, 0, 0);
 
             const checkOutDate = new Date(event.dtend);
-            const [checkOutHour, checkOutMin] = checkOutTime.split(':').map(Number);
-            checkOutDate.setUTCHours(checkOutHour, checkOutMin, 0, 0);
+            checkOutDate.setUTCHours(checkOutHour + 3, checkOutMin, 0, 0);
 
             // Calculate priority based on check-in proximity
             const priority = calculatePriority(checkInDate);
@@ -244,7 +247,7 @@ serve(async (req) => {
             // Check if schedule already exists
             const { data: existingSchedule } = await supabase
               .from('schedules')
-              .select('id, status')
+              .select('id, status, check_in_time, check_out_time')
               .eq('reservation_id', reservation.id)
               .maybeSingle();
 
@@ -256,14 +259,14 @@ serve(async (req) => {
               property_id: property.id,
               property_name: property.name,
               property_address: property.address,
-              check_in_time: checkInDate.toISOString(),
-              check_out_time: checkOutDate.toISOString(),
               listing_name: source.custom_name || property.name,
               number_of_guests: 1
             };
 
-            // Set status and priority for new schedules
+            // Only set times for NEW schedules (preserve manual edits)
             if (!existingSchedule) {
+              scheduleData.check_in_time = checkInDate.toISOString();
+              scheduleData.check_out_time = checkOutDate.toISOString();
               scheduleData.status = 'waiting';
               scheduleData.priority = priority;
             } else if (shouldUpdatePriority) {
