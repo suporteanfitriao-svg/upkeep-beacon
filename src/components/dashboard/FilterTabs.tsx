@@ -10,8 +10,8 @@ interface FilterTabsProps {
 const filters: { value: ScheduleStatus | 'all'; label: string }[] = [
   { value: 'all', label: 'Todos' },
   { value: 'waiting', label: 'Aguardando' },
+  { value: 'released', label: 'Liberado' },
   { value: 'cleaning', label: 'Em Limpeza' },
-  { value: 'inspection', label: 'Inspeção' },
   { value: 'completed', label: 'Finalizados' },
 ];
 

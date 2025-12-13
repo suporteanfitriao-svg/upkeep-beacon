@@ -53,14 +53,14 @@ export default {
         status: {
           waiting: "hsl(var(--status-waiting))",
           "waiting-bg": "hsl(var(--status-waiting-bg))",
+          released: "hsl(var(--status-released))",
+          "released-bg": "hsl(var(--status-released-bg))",
           progress: "hsl(var(--status-progress))",
           "progress-bg": "hsl(var(--status-progress-bg))",
           completed: "hsl(var(--status-completed))",
           "completed-bg": "hsl(var(--status-completed-bg))",
           alert: "hsl(var(--status-alert))",
           "alert-bg": "hsl(var(--status-alert-bg))",
-          inspection: "hsl(var(--status-inspection))",
-          "inspection-bg": "hsl(var(--status-inspection-bg))",
         },
         priority: {
           high: "hsl(var(--priority-high))",

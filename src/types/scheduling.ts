@@ -1,4 +1,4 @@
-export type ScheduleStatus = 'waiting' | 'cleaning' | 'inspection' | 'completed';
+export type ScheduleStatus = 'waiting' | 'released' | 'cleaning' | 'completed';
 
 export type MaintenanceStatus = 'ok' | 'needs_maintenance' | 'in_progress';
 
@@ -52,8 +52,8 @@ export interface Schedule {
 
 export interface DashboardStats {
   waiting: number;
+  released: number;
   cleaning: number;
-  inspection: number;
   completed: number;
   maintenanceAlerts: number;
 }
