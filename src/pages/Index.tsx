@@ -81,10 +81,21 @@ const Index = () => {
     toast.success('Dashboard atualizado!');
   };
 
-  const handleUpdateSchedule = async (updatedSchedule: Schedule) => {
-    const success = await updateSchedule(updatedSchedule);
+  const handleUpdateSchedule = async (updatedSchedule: Schedule, previousStatus?: ScheduleStatus) => {
+    const success = await updateSchedule(updatedSchedule, previousStatus);
     if (success) {
-      setSelectedSchedule(updatedSchedule);
+      // When starting cleaning, the hook will load the checklist from the property
+      // We need to refetch to get the updated schedule with the loaded checklist
+      if (updatedSchedule.status === 'cleaning' && previousStatus !== 'cleaning') {
+        await refetch();
+      }
+      // Update selected schedule from the latest schedules state
+      setSelectedSchedule(prev => {
+        if (prev && prev.id === updatedSchedule.id) {
+          return { ...updatedSchedule };
+        }
+        return prev;
+      });
     } else {
       toast.error('Erro ao atualizar agendamento');
     }

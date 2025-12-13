@@ -40,7 +40,7 @@ import { toast } from 'sonner';
 interface ScheduleDetailProps {
   schedule: Schedule;
   onClose: () => void;
-  onUpdateSchedule: (schedule: Schedule) => void;
+  onUpdateSchedule: (schedule: Schedule, previousStatus?: ScheduleStatus) => void;
 }
 
 const SPACE_OPTIONS = [
@@ -124,8 +124,8 @@ export function ScheduleDetail({ schedule, onClose, onUpdateSchedule }: Schedule
   const handleStatusChange = (newStatus?: ScheduleStatus) => {
     const targetStatus = newStatus || statusConfig[schedule.status].next;
     if (targetStatus && targetStatus !== schedule.status) {
-      // Block completion if checklist is not fully completed
-      if (targetStatus === 'completed' || targetStatus === 'inspection') {
+      // Block completion if checklist is not fully completed (only if checklist has items)
+      if ((targetStatus === 'completed' || targetStatus === 'inspection') && checklist.length > 0) {
         const { allComplete, incompleteCategories } = getCategoryCompletion();
         if (!allComplete) {
           toast.error(
@@ -136,12 +136,13 @@ export function ScheduleDetail({ schedule, onClose, onUpdateSchedule }: Schedule
         }
       }
 
+      const previousStatus = schedule.status;
       const updates: Partial<Schedule> = { status: targetStatus };
       
       // Register team arrival when starting cleaning
       if (targetStatus === 'cleaning' && !schedule.teamArrival) {
         updates.teamArrival = new Date();
-        toast.success('Chegada da equipe registrada!');
+        toast.success('Chegada da equipe registrada! Checklist carregado.');
       }
       
       // Register team departure when completing
@@ -150,7 +151,7 @@ export function ScheduleDetail({ schedule, onClose, onUpdateSchedule }: Schedule
         toast.success('Saída da equipe registrada!');
       }
       
-      onUpdateSchedule({ ...schedule, ...updates });
+      onUpdateSchedule({ ...schedule, ...updates }, previousStatus);
       toast.success(`Status atualizado para: ${statusConfig[targetStatus].label}`);
     }
   };

@@ -144,8 +144,35 @@ export function useSchedules() {
     }
   }, []);
 
-  const updateSchedule = useCallback(async (updatedSchedule: Schedule) => {
+  const updateSchedule = useCallback(async (updatedSchedule: Schedule, previousStatus?: ScheduleStatus) => {
     try {
+      let checklistToUse = updatedSchedule.checklist;
+
+      // When transitioning to 'cleaning' status, fetch and link property checklists
+      if (updatedSchedule.status === 'cleaning' && previousStatus !== 'cleaning' && updatedSchedule.propertyId) {
+        const { data: propertyChecklists, error: checklistError } = await supabase
+          .from('property_checklists')
+          .select('items, name')
+          .eq('property_id', updatedSchedule.propertyId)
+          .limit(1);
+
+        if (!checklistError && propertyChecklists && propertyChecklists.length > 0) {
+          const items = propertyChecklists[0].items as unknown[];
+          if (Array.isArray(items) && items.length > 0) {
+            checklistToUse = items.map((item: unknown, index: number) => {
+              const typedItem = item as Record<string, unknown>;
+              return {
+                id: String(typedItem?.id || `item-${index}`),
+                title: String(typedItem?.title || typedItem?.name || ''),
+                completed: false, // Reset to uncompleted when starting cleaning
+                category: String(typedItem?.category || 'Geral'),
+              };
+            });
+            console.log('Linked property checklist to schedule:', checklistToUse.length, 'items');
+          }
+        }
+      }
+
       const { error: updateError } = await supabase
         .from('schedules')
         .update({
@@ -154,15 +181,16 @@ export function useSchedules() {
           priority: updatedSchedule.priority,
           cleaner_name: updatedSchedule.cleanerName,
           notes: updatedSchedule.notes,
-          checklists: updatedSchedule.checklist as unknown as Json,
+          checklists: checklistToUse as unknown as Json,
           maintenance_issues: updatedSchedule.maintenanceIssues as unknown as Json,
         })
         .eq('id', updatedSchedule.id);
 
       if (updateError) throw updateError;
 
+      const finalSchedule = { ...updatedSchedule, checklist: checklistToUse };
       setSchedules(prev =>
-        prev.map(s => (s.id === updatedSchedule.id ? updatedSchedule : s))
+        prev.map(s => (s.id === updatedSchedule.id ? finalSchedule : s))
       );
 
       return true;
