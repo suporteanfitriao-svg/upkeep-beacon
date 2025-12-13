@@ -94,7 +94,7 @@ export function ScheduleRow({ schedule, onClick, onUpdateTimes }: ScheduleRowPro
       {/* Collapsed Row - Always Visible */}
       {/* Desktop: Grid layout matching header */}
       <div 
-        className="hidden md:grid grid-cols-[1fr_120px_100px_100px_140px_180px] gap-4 items-center p-3 cursor-pointer group"
+        className="hidden md:grid grid-cols-[1fr_110px_90px_70px_90px_70px_130px_150px] gap-3 items-center p-3 cursor-pointer group"
         onClick={onClick}
       >
         {/* Property Name */}
@@ -151,23 +151,25 @@ export function ScheduleRow({ schedule, onClick, onUpdateTimes }: ScheduleRowPro
           {statusStyle.label}
         </Badge>
 
-        {/* Check-in Date + Time */}
-        <div className="flex items-center gap-1">
-          <span className="text-sm text-foreground">
-            {format(schedule.checkIn, "dd/MM", { locale: ptBR })}
-            <span className="text-muted-foreground ml-1 text-xs">
-              {format(schedule.checkIn, "HH:mm")}
-            </span>
-          </span>
-        </div>
+        {/* Check-in Date */}
+        <span className="text-sm text-foreground">
+          {format(schedule.checkIn, "dd/MM", { locale: ptBR })}
+        </span>
 
-        {/* Check-out Date + Time - BOLD */}
-        <div className="flex items-center gap-1">
+        {/* Check-in Time */}
+        <span className="text-sm text-muted-foreground text-center">
+          {format(schedule.checkIn, "HH:mm")}
+        </span>
+
+        {/* Check-out Date - BOLD */}
+        <span className="text-sm text-foreground font-bold">
+          {format(schedule.checkOut, "dd/MM", { locale: ptBR })}
+        </span>
+
+        {/* Check-out Time - BOLD with Edit */}
+        <div className="flex items-center justify-center gap-1">
           <span className="text-sm text-foreground font-bold">
-            {format(schedule.checkOut, "dd/MM", { locale: ptBR })}
-            <span className="text-foreground font-bold ml-1 text-xs">
-              {format(schedule.checkOut, "HH:mm")}
-            </span>
+            {format(schedule.checkOut, "HH:mm")}
           </span>
           <Popover open={isEditingTimes} onOpenChange={setIsEditingTimes}>
             <PopoverTrigger asChild>
