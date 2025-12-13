@@ -204,7 +204,7 @@ serve(async (req) => {
             continue;
           }
 
-          // Upsert reservation with summary and description
+          // Use UID directly as external_id (no prefix) to avoid duplicates
           const { data: reservation, error: reservationError } = await supabase
             .from('reservations')
             .upsert({
@@ -216,7 +216,8 @@ serve(async (req) => {
               listing_name: property.name,
               summary: event.summary,
               description: event.description,
-              number_of_guests: 1
+              number_of_guests: 1,
+              updated_at: new Date().toISOString()
             }, {
               onConflict: 'external_id',
               ignoreDuplicates: false
