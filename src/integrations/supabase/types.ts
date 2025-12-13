@@ -19,6 +19,8 @@ export type Database = {
           address: string | null
           airbnb_ical_url: string | null
           created_at: string
+          default_check_in_time: string | null
+          default_check_out_time: string | null
           id: string
           name: string
           updated_at: string
@@ -27,6 +29,8 @@ export type Database = {
           address?: string | null
           airbnb_ical_url?: string | null
           created_at?: string
+          default_check_in_time?: string | null
+          default_check_out_time?: string | null
           id?: string
           name: string
           updated_at?: string
@@ -35,11 +39,57 @@ export type Database = {
           address?: string | null
           airbnb_ical_url?: string | null
           created_at?: string
+          default_check_in_time?: string | null
+          default_check_out_time?: string | null
           id?: string
           name?: string
           updated_at?: string
         }
         Relationships: []
+      }
+      property_ical_sources: {
+        Row: {
+          created_at: string
+          custom_name: string | null
+          ical_url: string
+          id: string
+          last_error: string | null
+          last_sync_at: string | null
+          property_id: string
+          reservations_count: number | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          custom_name?: string | null
+          ical_url: string
+          id?: string
+          last_error?: string | null
+          last_sync_at?: string | null
+          property_id: string
+          reservations_count?: number | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          custom_name?: string | null
+          ical_url?: string
+          id?: string
+          last_error?: string | null
+          last_sync_at?: string | null
+          property_id?: string
+          reservations_count?: number | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "property_ical_sources_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: false
+            referencedRelation: "properties"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       reservations: {
         Row: {

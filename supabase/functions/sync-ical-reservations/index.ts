@@ -15,18 +15,15 @@ interface ICalEvent {
 }
 
 function parseICalDate(dateStr: string): Date {
-  // Handle both DATE (YYYYMMDD) and DATE-TIME (YYYYMMDDTHHMMSSZ) formats
   const cleanDate = dateStr.replace(/[^0-9TZ]/g, '');
   
   if (cleanDate.length === 8) {
-    // DATE only format - set to noon UTC
     const year = parseInt(cleanDate.substring(0, 4));
     const month = parseInt(cleanDate.substring(4, 6)) - 1;
     const day = parseInt(cleanDate.substring(6, 8));
     return new Date(Date.UTC(year, month, day, 12, 0, 0));
   }
   
-  // DATE-TIME format
   const year = parseInt(cleanDate.substring(0, 4));
   const month = parseInt(cleanDate.substring(4, 6)) - 1;
   const day = parseInt(cleanDate.substring(6, 8));
@@ -38,24 +35,16 @@ function parseICalDate(dateStr: string): Date {
 }
 
 function unfoldICalData(icalData: string): string {
-  // iCal uses line folding: long lines are split with CRLF followed by a space/tab
-  // We need to unfold these lines first
   return icalData
-    .replace(/\r\n[ \t]/g, '')  // CRLF + space/tab
-    .replace(/\n[ \t]/g, '');    // LF + space/tab (in case of non-standard line endings)
+    .replace(/\r\n[ \t]/g, '')
+    .replace(/\n[ \t]/g, '');
 }
 
 function parseICalEvents(icalData: string): ICalEvent[] {
   const events: ICalEvent[] = [];
-  
-  // First, unfold the iCal data
   const unfoldedData = unfoldICalData(icalData);
-  console.log(`Unfolded iCal data sample (first 500 chars): ${unfoldedData.substring(0, 500)}`);
   
-  // Regex to find all VEVENT blocks
   const eventRegex = /BEGIN:VEVENT([\s\S]*?)END:VEVENT/g;
-  
-  // Regex for specific fields
   const uidRegex = /UID[^:]*:(.+)/;
   const dtstartRegex = /DTSTART[^:]*:(\d{8}(?:T\d{6}Z?)?)/;
   const dtendRegex = /DTEND[^:]*:(\d{8}(?:T\d{6}Z?)?)/;
@@ -63,68 +52,43 @@ function parseICalEvents(icalData: string): ICalEvent[] {
   const descriptionRegex = /DESCRIPTION[^:]*:(.+)/;
   
   let match;
-  let eventCount = 0;
-  let reservedCount = 0;
-  let blockedCount = 0;
   
   while ((match = eventRegex.exec(unfoldedData)) !== null) {
-    eventCount++;
     const eventBlock = match[1];
     
-    // Extract SUMMARY first to filter
     const summaryMatch = eventBlock.match(summaryRegex);
     const summary = summaryMatch ? summaryMatch[1].trim() : '';
     
-    // FILTER: Only process "Reserved" events, ignore blocked events
     if (summary !== 'Reserved') {
-      blockedCount++;
-      console.log(`Skipping blocked event ${eventCount}: SUMMARY = "${summary}"`);
       continue;
     }
     
-    reservedCount++;
-    console.log(`Processing reserved event ${eventCount}: ${eventBlock.substring(0, 150)}...`);
-    
-    // Extract UID
     const uidMatch = eventBlock.match(uidRegex);
     const uid = uidMatch ? uidMatch[1].trim() : null;
     
-    // Extract DTSTART (check-in)
     const dtstartMatch = eventBlock.match(dtstartRegex);
     const dtstart = dtstartMatch ? parseICalDate(dtstartMatch[1]) : null;
     
-    // Extract DTEND (check-out)
     const dtendMatch = eventBlock.match(dtendRegex);
     const dtend = dtendMatch ? parseICalDate(dtendMatch[1]) : null;
     
-    // Extract DESCRIPTION (informational only)
     const descriptionMatch = eventBlock.match(descriptionRegex);
     const description = descriptionMatch ? descriptionMatch[1].trim() : '';
     
-    console.log(`Event ${eventCount} - UID: ${uid}, DTSTART: ${dtstartMatch?.[1]}, DTEND: ${dtendMatch?.[1]}`);
-    
-    // Only add if we have all required fields
     if (uid && dtstart && dtend) {
       events.push({ uid, dtstart, dtend, summary, description });
-      console.log(`Added reservation - UID: ${uid}, Check-in: ${dtstart.toISOString()}, Check-out: ${dtend.toISOString()}`);
-    } else {
-      console.log(`Skipped event ${eventCount} - missing fields. UID: ${!!uid}, DTSTART: ${!!dtstart}, DTEND: ${!!dtend}`);
     }
   }
-  
-  console.log(`Total events: ${eventCount}, Reserved: ${reservedCount}, Blocked/Ignored: ${blockedCount}, Valid reservations: ${events.length}`);
   
   return events;
 }
 
 serve(async (req) => {
-  // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
   }
 
   try {
-    // Verify authentication
     const authHeader = req.headers.get('Authorization');
     if (!authHeader) {
       return new Response(
@@ -137,131 +101,166 @@ serve(async (req) => {
     const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
     const supabase = createClient(supabaseUrl, supabaseKey);
 
-    // Get request body (optional propertyId for single property sync)
+    let sourceId: string | null = null;
     let propertyId: string | null = null;
     try {
       const body = await req.json();
+      sourceId = body.sourceId || null;
       propertyId = body.propertyId || null;
     } catch {
-      // No body or invalid JSON, sync all
+      // No body
     }
 
-    console.log(`Starting iCal sync${propertyId ? ` for property ${propertyId}` : ' for all properties'}`);
+    console.log(`Starting iCal sync${sourceId ? ` for source ${sourceId}` : propertyId ? ` for property ${propertyId}` : ' for all sources'}`);
 
-    // Fetch properties with iCal URLs
+    // Fetch iCal sources
     let query = supabase
-      .from('properties')
-      .select('id, name, address, airbnb_ical_url')
-      .not('airbnb_ical_url', 'is', null);
+      .from('property_ical_sources')
+      .select(`
+        id,
+        property_id,
+        ical_url,
+        custom_name,
+        properties (
+          id,
+          name,
+          address,
+          default_check_in_time,
+          default_check_out_time
+        )
+      `);
 
-    if (propertyId) {
-      query = query.eq('id', propertyId);
+    if (sourceId) {
+      query = query.eq('id', sourceId);
+    } else if (propertyId) {
+      query = query.eq('property_id', propertyId);
     }
 
-    const { data: properties, error: propertiesError } = await query;
+    const { data: sources, error: sourcesError } = await query;
 
-    if (propertiesError) {
-      console.error('Error fetching properties:', propertiesError);
-      throw propertiesError;
+    if (sourcesError) {
+      console.error('Error fetching sources:', sourcesError);
+      throw sourcesError;
     }
 
-    if (!properties || properties.length === 0) {
-      console.log('No properties with iCal URLs found');
+    if (!sources || sources.length === 0) {
+      console.log('No iCal sources found');
       return new Response(
-        JSON.stringify({ synced: 0, message: 'Nenhuma propriedade com iCal configurado' }),
+        JSON.stringify({ synced: 0, message: 'Nenhuma fonte iCal configurada' }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
     let totalSynced = 0;
-    let totalBlocked = 0;
 
-    for (const property of properties) {
-      if (!property.airbnb_ical_url) continue;
+    for (const source of sources) {
+      const property = source.properties as any;
+      if (!property) continue;
 
-      console.log(`Syncing property: ${property.name} (${property.id})`);
+      console.log(`Syncing source: ${source.custom_name || source.id} for property ${property.name}`);
+
+      let lastError: string | null = null;
+      let reservationsCount = 0;
 
       try {
-        // Fetch iCal data
-        const icalResponse = await fetch(property.airbnb_ical_url);
+        const icalResponse = await fetch(source.ical_url);
         if (!icalResponse.ok) {
-          console.error(`Failed to fetch iCal for ${property.name}: ${icalResponse.status}`);
-          continue;
-        }
+          lastError = `HTTP ${icalResponse.status}`;
+          console.error(`Failed to fetch iCal for source ${source.id}: ${lastError}`);
+        } else {
+          const icalData = await icalResponse.text();
+          const events = parseICalEvents(icalData);
+          console.log(`Parsed ${events.length} reservations for ${source.custom_name || source.id}`);
 
-        const icalData = await icalResponse.text();
-        console.log(`Fetched iCal data for ${property.name}, length: ${icalData.length}`);
-        
-        const events = parseICalEvents(icalData);
-        console.log(`Parsed ${events.length} reservations for ${property.name}`);
+          for (const event of events) {
+            const thirtyDaysAgo = new Date();
+            thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+            if (event.dtend < thirtyDaysAgo) {
+              continue;
+            }
 
-        for (const event of events) {
-          // Skip past events (ended more than 30 days ago)
-          const thirtyDaysAgo = new Date();
-          thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
-          if (event.dtend < thirtyDaysAgo) {
-            console.log(`Skipping past event: ${event.uid}`);
-            continue;
+            // Use source id + uid to ensure uniqueness across sources
+            const externalId = `${source.id}_${event.uid}`;
+
+            const { data: reservation, error: reservationError } = await supabase
+              .from('reservations')
+              .upsert({
+                external_id: externalId,
+                property_id: property.id,
+                check_in: event.dtstart.toISOString(),
+                check_out: event.dtend.toISOString(),
+                status: 'confirmed',
+                listing_name: source.custom_name || property.name,
+                summary: event.summary,
+                description: event.description,
+                number_of_guests: 1,
+                updated_at: new Date().toISOString()
+              }, {
+                onConflict: 'external_id',
+                ignoreDuplicates: false
+              })
+              .select()
+              .single();
+
+            if (reservationError) {
+              console.error(`Error upserting reservation:`, reservationError);
+              continue;
+            }
+
+            // Apply default check-in/out times from property
+            const checkInTime = property.default_check_in_time || '14:00:00';
+            const checkOutTime = property.default_check_out_time || '11:00:00';
+
+            // Combine date with time
+            const checkInDate = new Date(event.dtstart);
+            const [checkInHour, checkInMin] = checkInTime.split(':').map(Number);
+            checkInDate.setUTCHours(checkInHour, checkInMin, 0, 0);
+
+            const checkOutDate = new Date(event.dtend);
+            const [checkOutHour, checkOutMin] = checkOutTime.split(':').map(Number);
+            checkOutDate.setUTCHours(checkOutHour, checkOutMin, 0, 0);
+
+            const { error: scheduleError } = await supabase
+              .from('schedules')
+              .upsert({
+                reservation_id: reservation.id,
+                property_id: property.id,
+                property_name: property.name,
+                property_address: property.address,
+                check_in_time: checkInDate.toISOString(),
+                check_out_time: checkOutDate.toISOString(),
+                status: 'waiting',
+                priority: 'normal',
+                listing_name: source.custom_name || property.name,
+                number_of_guests: 1
+              }, {
+                onConflict: 'reservation_id',
+                ignoreDuplicates: false
+              });
+
+            if (scheduleError) {
+              console.error(`Error upserting schedule:`, scheduleError);
+              continue;
+            }
+
+            reservationsCount++;
+            totalSynced++;
           }
-
-          // Use UID directly as external_id (no prefix) to avoid duplicates
-          const { data: reservation, error: reservationError } = await supabase
-            .from('reservations')
-            .upsert({
-              external_id: event.uid,
-              property_id: property.id,
-              check_in: event.dtstart.toISOString(),
-              check_out: event.dtend.toISOString(),
-              status: 'confirmed',
-              listing_name: property.name,
-              summary: event.summary,
-              description: event.description,
-              number_of_guests: 1,
-              updated_at: new Date().toISOString()
-            }, {
-              onConflict: 'external_id',
-              ignoreDuplicates: false
-            })
-            .select()
-            .single();
-
-          if (reservationError) {
-            console.error(`Error upserting reservation for ${event.uid}:`, reservationError);
-            continue;
-          }
-
-          console.log(`Upserted reservation: ${reservation.id} for UID: ${event.uid}`);
-
-          // Create or update schedule for this reservation
-          const { error: scheduleError } = await supabase
-            .from('schedules')
-            .upsert({
-              reservation_id: reservation.id,
-              property_id: property.id,
-              property_name: property.name,
-              property_address: property.address,
-              check_in_time: event.dtstart.toISOString(),
-              check_out_time: event.dtend.toISOString(),
-              status: 'waiting',
-              priority: 'normal',
-              listing_name: property.name,
-              number_of_guests: 1
-            }, {
-              onConflict: 'reservation_id',
-              ignoreDuplicates: false
-            });
-
-          if (scheduleError) {
-            console.error(`Error upserting schedule for reservation ${reservation.id}:`, scheduleError);
-            continue;
-          }
-
-          console.log(`Upserted schedule for reservation: ${reservation.id}`);
-          totalSynced++;
         }
       } catch (error) {
-        console.error(`Error processing property ${property.name}:`, error);
+        lastError = error instanceof Error ? error.message : 'Erro desconhecido';
+        console.error(`Error processing source ${source.id}:`, error);
       }
+
+      // Update source with sync status
+      await supabase
+        .from('property_ical_sources')
+        .update({
+          last_sync_at: new Date().toISOString(),
+          last_error: lastError,
+          reservations_count: reservationsCount
+        })
+        .eq('id', source.id);
     }
 
     console.log(`Sync completed. Total reservations synced: ${totalSynced}`);
