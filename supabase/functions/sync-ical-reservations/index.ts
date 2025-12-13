@@ -35,20 +35,38 @@ function parseICalDate(dateStr: string): Date {
   return new Date(Date.UTC(year, month, day, hour, minute, second));
 }
 
+function unfoldICalData(icalData: string): string {
+  // iCal uses line folding: long lines are split with CRLF followed by a space/tab
+  // We need to unfold these lines first
+  return icalData
+    .replace(/\r\n[ \t]/g, '')  // CRLF + space/tab
+    .replace(/\n[ \t]/g, '');    // LF + space/tab (in case of non-standard line endings)
+}
+
 function parseICalEvents(icalData: string): ICalEvent[] {
   const events: ICalEvent[] = [];
+  
+  // First, unfold the iCal data
+  const unfoldedData = unfoldICalData(icalData);
+  console.log(`Unfolded iCal data sample (first 500 chars): ${unfoldedData.substring(0, 500)}`);
   
   // Regex to find all VEVENT blocks
   const eventRegex = /BEGIN:VEVENT([\s\S]*?)END:VEVENT/g;
   
-  // Regex for specific fields
-  const uidRegex = /UID:(.+)/;
-  const dtstartRegex = /DTSTART[:;](\d{8}(?:T\d{6}Z?)?)/;
-  const dtendRegex = /DTEND[:;](\d{8}(?:T\d{6}Z?)?)/;
+  // Regex for specific fields - handle both formats:
+  // UID:value or UID;param=value:value
+  const uidRegex = /UID[^:]*:(.+)/;
+  // DTSTART:20250310 or DTSTART;VALUE=DATE:20250310 or DTSTART:20250310T120000Z
+  const dtstartRegex = /DTSTART[^:]*:(\d{8}(?:T\d{6}Z?)?)/;
+  const dtendRegex = /DTEND[^:]*:(\d{8}(?:T\d{6}Z?)?)/;
   
   let match;
-  while ((match = eventRegex.exec(icalData)) !== null) {
+  let eventCount = 0;
+  
+  while ((match = eventRegex.exec(unfoldedData)) !== null) {
+    eventCount++;
     const eventBlock = match[1];
+    console.log(`Processing event block ${eventCount}: ${eventBlock.substring(0, 200)}...`);
     
     // Extract UID
     const uidMatch = eventBlock.match(uidRegex);
@@ -62,12 +80,18 @@ function parseICalEvents(icalData: string): ICalEvent[] {
     const dtendMatch = eventBlock.match(dtendRegex);
     const dtend = dtendMatch ? parseICalDate(dtendMatch[1]) : null;
     
+    console.log(`Event ${eventCount} - UID: ${uid}, DTSTART match: ${dtstartMatch?.[1]}, DTEND match: ${dtendMatch?.[1]}`);
+    
     // Only add if we have all required fields
     if (uid && dtstart && dtend) {
       events.push({ uid, dtstart, dtend });
-      console.log(`Parsed event - UID: ${uid}, Check-in: ${dtstart.toISOString()}, Check-out: ${dtend.toISOString()}`);
+      console.log(`Added event - UID: ${uid}, Check-in: ${dtstart.toISOString()}, Check-out: ${dtend.toISOString()}`);
+    } else {
+      console.log(`Skipped event ${eventCount} - missing fields. UID: ${!!uid}, DTSTART: ${!!dtstart}, DTEND: ${!!dtend}`);
     }
   }
+  
+  console.log(`Total event blocks found: ${eventCount}, valid events: ${events.length}`);
   
   return events;
 }
