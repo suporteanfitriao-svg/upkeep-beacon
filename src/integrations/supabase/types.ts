@@ -85,6 +85,44 @@ export type Database = {
         }
         Relationships: []
       }
+      property_checklists: {
+        Row: {
+          created_at: string
+          id: string
+          is_default: boolean
+          items: Json
+          name: string
+          property_id: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          is_default?: boolean
+          items?: Json
+          name?: string
+          property_id: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          is_default?: boolean
+          items?: Json
+          name?: string
+          property_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "property_checklists_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: false
+            referencedRelation: "properties"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       property_ical_sources: {
         Row: {
           created_at: string

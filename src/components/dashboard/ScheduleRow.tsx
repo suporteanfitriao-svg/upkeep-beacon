@@ -226,36 +226,32 @@ export function ScheduleRow({ schedule, onClick, onUpdateTimes }: ScheduleRowPro
         </div>
       </div>
 
-      {/* Mobile: Compact layout */}
+      {/* Mobile: Optimized layout with better tag visibility */}
       <div 
-        className="flex md:hidden items-center gap-3 p-3 cursor-pointer"
+        className="flex md:hidden flex-col gap-2 p-3 cursor-pointer"
         onClick={onClick}
       >
-        <button
-          onClick={handleExpand}
-          className="shrink-0 p-1 rounded hover:bg-muted transition-colors"
-        >
-          {isExpanded ? (
-            <ChevronUp className="w-5 h-5 text-muted-foreground" />
-          ) : (
-            <ChevronDown className="w-5 h-5 text-muted-foreground" />
-          )}
-        </button>
-        {maintenanceIcons[schedule.maintenanceStatus]}
-        <div className="flex-1 min-w-0">
-          <h3 className="font-medium text-foreground truncate text-sm">
+        {/* Top row: expand, status icon, property name */}
+        <div className="flex items-center gap-2">
+          <button
+            onClick={handleExpand}
+            className="shrink-0 p-1 rounded hover:bg-muted transition-colors"
+          >
+            {isExpanded ? (
+              <ChevronUp className="w-5 h-5 text-muted-foreground" />
+            ) : (
+              <ChevronDown className="w-5 h-5 text-muted-foreground" />
+            )}
+          </button>
+          {maintenanceIcons[schedule.maintenanceStatus]}
+          <h3 className="font-medium text-foreground truncate text-sm flex-1">
             {schedule.propertyName}
           </h3>
-          <p className="text-xs text-muted-foreground">
-            <span className="font-bold">{format(schedule.checkOut, "dd/MM HH:mm")}</span> • {schedule.numberOfGuests} hóspede(s) • {schedule.cleanerName}
-          </p>
-        </div>
-        <div className="flex items-center gap-2 shrink-0">
           <Popover>
             <PopoverTrigger asChild>
               <button 
                 onClick={(e) => e.stopPropagation()}
-                className="p-1.5 rounded hover:bg-muted transition-colors"
+                className="p-1.5 rounded hover:bg-muted transition-colors shrink-0"
               >
                 <Pencil className="w-3.5 h-3.5 text-muted-foreground" />
               </button>
@@ -286,14 +282,30 @@ export function ScheduleRow({ schedule, onClick, onUpdateTimes }: ScheduleRowPro
               </div>
             </PopoverContent>
           </Popover>
-          <div className="flex items-center gap-1">
-            <Badge className={cn('text-[10px] px-1.5 py-0.5 border', statusStyle.className)}>
-              {statusStyle.label.substring(0, 3)}
+        </div>
+        
+        {/* Middle row: info */}
+        <div className="flex items-center gap-2 text-xs text-muted-foreground pl-8">
+          <span className="font-bold text-foreground">{format(schedule.checkOut, "dd/MM HH:mm")}</span>
+          <span>•</span>
+          <span>{schedule.numberOfGuests} hóspede(s)</span>
+          <span>•</span>
+          <span className="truncate">{schedule.cleanerName}</span>
+        </div>
+        
+        {/* Bottom row: tags - full width for better visibility */}
+        <div className="flex items-center gap-2 pl-8 flex-wrap">
+          <Badge className={cn('text-xs px-2 py-0.5 border', statusStyle.className)}>
+            {statusStyle.label}
+          </Badge>
+          <Badge variant="outline" className={cn('text-xs px-2 py-0.5 border', priorityStyle.className)}>
+            Prioridade {priorityStyle.label}
+          </Badge>
+          {schedule.maintenanceStatus !== 'ok' && (
+            <Badge className="text-xs px-2 py-0.5 bg-status-alert-bg text-status-alert border border-status-alert/30">
+              Avaria
             </Badge>
-            <Badge variant="outline" className={cn('text-[10px] px-1.5 py-0.5 border', priorityStyle.className)}>
-              {priorityStyle.label.substring(0, 1)}
-            </Badge>
-          </div>
+          )}
         </div>
       </div>
 

@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Plus, RefreshCw, Home, Pencil, Trash2, Clock, AlertCircle, CheckCircle2, Link2 } from 'lucide-react';
+import { Plus, RefreshCw, Home, Pencil, Trash2, Clock, AlertCircle, CheckCircle2, Link2, ClipboardList } from 'lucide-react';
 import { SidebarProvider, SidebarInset, SidebarTrigger } from '@/components/ui/sidebar';
 import { AppSidebar } from '@/components/dashboard/AppSidebar';
 import { Button } from '@/components/ui/button';
@@ -8,11 +8,13 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { useUserRole } from '@/hooks/useUserRole';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
+import { ChecklistManager } from '@/components/properties/ChecklistManager';
 
 interface Property {
   id: string;
@@ -34,10 +36,20 @@ interface ICalSource {
   created_at: string;
 }
 
+interface PropertyChecklist {
+  id: string;
+  property_id: string;
+  name: string;
+  items: any[];
+  is_default: boolean;
+  created_at: string;
+}
+
 export default function Properties() {
   const { role, loading: isLoadingRole } = useUserRole();
   const [properties, setProperties] = useState<Property[]>([]);
   const [icalSources, setIcalSources] = useState<Record<string, ICalSource[]>>({});
+  const [propertyChecklists, setPropertyChecklists] = useState<PropertyChecklist[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isSyncing, setIsSyncing] = useState<string | null>(null);
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -66,6 +78,7 @@ export default function Properties() {
     if (!isLoadingRole && role) {
       fetchProperties();
       fetchIcalSources();
+      fetchChecklists();
     }
   }, [isLoadingRole, role]);
 
@@ -104,6 +117,23 @@ export default function Properties() {
       grouped[source.property_id].push(source);
     });
     setIcalSources(grouped);
+  };
+
+  const fetchChecklists = async () => {
+    const { data, error } = await supabase
+      .from('property_checklists')
+      .select('*')
+      .order('created_at', { ascending: true });
+
+    if (error) {
+      console.error('Error fetching checklists:', error);
+      return;
+    }
+
+    setPropertyChecklists((data || []).map(item => ({
+      ...item,
+      items: Array.isArray(item.items) ? item.items : []
+    })));
   };
 
   const resetForm = () => {
@@ -548,122 +578,152 @@ export default function Properties() {
                       </div>
                     </CardHeader>
                     <CardContent className="pt-0">
-                      {/* iCal Sources List */}
-                      <div className="space-y-2">
-                        <div className="flex items-center justify-between">
-                          <p className="text-sm font-medium">Anúncios ({icalSources[property.id]?.length || 0})</p>
-                          {canManage && (
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={() => handleAddIcal(property.id)}
-                            >
-                              <Plus className="h-3 w-3 mr-1" />
-                              Adicionar iCal
-                            </Button>
-                          )}
-                        </div>
+                      <Tabs defaultValue="ical" className="w-full">
+                        <TabsList className="grid w-full grid-cols-2 mb-4">
+                          <TabsTrigger value="ical" className="text-xs">
+                            <Link2 className="h-3 w-3 mr-1" />
+                            Anúncios ({icalSources[property.id]?.length || 0})
+                          </TabsTrigger>
+                          <TabsTrigger value="checklist" className="text-xs">
+                            <ClipboardList className="h-3 w-3 mr-1" />
+                            Checklists ({propertyChecklists.filter(c => c.property_id === property.id).length})
+                          </TabsTrigger>
+                        </TabsList>
                         
-                        {icalSources[property.id]?.length > 0 ? (
+                        <TabsContent value="ical" className="mt-0">
+                          {/* iCal Sources List */}
                           <div className="space-y-2">
-                            {icalSources[property.id].map((source) => (
-                              <div
-                                key={source.id}
-                                className="flex items-center justify-between p-3 bg-muted/50 rounded-lg border"
-                              >
-                                <div className="flex-1 min-w-0">
-                                  <div className="flex items-center gap-2">
-                                    <p className="text-sm font-medium truncate">
-                                      {source.custom_name || 'Anúncio sem nome'}
-                                    </p>
-                                    {source.last_error ? (
-                                      <span className="text-xs bg-destructive/10 text-destructive px-2 py-0.5 rounded-full">
-                                        Erro
-                                      </span>
-                                    ) : source.last_sync_at ? (
-                                      <span className="text-xs bg-green-500/10 text-green-600 dark:text-green-400 px-2 py-0.5 rounded-full">
-                                        Sincronizado
-                                      </span>
-                                    ) : (
-                                      <span className="text-xs bg-muted text-muted-foreground px-2 py-0.5 rounded-full">
-                                        Pendente
-                                      </span>
-                                    )}
-                                  </div>
-                                  <div className="flex items-center gap-3 text-xs text-muted-foreground mt-1">
-                                    <span>{source.reservations_count} reservas</span>
-                                    {source.last_sync_at && (
-                                      <span>
-                                        Atualizado: {format(new Date(source.last_sync_at), "dd/MM HH:mm", { locale: ptBR })}
-                                      </span>
-                                    )}
-                                  </div>
-                                  {source.last_error && (
-                                    <p className="text-xs text-destructive mt-1 truncate">
-                                      {source.last_error}
-                                    </p>
-                                  )}
-                                </div>
-                                <div className="flex items-center gap-1 ml-2">
-                                  <Button
-                                    variant="ghost"
-                                    size="icon"
-                                    className="h-8 w-8"
-                                    onClick={() => handleSyncSource(source.id)}
-                                    disabled={isSyncing !== null}
+                            <div className="flex items-center justify-between">
+                              <p className="text-sm font-medium">Anúncios</p>
+                              {canManage && (
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() => handleAddIcal(property.id)}
+                                >
+                                  <Plus className="h-3 w-3 mr-1" />
+                                  Adicionar iCal
+                                </Button>
+                              )}
+                            </div>
+                            
+                            {icalSources[property.id]?.length > 0 ? (
+                              <div className="space-y-2">
+                                {icalSources[property.id].map((source) => (
+                                  <div
+                                    key={source.id}
+                                    className="flex items-center justify-between p-3 bg-muted/50 rounded-lg border"
                                   >
-                                    <RefreshCw className={`h-4 w-4 ${isSyncing === source.id ? 'animate-spin' : ''}`} />
-                                  </Button>
-                                  {canManage && (
-                                    <>
+                                    <div className="flex-1 min-w-0">
+                                      <div className="flex items-center gap-2">
+                                        <p className="text-sm font-medium truncate">
+                                          {source.custom_name || 'Anúncio sem nome'}
+                                        </p>
+                                        {source.last_error ? (
+                                          <span className="text-xs bg-destructive/10 text-destructive px-2 py-0.5 rounded-full">
+                                            Erro
+                                          </span>
+                                        ) : source.last_sync_at ? (
+                                          <span className="text-xs bg-green-500/10 text-green-600 dark:text-green-400 px-2 py-0.5 rounded-full">
+                                            Sincronizado
+                                          </span>
+                                        ) : (
+                                          <span className="text-xs bg-muted text-muted-foreground px-2 py-0.5 rounded-full">
+                                            Pendente
+                                          </span>
+                                        )}
+                                      </div>
+                                      <div className="flex items-center gap-3 text-xs text-muted-foreground mt-1">
+                                        <span>{source.reservations_count} reservas</span>
+                                        {source.last_sync_at && (
+                                          <span>
+                                            Atualizado: {format(new Date(source.last_sync_at), "dd/MM HH:mm", { locale: ptBR })}
+                                          </span>
+                                        )}
+                                      </div>
+                                      {source.last_error && (
+                                        <p className="text-xs text-destructive mt-1 truncate">
+                                          {source.last_error}
+                                        </p>
+                                      )}
+                                    </div>
+                                    <div className="flex items-center gap-1 ml-2">
                                       <Button
                                         variant="ghost"
                                         size="icon"
                                         className="h-8 w-8"
-                                        onClick={() => handleEditIcal(source)}
+                                        onClick={() => handleSyncSource(source.id)}
+                                        disabled={isSyncing !== null}
                                       >
-                                        <Pencil className="h-4 w-4" />
+                                        <RefreshCw className={`h-4 w-4 ${isSyncing === source.id ? 'animate-spin' : ''}`} />
                                       </Button>
-                                      <AlertDialog>
-                                        <AlertDialogTrigger asChild>
+                                      {canManage && (
+                                        <>
                                           <Button
                                             variant="ghost"
                                             size="icon"
-                                            className="h-8 w-8 text-destructive hover:text-destructive"
+                                            className="h-8 w-8"
+                                            onClick={() => handleEditIcal(source)}
                                           >
-                                            <Trash2 className="h-4 w-4" />
+                                            <Pencil className="h-4 w-4" />
                                           </Button>
-                                        </AlertDialogTrigger>
-                                        <AlertDialogContent>
-                                          <AlertDialogHeader>
-                                            <AlertDialogTitle>Excluir anúncio?</AlertDialogTitle>
-                                            <AlertDialogDescription>
-                                              Esta ação não pode ser desfeita. O anúncio será removido e não será mais sincronizado.
-                                            </AlertDialogDescription>
-                                          </AlertDialogHeader>
-                                          <AlertDialogFooter>
-                                            <AlertDialogCancel>Cancelar</AlertDialogCancel>
-                                            <AlertDialogAction
-                                              onClick={() => handleDeleteIcal(source.id)}
-                                              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                                            >
-                                              Excluir
-                                            </AlertDialogAction>
-                                          </AlertDialogFooter>
-                                        </AlertDialogContent>
-                                      </AlertDialog>
-                                    </>
-                                  )}
-                                </div>
+                                          <AlertDialog>
+                                            <AlertDialogTrigger asChild>
+                                              <Button
+                                                variant="ghost"
+                                                size="icon"
+                                                className="h-8 w-8 text-destructive hover:text-destructive"
+                                              >
+                                                <Trash2 className="h-4 w-4" />
+                                              </Button>
+                                            </AlertDialogTrigger>
+                                            <AlertDialogContent>
+                                              <AlertDialogHeader>
+                                                <AlertDialogTitle>Excluir anúncio?</AlertDialogTitle>
+                                                <AlertDialogDescription>
+                                                  Esta ação não pode ser desfeita. O anúncio será removido e não será mais sincronizado.
+                                                </AlertDialogDescription>
+                                              </AlertDialogHeader>
+                                              <AlertDialogFooter>
+                                                <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                                                <AlertDialogAction
+                                                  onClick={() => handleDeleteIcal(source.id)}
+                                                  className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                                                >
+                                                  Excluir
+                                                </AlertDialogAction>
+                                              </AlertDialogFooter>
+                                            </AlertDialogContent>
+                                          </AlertDialog>
+                                        </>
+                                      )}
+                                    </div>
+                                  </div>
+                                ))}
                               </div>
-                            ))}
+                            ) : (
+                              <p className="text-sm text-muted-foreground py-2">
+                                Nenhum anúncio configurado. Adicione uma URL iCal para sincronizar reservas.
+                              </p>
+                            )}
                           </div>
-                        ) : (
-                          <p className="text-sm text-muted-foreground py-2">
-                            Nenhum anúncio configurado. Adicione uma URL iCal para sincronizar reservas.
-                          </p>
-                        )}
-                      </div>
+                        </TabsContent>
+                        
+                        <TabsContent value="checklist" className="mt-0">
+                          {canManage ? (
+                            <ChecklistManager
+                              propertyId={property.id}
+                              propertyName={property.name}
+                              allChecklists={propertyChecklists}
+                              onChecklistsChange={fetchChecklists}
+                            />
+                          ) : (
+                            <p className="text-sm text-muted-foreground py-2">
+                              {propertyChecklists.filter(c => c.property_id === property.id).length} checklist(s) configurado(s).
+                            </p>
+                          )}
+                        </TabsContent>
+                      </Tabs>
                     </CardContent>
                   </Card>
                 ))}

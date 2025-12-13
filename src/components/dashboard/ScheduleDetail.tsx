@@ -105,9 +105,37 @@ export function ScheduleDetail({ schedule, onClose, onUpdateSchedule }: Schedule
     onUpdateSchedule({ ...schedule, checklist: updatedChecklist });
   };
 
+  // Check if all checklist categories have at least one item completed
+  const getCategoryCompletion = () => {
+    const categories = Object.keys(groupedChecklist);
+    const incompleteCategories: string[] = [];
+    
+    categories.forEach(category => {
+      const items = groupedChecklist[category];
+      const allCompleted = items.every(item => item.completed);
+      if (!allCompleted) {
+        incompleteCategories.push(category);
+      }
+    });
+    
+    return { allComplete: incompleteCategories.length === 0, incompleteCategories };
+  };
+
   const handleStatusChange = (newStatus?: ScheduleStatus) => {
     const targetStatus = newStatus || statusConfig[schedule.status].next;
     if (targetStatus && targetStatus !== schedule.status) {
+      // Block completion if checklist is not fully completed
+      if (targetStatus === 'completed' || targetStatus === 'inspection') {
+        const { allComplete, incompleteCategories } = getCategoryCompletion();
+        if (!allComplete) {
+          toast.error(
+            `Complete todas as seções do checklist antes de finalizar. Seções pendentes: ${incompleteCategories.join(', ')}`,
+            { duration: 5000 }
+          );
+          return;
+        }
+      }
+
       const updates: Partial<Schedule> = { status: targetStatus };
       
       // Register team arrival when starting cleaning
