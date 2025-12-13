@@ -73,7 +73,7 @@ export function ScheduleRow({ schedule, onClick }: ScheduleRowProps) {
       {/* Collapsed Row - Always Visible */}
       {/* Desktop: Grid layout matching header */}
       <div 
-        className="hidden md:grid grid-cols-[1fr_120px_100px_140px_100px_180px] gap-4 items-center p-3 cursor-pointer group"
+        className="hidden md:grid grid-cols-[1fr_120px_100px_100px_140px_180px] gap-4 items-center p-3 cursor-pointer group"
         onClick={onClick}
       >
         {/* Property Name */}
@@ -130,6 +130,11 @@ export function ScheduleRow({ schedule, onClick }: ScheduleRowProps) {
           {statusStyle.label}
         </Badge>
 
+        {/* Check-in Date */}
+        <span className="text-sm text-foreground">
+          {format(schedule.checkIn, "dd/MM", { locale: ptBR })}
+        </span>
+
         {/* Check-out Date */}
         <span className="text-sm text-foreground">
           {format(schedule.checkOut, "dd/MM", { locale: ptBR })}
@@ -138,11 +143,6 @@ export function ScheduleRow({ schedule, onClick }: ScheduleRowProps) {
         {/* Cleaner */}
         <span className="text-sm text-foreground truncate">
           {schedule.cleanerName}
-        </span>
-
-        {/* Check-in Date */}
-        <span className="text-sm text-foreground">
-          {format(schedule.checkIn, "dd/MM", { locale: ptBR })}
         </span>
 
         {/* Tags */}
