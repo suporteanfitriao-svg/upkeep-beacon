@@ -1,4 +1,4 @@
-import { Home, Users, HelpCircle, ClipboardCheck, LogOut, Building2, CalendarDays } from 'lucide-react';
+import { Home, Users, HelpCircle, ClipboardCheck, LogOut, Building2, CalendarDays, Wrench } from 'lucide-react';
 import { NavLink } from '@/components/NavLink';
 import { useAuth } from '@/hooks/useAuth';
 import { useNavigate } from 'react-router-dom';
@@ -22,6 +22,7 @@ const menuItems = [
   { title: 'Dashboard', url: '/', icon: CalendarDays },
   { title: 'Propriedades', url: '/propriedades', icon: Building2 },
   { title: 'Equipe', url: '/equipe', icon: Users },
+  { title: 'Manutenção', url: '/manutencao', icon: Wrench },
   { title: 'Inspeções', url: '/inspecoes', icon: ClipboardCheck },
   { title: 'Ajuda', url: '/ajuda', icon: HelpCircle },
 ];

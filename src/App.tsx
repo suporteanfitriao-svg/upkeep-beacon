@@ -11,6 +11,7 @@ import Team from "./pages/Team";
 import Properties from "./pages/Properties";
 import Inspections from "./pages/Inspections";
 import Help from "./pages/Help";
+import Manutencao from "./pages/Manutencao";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -61,6 +62,14 @@ const App = () => (
               element={
                 <ProtectedRoute>
                   <Help />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/manutencao"
+              element={
+                <ProtectedRoute>
+                  <Manutencao />
                 </ProtectedRoute>
               }
             />

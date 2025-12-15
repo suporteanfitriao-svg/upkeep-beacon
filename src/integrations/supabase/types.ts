@@ -14,6 +14,94 @@ export type Database = {
   }
   public: {
     Tables: {
+      maintenance_issues: {
+        Row: {
+          assigned_to: string | null
+          assigned_to_name: string | null
+          category: string
+          created_at: string
+          description: string
+          id: string
+          photo_url: string | null
+          property_id: string
+          property_name: string
+          reported_by: string | null
+          reported_by_name: string | null
+          resolution_notes: string | null
+          resolved_at: string | null
+          resolved_by: string | null
+          resolved_by_name: string | null
+          schedule_id: string | null
+          severity: string
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          assigned_to?: string | null
+          assigned_to_name?: string | null
+          category: string
+          created_at?: string
+          description: string
+          id?: string
+          photo_url?: string | null
+          property_id: string
+          property_name: string
+          reported_by?: string | null
+          reported_by_name?: string | null
+          resolution_notes?: string | null
+          resolved_at?: string | null
+          resolved_by?: string | null
+          resolved_by_name?: string | null
+          schedule_id?: string | null
+          severity?: string
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          assigned_to?: string | null
+          assigned_to_name?: string | null
+          category?: string
+          created_at?: string
+          description?: string
+          id?: string
+          photo_url?: string | null
+          property_id?: string
+          property_name?: string
+          reported_by?: string | null
+          reported_by_name?: string | null
+          resolution_notes?: string | null
+          resolved_at?: string | null
+          resolved_by?: string | null
+          resolved_by_name?: string | null
+          schedule_id?: string | null
+          severity?: string
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "maintenance_issues_assigned_to_fkey"
+            columns: ["assigned_to"]
+            isOneToOne: false
+            referencedRelation: "team_members"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "maintenance_issues_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: false
+            referencedRelation: "properties"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "maintenance_issues_schedule_id_fkey"
+            columns: ["schedule_id"]
+            isOneToOne: false
+            referencedRelation: "schedules"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       profiles: {
         Row: {
           avatar_url: string | null
