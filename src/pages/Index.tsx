@@ -56,25 +56,31 @@ const Index = () => {
       return true;
     });
 
-    // Sort: completed schedules go to the end
+    // Sort: by checkout time, then completed schedules go to the end
     return filtered.sort((a, b) => {
       if (a.status === 'completed' && b.status !== 'completed') return 1;
       if (a.status !== 'completed' && b.status === 'completed') return -1;
-      return 0;
+      // Sort by checkout time
+      return a.checkOut.getTime() - b.checkOut.getTime();
     });
   }, [schedules, activeStatusFilter, propertyFilter, dateFilter, customDate, searchQuery]);
 
   // Filtered stats for current date filter
   const filteredStats = useMemo(() => {
     const dateFiltered = schedules.filter(schedule => {
-      const checkInDate = schedule.checkIn;
-      if (dateFilter === 'today') return isToday(checkInDate);
-      if (dateFilter === 'tomorrow') return isTomorrow(checkInDate);
-      if (dateFilter === 'custom' && customDate) return isSameDay(checkInDate, customDate);
+      const checkOutDate = schedule.checkOut;
+      if (dateFilter === 'today') return isToday(checkOutDate);
+      if (dateFilter === 'tomorrow') return isTomorrow(checkOutDate);
+      if (dateFilter === 'custom' && customDate) return isSameDay(checkOutDate, customDate);
       return true;
     });
     return calculateStats(dateFiltered);
   }, [schedules, dateFilter, customDate]);
+
+  // Count of today's checkouts
+  const todayCheckoutsCount = useMemo(() => {
+    return schedules.filter(schedule => isToday(schedule.checkOut)).length;
+  }, [schedules]);
 
   const handleRefresh = async () => {
     await refetch();
@@ -169,7 +175,7 @@ const Index = () => {
         <AppSidebar />
         
         <main className="flex-1 px-4 sm:px-6 lg:px-8 py-6">
-          <DashboardHeader onRefresh={handleRefresh} />
+          <DashboardHeader onRefresh={handleRefresh} todayCheckoutsCount={todayCheckoutsCount} />
 
           {/* Status Cards */}
           <div className="grid grid-cols-2 lg:grid-cols-5 gap-3 mb-6">
