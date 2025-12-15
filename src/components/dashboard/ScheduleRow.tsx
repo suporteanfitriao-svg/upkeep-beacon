@@ -241,13 +241,35 @@ export function ScheduleRow({ schedule, onClick, onUpdateTimes, onReleaseSchedul
               </Tooltip>
             </TooltipProvider>
           )}
-          <Badge variant="outline" className={cn('text-xs border', priorityStyle.className)}>
-            {priorityStyle.label}
-          </Badge>
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Badge variant="outline" className={cn('text-xs border cursor-help', priorityStyle.className)}>
+                  {priorityStyle.label}
+                </Badge>
+              </TooltipTrigger>
+              <TooltipContent>
+                <p className="text-sm">
+                  {schedule.priority === 'high' && 'Check-in nas próximas 24h'}
+                  {schedule.priority === 'medium' && 'Check-in nos próximos 3 dias'}
+                  {schedule.priority === 'low' && 'Check-in em mais de 3 dias'}
+                </p>
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
           {schedule.maintenanceStatus !== 'ok' && (
-            <Badge className="text-xs bg-status-alert-bg text-status-alert border border-status-alert/30">
-              Avaria
-            </Badge>
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Badge className="text-xs bg-status-alert-bg text-status-alert border border-status-alert/30 cursor-help">
+                    Avaria
+                  </Badge>
+                </TooltipTrigger>
+                <TooltipContent>
+                  <p className="text-sm">Problema reportado que precisa de manutenção</p>
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
           )}
         </div>
       </div>
@@ -332,13 +354,35 @@ export function ScheduleRow({ schedule, onClick, onUpdateTimes, onReleaseSchedul
           <Badge className={cn('text-xs px-2 py-0.5 border', statusStyle.className)}>
             {statusStyle.label}
           </Badge>
-          <Badge variant="outline" className={cn('text-xs px-2 py-0.5 border', priorityStyle.className)}>
-            Prioridade {priorityStyle.label}
-          </Badge>
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Badge variant="outline" className={cn('text-xs px-2 py-0.5 border cursor-help', priorityStyle.className)}>
+                  Prioridade {priorityStyle.label}
+                </Badge>
+              </TooltipTrigger>
+              <TooltipContent>
+                <p className="text-sm">
+                  {schedule.priority === 'high' && 'Check-in nas próximas 24h'}
+                  {schedule.priority === 'medium' && 'Check-in nos próximos 3 dias'}
+                  {schedule.priority === 'low' && 'Check-in em mais de 3 dias'}
+                </p>
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
           {schedule.maintenanceStatus !== 'ok' && (
-            <Badge className="text-xs px-2 py-0.5 bg-status-alert-bg text-status-alert border border-status-alert/30">
-              Avaria
-            </Badge>
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Badge className="text-xs px-2 py-0.5 bg-status-alert-bg text-status-alert border border-status-alert/30 cursor-help">
+                    Avaria
+                  </Badge>
+                </TooltipTrigger>
+                <TooltipContent>
+                  <p className="text-sm">Problema reportado que precisa de manutenção</p>
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
           )}
         </div>
       </div>
