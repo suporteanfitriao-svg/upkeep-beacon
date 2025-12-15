@@ -39,11 +39,11 @@ const Index = () => {
         return false;
       }
 
-      // Date filter
-      const checkInDate = schedule.checkIn;
-      if (dateFilter === 'today' && !isToday(checkInDate)) return false;
-      if (dateFilter === 'tomorrow' && !isTomorrow(checkInDate)) return false;
-      if (dateFilter === 'custom' && customDate && !isSameDay(checkInDate, customDate)) return false;
+      // Date filter (by checkout date)
+      const checkOutDate = schedule.checkOut;
+      if (dateFilter === 'today' && !isToday(checkOutDate)) return false;
+      if (dateFilter === 'tomorrow' && !isTomorrow(checkOutDate)) return false;
+      if (dateFilter === 'custom' && customDate && !isSameDay(checkOutDate, customDate)) return false;
 
       // Search filter
       if (searchQuery) {

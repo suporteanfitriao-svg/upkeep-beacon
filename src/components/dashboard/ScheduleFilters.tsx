@@ -157,10 +157,10 @@ export function ScheduleFilters({
   );
 }
 
-export function filterByDate(checkIn: Date, dateFilter: DateFilter, customDate: Date | undefined): boolean {
+export function filterByDate(checkOut: Date, dateFilter: DateFilter, customDate: Date | undefined): boolean {
   if (dateFilter === 'all') return true;
-  if (dateFilter === 'today') return isToday(checkIn);
-  if (dateFilter === 'tomorrow') return isTomorrow(checkIn);
-  if (dateFilter === 'custom' && customDate) return isSameDay(checkIn, customDate);
+  if (dateFilter === 'today') return isToday(checkOut);
+  if (dateFilter === 'tomorrow') return isTomorrow(checkOut);
+  if (dateFilter === 'custom' && customDate) return isSameDay(checkOut, customDate);
   return true;
 }
