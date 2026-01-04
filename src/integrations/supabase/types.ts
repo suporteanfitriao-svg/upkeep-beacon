@@ -500,29 +500,44 @@ export type Database = {
       waitlist: {
         Row: {
           challenges: string | null
+          city: string | null
           created_at: string
           email: string
           id: string
           name: string
           property_count: string
+          property_link: string | null
+          property_type: string | null
+          property_type_other: string | null
+          state: string | null
           whatsapp: string
         }
         Insert: {
           challenges?: string | null
+          city?: string | null
           created_at?: string
           email: string
           id?: string
           name: string
           property_count: string
+          property_link?: string | null
+          property_type?: string | null
+          property_type_other?: string | null
+          state?: string | null
           whatsapp: string
         }
         Update: {
           challenges?: string | null
+          city?: string | null
           created_at?: string
           email?: string
           id?: string
           name?: string
           property_count?: string
+          property_link?: string | null
+          property_type?: string | null
+          property_type_other?: string | null
+          state?: string | null
           whatsapp?: string
         }
         Relationships: []
