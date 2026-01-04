@@ -211,15 +211,21 @@ export default function Landing() {
             </div>
 
             {/* Free Card */}
-            <Card className="bg-gradient-to-br from-purple-500/20 to-cyan-500/20 border border-purple-500/30 backdrop-blur-sm max-w-md">
-              <CardContent className="p-6 flex items-start gap-4">
-                <div className="w-12 h-12 rounded-full bg-gradient-to-br from-cyan-400 to-purple-500 flex items-center justify-center flex-shrink-0">
-                  <Gift className="w-6 h-6 text-white" />
+            <Card className="bg-gradient-to-r from-cyan-500 to-purple-600 border-0 max-w-md shadow-2xl shadow-cyan-500/40 relative overflow-hidden">
+              <div className="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAiIGhlaWdodD0iNDAiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PGRlZnM+PHBhdHRlcm4gaWQ9ImdyaWQiIHdpZHRoPSI0MCIgaGVpZ2h0PSI0MCIgcGF0dGVyblVuaXRzPSJ1c2VyU3BhY2VPblVzZSI+PHBhdGggZD0iTSAwIDEwIEwgNDAgMTAgTSAxMCAwIEwgMTAgNDAgTSAwIDIwIEwgNDAgMjAgTSAyMCAwIEwgMjAgNDAgTSAwIDMwIEwgNDAgMzAgTSAzMCAwIEwgMzAgNDAiIGZpbGw9Im5vbmUiIHN0cm9rZT0icmdiYSgyNTUsMjU1LDI1NSwwLjA1KSIgc3Ryb2tlLXdpZHRoPSIxIi8+PC9wYXR0ZXJuPjwvZGVmcz48cmVjdCB3aWR0aD0iMTAwJSIgaGVpZ2h0PSIxMDAlIiBmaWxsPSJ1cmwoI2dyaWQpIi8+PC9zdmc+')] opacity-50" />
+              <CardContent className="p-6 flex items-start gap-4 relative">
+                <div className="w-14 h-14 rounded-full bg-white/20 backdrop-blur-sm flex items-center justify-center flex-shrink-0 ring-2 ring-white/30">
+                  <Gift className="w-7 h-7 text-white" />
                 </div>
                 <div>
-                  <h3 className="text-lg font-bold text-white mb-1">Use sem custos!</h3>
-                  <p className="text-sm text-gray-300">
-                    Cadastre-se agora e use gratuitamente se você for selecionado para o programa beta exclusivo.
+                  <div className="flex items-center gap-2 mb-1">
+                    <h3 className="text-xl font-black text-white">USE GRÁTIS!</h3>
+                    <Badge className="bg-yellow-400 text-yellow-900 text-xs font-bold border-0">
+                      TEMPO LIMITADO
+                    </Badge>
+                  </div>
+                  <p className="text-sm text-white/90 font-medium">
+                    Cadastre-se agora e use <strong>gratuitamente por tempo limitado</strong> se você for selecionado para o programa beta exclusivo.
                   </p>
                 </div>
               </CardContent>
