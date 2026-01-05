@@ -166,31 +166,31 @@ export default function Landing() {
     <div className="min-h-screen bg-[#0a0a0f] text-white overflow-hidden">
       {/* Neon background effects */}
       <div className="fixed inset-0 pointer-events-none">
-        <div className="absolute top-0 left-1/4 w-96 h-96 bg-cyan-500/20 rounded-full blur-[120px]" />
-        <div className="absolute bottom-0 right-1/4 w-96 h-96 bg-purple-500/20 rounded-full blur-[120px]" />
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-blue-500/10 rounded-full blur-[150px]" />
+        <div className="absolute top-0 left-1/4 w-48 sm:w-96 h-48 sm:h-96 bg-cyan-500/15 sm:bg-cyan-500/20 rounded-full blur-[80px] sm:blur-[120px]" />
+        <div className="absolute bottom-0 right-1/4 w-48 sm:w-96 h-48 sm:h-96 bg-purple-500/15 sm:bg-purple-500/20 rounded-full blur-[80px] sm:blur-[120px]" />
+        <div className="hidden sm:block absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[400px] lg:w-[600px] h-[400px] lg:h-[600px] bg-blue-500/10 rounded-full blur-[150px]" />
       </div>
 
       {/* Floating Badge */}
-      <div className="fixed top-6 left-6 z-50 animate-pulse">
-        <Badge className="bg-gradient-to-r from-cyan-500 to-purple-500 text-white border-0 px-4 py-2 text-sm font-bold shadow-lg shadow-cyan-500/30">
-          <Zap className="w-4 h-4 mr-2" />
+      <div className="absolute top-4 left-1/2 -translate-x-1/2 md:fixed md:top-6 md:left-6 md:translate-x-0 z-50 animate-pulse">
+        <Badge className="bg-gradient-to-r from-cyan-500 to-purple-500 text-white border-0 px-3 py-1.5 text-xs sm:px-4 sm:py-2 sm:text-sm font-bold shadow-lg shadow-cyan-500/30">
+          <Zap className="w-3 h-3 sm:w-4 sm:h-4 mr-1.5 sm:mr-2" />
           INÉDITO NO BRASIL
         </Badge>
       </div>
 
       {/* Hero Section */}
-      <div className="relative container mx-auto px-4 py-12 lg:py-20">
-        <div className="grid lg:grid-cols-2 gap-12 items-start">
+      <div className="relative container mx-auto px-4 pt-16 pb-8 sm:py-12 lg:py-20">
+        <div className="grid lg:grid-cols-2 gap-8 lg:gap-12 items-start">
           {/* Left side - Content */}
-          <div className="space-y-8 pt-8 lg:pt-16">
+          <div className="space-y-6 sm:space-y-8 text-center lg:text-left">
             <div className="space-y-4">
-              <Badge variant="outline" className="border-cyan-500/50 text-cyan-400 px-4 py-1.5 text-sm bg-cyan-500/10">
-                <Sparkles className="w-4 h-4 mr-2" />
+              <Badge variant="outline" className="border-cyan-500/50 text-cyan-400 px-3 sm:px-4 py-1 sm:py-1.5 text-xs sm:text-sm bg-cyan-500/10">
+                <Sparkles className="w-3 h-3 sm:w-4 sm:h-4 mr-1.5 sm:mr-2" />
                 Lançamento em breve
               </Badge>
               
-              <h1 className="text-5xl lg:text-7xl font-black">
+              <h1 className="text-4xl sm:text-5xl lg:text-7xl font-black">
                 <span className="bg-gradient-to-r from-white via-cyan-200 to-white bg-clip-text text-transparent">
                   Superhost
                 </span>
@@ -200,31 +200,31 @@ export default function Landing() {
                 </span>
               </h1>
               
-              <p className="text-2xl lg:text-3xl font-light text-cyan-300">
+              <p className="text-xl sm:text-2xl lg:text-3xl font-light text-cyan-300">
                 Gestão de Limpeza
               </p>
               
-              <p className="text-lg text-gray-400 max-w-md leading-relaxed">
+              <p className="text-base sm:text-lg text-gray-400 max-w-md mx-auto lg:mx-0 leading-relaxed">
                 A plataforma completa para gestão de limpeza de imóveis de temporada. 
                 Automatize sua operação e nunca mais perca um checkout.
               </p>
             </div>
 
             {/* Free Card */}
-            <Card className="bg-gradient-to-r from-cyan-500 to-purple-600 border-0 max-w-md shadow-2xl shadow-cyan-500/40 relative overflow-hidden">
+            <Card className="bg-gradient-to-r from-cyan-500 to-purple-600 border-0 max-w-md mx-auto lg:mx-0 shadow-2xl shadow-cyan-500/40 relative overflow-hidden">
               <div className="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAiIGhlaWdodD0iNDAiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PGRlZnM+PHBhdHRlcm4gaWQ9ImdyaWQiIHdpZHRoPSI0MCIgaGVpZ2h0PSI0MCIgcGF0dGVyblVuaXRzPSJ1c2VyU3BhY2VPblVzZSI+PHBhdGggZD0iTSAwIDEwIEwgNDAgMTAgTSAxMCAwIEwgMTAgNDAgTSAwIDIwIEwgNDAgMjAgTSAyMCAwIEwgMjAgNDAgTSAwIDMwIEwgNDAgMzAgTSAzMCAwIEwgMzAgNDAiIGZpbGw9Im5vbmUiIHN0cm9rZT0icmdiYSgyNTUsMjU1LDI1NSwwLjA1KSIgc3Ryb2tlLXdpZHRoPSIxIi8+PC9wYXR0ZXJuPjwvZGVmcz48cmVjdCB3aWR0aD0iMTAwJSIgaGVpZ2h0PSIxMDAlIiBmaWxsPSJ1cmwoI2dyaWQpIi8+PC9zdmc+')] opacity-50" />
-              <CardContent className="p-6 flex items-start gap-4 relative">
-                <div className="w-14 h-14 rounded-full bg-white/20 backdrop-blur-sm flex items-center justify-center flex-shrink-0 ring-2 ring-white/30">
-                  <Gift className="w-7 h-7 text-white" />
+              <CardContent className="p-4 sm:p-6 flex flex-col sm:flex-row items-center sm:items-start gap-3 sm:gap-4 relative text-center sm:text-left">
+                <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-full bg-white/20 backdrop-blur-sm flex items-center justify-center flex-shrink-0 ring-2 ring-white/30">
+                  <Gift className="w-6 h-6 sm:w-7 sm:h-7 text-white" />
                 </div>
                 <div>
-                  <div className="flex items-center gap-2 mb-1">
-                    <h3 className="text-xl font-black text-white">USE GRÁTIS!</h3>
-                    <Badge className="bg-yellow-400 text-yellow-900 text-xs font-bold border-0">
+                  <div className="flex flex-wrap items-center justify-center sm:justify-start gap-2 mb-1">
+                    <h3 className="text-lg sm:text-xl font-black text-white">USE GRÁTIS!</h3>
+                    <Badge className="bg-yellow-400 text-yellow-900 text-[10px] sm:text-xs font-bold border-0">
                       TEMPO LIMITADO
                     </Badge>
                   </div>
-                  <p className="text-sm text-white/90 font-medium">
+                  <p className="text-xs sm:text-sm text-white/90 font-medium">
                     Cadastre-se agora e use <strong>gratuitamente por tempo limitado</strong> se você for selecionado para o programa beta exclusivo.
                   </p>
                 </div>
@@ -232,14 +232,14 @@ export default function Landing() {
             </Card>
 
             {/* Features Grid */}
-            <div className="grid grid-cols-2 gap-4 pt-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4 pt-2 sm:pt-4">
               {features.map((feature, index) => (
                 <div 
                   key={index} 
-                  className="flex items-start gap-3 p-3 rounded-lg bg-white/5 border border-white/10 hover:border-cyan-500/50 transition-colors"
+                  className="flex items-start gap-3 p-3 sm:p-4 rounded-lg bg-white/5 border border-white/10 hover:border-cyan-500/50 transition-colors"
                 >
-                  <feature.icon className="w-5 h-5 text-cyan-400 flex-shrink-0 mt-0.5" />
-                  <div>
+                  <feature.icon className="w-5 h-5 sm:w-6 sm:h-6 text-cyan-400 flex-shrink-0 mt-0.5" />
+                  <div className="text-left">
                     <h4 className="text-sm font-semibold text-white">{feature.title}</h4>
                     <p className="text-xs text-gray-400">{feature.description}</p>
                   </div>
@@ -249,88 +249,88 @@ export default function Landing() {
           </div>
 
           {/* Right side - Form */}
-          <div className="lg:sticky lg:top-8">
+          <div className="mt-4 lg:mt-0 lg:sticky lg:top-8">
             <Card className="bg-[#12121a]/90 border border-white/10 backdrop-blur-xl shadow-2xl shadow-cyan-500/10">
-              <CardHeader className="text-center pb-4">
-                <CardTitle className="text-2xl text-white">
+              <CardHeader className="text-center pb-4 px-4 sm:px-6">
+                <CardTitle className="text-xl sm:text-2xl text-white">
                   {submitted ? "Obrigado pelo interesse!" : "Seja um dos primeiros"}
                 </CardTitle>
-                <CardDescription className="text-gray-400">
+                <CardDescription className="text-gray-400 text-sm">
                   {submitted 
                     ? "Entraremos em contato quando lançarmos." 
                     : "Garanta seu acesso antecipado e gratuito"
                   }
                 </CardDescription>
               </CardHeader>
-              <CardContent>
+              <CardContent className="px-4 sm:px-6">
                 {submitted ? (
-                  <div className="text-center py-8">
-                    <div className="w-20 h-20 rounded-full bg-gradient-to-br from-cyan-400 to-purple-500 flex items-center justify-center mx-auto mb-4">
-                      <CheckCircle2 className="w-10 h-10 text-white" />
+                  <div className="text-center py-6 sm:py-8">
+                    <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-full bg-gradient-to-br from-cyan-400 to-purple-500 flex items-center justify-center mx-auto mb-4">
+                      <CheckCircle2 className="w-8 h-8 sm:w-10 sm:h-10 text-white" />
                     </div>
-                    <p className="text-gray-400">
+                    <p className="text-gray-400 text-sm sm:text-base">
                       Você receberá atualizações no email e WhatsApp cadastrados.
                     </p>
                   </div>
                 ) : (
-                  <form onSubmit={handleSubmit} className="space-y-4">
-                    <div className="grid grid-cols-2 gap-4">
-                      <div className="col-span-2 space-y-2">
-                        <Label htmlFor="name" className="text-gray-300">Nome *</Label>
+                  <form onSubmit={handleSubmit} className="space-y-4 sm:space-y-5">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      <div className="sm:col-span-2 space-y-2">
+                        <Label htmlFor="name" className="text-gray-300 text-sm">Nome *</Label>
                         <Input
                           id="name"
                           placeholder="Seu nome completo"
                           value={formData.name}
                           onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                          className="bg-white/5 border-white/20 text-white placeholder:text-gray-500 focus:border-cyan-500"
+                          className="bg-white/5 border-white/20 text-white placeholder:text-gray-500 focus:border-cyan-500 h-11 sm:h-10"
                           required
                         />
                       </div>
 
                       <div className="space-y-2">
-                        <Label htmlFor="email" className="text-gray-300">Email *</Label>
+                        <Label htmlFor="email" className="text-gray-300 text-sm">Email *</Label>
                         <Input
                           id="email"
                           type="email"
                           placeholder="seu@email.com"
                           value={formData.email}
                           onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                          className="bg-white/5 border-white/20 text-white placeholder:text-gray-500 focus:border-cyan-500"
+                          className="bg-white/5 border-white/20 text-white placeholder:text-gray-500 focus:border-cyan-500 h-11 sm:h-10"
                           required
                         />
                       </div>
 
                       <div className="space-y-2">
-                        <Label htmlFor="whatsapp" className="text-gray-300">WhatsApp *</Label>
+                        <Label htmlFor="whatsapp" className="text-gray-300 text-sm">WhatsApp *</Label>
                         <Input
                           id="whatsapp"
                           placeholder="(11) 99999-9999"
                           value={formData.whatsapp}
                           onChange={(e) => setFormData({ ...formData, whatsapp: e.target.value })}
-                          className="bg-white/5 border-white/20 text-white placeholder:text-gray-500 focus:border-cyan-500"
+                          className="bg-white/5 border-white/20 text-white placeholder:text-gray-500 focus:border-cyan-500 h-11 sm:h-10"
                           required
                         />
                       </div>
 
                       <div className="space-y-2">
-                        <Label htmlFor="city" className="text-gray-300">Cidade *</Label>
+                        <Label htmlFor="city" className="text-gray-300 text-sm">Cidade *</Label>
                         <Input
                           id="city"
                           placeholder="Sua cidade"
                           value={formData.city}
                           onChange={(e) => setFormData({ ...formData, city: e.target.value })}
-                          className="bg-white/5 border-white/20 text-white placeholder:text-gray-500 focus:border-cyan-500"
+                          className="bg-white/5 border-white/20 text-white placeholder:text-gray-500 focus:border-cyan-500 h-11 sm:h-10"
                           required
                         />
                       </div>
 
                       <div className="space-y-2">
-                        <Label htmlFor="state" className="text-gray-300">Estado *</Label>
+                        <Label htmlFor="state" className="text-gray-300 text-sm">Estado *</Label>
                         <Select
                           value={formData.state}
                           onValueChange={(value) => setFormData({ ...formData, state: value })}
                         >
-                          <SelectTrigger className="bg-white/5 border-white/20 text-white focus:border-cyan-500">
+                          <SelectTrigger className="bg-white/5 border-white/20 text-white focus:border-cyan-500 h-11 sm:h-10">
                             <SelectValue placeholder="UF" />
                           </SelectTrigger>
                           <SelectContent className="bg-[#1a1a24] border-white/20">
@@ -344,12 +344,12 @@ export default function Landing() {
                       </div>
 
                       <div className="space-y-2">
-                        <Label htmlFor="propertyCount" className="text-gray-300">Qtd. de imóveis *</Label>
+                        <Label htmlFor="propertyCount" className="text-gray-300 text-sm">Qtd. de imóveis *</Label>
                         <Select
                           value={formData.propertyCount}
                           onValueChange={(value) => setFormData({ ...formData, propertyCount: value })}
                         >
-                          <SelectTrigger className="bg-white/5 border-white/20 text-white focus:border-cyan-500">
+                          <SelectTrigger className="bg-white/5 border-white/20 text-white focus:border-cyan-500 h-11 sm:h-10">
                             <SelectValue placeholder="Selecione" />
                           </SelectTrigger>
                           <SelectContent className="bg-[#1a1a24] border-white/20">
@@ -363,12 +363,12 @@ export default function Landing() {
                       </div>
 
                       <div className="space-y-2">
-                        <Label htmlFor="propertyType" className="text-gray-300">Tipo de imóvel *</Label>
+                        <Label htmlFor="propertyType" className="text-gray-300 text-sm">Tipo de imóvel *</Label>
                         <Select
                           value={formData.propertyType}
                           onValueChange={(value) => setFormData({ ...formData, propertyType: value, propertyTypeOther: "" })}
                         >
-                          <SelectTrigger className="bg-white/5 border-white/20 text-white focus:border-cyan-500">
+                          <SelectTrigger className="bg-white/5 border-white/20 text-white focus:border-cyan-500 h-11 sm:h-10">
                             <SelectValue placeholder="Selecione" />
                           </SelectTrigger>
                           <SelectContent className="bg-[#1a1a24] border-white/20">
@@ -382,31 +382,31 @@ export default function Landing() {
                       </div>
 
                       {formData.propertyType === "outros" && (
-                        <div className="col-span-2 space-y-2">
-                          <Label htmlFor="propertyTypeOther" className="text-gray-300">Especifique o tipo *</Label>
+                        <div className="sm:col-span-2 space-y-2">
+                          <Label htmlFor="propertyTypeOther" className="text-gray-300 text-sm">Especifique o tipo *</Label>
                           <Input
                             id="propertyTypeOther"
                             placeholder="Descreva o tipo de imóvel"
                             value={formData.propertyTypeOther}
                             onChange={(e) => setFormData({ ...formData, propertyTypeOther: e.target.value })}
-                            className="bg-white/5 border-white/20 text-white placeholder:text-gray-500 focus:border-cyan-500"
+                            className="bg-white/5 border-white/20 text-white placeholder:text-gray-500 focus:border-cyan-500 h-11 sm:h-10"
                           />
                         </div>
                       )}
 
-                      <div className="col-span-2 space-y-2">
-                        <Label htmlFor="propertyLink" className="text-gray-300">Link do seu imóvel (Airbnb, Booking, etc.)</Label>
+                      <div className="sm:col-span-2 space-y-2">
+                        <Label htmlFor="propertyLink" className="text-gray-300 text-sm">Link do seu imóvel (Airbnb, Booking, etc.)</Label>
                         <Input
                           id="propertyLink"
                           placeholder="https://airbnb.com/rooms/..."
                           value={formData.propertyLink}
                           onChange={(e) => setFormData({ ...formData, propertyLink: e.target.value })}
-                          className="bg-white/5 border-white/20 text-white placeholder:text-gray-500 focus:border-cyan-500"
+                          className="bg-white/5 border-white/20 text-white placeholder:text-gray-500 focus:border-cyan-500 h-11 sm:h-10"
                         />
                       </div>
 
-                      <div className="col-span-2 space-y-2">
-                        <Label htmlFor="challenges" className="text-gray-300">
+                      <div className="sm:col-span-2 space-y-2">
+                        <Label htmlFor="challenges" className="text-gray-300 text-sm">
                           Maiores dificuldades com gestão de limpeza?
                         </Label>
                         <Textarea
@@ -422,7 +422,7 @@ export default function Landing() {
 
                     <Button 
                       type="submit" 
-                      className="w-full bg-gradient-to-r from-cyan-500 to-purple-500 hover:from-cyan-400 hover:to-purple-400 text-white font-bold py-6 text-lg shadow-lg shadow-cyan-500/30 transition-all hover:shadow-cyan-500/50" 
+                      className="w-full bg-gradient-to-r from-cyan-500 to-purple-500 hover:from-cyan-400 hover:to-purple-400 text-white font-bold py-4 sm:py-6 text-base sm:text-lg shadow-lg shadow-cyan-500/30 transition-all hover:shadow-cyan-500/50" 
                       size="lg"
                       disabled={isSubmitting}
                     >
@@ -437,8 +437,8 @@ export default function Landing() {
       </div>
 
       {/* Footer */}
-      <footer className="relative border-t border-white/10 py-8 mt-16">
-        <div className="container mx-auto px-4 text-center text-gray-500 text-sm">
+      <footer className="relative border-t border-white/10 py-6 sm:py-8 mt-8 sm:mt-16">
+        <div className="container mx-auto px-4 text-center text-gray-500 text-xs sm:text-sm">
           <p>© 2024 Superhost Lab. Todos os direitos reservados.</p>
         </div>
       </footer>
