@@ -211,21 +211,21 @@ export default function Landing() {
             </div>
 
             {/* Free Card */}
-            <Card className="bg-gradient-to-r from-cyan-500 to-purple-600 border-0 max-w-md mx-auto lg:mx-0 shadow-2xl shadow-cyan-500/40 relative overflow-hidden">
-              <div className="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAiIGhlaWdodD0iNDAiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PGRlZnM+PHBhdHRlcm4gaWQ9ImdyaWQiIHdpZHRoPSI0MCIgaGVpZ2h0PSI0MCIgcGF0dGVyblVuaXRzPSJ1c2VyU3BhY2VPblVzZSI+PHBhdGggZD0iTSAwIDEwIEwgNDAgMTAgTSAxMCAwIEwgMTAgNDAgTSAwIDIwIEwgNDAgMjAgTSAyMCAwIEwgMjAgNDAgTSAwIDMwIEwgNDAgMzAgTSAzMCAwIEwgMzAgNDAiIGZpbGw9Im5vbmUiIHN0cm9rZT0icmdiYSgyNTUsMjU1LDI1NSwwLjA1KSIgc3Ryb2tlLXdpZHRoPSIxIi8+PC9wYXR0ZXJuPjwvZGVmcz48cmVjdCB3aWR0aD0iMTAwJSIgaGVpZ2h0PSIxMDAlIiBmaWxsPSJ1cmwoI2dyaWQpIi8+PC9zdmc+')] opacity-50" />
-              <CardContent className="p-4 sm:p-6 flex flex-col sm:flex-row items-center sm:items-start gap-3 sm:gap-4 relative text-center sm:text-left">
-                <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-full bg-white/20 backdrop-blur-sm flex items-center justify-center flex-shrink-0 ring-2 ring-white/30">
-                  <Gift className="w-6 h-6 sm:w-7 sm:h-7 text-white" />
+            <Card className="bg-gradient-to-r from-cyan-600 to-purple-700 border-0 max-w-md mx-auto lg:mx-0 shadow-2xl shadow-purple-500/30 relative overflow-hidden">
+              <div className="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAiIGhlaWdodD0iNDAiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PGRlZnM+PHBhdHRlcm4gaWQ9ImdyaWQiIHdpZHRoPSI0MCIgaGVpZ2h0PSI0MCIgcGF0dGVyblVuaXRzPSJ1c2VyU3BhY2VPblVzZSI+PHBhdGggZD0iTSAwIDEwIEwgNDAgMTAgTSAxMCAwIEwgMTAgNDAgTSAwIDIwIEwgNDAgMjAgTSAyMCAwIEwgMjAgNDAgTSAwIDMwIEwgNDAgMzAgTSAzMCAwIEwgMzAgNDAiIGZpbGw9Im5vbmUiIHN0cm9rZT0icmdiYSgyNTUsMjU1LDI1NSwwLjA1KSIgc3Ryb2tlLXdpZHRoPSIxIi8+PC9wYXR0ZXJuPjwvZGVmcz48cmVjdCB3aWR0aD0iMTAwJSIgaGVpZ2h0PSIxMDAlIiBmaWxsPSJ1cmwoI2dyaWQpIi8+PC9zdmc+')] opacity-30" />
+              <CardContent className="p-4 sm:p-5 flex flex-col sm:flex-row items-center sm:items-start gap-3 sm:gap-4 relative text-center sm:text-left">
+                <div className="w-11 h-11 sm:w-12 sm:h-12 rounded-xl bg-white/15 backdrop-blur-sm flex items-center justify-center flex-shrink-0">
+                  <Sparkles className="w-5 h-5 sm:w-6 sm:h-6 text-white" />
                 </div>
-                <div>
-                  <div className="flex flex-wrap items-center justify-center sm:justify-start gap-2 mb-1">
-                    <h3 className="text-lg sm:text-xl font-black text-white">USE GRÁTIS!</h3>
-                    <Badge className="bg-yellow-400 text-yellow-900 text-[10px] sm:text-xs font-bold border-0">
-                      TEMPO LIMITADO
+                <div className="space-y-1">
+                  <div className="flex flex-wrap items-center justify-center sm:justify-start gap-2">
+                    <h3 className="text-base sm:text-lg font-bold text-white">Acesso Gratuito ao Beta</h3>
+                    <Badge className="bg-white/20 text-white text-[10px] sm:text-xs font-medium border-0 backdrop-blur-sm">
+                      Vagas Limitadas
                     </Badge>
                   </div>
-                  <p className="text-xs sm:text-sm text-white/90 font-medium">
-                    Cadastre-se agora e use <strong>gratuitamente por tempo limitado</strong> se você for selecionado para o programa beta exclusivo.
+                  <p className="text-xs sm:text-sm text-white/80 leading-relaxed">
+                    Seja um dos primeiros a testar. Candidatos selecionados terão acesso completo e gratuito durante o período beta.
                   </p>
                 </div>
               </CardContent>
