@@ -10,10 +10,13 @@ import { ScheduleRow } from '@/components/dashboard/ScheduleRow';
 import { ScheduleDetail } from '@/components/dashboard/ScheduleDetail';
 import { DashboardHeader } from '@/components/dashboard/DashboardHeader';
 import { ScheduleFilters, DateFilter } from '@/components/dashboard/ScheduleFilters';
+import { MobileDashboard } from '@/components/dashboard/MobileDashboard';
 import { useSchedules, calculateStats } from '@/hooks/useSchedules';
 import { Schedule, ScheduleStatus } from '@/types/scheduling';
+import { useIsMobile } from '@/hooks/use-mobile';
 
 const Index = () => {
+  const isMobile = useIsMobile();
   const { schedules, loading, error, refetch, updateSchedule, updateScheduleTimes } = useSchedules();
   const [selectedSchedule, setSelectedSchedule] = useState<Schedule | null>(null);
   const [activeStatusFilter, setActiveStatusFilter] = useState<ScheduleStatus | 'all'>('all');
@@ -132,6 +135,20 @@ const Index = () => {
     }
   };
 
+  // Handler for mobile - start cleaning
+  const handleStartCleaning = async (scheduleId: string) => {
+    const schedule = schedules.find(s => s.id === scheduleId);
+    if (schedule) {
+      const success = await updateSchedule({ ...schedule, status: 'cleaning' }, schedule.status);
+      if (success) {
+        await refetch();
+        toast.success('Limpeza iniciada!');
+      } else {
+        toast.error('Erro ao iniciar limpeza');
+      }
+    }
+  };
+
   if (loading) {
     return (
       <SidebarProvider>
@@ -166,6 +183,26 @@ const Index = () => {
           </main>
         </div>
       </SidebarProvider>
+    );
+  }
+
+  // Mobile layout
+  if (isMobile) {
+    return (
+      <>
+        <MobileDashboard
+          schedules={schedules}
+          onScheduleClick={setSelectedSchedule}
+          onStartCleaning={handleStartCleaning}
+        />
+        {selectedSchedule && (
+          <ScheduleDetail
+            schedule={selectedSchedule}
+            onClose={() => setSelectedSchedule(null)}
+            onUpdateSchedule={handleUpdateSchedule}
+          />
+        )}
+      </>
     );
   }
 
