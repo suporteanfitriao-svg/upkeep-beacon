@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react';
-import { format, isToday, isTomorrow, addDays, startOfWeek, getWeek } from 'date-fns';
+import { format, isSameDay, addDays, startOfWeek, getWeek, isAfter, startOfDay, isToday as checkIsToday } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { Calendar, Play, Clock, Check, ChevronRight, LayoutGrid, MessageSquare, Menu } from 'lucide-react';
 import { Schedule, ScheduleStatus } from '@/types/scheduling';
@@ -27,16 +27,25 @@ export function MobileDashboard({ schedules, onScheduleClick, onStartCleaning }:
   }, [selectedDate]);
 
   // Filter schedules for selected date
-  const todaySchedules = useMemo(() => {
-    return schedules.filter(s => {
-      const checkOutDate = s.checkOut;
-      return isToday(checkOutDate);
-    }).sort((a, b) => a.checkOut.getTime() - b.checkOut.getTime());
-  }, [schedules]);
-
-  const tomorrowSchedules = useMemo(() => {
-    return schedules.filter(s => isTomorrow(s.checkOut))
+  const selectedDaySchedules = useMemo(() => {
+    return schedules.filter(s => isSameDay(s.checkOut, selectedDate))
       .sort((a, b) => a.checkOut.getTime() - b.checkOut.getTime());
+  }, [schedules, selectedDate]);
+
+  // Get next day with schedules after selected date
+  const nextDaySchedules = useMemo(() => {
+    const tomorrow = addDays(selectedDate, 1);
+    return schedules.filter(s => isSameDay(s.checkOut, tomorrow))
+      .sort((a, b) => a.checkOut.getTime() - b.checkOut.getTime());
+  }, [schedules, selectedDate]);
+
+  // Upcoming schedules (next 7 days) when no schedules for selected day
+  const upcomingSchedules = useMemo(() => {
+    const today = startOfDay(new Date());
+    return schedules
+      .filter(s => isAfter(s.checkOut, today))
+      .sort((a, b) => a.checkOut.getTime() - b.checkOut.getTime())
+      .slice(0, 5);
   }, [schedules]);
 
   // Count tasks with indicators for each day
@@ -50,13 +59,15 @@ export function MobileDashboard({ schedules, onScheduleClick, onStartCleaning }:
   }, [schedules]);
 
   // Separate schedules by status
-  const pendingSchedules = todaySchedules.filter(s => s.status === 'waiting' || s.status === 'released');
-  const upcomingCheckouts = todaySchedules.filter(s => s.status === 'cleaning');
-  const completedSchedules = todaySchedules.filter(s => s.status === 'completed');
+  const pendingSchedules = selectedDaySchedules.filter(s => s.status === 'waiting' || s.status === 'released');
+  const inProgressSchedules = selectedDaySchedules.filter(s => s.status === 'cleaning');
+  const completedSchedules = selectedDaySchedules.filter(s => s.status === 'completed');
 
   const formatTime = (date: Date) => format(date, 'HH:mm');
+  const formatDate = (date: Date) => format(date, "d 'de' MMMM", { locale: ptBR });
   const currentMonth = format(selectedDate, "MMMM yyyy", { locale: ptBR });
   const weekNumber = getWeek(selectedDate, { weekStartsOn: 0 });
+  const isSelectedToday = isSameDay(selectedDate, new Date());
 
   return (
     <div className="min-h-screen bg-background flex flex-col">
@@ -85,7 +96,7 @@ export function MobileDashboard({ schedules, onScheduleClick, onStartCleaning }:
           const dateKey = format(day, 'yyyy-MM-dd');
           const isSelected = format(day, 'yyyy-MM-dd') === format(selectedDate, 'yyyy-MM-dd');
           const taskCount = dayIndicators[dateKey] || 0;
-          const isCurrentDay = isToday(day);
+          const isCurrentDay = checkIsToday(day);
 
           return (
             <button
@@ -129,11 +140,13 @@ export function MobileDashboard({ schedules, onScheduleClick, onStartCleaning }:
 
       {/* Main Content */}
       <main className="flex-1 px-4 pb-24 overflow-y-auto">
-        {/* Today Section */}
+        {/* Selected Day Section */}
         <div className="flex items-center justify-between mb-4 mt-2">
-          <h2 className="text-2xl font-bold text-foreground">Hoje</h2>
+          <h2 className="text-2xl font-bold text-foreground">
+            {isSelectedToday ? 'Hoje' : formatDate(selectedDate)}
+          </h2>
           <span className="text-sm font-medium text-[hsl(var(--status-released))]">
-            {todaySchedules.length} Tarefas
+            {selectedDaySchedules.length} Tarefas
           </span>
         </div>
 
@@ -199,10 +212,10 @@ export function MobileDashboard({ schedules, onScheduleClick, onStartCleaning }:
           </div>
         )}
 
-        {/* Upcoming Checkout */}
-        {upcomingCheckouts.length > 0 && (
-          <div className="mb-4">
-            {upcomingCheckouts.map(schedule => (
+        {/* In Progress (Cleaning) */}
+        {inProgressSchedules.length > 0 && (
+          <div className="mb-4 space-y-2">
+            {inProgressSchedules.map(schedule => (
               <button
                 key={schedule.id}
                 onClick={() => onScheduleClick(schedule)}
@@ -211,7 +224,7 @@ export function MobileDashboard({ schedules, onScheduleClick, onStartCleaning }:
                 <div className="flex items-center justify-between">
                   <div>
                     <span className="text-xs font-semibold text-[hsl(var(--status-progress))] uppercase">
-                      Check out próximo
+                      Em Limpeza
                     </span>
                     <h3 className="text-base font-bold text-foreground mt-1">
                       {schedule.propertyName}
@@ -269,12 +282,14 @@ export function MobileDashboard({ schedules, onScheduleClick, onStartCleaning }:
           </div>
         )}
 
-        {/* Tomorrow Section */}
-        {tomorrowSchedules.length > 0 && (
+        {/* Next Day Section */}
+        {nextDaySchedules.length > 0 && (
           <div className="mb-6">
-            <h2 className="text-xl font-bold text-foreground mb-3">Amanhã</h2>
+            <h2 className="text-xl font-bold text-foreground mb-3">
+              {isSameDay(addDays(selectedDate, 1), addDays(new Date(), 1)) ? 'Amanhã' : formatDate(addDays(selectedDate, 1))}
+            </h2>
             <div className="space-y-2">
-              {tomorrowSchedules.slice(0, 3).map(schedule => (
+              {nextDaySchedules.slice(0, 3).map(schedule => (
                 <button
                   key={schedule.id}
                   onClick={() => onScheduleClick(schedule)}
@@ -306,8 +321,48 @@ export function MobileDashboard({ schedules, onScheduleClick, onStartCleaning }:
           </div>
         )}
 
+        {/* Upcoming Schedules when no schedules for selected day */}
+        {selectedDaySchedules.length === 0 && upcomingSchedules.length > 0 && (
+          <div className="mb-6">
+            <div className="text-center py-6 mb-4">
+              <p className="text-muted-foreground text-sm">Nenhum agendamento para este dia</p>
+            </div>
+            <h2 className="text-xl font-bold text-foreground mb-3">Próximos Agendamentos</h2>
+            <div className="space-y-2">
+              {upcomingSchedules.map(schedule => (
+                <button
+                  key={schedule.id}
+                  onClick={() => onScheduleClick(schedule)}
+                  className="w-full flex items-center gap-3 bg-card rounded-2xl p-3 shadow-sm text-left"
+                >
+                  <div className="w-16 h-14 rounded-xl bg-muted overflow-hidden">
+                    <img
+                      src="/placeholder.svg"
+                      alt={schedule.propertyName}
+                      className="w-full h-full object-cover"
+                    />
+                  </div>
+                  <div className="flex-1">
+                    <h4 className="text-sm font-semibold text-foreground">
+                      {schedule.propertyName}
+                    </h4>
+                    <p className="text-xs text-muted-foreground">{formatDate(schedule.checkOut)}</p>
+                    <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                      <Clock className="w-3 h-3" />
+                      <span>{formatTime(schedule.checkOut)}</span>
+                    </div>
+                  </div>
+                  <Badge variant="outline" className="text-muted-foreground">
+                    Agendado
+                  </Badge>
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+
         {/* Empty state */}
-        {todaySchedules.length === 0 && tomorrowSchedules.length === 0 && (
+        {selectedDaySchedules.length === 0 && upcomingSchedules.length === 0 && (
           <div className="text-center py-12">
             <p className="text-muted-foreground">Nenhum agendamento encontrado</p>
           </div>
