@@ -6,20 +6,10 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar } from '@/components/ui/calendar';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
 import { supabase } from '@/integrations/supabase/client';
+import { cn } from '@/lib/utils';
 
 export type DateFilter = 'today' | 'tomorrow' | 'custom' | 'all';
-
-interface Property {
-  id: string;
-  name: string;
-}
 
 interface AdminFiltersProps {
   dateFilter: DateFilter;
@@ -55,6 +45,8 @@ export function AdminFilters({
   onResponsibleFilterChange,
 }: AdminFiltersProps) {
   const [calendarOpen, setCalendarOpen] = useState(false);
+  const [statusOpen, setStatusOpen] = useState(false);
+  const [responsibleOpen, setResponsibleOpen] = useState(false);
   const [responsibles, setResponsibles] = useState<string[]>([]);
 
   useEffect(() => {
@@ -85,33 +77,43 @@ export function AdminFilters({
   return (
     <div className="mb-6">
       {/* Date Toggle Buttons - Right Aligned */}
-      <div className="flex justify-end mb-4">
-        <div className="inline-flex items-center bg-muted rounded-lg p-1">
-          <Button
-            variant={dateFilter === 'today' ? 'default' : 'ghost'}
-            size="sm"
+      <div className="flex justify-end mb-6">
+        <div className="bg-card p-1 rounded-xl shadow-sm flex items-center">
+          <button
             onClick={() => onDateFilterChange('today')}
-            className={dateFilter === 'today' ? 'bg-primary text-primary-foreground' : ''}
+            className={cn(
+              'px-4 py-1.5 text-sm font-medium rounded-lg transition-colors',
+              dateFilter === 'today' 
+                ? 'bg-primary text-primary-foreground shadow-sm' 
+                : 'text-muted-foreground hover:text-primary'
+            )}
           >
             Hoje
-          </Button>
-          <Button
-            variant={dateFilter === 'tomorrow' ? 'default' : 'ghost'}
-            size="sm"
+          </button>
+          <button
             onClick={() => onDateFilterChange('tomorrow')}
-            className={dateFilter === 'tomorrow' ? 'bg-primary text-primary-foreground' : ''}
+            className={cn(
+              'px-4 py-1.5 text-sm font-medium transition-colors',
+              dateFilter === 'tomorrow' 
+                ? 'bg-primary text-primary-foreground shadow-sm rounded-lg' 
+                : 'text-muted-foreground hover:text-primary'
+            )}
           >
             Amanhã
-          </Button>
+          </button>
+          <div className="w-px h-4 bg-border mx-1" />
           <Popover open={calendarOpen} onOpenChange={setCalendarOpen}>
             <PopoverTrigger asChild>
-              <Button
-                variant={dateFilter === 'custom' ? 'default' : 'ghost'}
-                size="sm"
-                className="px-2"
+              <button
+                className={cn(
+                  'px-3 py-1.5 transition-colors',
+                  dateFilter === 'custom' 
+                    ? 'text-primary' 
+                    : 'text-muted-foreground hover:text-primary'
+                )}
               >
                 <CalendarIcon className="w-4 h-4" />
-              </Button>
+              </button>
             </PopoverTrigger>
             <PopoverContent className="w-auto p-0 bg-popover border shadow-lg z-50" align="end">
               <Calendar
@@ -128,71 +130,96 @@ export function AdminFilters({
       </div>
 
       {/* Filters Row */}
-      <div className="flex flex-wrap items-center gap-3">
-        <span className="text-sm font-semibold text-foreground">Todos Imóveis</span>
-
-        {/* Status Dropdown */}
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button variant="outline" size="sm" className="gap-2">
-              {selectedStatus}
-              <ChevronDown className="w-4 h-4" />
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent className="bg-popover border shadow-lg z-50">
-            {statusOptions.map((option) => (
-              <DropdownMenuItem
-                key={option.value}
-                onClick={() => onStatusFilterChange(option.value)}
-                className={statusFilter === option.value ? 'bg-muted' : ''}
-              >
-                {option.label}
-              </DropdownMenuItem>
-            ))}
-          </DropdownMenuContent>
-        </DropdownMenu>
-
-        {/* Responsible Dropdown */}
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button variant="outline" size="sm" className="gap-2">
-              {responsibleFilter === 'all' ? 'Todos Responsáveis' : responsibleFilter}
-              <ChevronDown className="w-4 h-4" />
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent className="bg-popover border shadow-lg z-50">
-            <DropdownMenuItem
-              onClick={() => onResponsibleFilterChange('all')}
-              className={responsibleFilter === 'all' ? 'bg-muted' : ''}
+      <section className="flex flex-col lg:flex-row gap-4 justify-between items-center">
+        <div className="flex flex-col sm:flex-row items-center gap-3 w-full lg:w-auto">
+          <h3 className="text-xl font-bold text-foreground mr-2 whitespace-nowrap">Todos Imóveis</h3>
+          
+          {/* Status Dropdown */}
+          <div className="relative w-full sm:w-auto">
+            <button 
+              onClick={() => setStatusOpen(!statusOpen)}
+              className="w-full appearance-none bg-card border-none rounded-xl px-4 py-2 pr-8 text-sm font-medium shadow-sm focus:ring-2 focus:ring-primary cursor-pointer text-muted-foreground flex items-center justify-between gap-2 min-w-[160px]"
             >
-              Todos Responsáveis
-            </DropdownMenuItem>
-            {responsibles.map((name) => (
-              <DropdownMenuItem
-                key={name}
-                onClick={() => onResponsibleFilterChange(name)}
-                className={responsibleFilter === name ? 'bg-muted' : ''}
-              >
-                {name}
-              </DropdownMenuItem>
-            ))}
-          </DropdownMenuContent>
-        </DropdownMenu>
+              {selectedStatus}
+              <ChevronDown className="w-3 h-3 text-muted-foreground" />
+            </button>
+            {statusOpen && (
+              <div className="absolute top-full left-0 mt-1 w-full bg-card rounded-xl shadow-lg border z-50">
+                {statusOptions.map((option) => (
+                  <button
+                    key={option.value}
+                    onClick={() => {
+                      onStatusFilterChange(option.value);
+                      setStatusOpen(false);
+                    }}
+                    className={cn(
+                      'w-full text-left px-4 py-2 text-sm hover:bg-muted transition-colors first:rounded-t-xl last:rounded-b-xl',
+                      statusFilter === option.value && 'bg-muted text-primary font-medium'
+                    )}
+                  >
+                    {option.label}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
 
-        {/* Spacer */}
-        <div className="flex-1" />
+          {/* Responsible Dropdown */}
+          <div className="relative w-full sm:w-auto">
+            <button 
+              onClick={() => setResponsibleOpen(!responsibleOpen)}
+              className="w-full appearance-none bg-card border-none rounded-xl px-4 py-2 pr-8 text-sm font-medium shadow-sm focus:ring-2 focus:ring-primary cursor-pointer text-muted-foreground flex items-center justify-between gap-2 min-w-[180px]"
+            >
+              {responsibleFilter === 'all' ? 'Todos Responsáveis' : responsibleFilter}
+              <ChevronDown className="w-3 h-3 text-muted-foreground" />
+            </button>
+            {responsibleOpen && (
+              <div className="absolute top-full left-0 mt-1 w-full bg-card rounded-xl shadow-lg border z-50 max-h-48 overflow-y-auto">
+                <button
+                  onClick={() => {
+                    onResponsibleFilterChange('all');
+                    setResponsibleOpen(false);
+                  }}
+                  className={cn(
+                    'w-full text-left px-4 py-2 text-sm hover:bg-muted transition-colors first:rounded-t-xl',
+                    responsibleFilter === 'all' && 'bg-muted text-primary font-medium'
+                  )}
+                >
+                  Todos Responsáveis
+                </button>
+                {responsibles.map((name) => (
+                  <button
+                    key={name}
+                    onClick={() => {
+                      onResponsibleFilterChange(name);
+                      setResponsibleOpen(false);
+                    }}
+                    className={cn(
+                      'w-full text-left px-4 py-2 text-sm hover:bg-muted transition-colors last:rounded-b-xl',
+                      responsibleFilter === name && 'bg-muted text-primary font-medium'
+                    )}
+                  >
+                    {name}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
 
         {/* Search Input */}
-        <div className="relative w-64">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-          <Input
-            placeholder="Buscar por nome, condomínio..."
-            value={searchQuery}
-            onChange={(e) => onSearchChange(e.target.value)}
-            className="pl-9 bg-background"
-          />
+        <div className="flex flex-col sm:flex-row gap-3 w-full lg:w-auto">
+          <div className="relative flex-1 sm:w-64">
+            <Search className="absolute left-3 top-3 text-muted-foreground w-4 h-4" />
+            <Input
+              placeholder="Buscar por nome, condomínio..."
+              value={searchQuery}
+              onChange={(e) => onSearchChange(e.target.value)}
+              className="w-full bg-card border-none rounded-xl py-2.5 pl-10 pr-4 text-sm shadow-sm focus:ring-2 focus:ring-primary placeholder:text-muted-foreground"
+            />
+          </div>
         </div>
-      </div>
+      </section>
     </div>
   );
 }
