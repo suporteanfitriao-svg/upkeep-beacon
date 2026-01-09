@@ -4,11 +4,13 @@ import { supabase } from '@/integrations/supabase/client';
 import { useUserRole } from '@/hooks/useUserRole';
 import { usePasswordAudit } from '@/hooks/usePasswordAudit';
 import { toast } from 'sonner';
+import { toZonedTime, format } from 'date-fns-tz';
 
 interface PasswordModalProps {
   propertyId: string;
   propertyName: string;
   scheduleId: string;
+  scheduleDate: string; // Date reference for the cleaning (YYYY-MM-DD or ISO string)
   passwordFromIcal?: string;
   accessPassword?: string;
   teamMemberId: string | null;
@@ -18,10 +20,25 @@ interface PasswordModalProps {
 
 type PasswordMode = 'ical' | 'manual';
 
+const SAO_PAULO_TZ = 'America/Sao_Paulo';
+
+// Check if today (in São Paulo timezone) matches the schedule date
+const isScheduleDay = (scheduleDateStr: string): boolean => {
+  const now = new Date();
+  const nowInSaoPaulo = toZonedTime(now, SAO_PAULO_TZ);
+  const todayStr = format(nowInSaoPaulo, 'yyyy-MM-dd', { timeZone: SAO_PAULO_TZ });
+  
+  // Extract date part from schedule date (handles both YYYY-MM-DD and ISO formats)
+  const scheduleDatePart = scheduleDateStr.split('T')[0];
+  
+  return todayStr === scheduleDatePart;
+};
+
 export function PasswordModal({ 
   propertyId,
   propertyName, 
   scheduleId,
+  scheduleDate,
   passwordFromIcal,
   accessPassword,
   teamMemberId,
@@ -38,6 +55,9 @@ export function PasswordModal({
   const [newPassword, setNewPassword] = useState('');
   const [isSaving, setIsSaving] = useState(false);
   const [hasLoggedView, setHasLoggedView] = useState(false);
+
+  // Check if cleaner can view iCal password (temporal rule)
+  const isCleaningDay = isScheduleDay(scheduleDate);
 
   // Fetch property password mode
   useEffect(() => {
@@ -65,26 +85,34 @@ export function PasswordModal({
   const displayPassword = passwordMode === 'ical' ? passwordFromIcal : accessPassword;
   const hasPassword = Boolean(displayPassword && displayPassword.trim());
 
+  // Temporal visibility: cleaner can only see iCal password on cleaning day
+  const isBlockedByTemporalRule = role === 'cleaner' && passwordMode === 'ical' && !isCleaningDay;
+
   // Log view action when password is displayed (only once per modal open)
   useEffect(() => {
-    if (!isLoading && hasPassword && teamMemberId && !hasLoggedView) {
+    if (!isLoading && hasPassword && teamMemberId && !hasLoggedView && !isBlockedByTemporalRule) {
       logAction({
         scheduleId,
         propertyId,
         teamMemberId,
-        action: 'viewed',
+        action: passwordMode === 'ical' ? 'visualizou_senha_ical' : 'viewed',
       });
       setHasLoggedView(true);
     }
-  }, [isLoading, hasPassword, teamMemberId, scheduleId, propertyId, logAction, hasLoggedView]);
+  }, [isLoading, hasPassword, teamMemberId, scheduleId, propertyId, logAction, hasLoggedView, isBlockedByTemporalRule, passwordMode]);
 
   // Check if cleaner can view password
   const canView = () => {
-    // Admin and manager can always view
+    // Admin and manager can always view (no temporal restriction)
     if (canManage) return true;
     
-    // Cleaner can only view if password exists
+    // Cleaner: check temporal rule for iCal mode
     if (role === 'cleaner') {
+      // iCal mode: blocked before cleaning day
+      if (passwordMode === 'ical' && !isCleaningDay) {
+        return false;
+      }
+      // Must have password
       return hasPassword;
     }
     
@@ -134,6 +162,21 @@ export function PasswordModal({
       return (
         <div className="mt-6 mb-4 flex w-full flex-col items-center justify-center rounded-xl bg-slate-50 border border-slate-200 py-5 dark:bg-slate-800/80 dark:border-slate-600">
           <span className="material-symbols-outlined text-2xl animate-spin text-muted-foreground">progress_activity</span>
+        </div>
+      );
+    }
+
+    // Temporal restriction message for cleaner (iCal mode, before cleaning day)
+    if (isBlockedByTemporalRule) {
+      return (
+        <div className="mt-6 mb-4 flex w-full flex-col items-center justify-center rounded-xl bg-blue-50 border border-blue-200 py-5 dark:bg-blue-900/20 dark:border-blue-800">
+          <span className="material-symbols-outlined text-3xl text-blue-600 dark:text-blue-400 mb-2">schedule</span>
+          <span className="text-sm font-medium text-blue-700 dark:text-blue-300">
+            Senha disponível apenas no dia da limpeza
+          </span>
+          <span className="text-xs text-blue-600 dark:text-blue-400 mt-1 text-center px-4">
+            Por segurança, a senha será liberada automaticamente na data agendada
+          </span>
         </div>
       );
     }
