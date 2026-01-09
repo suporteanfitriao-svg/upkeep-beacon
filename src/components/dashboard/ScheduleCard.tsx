@@ -2,165 +2,185 @@ import { Schedule, ScheduleStatus } from '@/types/scheduling';
 import { cn } from '@/lib/utils';
 import { 
   Clock, 
-  MapPin, 
-  User, 
+  Play,
   AlertTriangle, 
   CheckCircle2, 
   Wrench,
-  ChevronRight,
-  Timer
+  Eye
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { Badge } from '@/components/ui/badge';
 
 interface ScheduleCardProps {
   schedule: Schedule;
   onClick: () => void;
 }
 
-const statusConfig: Record<ScheduleStatus, { label: string; className: string }> = {
+const statusConfig: Record<ScheduleStatus, { label: string; dotClass: string; textClass: string }> = {
   waiting: { 
-    label: 'Aguardando', 
-    className: 'bg-status-waiting-bg text-status-waiting border-status-waiting/30' 
+    label: 'PENDENTE', 
+    dotClass: 'bg-status-waiting',
+    textClass: 'text-status-waiting'
   },
   released: { 
-    label: 'Liberado', 
-    className: 'bg-status-released-bg text-status-released border-status-released/30' 
+    label: 'LIBERADO', 
+    dotClass: 'bg-status-released',
+    textClass: 'text-status-released'
   },
   cleaning: { 
-    label: 'Em Limpeza', 
-    className: 'bg-status-progress-bg text-status-progress border-status-progress/30' 
+    label: 'EM LIMPEZA', 
+    dotClass: 'bg-status-progress',
+    textClass: 'text-status-progress'
   },
   completed: { 
-    label: 'Finalizado', 
-    className: 'bg-status-completed-bg text-status-completed border-status-completed/30' 
+    label: 'FINALIZADO', 
+    dotClass: 'bg-status-completed',
+    textClass: 'text-status-completed'
   },
 };
 
-const priorityConfig = {
-  high: { label: 'Alta', className: 'bg-priority-high/10 text-priority-high' },
-  medium: { label: 'Média', className: 'bg-priority-medium/10 text-priority-medium' },
-  low: { label: 'Baixa', className: 'bg-priority-low/10 text-priority-low' },
-};
-
-const maintenanceIcons = {
-  ok: <CheckCircle2 className="w-5 h-5 text-status-completed" />,
-  needs_maintenance: <AlertTriangle className="w-5 h-5 text-status-alert animate-pulse-soft" />,
-  in_progress: <Wrench className="w-5 h-5 text-status-progress" />,
+const buttonConfig: Record<ScheduleStatus, { label: string; icon: React.ReactNode }> = {
+  waiting: { label: 'Ver Detalhes', icon: <Eye className="w-4 h-4" /> },
+  released: { label: 'Iniciar Limpeza', icon: <Play className="w-4 h-4" /> },
+  cleaning: { label: 'Continuar', icon: <Play className="w-4 h-4" /> },
+  completed: { label: 'Ver Detalhes', icon: <Eye className="w-4 h-4" /> },
 };
 
 export function ScheduleCard({ schedule, onClick }: ScheduleCardProps) {
   const statusStyle = statusConfig[schedule.status];
-  const priorityStyle = priorityConfig[schedule.priority];
+  const buttonStyle = buttonConfig[schedule.status];
   const completedTasks = schedule.checklist.filter(item => item.completed).length;
   const totalTasks = schedule.checklist.length;
   const progressPercent = totalTasks > 0 ? (completedTasks / totalTasks) * 100 : 0;
 
+  // Determine context message based on status
+  const getContextMessage = () => {
+    if (schedule.status === 'cleaning') {
+      return `${completedTasks}/${totalTasks} tarefas concluídas`;
+    }
+    if (schedule.status === 'completed') {
+      return 'Limpeza finalizada';
+    }
+    // Check if checkout is happening now (within 2 hours)
+    const now = new Date();
+    const checkOut = new Date(schedule.checkOut);
+    const diffHours = (checkOut.getTime() - now.getTime()) / (1000 * 60 * 60);
+    if (diffHours <= 2 && diffHours >= -1) {
+      return 'Checkout acontecendo';
+    }
+    return `Check-in às ${format(schedule.checkIn, "HH:mm", { locale: ptBR })}`;
+  };
+
   return (
-    <button
-      onClick={onClick}
+    <div
       className={cn(
-        'w-full bg-card rounded-xl border p-4 transition-all duration-200',
-        'hover:shadow-lg hover:border-primary/30 cursor-pointer text-left',
+        'w-full bg-card rounded-2xl border overflow-hidden transition-all duration-200',
+        'hover:shadow-lg hover:border-primary/30 cursor-pointer',
         'animate-slide-in'
       )}
     >
-      <div className="flex items-start gap-4">
-        {/* Property Image */}
-        {schedule.propertyImageUrl && (
-          <div className="shrink-0">
-            <img 
-              src={schedule.propertyImageUrl} 
-              alt={schedule.propertyName}
-              className="w-16 h-16 rounded-lg object-cover border border-border"
-            />
-          </div>
-        )}
-        
-        <div className="flex-1 min-w-0 flex items-start justify-between gap-4">
-          <div className="flex-1 min-w-0">
-            {/* Header */}
-            <div className="flex items-center gap-3 mb-2">
-              <h3 className="font-semibold text-foreground truncate">{schedule.propertyName}</h3>
-              {maintenanceIcons[schedule.maintenanceStatus]}
-            </div>
-
-            {/* Address */}
-            <div className="flex items-center gap-1.5 text-sm text-muted-foreground mb-3">
-              <MapPin className="w-4 h-4 shrink-0" />
-              <span className="truncate">{schedule.propertyAddress}</span>
-            </div>
-
-          {/* Times */}
-          <div className="flex flex-wrap items-center gap-4 text-sm mb-3">
-            <div className="flex items-center gap-1.5">
-              <Clock className="w-4 h-4 text-muted-foreground" />
-              <span className="text-muted-foreground">Check-in:</span>
-              <span className="font-medium text-foreground">
-                {format(schedule.checkIn, "HH:mm", { locale: ptBR })}
-              </span>
-            </div>
-            <div className="flex items-center gap-1.5">
-              <Timer className="w-4 h-4 text-muted-foreground" />
-              <span className="text-muted-foreground">Est.:</span>
-              <span className="font-medium text-foreground">
-                {schedule.estimatedDuration} min
-              </span>
-            </div>
+      <div className="flex">
+        {/* Left Content */}
+        <div className="flex-1 p-4 flex flex-col justify-between min-w-0">
+          {/* Status Badge */}
+          <div className="flex items-center gap-2 mb-2">
+            <span className={cn('w-2 h-2 rounded-full', statusStyle.dotClass)} />
+            <span className={cn('text-xs font-semibold uppercase tracking-wide', statusStyle.textClass)}>
+              {statusStyle.label}
+            </span>
+            {schedule.maintenanceStatus === 'needs_maintenance' && (
+              <AlertTriangle className="w-4 h-4 text-status-alert animate-pulse-soft" />
+            )}
+            {schedule.maintenanceStatus === 'in_progress' && (
+              <Wrench className="w-4 h-4 text-status-progress" />
+            )}
           </div>
 
-          {/* Cleaner */}
-          <div className="flex items-center gap-2 text-sm">
-            <User className="w-4 h-4 text-muted-foreground" />
-            <span className="text-muted-foreground">Responsável:</span>
-            <span className="font-medium text-foreground">{schedule.cleanerName}</span>
+          {/* Property Name */}
+          <h3 className="font-bold text-lg text-foreground truncate mb-2">
+            {schedule.propertyName}
+          </h3>
+
+          {/* Checkout Time */}
+          <div className="flex items-center gap-2 text-sm text-muted-foreground mb-4">
+            <Clock className="w-4 h-4" />
+            <span className="uppercase text-xs font-medium">Checkout</span>
+            <span className="font-semibold text-foreground">
+              {format(schedule.checkOut, "HH:mm", { locale: ptBR })}
+            </span>
           </div>
 
-          {/* Progress bar */}
+          {/* Action Button */}
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              onClick();
+            }}
+            className={cn(
+              'flex items-center justify-center gap-2 w-full rounded-xl py-2.5 px-4',
+              'text-sm font-bold transition-all active:scale-[0.98]',
+              schedule.status === 'completed' 
+                ? 'bg-muted text-foreground hover:bg-muted/80'
+                : 'bg-primary text-primary-foreground hover:bg-primary/90'
+            )}
+          >
+            {buttonStyle.icon}
+            {buttonStyle.label}
+          </button>
+
+          {/* Context Info */}
+          <div className="flex items-center gap-2 mt-3">
+            {/* Cleaner Avatar Placeholder */}
+            <div className="flex -space-x-2">
+              {schedule.cleanerName !== 'Não atribuído' && (
+                <div className="w-6 h-6 rounded-full bg-primary/20 border-2 border-card flex items-center justify-center">
+                  <span className="text-[10px] font-bold text-primary">
+                    {schedule.cleanerName.slice(0, 2).toUpperCase()}
+                  </span>
+                </div>
+              )}
+            </div>
+            <span className="text-xs text-muted-foreground">
+              {getContextMessage()}
+            </span>
+          </div>
+
+          {/* Progress bar for cleaning status */}
           {schedule.status === 'cleaning' && (
-            <div className="mt-3">
-              <div className="flex items-center justify-between text-xs text-muted-foreground mb-1">
-                <span>Progresso</span>
-                <span>{completedTasks}/{totalTasks} tarefas</span>
-              </div>
-              <div className="h-2 bg-muted rounded-full overflow-hidden">
+            <div className="mt-2">
+              <div className="h-1.5 bg-muted rounded-full overflow-hidden">
                 <div 
-                  className="h-full bg-status-progress rounded-full transition-all duration-500"
+                  className="h-full bg-primary rounded-full transition-all duration-500"
                   style={{ width: `${progressPercent}%` }}
                 />
               </div>
             </div>
           )}
 
-          {/* Alerts */}
+          {/* Maintenance Issues Alert */}
           {schedule.maintenanceIssues.length > 0 && (
-            <div className="mt-3 flex items-center gap-2 text-sm text-status-alert">
-              <AlertTriangle className="w-4 h-4" />
-              <span>{schedule.maintenanceIssues.length} problema(s) reportado(s)</span>
-            </div>
-          )}
-
-          {schedule.missingMaterials.length > 0 && (
-            <div className="mt-2 text-sm text-status-progress">
-              <span className="font-medium">Materiais faltando: </span>
-              {schedule.missingMaterials.join(', ')}
+            <div className="mt-2 flex items-center gap-1.5 text-xs text-status-alert">
+              <AlertTriangle className="w-3 h-3" />
+              <span>{schedule.maintenanceIssues.length} avaria(s)</span>
             </div>
           )}
         </div>
 
-          {/* Right side - Status & Priority */}
-          <div className="flex flex-col items-end gap-2 shrink-0">
-            <Badge className={cn('border', statusStyle.className)}>
-              {statusStyle.label}
-            </Badge>
-            <Badge variant="outline" className={cn(priorityStyle.className)}>
-              Prioridade {priorityStyle.label}
-            </Badge>
-            <ChevronRight className="w-5 h-5 text-muted-foreground mt-2" />
-          </div>
+        {/* Right Image */}
+        <div className="w-32 sm:w-40 shrink-0" onClick={onClick}>
+          {schedule.propertyImageUrl ? (
+            <img 
+              src={schedule.propertyImageUrl} 
+              alt={schedule.propertyName}
+              className="w-full h-full object-cover"
+            />
+          ) : (
+            <div className="w-full h-full bg-muted flex items-center justify-center">
+              <span className="material-symbols-outlined text-muted-foreground text-[40px]">home</span>
+            </div>
+          )}
         </div>
       </div>
-    </button>
+    </div>
   );
 }
