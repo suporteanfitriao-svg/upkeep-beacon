@@ -14,7 +14,8 @@ import {
   ChevronDown,
   ChevronUp,
   X,
-  MessageSquare
+  MessageSquare,
+  FileText
 } from 'lucide-react';
 import { SidebarProvider } from '@/components/ui/sidebar';
 import { AppSidebar } from '@/components/dashboard/AppSidebar';
@@ -28,9 +29,16 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useMaintenanceIssues, MaintenanceIssue } from '@/hooks/useMaintenanceIssues';
+import { useCompletedSchedules } from '@/hooks/useCompletedSchedules';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
+import { ReportFilters, SortField, SortOrder } from '@/components/reports/ReportFilters';
+import { ReportStatsCards } from '@/components/reports/ReportStatsCards';
+import { CompletedScheduleRow } from '@/components/reports/CompletedScheduleRow';
+import { ScheduleDetailReadOnly } from '@/components/reports/ScheduleDetailReadOnly';
+import { Schedule } from '@/types/scheduling';
 
 function MaintenanceStatCard({ 
   title, 
@@ -218,6 +226,28 @@ export default function Manutencao() {
   const [selectedIssue, setSelectedIssue] = useState<MaintenanceIssue | null>(null);
   const [resolutionNotes, setResolutionNotes] = useState('');
   const [selectedTeamMember, setSelectedTeamMember] = useState<string>('');
+  const [activeTab, setActiveTab] = useState('avarias');
+
+  // Report filters state
+  const [reportStartDate, setReportStartDate] = useState<Date | undefined>();
+  const [reportEndDate, setReportEndDate] = useState<Date | undefined>();
+  const [reportPropertyFilter, setReportPropertyFilter] = useState('all');
+  const [reportResponsibleFilter, setReportResponsibleFilter] = useState('all');
+  const [reportSearchQuery, setReportSearchQuery] = useState('');
+  const [reportSortField, setReportSortField] = useState<SortField>('date');
+  const [reportSortOrder, setReportSortOrder] = useState<SortOrder>('desc');
+  const [selectedSchedule, setSelectedSchedule] = useState<Schedule | null>(null);
+
+  // Fetch completed schedules for reports
+  const { schedules: completedSchedules, loading: reportsLoading, stats: reportStats } = useCompletedSchedules({
+    startDate: reportStartDate,
+    endDate: reportEndDate,
+    propertyId: reportPropertyFilter,
+    responsibleId: reportResponsibleFilter,
+    searchQuery: reportSearchQuery,
+    sortField: reportSortField,
+    sortOrder: reportSortOrder,
+  });
 
   // Fetch team members for assignment
   const { data: teamMembers = [] } = useQuery({
@@ -295,6 +325,11 @@ export default function Manutencao() {
     setSelectedIssue(null);
   };
 
+  // Show schedule detail read-only modal
+  if (selectedSchedule) {
+    return <ScheduleDetailReadOnly schedule={selectedSchedule} onClose={() => setSelectedSchedule(null)} />;
+  }
+
   return (
     <SidebarProvider>
       <div className="min-h-screen flex w-full bg-background">
@@ -304,12 +339,26 @@ export default function Manutencao() {
           <DashboardHeader />
 
           <div className="mb-6">
-            <h2 className="text-2xl font-bold mb-1">Gestão de Avarias</h2>
-            <p className="text-muted-foreground">Acompanhe e gerencie os problemas reportados nas propriedades</p>
+            <h2 className="text-2xl font-bold mb-1">Gestão e Relatórios</h2>
+            <p className="text-muted-foreground">Acompanhe avarias e visualize relatórios de atendimentos</p>
           </div>
 
-          {/* Stats Cards */}
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-6">
+          <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
+            <TabsList className="grid w-full max-w-md grid-cols-2">
+              <TabsTrigger value="avarias" className="gap-2">
+                <Wrench className="w-4 h-4" />
+                Avarias
+              </TabsTrigger>
+              <TabsTrigger value="relatorios" className="gap-2">
+                <FileText className="w-4 h-4" />
+                Relatórios
+              </TabsTrigger>
+            </TabsList>
+
+            {/* Avarias Tab */}
+            <TabsContent value="avarias" className="space-y-6">
+              {/* Stats Cards */}
+              <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
             <MaintenanceStatCard 
               title="Abertas" 
               count={stats.open} 
