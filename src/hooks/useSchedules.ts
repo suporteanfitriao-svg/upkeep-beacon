@@ -9,6 +9,7 @@ import {
   MaintenanceIssue,
   ScheduleHistoryEvent,
   TeamMemberAck,
+  CategoryPhoto,
   STATUS_FLOW,
   STATUS_ALLOWED_ROLES,
   AppRole
@@ -45,6 +46,7 @@ interface ScheduleRow {
   checklist_loaded_at: string | null;
   admin_revert_reason: string | null;
   access_password: string | null;
+  category_photos: Json | null;
   reservations?: {
     check_in: string;
     check_out: string;
@@ -108,6 +110,24 @@ const parseAckByTeamMembers = (ack: Json | null): TeamMemberAck[] => {
       acknowledged_at: String(typedItem?.acknowledged_at || ''),
     };
   });
+};
+
+const parseCategoryPhotos = (photos: Json | null): Record<string, CategoryPhoto[]> => {
+  if (!photos || typeof photos !== 'object' || Array.isArray(photos)) return {};
+  const result: Record<string, CategoryPhoto[]> = {};
+  for (const [category, photoList] of Object.entries(photos as Record<string, unknown>)) {
+    if (Array.isArray(photoList)) {
+      result[category] = photoList.map((p: unknown) => {
+        const photo = p as Record<string, unknown>;
+        return {
+          url: String(photo?.url || ''),
+          uploadedAt: String(photo?.uploadedAt || ''),
+          uploadedBy: photo?.uploadedBy ? String(photo.uploadedBy) : undefined,
+        };
+      });
+    }
+  }
+  return result;
 };
 
 const mapPriority = (priority: string | null): Priority => {
@@ -236,6 +256,7 @@ const mapRowToSchedule = (row: ScheduleRow): Schedule => {
     checklistLoadedAt: row.checklist_loaded_at ? new Date(row.checklist_loaded_at) : undefined,
     adminRevertReason: row.admin_revert_reason || undefined,
     accessPassword: row.access_password || undefined,
+    categoryPhotos: parseCategoryPhotos(row.category_photos),
   };
 };
 

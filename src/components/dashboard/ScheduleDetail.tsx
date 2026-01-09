@@ -1,4 +1,4 @@
-import { Schedule, ScheduleStatus, ChecklistItem, MaintenanceIssue, STATUS_LABELS, STATUS_FLOW, STATUS_ALLOWED_ROLES, AppRole } from '@/types/scheduling';
+import { Schedule, ScheduleStatus, ChecklistItem, MaintenanceIssue, STATUS_LABELS, STATUS_FLOW, STATUS_ALLOWED_ROLES, AppRole, CategoryPhoto } from '@/types/scheduling';
 import { cn } from '@/lib/utils';
 import { format } from 'date-fns';
 import { useState, useMemo, useEffect, useCallback } from 'react';
@@ -16,6 +16,8 @@ import { useCreateMaintenanceIssue } from '@/hooks/useCreateMaintenanceIssue';
 import { useAcknowledgeInfo } from '@/hooks/useAcknowledgeInfo';
 import { usePropertyChecklist } from '@/hooks/usePropertyChecklist';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
+import { CategoryPhotoUpload } from './CategoryPhotoUpload';
+
 interface ScheduleDetailProps {
   schedule: Schedule;
   onClose: () => void;
@@ -67,8 +69,9 @@ export function ScheduleDetail({ schedule, onClose, onUpdateSchedule }: Schedule
   const [pendingCategories, setPendingCategories] = useState<{ name: string; pendingCount: number; totalCount: number }[]>([]);
   const [teamMemberId, setTeamMemberId] = useState<string | null>(null);
   const [requirePhotoPerCategory, setRequirePhotoPerCategory] = useState(false);
-  const [categoryPhotos, setCategoryPhotos] = useState<Record<string, boolean>>({});
+  const [categoryPhotosData, setCategoryPhotosData] = useState<Record<string, CategoryPhoto[]>>({});
   const [confirmMarkCategory, setConfirmMarkCategory] = useState<{ open: boolean; category: string | null }>({ open: false, category: null });
+  const [photoUploadModal, setPhotoUploadModal] = useState<{ open: boolean; category: string | null }>({ open: false, category: null });
   const statusStyle = statusConfig[schedule.status];
 
   // Fetch property rules (require_photo_per_category)
@@ -86,15 +89,11 @@ export function ScheduleDetail({ schedule, onClose, onUpdateSchedule }: Schedule
     fetchPropertyRules();
   }, [schedule.propertyId]);
 
-  // Track which categories have photos (from schedule.photos)
+  // Load category photos from schedule (stored in category_photos JSON column)
   useEffect(() => {
-    const photosPerCategory: Record<string, boolean> = {};
-    schedule.photos.forEach(photo => {
-      // Photos might have category info attached - for now we track by type
-      // In a real implementation, photos would have a category field
-    });
-    setCategoryPhotos(photosPerCategory);
-  }, [schedule.photos]);
+    const existingPhotos = schedule.categoryPhotos || {};
+    setCategoryPhotosData(existingPhotos);
+  }, [schedule]);
 
   // Fetch team member id for current user
   useEffect(() => {
@@ -251,13 +250,14 @@ export function ScheduleDetail({ schedule, onClose, onUpdateSchedule }: Schedule
       const allCompleted = categoryItems.every(item => item.completed);
       
       // If category is complete but has no photo
-      if (allCompleted && !categoryPhotos[category]) {
+      const hasPhoto = categoryPhotosData[category] && categoryPhotosData[category].length > 0;
+      if (allCompleted && !hasPhoto) {
         missingPhotos.push(category);
       }
     });
     
     return missingPhotos;
-  }, [requirePhotoPerCategory, checklist, categoryPhotos]);
+  }, [requirePhotoPerCategory, checklist, categoryPhotosData]);
 
 
   const getPendingCategoriesDetails = () => {
@@ -574,7 +574,9 @@ export function ScheduleDetail({ schedule, onClose, onUpdateSchedule }: Schedule
               const isExpanded = expandedCategories[category] ?? false;
               const allCompleted = items.every(item => item.completed);
               const hasDX = categoryHasDX(category);
-              const needsPhoto = requirePhotoPerCategory && allCompleted && !categoryPhotos[category];
+              const hasPhotosInCategory = categoryPhotosData[category] && categoryPhotosData[category].length > 0;
+              const needsPhoto = requirePhotoPerCategory && allCompleted && !hasPhotosInCategory;
+              const photoCount = categoryPhotosData[category]?.length || 0;
 
               return (
                 <div key={category} className={cn(
@@ -624,11 +626,28 @@ export function ScheduleDetail({ schedule, onClose, onUpdateSchedule }: Schedule
                             <span className="material-symbols-outlined text-[20px]">check_circle</span>
                           </button>
                         )}
-                        <button aria-label="Adicionar Foto" className="rounded-full p-1 text-slate-400 hover:text-primary transition-colors">
+                        {/* Photo button - only enabled when all items completed */}
+                        <button 
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setPhotoUploadModal({ open: true, category });
+                          }}
+                          disabled={!allCompleted}
+                          aria-label="Adicionar Foto" 
+                          className={cn(
+                            "relative rounded-full p-1 transition-colors",
+                            allCompleted 
+                              ? "text-primary hover:text-[#267373] hover:bg-primary/10" 
+                              : "text-slate-300 cursor-not-allowed dark:text-slate-600"
+                          )}
+                          title={allCompleted ? "Adicionar foto do ambiente" : "Complete todos os itens para adicionar foto"}
+                        >
                           <span className="material-symbols-outlined text-[20px]">photo_camera</span>
-                        </button>
-                        <button aria-label="Reportar Problema" className="rounded-full p-1 text-slate-400 hover:text-orange-500 transition-colors">
-                          <span className="material-symbols-outlined text-[20px]">build</span>
+                          {photoCount > 0 && (
+                            <span className="absolute -top-1 -right-1 bg-primary text-white text-[10px] font-bold rounded-full h-4 w-4 flex items-center justify-center">
+                              {photoCount}
+                            </span>
+                          )}
                         </button>
                         <div className="h-4 w-px bg-slate-200 dark:bg-slate-600 mx-1" />
                         {!isExpanded && (
@@ -930,6 +949,54 @@ export function ScheduleDetail({ schedule, onClose, onUpdateSchedule }: Schedule
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Category Photo Upload Modal */}
+      {photoUploadModal.open && photoUploadModal.category && (
+        <CategoryPhotoUpload
+          scheduleId={schedule.id}
+          category={photoUploadModal.category}
+          categoryPhotos={categoryPhotosData}
+          isEnabled={schedule.status === 'cleaning'}
+          onClose={() => setPhotoUploadModal({ open: false, category: null })}
+          onPhotoUploaded={async (category, photo) => {
+            const updatedPhotos = { ...categoryPhotosData };
+            if (!updatedPhotos[category]) {
+              updatedPhotos[category] = [];
+            }
+            updatedPhotos[category].push(photo);
+            setCategoryPhotosData(updatedPhotos);
+            
+            // Save to database
+            try {
+              await supabase
+                .from('schedules')
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                .update({ category_photos: updatedPhotos } as any)
+                .eq('id', schedule.id);
+            } catch (error) {
+              console.error('Error saving category photos:', error);
+            }
+          }}
+          onPhotoDeleted={async (category, photoUrl) => {
+            const updatedPhotos = { ...categoryPhotosData };
+            if (updatedPhotos[category]) {
+              updatedPhotos[category] = updatedPhotos[category].filter(p => p.url !== photoUrl);
+            }
+            setCategoryPhotosData(updatedPhotos);
+            
+            // Save to database
+            try {
+              await supabase
+                .from('schedules')
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                .update({ category_photos: updatedPhotos } as any)
+                .eq('id', schedule.id);
+            } catch (error) {
+              console.error('Error saving category photos:', error);
+            }
+          }}
+        />
+      )}
     </div>
   );
 }
