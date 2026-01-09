@@ -1,6 +1,18 @@
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
-import { Schedule, ScheduleStatus, MaintenanceStatus, Priority, ChecklistItem, MaintenanceIssue } from '@/types/scheduling';
+import { 
+  Schedule, 
+  ScheduleStatus, 
+  MaintenanceStatus, 
+  Priority, 
+  ChecklistItem, 
+  MaintenanceIssue,
+  ScheduleHistoryEvent,
+  TeamMemberAck,
+  STATUS_FLOW,
+  STATUS_ALLOWED_ROLES,
+  AppRole
+} from '@/types/scheduling';
 import { Json } from '@/integrations/supabase/types';
 
 interface ScheduleRow {
@@ -22,6 +34,16 @@ interface ScheduleRow {
   guest_name: string | null;
   listing_name: string | null;
   number_of_guests: number | null;
+  // New fields
+  start_at: string | null;
+  end_at: string | null;
+  responsible_team_member_id: string | null;
+  important_info: string | null;
+  ack_by_team_members: Json | null;
+  history: Json | null;
+  is_active: boolean | null;
+  checklist_loaded_at: string | null;
+  admin_revert_reason: string | null;
   reservations?: {
     check_in: string;
     check_out: string;
@@ -55,6 +77,34 @@ const parseMaintenanceIssues = (issues: Json | null): MaintenanceIssue[] => {
       severity: (typedItem?.severity as 'low' | 'medium' | 'high') || 'medium',
       reportedAt: new Date(String(typedItem?.reportedAt || new Date())),
       resolved: Boolean(typedItem?.resolved),
+    };
+  });
+};
+
+const parseHistory = (history: Json | null): ScheduleHistoryEvent[] => {
+  if (!history || !Array.isArray(history)) return [];
+  return history.map((item: unknown) => {
+    const typedItem = item as Record<string, unknown>;
+    return {
+      timestamp: String(typedItem?.timestamp || ''),
+      team_member_id: String(typedItem?.team_member_id || ''),
+      team_member_name: typedItem?.team_member_name ? String(typedItem.team_member_name) : null,
+      role: typedItem?.role ? String(typedItem.role) : null,
+      action: String(typedItem?.action || ''),
+      from_status: typedItem?.from_status ? String(typedItem.from_status) : null,
+      to_status: typedItem?.to_status ? String(typedItem.to_status) : null,
+      payload: typedItem?.payload as Record<string, unknown> || {},
+    };
+  });
+};
+
+const parseAckByTeamMembers = (ack: Json | null): TeamMemberAck[] => {
+  if (!ack || !Array.isArray(ack)) return [];
+  return ack.map((item: unknown) => {
+    const typedItem = item as Record<string, unknown>;
+    return {
+      team_member_id: String(typedItem?.team_member_id || ''),
+      acknowledged_at: String(typedItem?.acknowledged_at || ''),
     };
   });
 };
@@ -94,6 +144,52 @@ const extractDoorPassword = (description: string | null): string | undefined => 
   return match ? `${match[1]}#` : undefined;
 };
 
+// Validate status transition
+export const canTransitionStatus = (
+  fromStatus: ScheduleStatus,
+  toStatus: ScheduleStatus,
+  userRole: AppRole | null
+): { allowed: boolean; reason?: string } => {
+  if (!userRole) {
+    return { allowed: false, reason: 'Usuário não autenticado' };
+  }
+
+  // Check if it's a valid forward transition
+  const expectedNextStatus = STATUS_FLOW[fromStatus];
+  
+  if (expectedNextStatus === toStatus) {
+    // Check role permission
+    const allowedRoles = STATUS_ALLOWED_ROLES[toStatus];
+    if (allowedRoles.includes(userRole)) {
+      return { allowed: true };
+    }
+    return { 
+      allowed: false, 
+      reason: `Apenas ${allowedRoles.join(' ou ')} podem realizar esta ação` 
+    };
+  }
+
+  // Check if it's a revert (going backwards)
+  const statusOrder: ScheduleStatus[] = ['waiting', 'released', 'cleaning', 'completed'];
+  const fromIndex = statusOrder.indexOf(fromStatus);
+  const toIndex = statusOrder.indexOf(toStatus);
+
+  if (toIndex < fromIndex) {
+    if (userRole === 'admin') {
+      return { allowed: true };
+    }
+    return { 
+      allowed: false, 
+      reason: 'Apenas administradores podem reverter o status' 
+    };
+  }
+
+  return { 
+    allowed: false, 
+    reason: 'Transição de status não permitida. Siga o fluxo: Aguardando → Liberado → Em Limpeza → Finalizado' 
+  };
+};
+
 const mapRowToSchedule = (row: ScheduleRow): Schedule => {
   const checkInSource = row.reservations?.check_in || row.check_in_time;
   const checkOutSource = row.reservations?.check_out || row.check_out_time;
@@ -123,6 +219,18 @@ const mapRowToSchedule = (row: ScheduleRow): Schedule => {
     notes: row.notes || '',
     missingMaterials: [],
     doorPassword,
+    // New fields
+    startAt: row.start_at ? new Date(row.start_at) : undefined,
+    endAt: row.end_at ? new Date(row.end_at) : undefined,
+    teamArrival: row.start_at ? new Date(row.start_at) : undefined,
+    teamDeparture: row.end_at ? new Date(row.end_at) : undefined,
+    responsibleTeamMemberId: row.responsible_team_member_id || undefined,
+    importantInfo: row.important_info || undefined,
+    ackByTeamMembers: parseAckByTeamMembers(row.ack_by_team_members),
+    history: parseHistory(row.history),
+    isActive: row.is_active ?? true,
+    checklistLoadedAt: row.checklist_loaded_at ? new Date(row.checklist_loaded_at) : undefined,
+    adminRevertReason: row.admin_revert_reason || undefined,
   };
 };
 
@@ -139,6 +247,7 @@ export function useSchedules() {
       const { data, error: fetchError } = await supabase
         .from('schedules')
         .select('*, reservations(check_in, check_out, guest_name, listing_name, number_of_guests, description)')
+        .eq('is_active', true)
         .order('check_out_time', { ascending: true });
 
       if (fetchError) throw fetchError;
@@ -153,51 +262,101 @@ export function useSchedules() {
     }
   }, []);
 
-  const updateSchedule = useCallback(async (updatedSchedule: Schedule, previousStatus?: ScheduleStatus) => {
+  const updateSchedule = useCallback(async (
+    updatedSchedule: Schedule, 
+    previousStatus?: ScheduleStatus,
+    teamMemberId?: string
+  ) => {
     try {
       let checklistToUse = updatedSchedule.checklist;
+      const now = new Date().toISOString();
+      const updatePayload: Record<string, unknown> = {
+        status: updatedSchedule.status,
+        maintenance_status: updatedSchedule.maintenanceStatus,
+        priority: updatedSchedule.priority,
+        cleaner_name: updatedSchedule.cleanerName,
+        notes: updatedSchedule.notes,
+        maintenance_issues: updatedSchedule.maintenanceIssues as unknown as Json,
+      };
 
-      // When transitioning to 'cleaning' status, fetch and link property checklists
-      if (updatedSchedule.status === 'cleaning' && previousStatus !== 'cleaning' && updatedSchedule.propertyId) {
-        const { data: propertyChecklists, error: checklistError } = await supabase
-          .from('property_checklists')
-          .select('items, name')
-          .eq('property_id', updatedSchedule.propertyId)
-          .limit(1);
+      // When transitioning to 'cleaning' status
+      if (updatedSchedule.status === 'cleaning' && previousStatus !== 'cleaning') {
+        // Set start time
+        updatePayload.start_at = now;
+        
+        // Set responsible team member if provided and not already set
+        if (teamMemberId && !updatedSchedule.responsibleTeamMemberId) {
+          updatePayload.responsible_team_member_id = teamMemberId;
+        }
 
-        if (!checklistError && propertyChecklists && propertyChecklists.length > 0) {
-          const items = propertyChecklists[0].items as unknown[];
-          if (Array.isArray(items) && items.length > 0) {
-            checklistToUse = items.map((item: unknown, index: number) => {
-              const typedItem = item as Record<string, unknown>;
-              return {
-                id: String(typedItem?.id || `item-${index}`),
-                title: String(typedItem?.title || typedItem?.name || ''),
-                completed: false, // Reset to uncompleted when starting cleaning
-                category: String(typedItem?.category || 'Geral'),
-              };
-            });
-            console.log('Linked property checklist to schedule:', checklistToUse.length, 'items');
+        // Fetch and link property checklists
+        if (updatedSchedule.propertyId) {
+          const { data: propertyChecklists, error: checklistError } = await supabase
+            .from('property_checklists')
+            .select('items, name')
+            .eq('property_id', updatedSchedule.propertyId)
+            .limit(1);
+
+          if (!checklistError && propertyChecklists && propertyChecklists.length > 0) {
+            const items = propertyChecklists[0].items as unknown[];
+            if (Array.isArray(items) && items.length > 0) {
+              checklistToUse = items.map((item: unknown, index: number) => {
+                const typedItem = item as Record<string, unknown>;
+                return {
+                  id: String(typedItem?.id || `item-${index}`),
+                  title: String(typedItem?.title || typedItem?.name || ''),
+                  completed: false,
+                  category: String(typedItem?.category || 'Geral'),
+                };
+              });
+              updatePayload.checklist_loaded_at = now;
+              console.log('Linked property checklist to schedule:', checklistToUse.length, 'items');
+            }
           }
         }
       }
 
+      // When transitioning to 'completed' status
+      if (updatedSchedule.status === 'completed' && previousStatus !== 'completed') {
+        updatePayload.end_at = now;
+      }
+
+      // Update checklist
+      updatePayload.checklists = checklistToUse as unknown as Json;
+
+      // Build history event if status changed
+      if (previousStatus && previousStatus !== updatedSchedule.status) {
+        const newHistoryEvent = {
+          timestamp: now,
+          team_member_id: teamMemberId || 'system',
+          team_member_name: null,
+          role: null,
+          action: 'status_changed',
+          from_status: previousStatus,
+          to_status: updatedSchedule.status,
+          payload: {},
+        };
+        
+        // Append to existing history
+        const currentHistory = updatedSchedule.history || [];
+        updatePayload.history = [...currentHistory, newHistoryEvent] as unknown as Json;
+      }
+
       const { error: updateError } = await supabase
         .from('schedules')
-        .update({
-          status: updatedSchedule.status,
-          maintenance_status: updatedSchedule.maintenanceStatus,
-          priority: updatedSchedule.priority,
-          cleaner_name: updatedSchedule.cleanerName,
-          notes: updatedSchedule.notes,
-          checklists: checklistToUse as unknown as Json,
-          maintenance_issues: updatedSchedule.maintenanceIssues as unknown as Json,
-        })
+        .update(updatePayload)
         .eq('id', updatedSchedule.id);
 
       if (updateError) throw updateError;
 
-      const finalSchedule = { ...updatedSchedule, checklist: checklistToUse };
+      const finalSchedule = { 
+        ...updatedSchedule, 
+        checklist: checklistToUse,
+        startAt: updatePayload.start_at ? new Date(updatePayload.start_at as string) : updatedSchedule.startAt,
+        endAt: updatePayload.end_at ? new Date(updatePayload.end_at as string) : updatedSchedule.endAt,
+        teamArrival: updatePayload.start_at ? new Date(updatePayload.start_at as string) : updatedSchedule.teamArrival,
+        teamDeparture: updatePayload.end_at ? new Date(updatePayload.end_at as string) : updatedSchedule.teamDeparture,
+      };
       setSchedules(prev =>
         prev.map(s => (s.id === updatedSchedule.id ? finalSchedule : s))
       );

@@ -313,15 +313,22 @@ export type Database = {
       }
       schedules: {
         Row: {
+          ack_by_team_members: Json | null
+          admin_revert_reason: string | null
           check_in_time: string
           check_out_time: string
+          checklist_loaded_at: string | null
           checklists: Json | null
           cleaner_avatar: string | null
           cleaner_name: string | null
           created_at: string
+          end_at: string | null
           estimated_duration: number | null
           guest_name: string | null
+          history: Json | null
           id: string
+          important_info: string | null
+          is_active: boolean | null
           listing_name: string | null
           maintenance_issues: Json | null
           maintenance_status: string | null
@@ -332,19 +339,28 @@ export type Database = {
           property_id: string | null
           property_name: string
           reservation_id: string | null
+          responsible_team_member_id: string | null
+          start_at: string | null
           status: string | null
           updated_at: string
         }
         Insert: {
+          ack_by_team_members?: Json | null
+          admin_revert_reason?: string | null
           check_in_time: string
           check_out_time: string
+          checklist_loaded_at?: string | null
           checklists?: Json | null
           cleaner_avatar?: string | null
           cleaner_name?: string | null
           created_at?: string
+          end_at?: string | null
           estimated_duration?: number | null
           guest_name?: string | null
+          history?: Json | null
           id?: string
+          important_info?: string | null
+          is_active?: boolean | null
           listing_name?: string | null
           maintenance_issues?: Json | null
           maintenance_status?: string | null
@@ -355,19 +371,28 @@ export type Database = {
           property_id?: string | null
           property_name: string
           reservation_id?: string | null
+          responsible_team_member_id?: string | null
+          start_at?: string | null
           status?: string | null
           updated_at?: string
         }
         Update: {
+          ack_by_team_members?: Json | null
+          admin_revert_reason?: string | null
           check_in_time?: string
           check_out_time?: string
+          checklist_loaded_at?: string | null
           checklists?: Json | null
           cleaner_avatar?: string | null
           cleaner_name?: string | null
           created_at?: string
+          end_at?: string | null
           estimated_duration?: number | null
           guest_name?: string | null
+          history?: Json | null
           id?: string
+          important_info?: string | null
+          is_active?: boolean | null
           listing_name?: string | null
           maintenance_issues?: Json | null
           maintenance_status?: string | null
@@ -378,6 +403,8 @@ export type Database = {
           property_id?: string | null
           property_name?: string
           reservation_id?: string | null
+          responsible_team_member_id?: string | null
+          start_at?: string | null
           status?: string | null
           updated_at?: string
         }
@@ -394,6 +421,13 @@ export type Database = {
             columns: ["reservation_id"]
             isOneToOne: true
             referencedRelation: "reservations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "schedules_responsible_team_member_id_fkey"
+            columns: ["responsible_team_member_id"]
+            isOneToOne: false
+            referencedRelation: "team_members"
             referencedColumns: ["id"]
           },
         ]
@@ -547,11 +581,31 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      append_schedule_history: {
+        Args: {
+          p_action: string
+          p_from_status: string
+          p_payload?: Json
+          p_schedule_id: string
+          p_team_member_id: string
+          p_to_status: string
+        }
+        Returns: undefined
+      }
       has_any_role: { Args: { _user_id: string }; Returns: boolean }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
           _user_id: string
+        }
+        Returns: boolean
+      }
+      validate_schedule_status_transition: {
+        Args: {
+          p_from_status: string
+          p_is_revert?: boolean
+          p_to_status: string
+          p_user_role: string
         }
         Returns: boolean
       }

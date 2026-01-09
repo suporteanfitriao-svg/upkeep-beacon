@@ -1,24 +1,26 @@
-import { Schedule, ScheduleStatus, ChecklistItem, MaintenanceIssue } from '@/types/scheduling';
+import { Schedule, ScheduleStatus, ChecklistItem, MaintenanceIssue, STATUS_LABELS, STATUS_FLOW, STATUS_ALLOWED_ROLES, AppRole } from '@/types/scheduling';
 import { cn } from '@/lib/utils';
 import { format } from 'date-fns';
-import { Textarea } from '@/components/ui/textarea';
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { toast } from 'sonner';
 import { LocationModal } from './LocationModal';
 import { PasswordModal } from './PasswordModal';
 import { IssueReportModal } from './IssueReportModal';
 import { AttentionModal } from './AttentionModal';
 import { ChecklistPendingModal } from './ChecklistPendingModal';
+import { useUserRole } from '@/hooks/useUserRole';
+import { useAuth } from '@/hooks/useAuth';
+import { supabase } from '@/integrations/supabase/client';
 
 interface ScheduleDetailProps {
   schedule: Schedule;
   onClose: () => void;
-  onUpdateSchedule: (schedule: Schedule, previousStatus?: ScheduleStatus) => void;
+  onUpdateSchedule: (schedule: Schedule, previousStatus?: ScheduleStatus, teamMemberId?: string) => void;
 }
 
 const statusConfig: Record<ScheduleStatus, { label: string; className: string; badgeClass: string; next?: ScheduleStatus; nextLabel?: string }> = {
   waiting: { 
-    label: 'Aguardando', 
+    label: 'Aguardando Liberação', 
     className: 'text-orange-600',
     badgeClass: 'bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200',
     next: 'released',
@@ -46,18 +48,69 @@ const statusConfig: Record<ScheduleStatus, { label: string; className: string; b
 };
 
 export function ScheduleDetail({ schedule, onClose, onUpdateSchedule }: ScheduleDetailProps) {
+  const { role, isAdmin, isManager } = useUserRole();
+  const { user } = useAuth();
   const [notes, setNotes] = useState(schedule.notes);
   const [checklist, setChecklist] = useState(schedule.checklist);
   const [showIssueForm, setShowIssueForm] = useState(false);
   const [expandedCategories, setExpandedCategories] = useState<Record<string, boolean>>({});
-  const [acknowledgedInfo, setAcknowledgedInfo] = useState(false);
+  const [acknowledgedInfo, setAcknowledgedInfo] = useState(
+    schedule.ackByTeamMembers?.some(ack => ack.team_member_id === user?.id) ?? false
+  );
   const [checklistItemStates, setChecklistItemStates] = useState<Record<string, 'yes' | 'no' | null>>({});
   const [showLocationModal, setShowLocationModal] = useState(false);
   const [showPasswordModal, setShowPasswordModal] = useState(false);
   const [showAttentionModal, setShowAttentionModal] = useState(false);
   const [showChecklistPendingModal, setShowChecklistPendingModal] = useState(false);
   const [pendingCategories, setPendingCategories] = useState<{ name: string; pendingCount: number; totalCount: number }[]>([]);
+  const [teamMemberId, setTeamMemberId] = useState<string | null>(null);
   const statusStyle = statusConfig[schedule.status];
+
+  // Fetch team member id for current user
+  useMemo(() => {
+    const fetchTeamMemberId = async () => {
+      if (!user?.id) return;
+      const { data } = await supabase
+        .from('team_members')
+        .select('id')
+        .eq('user_id', user.id)
+        .maybeSingle();
+      if (data) setTeamMemberId(data.id);
+    };
+    fetchTeamMemberId();
+  }, [user?.id]);
+
+  // Check if user can perform status transition
+  const canTransition = useMemo(() => {
+    const nextStatus = statusConfig[schedule.status].next;
+    if (!nextStatus || !role) return { allowed: false, reason: 'Sem permissão' };
+
+    const allowedRoles = STATUS_ALLOWED_ROLES[nextStatus];
+    if (!allowedRoles.includes(role as AppRole)) {
+      return { 
+        allowed: false, 
+        reason: `Apenas ${allowedRoles.map(r => r === 'admin' ? 'administradores' : r === 'manager' ? 'gestores' : 'limpadores').join(' ou ')} podem realizar esta ação` 
+      };
+    }
+
+    // For cleaning status, check if there's already a responsible
+    if (nextStatus === 'cleaning' && schedule.responsibleTeamMemberId && schedule.responsibleTeamMemberId !== teamMemberId) {
+      return { 
+        allowed: false, 
+        reason: 'Limpeza já iniciada por outro responsável' 
+      };
+    }
+
+    return { allowed: true };
+  }, [schedule.status, schedule.responsibleTeamMemberId, role, teamMemberId]);
+
+  // Check if property has checklist configured
+  const hasPropertyChecklist = useMemo(() => {
+    // If we're in cleaning status, we already have the checklist loaded
+    if (schedule.status === 'cleaning' || schedule.status === 'completed') return true;
+    // For other statuses, assume it exists (will be validated on backend)
+    return true;
+  }, [schedule.status]);
 
   const toggleCategory = (category: string) => {
     setExpandedCategories(prev => ({
@@ -77,13 +130,13 @@ export function ScheduleDetail({ schedule, onClose, onUpdateSchedule }: Schedule
         item.id === itemId ? { ...item, completed: true } : item
       );
       setChecklist(updatedChecklist);
-      onUpdateSchedule({ ...schedule, checklist: updatedChecklist });
+      onUpdateSchedule({ ...schedule, checklist: updatedChecklist }, undefined, teamMemberId || undefined);
     } else {
       const updatedChecklist = checklist.map(item =>
         item.id === itemId ? { ...item, completed: false } : item
       );
       setChecklist(updatedChecklist);
-      onUpdateSchedule({ ...schedule, checklist: updatedChecklist });
+      onUpdateSchedule({ ...schedule, checklist: updatedChecklist }, undefined, teamMemberId || undefined);
     }
   };
 
@@ -110,32 +163,44 @@ export function ScheduleDetail({ schedule, onClose, onUpdateSchedule }: Schedule
 
   const handleStatusChange = (newStatus?: ScheduleStatus) => {
     const targetStatus = newStatus || statusConfig[schedule.status].next;
-    if (targetStatus && targetStatus !== schedule.status) {
-      if (targetStatus === 'completed' && checklist.length > 0) {
-        const pending = getPendingCategoriesDetails();
-        if (pending.length > 0) {
-          setPendingCategories(pending);
-          setShowChecklistPendingModal(true);
-          return;
-        }
-      }
+    if (!targetStatus || targetStatus === schedule.status) return;
 
-      const previousStatus = schedule.status;
-      const updates: Partial<Schedule> = { status: targetStatus };
-      
-      if (targetStatus === 'cleaning' && !schedule.teamArrival) {
-        updates.teamArrival = new Date();
-        toast.success('Chegada da equipe registrada! Checklist carregado.');
-      }
-      
-      if (targetStatus === 'completed' && !schedule.teamDeparture) {
-        updates.teamDeparture = new Date();
-        toast.success('Saída da equipe registrada!');
-      }
-      
-      onUpdateSchedule({ ...schedule, ...updates }, previousStatus);
-      toast.success(`Status atualizado para: ${statusConfig[targetStatus].label}`);
+    // Validate role permission
+    if (!canTransition.allowed) {
+      toast.error(canTransition.reason);
+      return;
     }
+
+    // Check checklist completion for finalizing
+    if (targetStatus === 'completed' && checklist.length > 0) {
+      const pending = getPendingCategoriesDetails();
+      if (pending.length > 0) {
+        setPendingCategories(pending);
+        setShowChecklistPendingModal(true);
+        return;
+      }
+    }
+
+    const previousStatus = schedule.status;
+    const updates: Partial<Schedule> = { status: targetStatus };
+    
+    if (targetStatus === 'cleaning' && !schedule.startAt) {
+      updates.startAt = new Date();
+      updates.teamArrival = new Date();
+      if (teamMemberId) {
+        updates.responsibleTeamMemberId = teamMemberId;
+      }
+      toast.success('Chegada da equipe registrada! Checklist carregado.');
+    }
+    
+    if (targetStatus === 'completed' && !schedule.endAt) {
+      updates.endAt = new Date();
+      updates.teamDeparture = new Date();
+      toast.success('Saída da equipe registrada!');
+    }
+    
+    onUpdateSchedule({ ...schedule, ...updates }, previousStatus, teamMemberId || undefined);
+    toast.success(`Status atualizado para: ${statusConfig[targetStatus].label}`);
   };
 
   const handleIssueSubmit = (issue: { section: string; item: string; description: string; photos: string[] }) => {
