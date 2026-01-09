@@ -2,52 +2,50 @@
 @tailwind components;
 @tailwind utilities;
 
-@import "@fontsource/outfit/400.css";
-@import "@fontsource/outfit/500.css";
-@import "@fontsource/outfit/600.css";
-@import "@fontsource/outfit/700.css";
+@import url('https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap');
 
 @layer base {
   :root {
-    --background: 210 20% 98%;
-    --foreground: 220 20% 10%;
+    --background: 40 6% 97%;
+    --foreground: 215 25% 27%;
 
     --card: 0 0% 100%;
-    --card-foreground: 220 20% 10%;
+    --card-foreground: 215 25% 27%;
 
     --popover: 0 0% 100%;
-    --popover-foreground: 220 20% 10%;
+    --popover-foreground: 215 25% 27%;
 
-    --primary: 220 70% 50%;
+    --primary: 180 50% 40%;
     --primary-foreground: 0 0% 100%;
+    --primary-dark: 180 50% 30%;
 
     --secondary: 220 14% 96%;
     --secondary-foreground: 220 20% 20%;
 
     --muted: 220 14% 96%;
-    --muted-foreground: 220 10% 46%;
+    --muted-foreground: 100 3% 54%;
 
-    --accent: 220 14% 93%;
-    --accent-foreground: 220 20% 10%;
+    --accent: 45 65% 60%;
+    --accent-foreground: 215 25% 27%;
 
     --destructive: 0 72% 51%;
     --destructive-foreground: 0 0% 100%;
 
     --border: 220 13% 91%;
     --input: 220 13% 91%;
-    --ring: 220 70% 50%;
+    --ring: 180 50% 40%;
 
-    --radius: 0.75rem;
+    --radius: 0.5rem;
 
     /* Status colors */
     --status-waiting: 220 70% 50%;
     --status-waiting-bg: 220 70% 96%;
-    --status-released: 180 70% 45%;
-    --status-released-bg: 180 70% 95%;
+    --status-released: 180 50% 40%;
+    --status-released-bg: 180 50% 95%;
     --status-progress: 38 92% 50%;
     --status-progress-bg: 38 92% 95%;
-    --status-completed: 142 71% 45%;
-    --status-completed-bg: 142 71% 95%;
+    --status-completed: 152 69% 31%;
+    --status-completed-bg: 152 69% 95%;
     --status-alert: 0 72% 51%;
     --status-alert-bg: 0 72% 96%;
 
@@ -58,57 +56,65 @@
 
     --sidebar-background: 0 0% 100%;
     --sidebar-foreground: 220 20% 20%;
-    --sidebar-primary: 220 70% 50%;
+    --sidebar-primary: 180 50% 40%;
     --sidebar-primary-foreground: 0 0% 100%;
     --sidebar-accent: 220 14% 96%;
     --sidebar-accent-foreground: 220 20% 10%;
     --sidebar-border: 220 13% 91%;
-    --sidebar-ring: 220 70% 50%;
+    --sidebar-ring: 180 50% 40%;
+
+    /* Custom colors from HTML */
+    --accent-gold: 45 65% 60%;
+    --accent-taupe: 100 3% 54%;
+    --surface: 0 0% 100%;
   }
 
   .dark {
-    --background: 220 20% 8%;
+    --background: 220 14% 15%;
     --foreground: 210 20% 98%;
 
-    --card: 220 20% 12%;
+    --card: 220 14% 17%;
     --card-foreground: 210 20% 98%;
 
-    --popover: 220 20% 12%;
+    --popover: 220 14% 17%;
     --popover-foreground: 210 20% 98%;
 
-    --primary: 220 70% 55%;
+    --primary: 180 50% 40%;
     --primary-foreground: 0 0% 100%;
+    --primary-dark: 180 50% 30%;
 
     --secondary: 220 14% 18%;
     --secondary-foreground: 210 20% 98%;
 
-    --muted: 220 14% 18%;
-    --muted-foreground: 220 10% 60%;
+    --muted: 220 14% 20%;
+    --muted-foreground: 215 10% 60%;
 
-    --accent: 220 14% 20%;
+    --accent: 45 65% 60%;
     --accent-foreground: 210 20% 98%;
 
     --destructive: 0 62% 45%;
     --destructive-foreground: 0 0% 100%;
 
-    --border: 220 14% 20%;
-    --input: 220 14% 20%;
-    --ring: 220 70% 55%;
+    --border: 220 14% 25%;
+    --input: 220 14% 25%;
+    --ring: 180 50% 40%;
 
     --status-waiting-bg: 220 70% 15%;
-    --status-released-bg: 180 70% 15%;
+    --status-released-bg: 180 50% 15%;
     --status-progress-bg: 38 92% 15%;
-    --status-completed-bg: 142 71% 15%;
+    --status-completed-bg: 152 69% 15%;
     --status-alert-bg: 0 72% 15%;
 
-    --sidebar-background: 220 20% 10%;
+    --sidebar-background: 220 14% 12%;
     --sidebar-foreground: 210 20% 98%;
-    --sidebar-primary: 220 70% 55%;
+    --sidebar-primary: 180 50% 40%;
     --sidebar-primary-foreground: 0 0% 100%;
     --sidebar-accent: 220 14% 18%;
     --sidebar-accent-foreground: 210 20% 98%;
-    --sidebar-border: 220 14% 20%;
-    --sidebar-ring: 220 70% 55%;
+    --sidebar-border: 220 14% 25%;
+    --sidebar-ring: 180 50% 40%;
+
+    --surface: 220 14% 19%;
   }
 }
 
@@ -118,18 +124,35 @@
   }
 
   body {
-    @apply bg-background text-foreground font-sans antialiased;
-    font-family: 'Outfit', system-ui, sans-serif;
+    @apply bg-background text-foreground antialiased;
+    font-family: 'Manrope', system-ui, sans-serif;
   }
 
   h1, h2, h3, h4, h5, h6 {
-    font-family: 'Outfit', system-ui, sans-serif;
-    @apply font-semibold tracking-tight;
+    font-family: 'Manrope', system-ui, sans-serif;
+    @apply font-bold tracking-tight;
   }
 }
 
 @layer utilities {
   .status-badge {
     @apply inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium;
+  }
+  
+  .hide-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+  
+  .hide-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+  
+  .shadow-soft {
+    box-shadow: 0 4px 20px -2px rgba(0, 0, 0, 0.05);
+  }
+  
+  .shadow-glow {
+    box-shadow: 0 4px 20px -2px rgba(51, 153, 153, 0.3);
   }
 }
