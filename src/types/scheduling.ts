@@ -48,6 +48,7 @@ export interface Schedule {
   teamArrival?: Date;
   teamDeparture?: Date;
   missingMaterials: string[];
+  doorPassword?: string;
 }
 
 export interface DashboardStats {

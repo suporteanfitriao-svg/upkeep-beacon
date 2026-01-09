@@ -28,6 +28,7 @@ interface ScheduleRow {
     guest_name: string | null;
     listing_name: string | null;
     number_of_guests: number | null;
+    description: string | null;
   } | null;
 }
 
@@ -87,12 +88,19 @@ const mapMaintenanceStatus = (status: string | null): MaintenanceStatus => {
   return statusMap[status || ''] || 'ok';
 };
 
+const extractDoorPassword = (description: string | null): string | undefined => {
+  if (!description) return undefined;
+  const match = description.match(/Phone Number \(Last 4 Digits\):\s*(\d{4})/);
+  return match ? `${match[1]}#` : undefined;
+};
+
 const mapRowToSchedule = (row: ScheduleRow): Schedule => {
   const checkInSource = row.reservations?.check_in || row.check_in_time;
   const checkOutSource = row.reservations?.check_out || row.check_out_time;
   const guestNameSource = row.reservations?.guest_name || row.guest_name;
   const listingNameSource = row.reservations?.listing_name || row.listing_name || row.property_name;
   const numberOfGuestsSource = row.reservations?.number_of_guests || row.number_of_guests || 1;
+  const doorPassword = extractDoorPassword(row.reservations?.description || null);
 
   return {
     id: row.id,
@@ -114,6 +122,7 @@ const mapRowToSchedule = (row: ScheduleRow): Schedule => {
     maintenanceIssues: parseMaintenanceIssues(row.maintenance_issues),
     notes: row.notes || '',
     missingMaterials: [],
+    doorPassword,
   };
 };
 
@@ -129,7 +138,7 @@ export function useSchedules() {
 
       const { data, error: fetchError } = await supabase
         .from('schedules')
-        .select('*, reservations(check_in, check_out, guest_name, listing_name, number_of_guests)')
+        .select('*, reservations(check_in, check_out, guest_name, listing_name, number_of_guests, description)')
         .order('check_out_time', { ascending: true });
 
       if (fetchError) throw fetchError;
