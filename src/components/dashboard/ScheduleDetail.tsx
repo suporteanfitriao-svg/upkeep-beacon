@@ -10,6 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { useState } from 'react';
 import { toast } from 'sonner';
 import { LocationModal } from './LocationModal';
+import { PasswordModal } from './PasswordModal';
 
 interface ScheduleDetailProps {
   schedule: Schedule;
@@ -68,6 +69,7 @@ export function ScheduleDetail({ schedule, onClose, onUpdateSchedule }: Schedule
   const [acknowledgedInfo, setAcknowledgedInfo] = useState(false);
   const [checklistItemStates, setChecklistItemStates] = useState<Record<string, 'yes' | 'no' | null>>({});
   const [showLocationModal, setShowLocationModal] = useState(false);
+  const [showPasswordModal, setShowPasswordModal] = useState(false);
   const statusStyle = statusConfig[schedule.status];
 
   const toggleCategory = (category: string) => {
@@ -229,7 +231,10 @@ export function ScheduleDetail({ schedule, onClose, onUpdateSchedule }: Schedule
               <span className="material-symbols-outlined text-[18px]">map</span>
               Ver Endereço
             </button>
-            <button className="flex items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white py-3.5 text-xs font-bold text-slate-500 shadow-sm transition-all hover:bg-slate-50 active:scale-[0.98] dark:border-slate-700 dark:bg-[#2d3138] dark:text-slate-400 dark:hover:bg-slate-800">
+            <button 
+              onClick={() => setShowPasswordModal(true)}
+              className="flex items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white py-3.5 text-xs font-bold text-slate-500 shadow-sm transition-all hover:bg-slate-50 active:scale-[0.98] dark:border-slate-700 dark:bg-[#2d3138] dark:text-slate-400 dark:hover:bg-slate-800"
+            >
               <span className="material-symbols-outlined text-[18px]">vpn_key</span>
               Ver Senha da Porta
             </button>
@@ -577,11 +582,21 @@ export function ScheduleDetail({ schedule, onClose, onUpdateSchedule }: Schedule
       </div>
 
       {/* Location Modal */}
+      {/* Location Modal */}
       {showLocationModal && (
         <LocationModal
           propertyName={schedule.propertyName}
           address={schedule.propertyAddress || ''}
           onClose={() => setShowLocationModal(false)}
+        />
+      )}
+
+      {/* Password Modal */}
+      {showPasswordModal && (
+        <PasswordModal
+          propertyName={schedule.propertyName}
+          password="8042#"
+          onClose={() => setShowPasswordModal(false)}
         />
       )}
     </div>
