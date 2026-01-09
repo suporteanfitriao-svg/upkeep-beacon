@@ -77,6 +77,7 @@ export interface Schedule {
   isActive: boolean;
   checklistLoadedAt?: Date;
   adminRevertReason?: string;
+  accessPassword?: string;
 }
 
 export interface DashboardStats {

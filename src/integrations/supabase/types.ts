@@ -105,6 +105,55 @@ export type Database = {
           },
         ]
       }
+      password_audit_logs: {
+        Row: {
+          action: string
+          created_at: string
+          id: string
+          property_id: string | null
+          schedule_id: string | null
+          team_member_id: string | null
+        }
+        Insert: {
+          action: string
+          created_at?: string
+          id?: string
+          property_id?: string | null
+          schedule_id?: string | null
+          team_member_id?: string | null
+        }
+        Update: {
+          action?: string
+          created_at?: string
+          id?: string
+          property_id?: string | null
+          schedule_id?: string | null
+          team_member_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "password_audit_logs_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: false
+            referencedRelation: "properties"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "password_audit_logs_schedule_id_fkey"
+            columns: ["schedule_id"]
+            isOneToOne: false
+            referencedRelation: "schedules"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "password_audit_logs_team_member_id_fkey"
+            columns: ["team_member_id"]
+            isOneToOne: false
+            referencedRelation: "team_members"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       profiles: {
         Row: {
           avatar_url: string | null
@@ -152,6 +201,7 @@ export type Database = {
           default_check_out_time: string | null
           id: string
           name: string
+          password_mode: Database["public"]["Enums"]["property_password_mode"]
           updated_at: string
         }
         Insert: {
@@ -162,6 +212,7 @@ export type Database = {
           default_check_out_time?: string | null
           id?: string
           name: string
+          password_mode?: Database["public"]["Enums"]["property_password_mode"]
           updated_at?: string
         }
         Update: {
@@ -172,6 +223,7 @@ export type Database = {
           default_check_out_time?: string | null
           id?: string
           name?: string
+          password_mode?: Database["public"]["Enums"]["property_password_mode"]
           updated_at?: string
         }
         Relationships: []
@@ -316,6 +368,7 @@ export type Database = {
       }
       schedules: {
         Row: {
+          access_password: string | null
           ack_by_team_members: Json | null
           admin_revert_reason: string | null
           check_in_time: string
@@ -348,6 +401,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          access_password?: string | null
           ack_by_team_members?: Json | null
           admin_revert_reason?: string | null
           check_in_time: string
@@ -380,6 +434,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          access_password?: string | null
           ack_by_team_members?: Json | null
           admin_revert_reason?: string | null
           check_in_time?: string
@@ -603,6 +658,15 @@ export type Database = {
         }
         Returns: boolean
       }
+      log_password_action: {
+        Args: {
+          p_action: string
+          p_property_id: string
+          p_schedule_id: string
+          p_team_member_id: string
+        }
+        Returns: undefined
+      }
       validate_schedule_status_transition: {
         Args: {
           p_from_status: string
@@ -615,6 +679,7 @@ export type Database = {
     }
     Enums: {
       app_role: "admin" | "manager" | "cleaner"
+      property_password_mode: "ical" | "manual"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -743,6 +808,7 @@ export const Constants = {
   public: {
     Enums: {
       app_role: ["admin", "manager", "cleaner"],
+      property_password_mode: ["ical", "manual"],
     },
   },
 } as const
