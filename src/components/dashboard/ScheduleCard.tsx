@@ -66,19 +66,31 @@ export function ScheduleCard({ schedule, onClick }: ScheduleCardProps) {
         'animate-slide-in'
       )}
     >
-      <div className="flex items-start justify-between gap-4">
-        <div className="flex-1 min-w-0">
-          {/* Header */}
-          <div className="flex items-center gap-3 mb-2">
-            <h3 className="font-semibold text-foreground truncate">{schedule.propertyName}</h3>
-            {maintenanceIcons[schedule.maintenanceStatus]}
+      <div className="flex items-start gap-4">
+        {/* Property Image */}
+        {schedule.propertyImageUrl && (
+          <div className="shrink-0">
+            <img 
+              src={schedule.propertyImageUrl} 
+              alt={schedule.propertyName}
+              className="w-16 h-16 rounded-lg object-cover border border-border"
+            />
           </div>
+        )}
+        
+        <div className="flex-1 min-w-0 flex items-start justify-between gap-4">
+          <div className="flex-1 min-w-0">
+            {/* Header */}
+            <div className="flex items-center gap-3 mb-2">
+              <h3 className="font-semibold text-foreground truncate">{schedule.propertyName}</h3>
+              {maintenanceIcons[schedule.maintenanceStatus]}
+            </div>
 
-          {/* Address */}
-          <div className="flex items-center gap-1.5 text-sm text-muted-foreground mb-3">
-            <MapPin className="w-4 h-4 shrink-0" />
-            <span className="truncate">{schedule.propertyAddress}</span>
-          </div>
+            {/* Address */}
+            <div className="flex items-center gap-1.5 text-sm text-muted-foreground mb-3">
+              <MapPin className="w-4 h-4 shrink-0" />
+              <span className="truncate">{schedule.propertyAddress}</span>
+            </div>
 
           {/* Times */}
           <div className="flex flex-wrap items-center gap-4 text-sm mb-3">
@@ -137,15 +149,16 @@ export function ScheduleCard({ schedule, onClick }: ScheduleCardProps) {
           )}
         </div>
 
-        {/* Right side - Status & Priority */}
-        <div className="flex flex-col items-end gap-2 shrink-0">
-          <Badge className={cn('border', statusStyle.className)}>
-            {statusStyle.label}
-          </Badge>
-          <Badge variant="outline" className={cn(priorityStyle.className)}>
-            Prioridade {priorityStyle.label}
-          </Badge>
-          <ChevronRight className="w-5 h-5 text-muted-foreground mt-2" />
+          {/* Right side - Status & Priority */}
+          <div className="flex flex-col items-end gap-2 shrink-0">
+            <Badge className={cn('border', statusStyle.className)}>
+              {statusStyle.label}
+            </Badge>
+            <Badge variant="outline" className={cn(priorityStyle.className)}>
+              Prioridade {priorityStyle.label}
+            </Badge>
+            <ChevronRight className="w-5 h-5 text-muted-foreground mt-2" />
+          </div>
         </div>
       </div>
     </button>
