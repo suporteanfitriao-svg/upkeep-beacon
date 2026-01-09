@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Plus, RefreshCw, Home, Pencil, Trash2, Clock, AlertCircle, CheckCircle2, Link2, ClipboardList, KeyRound } from 'lucide-react';
+import { Plus, RefreshCw, Home, Pencil, Trash2, Clock, AlertCircle, CheckCircle2, Link2, ClipboardList, KeyRound, Settings2 } from 'lucide-react';
 import { SidebarProvider, SidebarInset, SidebarTrigger } from '@/components/ui/sidebar';
 import { AppSidebar } from '@/components/dashboard/AppSidebar';
 import { Button } from '@/components/ui/button';
@@ -16,6 +16,7 @@ import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { ChecklistManager } from '@/components/properties/ChecklistManager';
 import { PasswordModeConfig } from '@/components/properties/PasswordModeConfig';
+import { AdvancedRulesConfig } from '@/components/properties/AdvancedRulesConfig';
 
 interface Property {
   id: string;
@@ -665,7 +666,7 @@ export default function Properties() {
                     </CardHeader>
                     <CardContent className="pt-0">
                       <Tabs defaultValue="ical" className="w-full">
-                        <TabsList className={`grid w-full mb-4 ${canManage ? 'grid-cols-3' : 'grid-cols-2'}`}>
+                        <TabsList className={`grid w-full mb-4 ${canManage ? 'grid-cols-4' : 'grid-cols-2'}`}>
                           <TabsTrigger value="ical" className="text-xs">
                             <Link2 className="h-3 w-3 mr-1" />
                             Anúncios ({icalSources[property.id]?.length || 0})
@@ -678,6 +679,12 @@ export default function Properties() {
                             <TabsTrigger value="password" className="text-xs">
                               <KeyRound className="h-3 w-3 mr-1" />
                               Senha
+                            </TabsTrigger>
+                          )}
+                          {canManage && (
+                            <TabsTrigger value="rules" className="text-xs">
+                              <Settings2 className="h-3 w-3 mr-1" />
+                              Regras
                             </TabsTrigger>
                           )}
                         </TabsList>
@@ -819,6 +826,15 @@ export default function Properties() {
                         {canManage && (
                           <TabsContent value="password" className="mt-0">
                             <PasswordModeConfig 
+                              propertyId={property.id} 
+                              propertyName={property.name} 
+                            />
+                          </TabsContent>
+                        )}
+
+                        {canManage && (
+                          <TabsContent value="rules" className="mt-0">
+                            <AdvancedRulesConfig 
                               propertyId={property.id} 
                               propertyName={property.name} 
                             />
