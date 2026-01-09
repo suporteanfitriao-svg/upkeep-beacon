@@ -210,51 +210,55 @@ const Index = () => {
 
   return (
     <SidebarProvider>
-      <div className="min-h-screen flex w-full bg-background">
+      <div className="min-h-screen flex w-full bg-slate-100 dark:bg-slate-900 overflow-hidden">
         <AdminSidebar />
         
-        <main className="flex-1 px-6 py-6">
+        <main className="flex-1 flex flex-col h-screen relative overflow-hidden">
           <AdminDashboardHeader onRefresh={handleRefresh} />
 
-          {/* Status Cards */}
-          <AdminStatusCards 
-            stats={filteredStats}
-            onFilterByStatus={handleFilterByStatus}
-            activeFilter={activeStatusFilter}
-          />
+          <div className="flex-1 overflow-y-auto p-8 scroll-smooth">
+            {/* Status Cards */}
+            <AdminStatusCards 
+              stats={filteredStats}
+              onFilterByStatus={handleFilterByStatus}
+              activeFilter={activeStatusFilter}
+            />
 
-          {/* Filters */}
-          <AdminFilters
-            dateFilter={dateFilter}
-            customDate={customDate}
-            searchQuery={searchQuery}
-            statusFilter={statusFilter}
-            responsibleFilter={responsibleFilter}
-            onDateFilterChange={setDateFilter}
-            onCustomDateChange={setCustomDate}
-            onSearchChange={setSearchQuery}
-            onStatusFilterChange={setStatusFilter}
-            onResponsibleFilterChange={setResponsibleFilter}
-          />
+            {/* Filters */}
+            <AdminFilters
+              dateFilter={dateFilter}
+              customDate={customDate}
+              searchQuery={searchQuery}
+              statusFilter={statusFilter}
+              responsibleFilter={responsibleFilter}
+              onDateFilterChange={setDateFilter}
+              onCustomDateChange={setCustomDate}
+              onSearchChange={setSearchQuery}
+              onStatusFilterChange={setStatusFilter}
+              onResponsibleFilterChange={setResponsibleFilter}
+            />
 
-          {/* Schedules List */}
-          <div className="space-y-3">
-            {filteredSchedules.length === 0 ? (
-              <div className="text-center py-12 bg-card rounded-xl border">
-                <p className="text-muted-foreground">Nenhum agendamento encontrado</p>
-                <p className="text-sm text-muted-foreground mt-1">
-                  Tente ajustar os filtros de data ou busca
-                </p>
-              </div>
-            ) : (
-              filteredSchedules.map(schedule => (
-                <AdminScheduleRow
-                  key={schedule.id}
-                  schedule={schedule}
-                  onClick={() => setSelectedSchedule(schedule)}
-                />
-              ))
-            )}
+            {/* Schedules List */}
+            <section className="space-y-4">
+              {filteredSchedules.length === 0 ? (
+                <div className="text-center py-12 bg-card rounded-3xl border shadow-sm">
+                  <p className="text-muted-foreground">Nenhum agendamento encontrado</p>
+                  <p className="text-sm text-muted-foreground mt-1">
+                    Tente ajustar os filtros de data ou busca
+                  </p>
+                </div>
+              ) : (
+                filteredSchedules.map(schedule => (
+                  <AdminScheduleRow
+                    key={schedule.id}
+                    schedule={schedule}
+                    onClick={() => setSelectedSchedule(schedule)}
+                  />
+                ))
+              )}
+            </section>
+            
+            <div className="h-8" />
           </div>
 
           {/* Schedule Detail Panel */}

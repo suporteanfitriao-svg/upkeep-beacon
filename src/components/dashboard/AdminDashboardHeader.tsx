@@ -22,46 +22,45 @@ export function AdminDashboardHeader({ onRefresh }: AdminDashboardHeaderProps) {
   const userInitials = userName.substring(0, 2).toUpperCase();
 
   return (
-    <header className="flex items-center justify-between gap-4 mb-6 pb-4 border-b">
+    <header className="h-20 bg-card border-b border-border flex items-center justify-between px-8 mb-6 -mx-6 -mt-6">
       <div className="flex items-center gap-4">
-        <SidebarTrigger className="-ml-2" />
+        <SidebarTrigger className="-ml-2 md:hidden" />
         
         <div>
-          <h1 className="text-xl sm:text-2xl font-bold text-foreground">
-            Painel Admin
-          </h1>
-          <p className="text-sm text-muted-foreground">
-            Gestão Operacional de Imóveis
-          </p>
+          <h2 className="text-2xl font-bold text-foreground">Painel Admin</h2>
+          <p className="text-sm text-muted-foreground">Gestão Operacional de Imóveis</p>
         </div>
       </div>
       
-      <div className="flex items-center gap-3">
+      <div className="flex items-center gap-6">
         <Button 
           variant="ghost" 
           size="icon" 
           onClick={toggleTheme}
-          className="rounded-full"
+          className="rounded-full text-muted-foreground hover:text-primary hover:bg-muted"
         >
           {isDark ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
         </Button>
         
-        <Button variant="ghost" size="icon" className="rounded-full relative">
+        <Button variant="ghost" size="icon" className="rounded-full relative text-muted-foreground hover:text-primary">
           <Bell className="w-5 h-5" />
-          <span className="absolute top-1 right-1 w-2 h-2 bg-destructive rounded-full" />
+          <span className="absolute top-2 right-2 w-2 h-2 bg-destructive rounded-full border-2 border-card" />
         </Button>
         
-        <div className="flex items-center gap-3 pl-3 border-l">
+        <div className="flex items-center gap-3 pl-6 border-l border-border">
           <div className="text-right hidden sm:block">
-            <p className="text-sm font-medium text-foreground">{userName}</p>
+            <p className="text-sm font-semibold text-foreground">Admin User</p>
             <p className="text-xs text-muted-foreground">Gerente</p>
           </div>
-          <Avatar className="h-10 w-10">
-            <AvatarImage src="" />
-            <AvatarFallback className="bg-primary/10 text-primary">
-              {userInitials}
-            </AvatarFallback>
-          </Avatar>
+          <div className="relative">
+            <Avatar className="h-10 w-10 border-2 border-muted">
+              <AvatarImage src="https://lh3.googleusercontent.com/aida-public/AB6AXuBnwibARpZ3nGPa0lil8MyTuRYfmBm8TiWYhkJivKL95XoNdzgh3JS6Vn6Z-o5w72gEEEuR9WgmXwYZXh1SsHbZXyz6PfdjODOCqDuqQob5wnR3nj_ZnAsTPEz_8vl7NDqCiqr315tnDh_FqUlBcMNj-fqoztJ06ckDNfm2C1-sqn0jJ8Wrqo6-LguiqHsACXN1O2c6eC6Z11TrhdoHs_tMUYAet8m-SEExoEdNYJCFM1RDJwkOwVP3YlVaPae6bGzoF_M-Fa0h-34" />
+              <AvatarFallback className="bg-primary/10 text-primary">
+                {userInitials}
+              </AvatarFallback>
+            </Avatar>
+            <span className="absolute bottom-0 right-0 w-3 h-3 bg-status-completed border-2 border-card rounded-full" />
+          </div>
         </div>
       </div>
     </header>

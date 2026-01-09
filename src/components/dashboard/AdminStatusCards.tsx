@@ -1,5 +1,5 @@
 import { cn } from '@/lib/utils';
-import { Clock, Unlock, Sparkles, CheckCircle, AlertTriangle } from 'lucide-react';
+import { Clock, DoorOpen, Sparkles, Flag, AlertTriangle } from 'lucide-react';
 
 interface AdminStatusCardsProps {
   stats: {
@@ -18,47 +18,57 @@ const statusCards = [
     key: 'waiting',
     label: 'AGUARDANDO LIBERAÇÃO',
     icon: Clock,
-    bgColor: 'bg-emerald-100',
-    textColor: 'text-emerald-700',
-    iconBg: 'bg-emerald-200/60',
+    bgLight: 'bg-[#FFF8E1]',
+    bgDark: 'dark:bg-amber-900/20',
+    textColor: 'text-amber-600 dark:text-amber-400',
+    iconColor: 'text-amber-600/60 dark:text-amber-400/60',
+    glowColor: 'bg-amber-500/10',
   },
   {
     key: 'released',
     label: 'LIBERADO',
-    icon: Unlock,
-    bgColor: 'bg-amber-50',
-    textColor: 'text-amber-700',
-    iconBg: 'bg-amber-100/60',
+    icon: DoorOpen,
+    bgLight: 'bg-[#E8F5E9]',
+    bgDark: 'dark:bg-green-900/20',
+    textColor: 'text-green-600 dark:text-green-400',
+    iconColor: 'text-green-600/60 dark:text-green-400/60',
+    glowColor: 'bg-green-500/10',
   },
   {
     key: 'cleaning',
     label: 'EM LIMPEZA',
     icon: Sparkles,
-    bgColor: 'bg-cyan-100',
-    textColor: 'text-cyan-700',
-    iconBg: 'bg-cyan-200/60',
+    bgLight: 'bg-[#E0F2F1]',
+    bgDark: 'dark:bg-teal-900/20',
+    textColor: 'text-primary',
+    iconColor: 'text-primary/60',
+    glowColor: 'bg-primary/10',
   },
   {
     key: 'completed',
     label: 'FINALIZADO',
-    icon: CheckCircle,
-    bgColor: 'bg-orange-100',
-    textColor: 'text-orange-600',
-    iconBg: 'bg-orange-200/60',
+    icon: Flag,
+    bgLight: 'bg-indigo-50',
+    bgDark: 'dark:bg-indigo-900/20',
+    textColor: 'text-indigo-600 dark:text-indigo-400',
+    iconColor: 'text-indigo-600/60 dark:text-indigo-400/60',
+    glowColor: 'bg-indigo-500/10',
   },
   {
     key: 'maintenanceAlerts',
     label: 'DANOS / AVARIAS',
     icon: AlertTriangle,
-    bgColor: 'bg-red-100',
-    textColor: 'text-red-600',
-    iconBg: 'bg-red-200/60',
+    bgLight: 'bg-[#FFEBEE]',
+    bgDark: 'dark:bg-rose-900/20',
+    textColor: 'text-rose-500 dark:text-rose-400',
+    iconColor: 'text-rose-500/60 dark:text-rose-400/60',
+    glowColor: 'bg-rose-500/10',
   },
 ];
 
 export function AdminStatusCards({ stats, onFilterByStatus, activeFilter }: AdminStatusCardsProps) {
   return (
-    <div className="grid grid-cols-2 lg:grid-cols-5 gap-3 mb-6">
+    <section className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-6 mb-10">
       {statusCards.map((card) => {
         const count = stats[card.key as keyof typeof stats];
         const isActive = activeFilter === card.key;
@@ -69,24 +79,23 @@ export function AdminStatusCards({ stats, onFilterByStatus, activeFilter }: Admi
             key={card.key}
             onClick={() => onFilterByStatus(isActive ? 'all' : card.key)}
             className={cn(
-              'flex items-center gap-3 p-4 rounded-2xl transition-all duration-200',
-              'hover:scale-[1.02] hover:shadow-lg cursor-pointer',
-              card.bgColor,
+              'rounded-3xl p-6 flex flex-col justify-between h-32 relative overflow-hidden transition-transform hover:-translate-y-1 duration-300 text-left',
+              card.bgLight,
+              card.bgDark,
               isActive && 'ring-2 ring-offset-2 ring-primary'
             )}
           >
-            <div className={cn('p-2 rounded-xl', card.iconBg)}>
-              <Icon className={cn('w-5 h-5', card.textColor)} />
+            <div className="flex justify-between items-start z-10">
+              <span className={cn('text-4xl font-bold', card.textColor)}>{count}</span>
+              <Icon className={cn('text-2xl w-7 h-7', card.iconColor)} />
             </div>
-            <div className="text-left">
-              <p className={cn('text-2xl font-bold', card.textColor)}>{count}</p>
-              <p className={cn('text-[10px] font-semibold uppercase tracking-wide', card.textColor, 'opacity-80')}>
-                {card.label}
-              </p>
-            </div>
+            <span className={cn('font-bold text-sm uppercase tracking-wide z-10', card.textColor)}>
+              {card.label}
+            </span>
+            <div className={cn('absolute -bottom-4 -right-4 w-24 h-24 rounded-full blur-xl', card.glowColor)} />
           </button>
         );
       })}
-    </div>
+    </section>
   );
 }
