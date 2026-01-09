@@ -73,6 +73,7 @@ export function ScheduleDetail({ schedule, onClose, onUpdateSchedule }: Schedule
   const [confirmMarkCategory, setConfirmMarkCategory] = useState<{ open: boolean; category: string | null }>({ open: false, category: null });
   const [unsavedCategories, setUnsavedCategories] = useState<Set<string>>(new Set());
   const [photoUploadModal, setPhotoUploadModal] = useState<{ open: boolean; category: string | null }>({ open: false, category: null });
+  const [deleteIssueConfirm, setDeleteIssueConfirm] = useState<{ open: boolean; issueId: string | null }>({ open: false, issueId: null });
   const statusStyle = statusConfig[schedule.status];
 
   // Fetch property rules (require_photo_per_category)
@@ -390,6 +391,22 @@ export function ScheduleDetail({ schedule, onClose, onUpdateSchedule }: Schedule
   const handleSaveNotes = () => {
     onUpdateSchedule({ ...schedule, notes });
     toast.success('Observações salvas!');
+  };
+
+  const handleDeleteIssue = async (issueId: string) => {
+    const updatedIssues = schedule.maintenanceIssues.filter(issue => issue.id !== issueId);
+    
+    // Update maintenance status if no more issues
+    const newMaintenanceStatus = updatedIssues.length === 0 ? 'ok' : 'needs_maintenance';
+    
+    onUpdateSchedule({ 
+      ...schedule, 
+      maintenanceIssues: updatedIssues,
+      maintenanceStatus: newMaintenanceStatus
+    }, undefined, teamMemberId || undefined);
+    
+    toast.success('Avaria removida!');
+    setDeleteIssueConfirm({ open: false, issueId: null });
   };
 
   const completedTasks = checklist.filter(item => item.completed).length;
@@ -748,19 +765,28 @@ export function ScheduleDetail({ schedule, onClose, onUpdateSchedule }: Schedule
                   <div key={issue.id} className="rounded-xl border border-orange-200 bg-orange-50 p-3 dark:border-orange-900/50 dark:bg-orange-900/10">
                     <div className="flex items-start gap-3">
                       <span className="material-symbols-outlined text-orange-500 mt-0.5 text-[20px]">warning</span>
-                      <div className="flex flex-col">
+                      <div className="flex flex-col flex-1">
                         <p className="text-sm font-bold text-slate-900 dark:text-white">{issue.description}</p>
                         <span className="text-[10px] text-[#8A8B88] dark:text-slate-400">
                           Reportado em {format(issue.reportedAt, "dd/MM - HH:mm")}
                         </span>
                       </div>
+                      {schedule.status !== 'completed' && (
+                        <button
+                          onClick={() => setDeleteIssueConfirm({ open: true, issueId: issue.id })}
+                          className="flex items-center justify-center rounded-full p-1.5 text-red-400 hover:bg-red-100 hover:text-red-600 transition-colors dark:hover:bg-red-900/30"
+                          title="Excluir avaria"
+                        >
+                          <span className="material-symbols-outlined text-[18px]">delete</span>
+                        </button>
+                      )}
                     </div>
                   </div>
                 ))}
               </div>
             )}
 
-            <button 
+            <button
               onClick={() => setShowIssueForm(true)}
               className="mt-1 flex w-full items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white py-3 font-bold text-slate-700 shadow-sm transition-colors hover:bg-slate-50 dark:border-slate-700 dark:bg-[#2d3138] dark:text-white dark:hover:bg-slate-700"
             >
@@ -1025,6 +1051,27 @@ export function ScheduleDetail({ schedule, onClose, onUpdateSchedule }: Schedule
           }}
         />
       )}
+
+      {/* Delete Issue Confirmation Dialog */}
+      <AlertDialog open={deleteIssueConfirm.open} onOpenChange={(open) => setDeleteIssueConfirm({ open, issueId: open ? deleteIssueConfirm.issueId : null })}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Excluir Avaria</AlertDialogTitle>
+            <AlertDialogDescription>
+              Tem certeza que deseja excluir esta avaria? Esta ação não pode ser desfeita.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction 
+              onClick={() => deleteIssueConfirm.issueId && handleDeleteIssue(deleteIssueConfirm.issueId)}
+              className="bg-red-600 hover:bg-red-700"
+            >
+              Excluir
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
