@@ -1,15 +1,15 @@
 import { useState, useMemo } from 'react';
-import { Clock, PlayCircle, Search, CheckCircle2, AlertTriangle, Loader2, CheckSquare } from 'lucide-react';
+import { Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { isToday, isTomorrow, isSameDay } from 'date-fns';
 
 import { SidebarProvider } from '@/components/ui/sidebar';
-import { AppSidebar } from '@/components/dashboard/AppSidebar';
-import { StatusCard } from '@/components/dashboard/StatusCard';
-import { ScheduleRow } from '@/components/dashboard/ScheduleRow';
+import { AdminSidebar } from '@/components/dashboard/AdminSidebar';
+import { AdminDashboardHeader } from '@/components/dashboard/AdminDashboardHeader';
+import { AdminStatusCards } from '@/components/dashboard/AdminStatusCards';
+import { AdminFilters, DateFilter } from '@/components/dashboard/AdminFilters';
+import { AdminScheduleRow } from '@/components/dashboard/AdminScheduleRow';
 import { ScheduleDetail } from '@/components/dashboard/ScheduleDetail';
-import { DashboardHeader } from '@/components/dashboard/DashboardHeader';
-import { ScheduleFilters, DateFilter } from '@/components/dashboard/ScheduleFilters';
 import { MobileDashboard } from '@/components/dashboard/MobileDashboard';
 import { useSchedules, calculateStats } from '@/hooks/useSchedules';
 import { Schedule, ScheduleStatus } from '@/types/scheduling';
@@ -22,23 +22,25 @@ const Index = () => {
   const [activeStatusFilter, setActiveStatusFilter] = useState<ScheduleStatus | 'all'>('all');
   
   // Filters
-  const [dateFilter, setDateFilter] = useState<DateFilter>('all');
+  const [dateFilter, setDateFilter] = useState<DateFilter>('today');
   const [customDate, setCustomDate] = useState<Date | undefined>(undefined);
   const [searchQuery, setSearchQuery] = useState('');
-  const [propertyFilter, setPropertyFilter] = useState('all');
+  const [statusFilter, setStatusFilter] = useState('all');
+  const [responsibleFilter, setResponsibleFilter] = useState('all');
 
   const stats = useMemo(() => calculateStats(schedules), [schedules]);
 
   // Apply all filters and sort (completed last)
   const filteredSchedules = useMemo(() => {
     const filtered = schedules.filter(schedule => {
-      // Status filter
-      if (activeStatusFilter !== 'all' && schedule.status !== activeStatusFilter) {
+      // Status filter (from cards or dropdown)
+      const effectiveStatusFilter = activeStatusFilter !== 'all' ? activeStatusFilter : statusFilter;
+      if (effectiveStatusFilter !== 'all' && schedule.status !== effectiveStatusFilter) {
         return false;
       }
 
-      // Property filter
-      if (propertyFilter !== 'all' && schedule.propertyId !== propertyFilter) {
+      // Responsible filter
+      if (responsibleFilter !== 'all' && schedule.cleanerName !== responsibleFilter) {
         return false;
       }
 
@@ -66,7 +68,7 @@ const Index = () => {
       // Sort by checkout time
       return a.checkOut.getTime() - b.checkOut.getTime();
     });
-  }, [schedules, activeStatusFilter, propertyFilter, dateFilter, customDate, searchQuery]);
+  }, [schedules, activeStatusFilter, statusFilter, responsibleFilter, dateFilter, customDate, searchQuery]);
 
   // Filtered stats for current date filter
   const filteredStats = useMemo(() => {
@@ -153,7 +155,7 @@ const Index = () => {
     return (
       <SidebarProvider>
         <div className="min-h-screen flex w-full bg-background">
-          <AppSidebar />
+          <AdminSidebar />
           <main className="flex-1 flex items-center justify-center">
             <div className="flex flex-col items-center gap-3">
               <Loader2 className="h-8 w-8 animate-spin text-primary" />
@@ -169,7 +171,7 @@ const Index = () => {
     return (
       <SidebarProvider>
         <div className="min-h-screen flex w-full bg-background">
-          <AppSidebar />
+          <AdminSidebar />
           <main className="flex-1 flex items-center justify-center">
             <div className="text-center">
               <p className="text-destructive font-medium">{error}</p>
@@ -209,121 +211,49 @@ const Index = () => {
   return (
     <SidebarProvider>
       <div className="min-h-screen flex w-full bg-background">
-        <AppSidebar />
+        <AdminSidebar />
         
-        <main className="flex-1 px-4 sm:px-6 lg:px-8 py-6">
-          <DashboardHeader onRefresh={handleRefresh} todayCheckoutsCount={todayCheckoutsCount} />
+        <main className="flex-1 px-6 py-6">
+          <AdminDashboardHeader onRefresh={handleRefresh} />
 
           {/* Status Cards */}
-          <div className="grid grid-cols-2 lg:grid-cols-5 gap-3 mb-6">
-            <StatusCard
-              title="Aguardando Liberação"
-              count={filteredStats.waiting}
-              icon={Clock}
-              variant="waiting"
-              onClick={() => handleFilterByStatus(activeStatusFilter === 'waiting' ? 'all' : 'waiting')}
-            />
-            <StatusCard
-              title="Liberado"
-              count={filteredStats.released}
-              icon={CheckSquare}
-              variant="released"
-              onClick={() => handleFilterByStatus(activeStatusFilter === 'released' ? 'all' : 'released')}
-            />
-            <StatusCard
-              title="Em Limpeza"
-              count={filteredStats.cleaning}
-              icon={PlayCircle}
-              variant="progress"
-              onClick={() => handleFilterByStatus(activeStatusFilter === 'cleaning' ? 'all' : 'cleaning')}
-            />
-            <StatusCard
-              title="Finalizados"
-              count={filteredStats.completed}
-              icon={CheckCircle2}
-              variant="completed"
-              onClick={() => handleFilterByStatus(activeStatusFilter === 'completed' ? 'all' : 'completed')}
-            />
-            <StatusCard
-              title="Alertas"
-              count={filteredStats.maintenanceAlerts}
-              icon={AlertTriangle}
-              variant="alert"
-              onClick={() => {
-                const alertSchedules = filteredSchedules.filter(s => s.maintenanceStatus !== 'ok');
-                if (alertSchedules.length > 0) {
-                  setSelectedSchedule(alertSchedules[0]);
-                }
-              }}
-            />
-          </div>
+          <AdminStatusCards 
+            stats={filteredStats}
+            onFilterByStatus={handleFilterByStatus}
+            activeFilter={activeStatusFilter}
+          />
 
           {/* Filters */}
-          <ScheduleFilters
+          <AdminFilters
             dateFilter={dateFilter}
             customDate={customDate}
             searchQuery={searchQuery}
-            propertyFilter={propertyFilter}
+            statusFilter={statusFilter}
+            responsibleFilter={responsibleFilter}
             onDateFilterChange={setDateFilter}
             onCustomDateChange={setCustomDate}
             onSearchChange={setSearchQuery}
-            onPropertyFilterChange={setPropertyFilter}
+            onStatusFilterChange={setStatusFilter}
+            onResponsibleFilterChange={setResponsibleFilter}
           />
 
-          {/* Active Filter Indicator */}
-          {activeStatusFilter !== 'all' && (
-            <div className="flex items-center gap-2 mb-4">
-              <span className="text-sm text-muted-foreground">Filtrando por status:</span>
-              <button
-                onClick={() => setActiveStatusFilter('all')}
-                className="inline-flex items-center gap-1 px-2 py-1 bg-primary/10 text-primary rounded text-sm font-medium hover:bg-primary/20 transition-colors"
-              >
-                {activeStatusFilter === 'waiting' && 'Aguardando'}
-                {activeStatusFilter === 'released' && 'Liberado'}
-                {activeStatusFilter === 'cleaning' && 'Em Limpeza'}
-                {activeStatusFilter === 'completed' && 'Finalizados'}
-                <span className="ml-1">×</span>
-              </button>
-            </div>
-          )}
-
-          {/* Schedules List - Compact Rows */}
-          <div className="space-y-2">
+          {/* Schedules List */}
+          <div className="space-y-3">
             {filteredSchedules.length === 0 ? (
-              <div className="text-center py-12 bg-card rounded-lg border">
+              <div className="text-center py-12 bg-card rounded-xl border">
                 <p className="text-muted-foreground">Nenhum agendamento encontrado</p>
                 <p className="text-sm text-muted-foreground mt-1">
                   Tente ajustar os filtros de data ou busca
                 </p>
               </div>
             ) : (
-              <>
-                <div className="text-sm text-muted-foreground mb-2">
-                  {filteredSchedules.length} agendamento(s) encontrado(s)
-                </div>
-                
-                {/* Fixed Header Row */}
-                <div className="hidden md:grid grid-cols-[1fr_110px_90px_70px_90px_70px_130px_150px] gap-3 px-4 py-2 bg-muted/50 rounded-lg border text-sm font-medium text-muted-foreground">
-                  <span>Propriedade</span>
-                  <span>Status</span>
-                  <span>Check-in</span>
-                  <span className="text-center">Hora</span>
-                  <span className="font-bold">Check-out</span>
-                  <span className="text-center font-bold">Hora</span>
-                  <span>Responsável</span>
-                  <span>Tags</span>
-                </div>
-
-                {filteredSchedules.map(schedule => (
-                  <ScheduleRow
-                    key={schedule.id}
-                    schedule={schedule}
-                    onClick={() => setSelectedSchedule(schedule)}
-                    onUpdateTimes={handleUpdateTimes}
-                    onReleaseSchedule={handleReleaseSchedule}
-                  />
-                ))}
-              </>
+              filteredSchedules.map(schedule => (
+                <AdminScheduleRow
+                  key={schedule.id}
+                  schedule={schedule}
+                  onClick={() => setSelectedSchedule(schedule)}
+                />
+              ))
             )}
           </div>
 
