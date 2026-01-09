@@ -1,9 +1,7 @@
 import { useState, useEffect } from 'react';
-import { Plus, RefreshCw, Home, Pencil, Trash2, Clock, AlertCircle, CheckCircle2, Link2, ClipboardList, KeyRound, Settings2 } from 'lucide-react';
 import { SidebarProvider, SidebarInset, SidebarTrigger } from '@/components/ui/sidebar';
 import { AppSidebar } from '@/components/dashboard/AppSidebar';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
@@ -17,6 +15,7 @@ import { ptBR } from 'date-fns/locale';
 import { ChecklistManager } from '@/components/properties/ChecklistManager';
 import { PasswordModeConfig } from '@/components/properties/PasswordModeConfig';
 import { AdvancedRulesConfig } from '@/components/properties/AdvancedRulesConfig';
+import { cn } from '@/lib/utils';
 
 interface Property {
   id: string;
@@ -63,7 +62,6 @@ export default function Properties() {
     default_check_out_time: '11:00'
   });
   
-  // iCal source form
   const [icalDialogOpen, setIcalDialogOpen] = useState(false);
   const [selectedPropertyId, setSelectedPropertyId] = useState<string | null>(null);
   const [editingIcal, setEditingIcal] = useState<ICalSource | null>(null);
@@ -191,13 +189,11 @@ export default function Properties() {
       return;
     }
 
-    // Validate mandatory times
     if (!formData.default_check_in_time || !formData.default_check_out_time) {
       toast.error('Horários padrão de check-in e check-out são obrigatórios');
       return;
     }
 
-    // Validate time format and logic (checkout must be before checkin - guest leaves before next arrives)
     if (!validateTimes(formData.default_check_in_time, formData.default_check_out_time)) {
       return;
     }
@@ -209,7 +205,6 @@ export default function Properties() {
       default_check_out_time: formData.default_check_out_time
     };
 
-    // Get current user's team member ID for audit
     const { data: { user } } = await supabase.auth.getUser();
     let teamMemberId: string | null = null;
     
@@ -223,7 +218,6 @@ export default function Properties() {
     }
 
     if (editingProperty) {
-      // Log audit for time changes if they changed
       const oldCheckIn = editingProperty.default_check_in_time?.slice(0, 5);
       const oldCheckOut = editingProperty.default_check_out_time?.slice(0, 5);
       const timesChanged = oldCheckIn !== formData.default_check_in_time || 
@@ -240,7 +234,6 @@ export default function Properties() {
         return;
       }
 
-      // Log time change audit if times changed
       if (timesChanged && teamMemberId) {
         await supabase.from('password_audit_logs').insert({
           property_id: editingProperty.id,
@@ -263,7 +256,6 @@ export default function Properties() {
         return;
       }
 
-      // Log audit for new property time config
       if (teamMemberId && newProperty) {
         await supabase.from('password_audit_logs').insert({
           property_id: newProperty.id,
@@ -433,7 +425,7 @@ export default function Properties() {
 
   if (isLoadingRole) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
+      <div className="min-h-screen flex items-center justify-center bg-background">
         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
       </div>
     );
@@ -446,93 +438,101 @@ export default function Properties() {
       <div className="flex min-h-screen w-full bg-background">
         <AppSidebar />
         <SidebarInset className="flex-1">
-          <header className="flex h-16 items-center justify-between border-b px-4 md:px-6">
-            <div className="flex items-center gap-4">
-              <SidebarTrigger />
-              <h1 className="text-xl font-semibold">Propriedades</h1>
+          {/* Header */}
+          <header className="sticky top-0 z-20 flex items-center justify-between bg-background/90 px-4 py-4 backdrop-blur-md border-b border-border md:px-6">
+            <div className="flex items-center gap-3">
+              <SidebarTrigger className="rounded-full p-2 hover:bg-muted transition-colors" />
+              <div className="flex flex-col">
+                <h1 className="text-lg font-bold tracking-tight text-foreground">Propriedades</h1>
+                <span className="text-xs text-muted-foreground">{properties.length} imóveis cadastrados</span>
+              </div>
             </div>
             <div className="flex items-center gap-2">
-              <Button
-                variant="outline"
-                size="sm"
+              <button
                 onClick={handleSyncAll}
                 disabled={isSyncing !== null}
+                className="flex items-center gap-2 rounded-xl border border-border bg-card px-3 py-2 text-sm font-medium text-foreground shadow-sm transition-all hover:bg-muted active:scale-[0.98] disabled:opacity-50"
               >
-                <RefreshCw className={`h-4 w-4 mr-2 ${isSyncing === 'all' ? 'animate-spin' : ''}`} />
-                Sincronizar Todas
-              </Button>
+                <span className={cn("material-symbols-outlined text-[18px]", isSyncing === 'all' && 'animate-spin')}>sync</span>
+                <span className="hidden sm:inline">Sincronizar</span>
+              </button>
               {canManage && (
                 <Dialog open={dialogOpen} onOpenChange={(open) => {
                   setDialogOpen(open);
                   if (!open) resetForm();
                 }}>
                   <DialogTrigger asChild>
-                    <Button size="sm">
-                      <Plus className="h-4 w-4 mr-2" />
-                      Nova Propriedade
-                    </Button>
+                    <button className="flex items-center gap-2 rounded-xl bg-primary px-4 py-2 text-sm font-bold text-primary-foreground shadow-sm transition-all hover:bg-primary/90 active:scale-[0.98]">
+                      <span className="material-symbols-outlined text-[18px]">add</span>
+                      <span className="hidden sm:inline">Nova Propriedade</span>
+                    </button>
                   </DialogTrigger>
                   <DialogContent className="max-w-md">
                     <DialogHeader>
-                      <DialogTitle>
+                      <DialogTitle className="text-lg font-bold">
                         {editingProperty ? 'Editar Propriedade' : 'Nova Propriedade'}
                       </DialogTitle>
                     </DialogHeader>
                     <div className="space-y-4 py-4">
                       <div className="space-y-2">
-                        <Label htmlFor="name">Nome *</Label>
+                        <Label htmlFor="name" className="text-sm font-medium">Nome *</Label>
                         <Input
                           id="name"
                           value={formData.name}
                           onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                           placeholder="Ex: Apartamento Centro"
+                          className="rounded-xl"
                         />
                       </div>
                       <div className="space-y-2">
-                        <Label htmlFor="address">Endereço</Label>
+                        <Label htmlFor="address" className="text-sm font-medium">Endereço</Label>
                         <Input
                           id="address"
                           value={formData.address}
                           onChange={(e) => setFormData({ ...formData, address: e.target.value })}
                           placeholder="Ex: Rua das Flores, 123"
+                          className="rounded-xl"
                         />
                       </div>
                       <div className="space-y-2">
                         <div className="flex items-center gap-2 text-sm font-medium">
-                          <Clock className="h-4 w-4 text-primary" />
-                          <span>Horários Padrão do Imóvel *</span>
+                          <span className="material-symbols-outlined text-primary text-[18px]">schedule</span>
+                          <span>Horários Padrão *</span>
                         </div>
-                        <p className="text-xs text-muted-foreground mb-2">
-                          Obrigatório. O check-out deve ser antes do check-in (hóspede sai antes do próximo entrar).
+                        <p className="text-xs text-muted-foreground">
+                          Check-out deve ser antes do check-in.
                         </p>
                         <div className="grid grid-cols-2 gap-4">
-                          <div className="space-y-2">
-                            <Label htmlFor="check_out_time">Check-out *</Label>
+                          <div className="space-y-1">
+                            <Label htmlFor="check_out_time" className="text-xs">Check-out *</Label>
                             <Input
                               id="check_out_time"
                               type="time"
                               value={formData.default_check_out_time}
                               onChange={(e) => setFormData({ ...formData, default_check_out_time: e.target.value })}
                               required
+                              className="rounded-xl"
                             />
-                            <p className="text-[10px] text-muted-foreground">Saída do hóspede</p>
                           </div>
-                          <div className="space-y-2">
-                            <Label htmlFor="check_in_time">Check-in *</Label>
+                          <div className="space-y-1">
+                            <Label htmlFor="check_in_time" className="text-xs">Check-in *</Label>
                             <Input
                               id="check_in_time"
                               type="time"
                               value={formData.default_check_in_time}
                               onChange={(e) => setFormData({ ...formData, default_check_in_time: e.target.value })}
                               required
+                              className="rounded-xl"
                             />
-                            <p className="text-[10px] text-muted-foreground">Entrada do próximo</p>
                           </div>
                         </div>
                       </div>
-                      <Button onClick={handleSubmit} className="w-full">
+                      <button 
+                        onClick={handleSubmit} 
+                        className="w-full rounded-xl bg-primary py-3 text-sm font-bold text-primary-foreground shadow-sm transition-all hover:bg-primary/90 active:scale-[0.98]"
+                      >
                         {editingProperty ? 'Salvar Alterações' : 'Criar Propriedade'}
-                      </Button>
+                      </button>
                     </div>
                   </DialogContent>
                 </Dialog>
@@ -540,106 +540,124 @@ export default function Properties() {
             </div>
           </header>
 
-          <main className="p-4 md:p-6">
-            {/* Stats Banner */}
-            <div className="grid grid-cols-3 gap-4 mb-6">
-              <Card>
-                <CardContent className="p-4 flex items-center gap-3">
-                  <div className="p-2 rounded-full bg-primary/10">
-                    <Link2 className="h-5 w-5 text-primary" />
+          <main className="p-4 md:p-6 space-y-6">
+            {/* Stats Cards */}
+            <div className="grid grid-cols-3 gap-3">
+              <div className="rounded-xl border border-border bg-card p-4 shadow-sm">
+                <div className="flex items-center gap-3">
+                  <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/10">
+                    <span className="material-symbols-outlined text-primary text-[20px]">link</span>
                   </div>
                   <div>
-                    <p className="text-2xl font-bold">{getTotalIcalSources()}</p>
-                    <p className="text-xs text-muted-foreground">Anúncios Configurados</p>
+                    <p className="text-2xl font-bold text-foreground">{getTotalIcalSources()}</p>
+                    <p className="text-xs text-muted-foreground">Anúncios</p>
                   </div>
-                </CardContent>
-              </Card>
-              <Card>
-                <CardContent className="p-4 flex items-center gap-3">
-                  <div className="p-2 rounded-full bg-green-500/10">
-                    <CheckCircle2 className="h-5 w-5 text-green-500" />
+                </div>
+              </div>
+              <div className="rounded-xl border border-border bg-card p-4 shadow-sm">
+                <div className="flex items-center gap-3">
+                  <div className="flex h-10 w-10 items-center justify-center rounded-full bg-status-completed/10">
+                    <span className="material-symbols-outlined text-status-completed text-[20px]">check_circle</span>
                   </div>
                   <div>
-                    <p className="text-sm font-medium">
+                    <p className="text-sm font-semibold text-foreground">
                       {lastSync ? format(lastSync, "dd/MM HH:mm", { locale: ptBR }) : 'Nunca'}
                     </p>
-                    <p className="text-xs text-muted-foreground">Última Sincronização</p>
+                    <p className="text-xs text-muted-foreground">Última Sync</p>
                   </div>
-                </CardContent>
-              </Card>
-              <Card>
-                <CardContent className="p-4 flex items-center gap-3">
-                  <div className={`p-2 rounded-full ${getErrorCount() > 0 ? 'bg-destructive/10' : 'bg-muted'}`}>
-                    <AlertCircle className={`h-5 w-5 ${getErrorCount() > 0 ? 'text-destructive' : 'text-muted-foreground'}`} />
+                </div>
+              </div>
+              <div className="rounded-xl border border-border bg-card p-4 shadow-sm">
+                <div className="flex items-center gap-3">
+                  <div className={cn(
+                    "flex h-10 w-10 items-center justify-center rounded-full",
+                    getErrorCount() > 0 ? "bg-destructive/10" : "bg-muted"
+                  )}>
+                    <span className={cn(
+                      "material-symbols-outlined text-[20px]",
+                      getErrorCount() > 0 ? "text-destructive" : "text-muted-foreground"
+                    )}>error</span>
                   </div>
                   <div>
-                    <p className="text-2xl font-bold">{getErrorCount()}</p>
-                    <p className="text-xs text-muted-foreground">Erros de Sincronização</p>
+                    <p className="text-2xl font-bold text-foreground">{getErrorCount()}</p>
+                    <p className="text-xs text-muted-foreground">Erros</p>
                   </div>
-                </CardContent>
-              </Card>
+                </div>
+              </div>
             </div>
 
+            {/* Properties List */}
             {isLoading ? (
               <div className="flex items-center justify-center py-12">
                 <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
               </div>
             ) : properties.length === 0 ? (
-              <div className="text-center py-12">
-                <Home className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
-                <h3 className="text-lg font-medium mb-2">Nenhuma propriedade cadastrada</h3>
-                <p className="text-muted-foreground mb-4">
+              <div className="flex flex-col items-center justify-center py-16 text-center">
+                <div className="flex h-16 w-16 items-center justify-center rounded-full bg-muted mb-4">
+                  <span className="material-symbols-outlined text-muted-foreground text-[32px]">home</span>
+                </div>
+                <h3 className="text-lg font-bold text-foreground mb-2">Nenhuma propriedade</h3>
+                <p className="text-sm text-muted-foreground mb-4 max-w-sm">
                   Adicione sua primeira propriedade para começar a sincronizar reservas.
                 </p>
                 {canManage && (
-                  <Button onClick={() => setDialogOpen(true)}>
-                    <Plus className="h-4 w-4 mr-2" />
+                  <button 
+                    onClick={() => setDialogOpen(true)}
+                    className="flex items-center gap-2 rounded-xl bg-primary px-4 py-2 text-sm font-bold text-primary-foreground shadow-sm transition-all hover:bg-primary/90"
+                  >
+                    <span className="material-symbols-outlined text-[18px]">add</span>
                     Nova Propriedade
-                  </Button>
+                  </button>
                 )}
               </div>
             ) : (
               <div className="space-y-4">
-                {properties.map((property) => (
-                  <Card key={property.id}>
-                    <CardHeader className="pb-3">
-                      <div className="flex items-start justify-between">
-                        <div className="space-y-1">
-                          <CardTitle className="text-lg">{property.name}</CardTitle>
-                          {property.address && (
-                            <p className="text-sm text-muted-foreground">{property.address}</p>
-                          )}
-                          <div className="flex items-center gap-3 text-xs text-muted-foreground">
-                            <span className="flex items-center gap-1">
-                              <Clock className="h-3 w-3" />
-                              Check-in: {property.default_check_in_time?.slice(0, 5) || '14:00'}
-                            </span>
-                            <span className="flex items-center gap-1">
-                              <Clock className="h-3 w-3" />
-                              Check-out: {property.default_check_out_time?.slice(0, 5) || '11:00'}
-                            </span>
+                {properties.map((property) => {
+                  const propertySources = icalSources[property.id] || [];
+                  const propertyChecklistCount = propertyChecklists.filter(c => c.property_id === property.id).length;
+                  
+                  return (
+                    <div 
+                      key={property.id} 
+                      className="overflow-hidden rounded-xl border border-border bg-card shadow-sm transition-all hover:shadow-md"
+                    >
+                      {/* Property Header */}
+                      <div className="flex items-start justify-between gap-4 p-4 border-b border-border bg-muted/30">
+                        <div className="flex items-start gap-3">
+                          <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-primary/10 shrink-0">
+                            <span className="material-symbols-outlined text-primary text-[22px]">home</span>
+                          </div>
+                          <div className="min-w-0">
+                            <h3 className="font-bold text-foreground truncate">{property.name}</h3>
+                            {property.address && (
+                              <p className="text-sm text-muted-foreground truncate">{property.address}</p>
+                            )}
+                            <div className="flex items-center gap-3 mt-1 text-xs text-muted-foreground">
+                              <span className="flex items-center gap-1">
+                                <span className="material-symbols-outlined text-[14px]">logout</span>
+                                {property.default_check_out_time?.slice(0, 5) || '11:00'}
+                              </span>
+                              <span className="flex items-center gap-1">
+                                <span className="material-symbols-outlined text-[14px]">login</span>
+                                {property.default_check_in_time?.slice(0, 5) || '14:00'}
+                              </span>
+                            </div>
                           </div>
                         </div>
                         {canManage && (
-                          <div className="flex gap-1">
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className="h-8 w-8"
+                          <div className="flex items-center gap-1 shrink-0">
+                            <button
                               onClick={() => handleEdit(property)}
+                              className="flex h-9 w-9 items-center justify-center rounded-lg text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
                             >
-                              <Pencil className="h-4 w-4" />
-                            </Button>
+                              <span className="material-symbols-outlined text-[20px]">edit</span>
+                            </button>
                             {isAdmin && (
                               <AlertDialog>
                                 <AlertDialogTrigger asChild>
-                                  <Button
-                                    variant="ghost"
-                                    size="icon"
-                                    className="h-8 w-8 text-destructive hover:text-destructive"
-                                  >
-                                    <Trash2 className="h-4 w-4" />
-                                  </Button>
+                                  <button className="flex h-9 w-9 items-center justify-center rounded-lg text-destructive hover:bg-destructive/10 transition-colors">
+                                    <span className="material-symbols-outlined text-[20px]">delete</span>
+                                  </button>
                                 </AlertDialogTrigger>
                                 <AlertDialogContent>
                                   <AlertDialogHeader>
@@ -663,187 +681,192 @@ export default function Properties() {
                           </div>
                         )}
                       </div>
-                    </CardHeader>
-                    <CardContent className="pt-0">
-                      <Tabs defaultValue="ical" className="w-full">
-                        <TabsList className={`grid w-full mb-4 ${canManage ? 'grid-cols-4' : 'grid-cols-2'}`}>
-                          <TabsTrigger value="ical" className="text-xs">
-                            <Link2 className="h-3 w-3 mr-1" />
-                            Anúncios ({icalSources[property.id]?.length || 0})
-                          </TabsTrigger>
-                          <TabsTrigger value="checklist" className="text-xs">
-                            <ClipboardList className="h-3 w-3 mr-1" />
-                            Checklists ({propertyChecklists.filter(c => c.property_id === property.id).length})
-                          </TabsTrigger>
-                          {canManage && (
-                            <TabsTrigger value="password" className="text-xs">
-                              <KeyRound className="h-3 w-3 mr-1" />
-                              Senha
+
+                      {/* Tabs Content */}
+                      <div className="p-4">
+                        <Tabs defaultValue="ical" className="w-full">
+                          <TabsList className={cn(
+                            "grid w-full mb-4 bg-muted/50 rounded-xl p-1",
+                            canManage ? 'grid-cols-4' : 'grid-cols-2'
+                          )}>
+                            <TabsTrigger value="ical" className="rounded-lg text-xs data-[state=active]:bg-card data-[state=active]:shadow-sm">
+                              <span className="material-symbols-outlined text-[14px] mr-1">link</span>
+                              Anúncios ({propertySources.length})
                             </TabsTrigger>
-                          )}
-                          {canManage && (
-                            <TabsTrigger value="rules" className="text-xs">
-                              <Settings2 className="h-3 w-3 mr-1" />
-                              Regras
+                            <TabsTrigger value="checklist" className="rounded-lg text-xs data-[state=active]:bg-card data-[state=active]:shadow-sm">
+                              <span className="material-symbols-outlined text-[14px] mr-1">checklist</span>
+                              Checklists ({propertyChecklistCount})
                             </TabsTrigger>
-                          )}
-                        </TabsList>
-                        
-                        <TabsContent value="ical" className="mt-0">
-                          {/* iCal Sources List */}
-                          <div className="space-y-2">
-                            <div className="flex items-center justify-between">
-                              <p className="text-sm font-medium">Anúncios</p>
-                              {canManage && (
-                                <Button
-                                  variant="outline"
-                                  size="sm"
-                                  onClick={() => handleAddIcal(property.id)}
-                                >
-                                  <Plus className="h-3 w-3 mr-1" />
-                                  Adicionar iCal
-                                </Button>
+                            {canManage && (
+                              <TabsTrigger value="password" className="rounded-lg text-xs data-[state=active]:bg-card data-[state=active]:shadow-sm">
+                                <span className="material-symbols-outlined text-[14px] mr-1">key</span>
+                                Senha
+                              </TabsTrigger>
+                            )}
+                            {canManage && (
+                              <TabsTrigger value="rules" className="rounded-lg text-xs data-[state=active]:bg-card data-[state=active]:shadow-sm">
+                                <span className="material-symbols-outlined text-[14px] mr-1">tune</span>
+                                Regras
+                              </TabsTrigger>
+                            )}
+                          </TabsList>
+                          
+                          <TabsContent value="ical" className="mt-0">
+                            <div className="space-y-3">
+                              <div className="flex items-center justify-between">
+                                <p className="text-sm font-semibold text-foreground">Anúncios Vinculados</p>
+                                {canManage && (
+                                  <button
+                                    onClick={() => handleAddIcal(property.id)}
+                                    className="flex items-center gap-1 rounded-lg border border-border px-3 py-1.5 text-xs font-medium text-foreground hover:bg-muted transition-colors"
+                                  >
+                                    <span className="material-symbols-outlined text-[14px]">add</span>
+                                    Adicionar iCal
+                                  </button>
+                                )}
+                              </div>
+                              
+                              {propertySources.length > 0 ? (
+                                <div className="space-y-2">
+                                  {propertySources.map((source) => (
+                                    <div
+                                      key={source.id}
+                                      className="flex items-center justify-between p-3 bg-muted/30 rounded-xl border border-border/50"
+                                    >
+                                      <div className="flex-1 min-w-0">
+                                        <div className="flex items-center gap-2">
+                                          <p className="text-sm font-medium text-foreground truncate">
+                                            {source.custom_name || 'Anúncio sem nome'}
+                                          </p>
+                                          {source.last_error ? (
+                                            <span className="inline-flex items-center gap-1 rounded-full bg-destructive/10 px-2 py-0.5 text-[10px] font-medium text-destructive">
+                                              <span className="material-symbols-outlined text-[12px]">error</span>
+                                              Erro
+                                            </span>
+                                          ) : source.last_sync_at ? (
+                                            <span className="inline-flex items-center gap-1 rounded-full bg-status-completed/10 px-2 py-0.5 text-[10px] font-medium text-status-completed">
+                                              <span className="material-symbols-outlined text-[12px]">check</span>
+                                              Sincronizado
+                                            </span>
+                                          ) : (
+                                            <span className="inline-flex items-center gap-1 rounded-full bg-muted px-2 py-0.5 text-[10px] font-medium text-muted-foreground">
+                                              Pendente
+                                            </span>
+                                          )}
+                                        </div>
+                                        <div className="flex items-center gap-3 text-xs text-muted-foreground mt-1">
+                                          <span>{source.reservations_count} reservas</span>
+                                          {source.last_sync_at && (
+                                            <span>
+                                              Atualizado: {format(new Date(source.last_sync_at), "dd/MM HH:mm", { locale: ptBR })}
+                                            </span>
+                                          )}
+                                        </div>
+                                        {source.last_error && (
+                                          <p className="text-xs text-destructive mt-1 truncate">
+                                            {source.last_error}
+                                          </p>
+                                        )}
+                                      </div>
+                                      <div className="flex items-center gap-1 ml-2">
+                                        <button
+                                          onClick={() => handleSyncSource(source.id)}
+                                          disabled={isSyncing !== null}
+                                          className="flex h-8 w-8 items-center justify-center rounded-lg text-muted-foreground hover:bg-muted hover:text-foreground transition-colors disabled:opacity-50"
+                                        >
+                                          <span className={cn(
+                                            "material-symbols-outlined text-[18px]",
+                                            isSyncing === source.id && 'animate-spin'
+                                          )}>sync</span>
+                                        </button>
+                                        {canManage && (
+                                          <>
+                                            <button
+                                              onClick={() => handleEditIcal(source)}
+                                              className="flex h-8 w-8 items-center justify-center rounded-lg text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
+                                            >
+                                              <span className="material-symbols-outlined text-[18px]">edit</span>
+                                            </button>
+                                            <AlertDialog>
+                                              <AlertDialogTrigger asChild>
+                                                <button className="flex h-8 w-8 items-center justify-center rounded-lg text-destructive hover:bg-destructive/10 transition-colors">
+                                                  <span className="material-symbols-outlined text-[18px]">delete</span>
+                                                </button>
+                                              </AlertDialogTrigger>
+                                              <AlertDialogContent>
+                                                <AlertDialogHeader>
+                                                  <AlertDialogTitle>Excluir anúncio?</AlertDialogTitle>
+                                                  <AlertDialogDescription>
+                                                    Esta ação não pode ser desfeita. O anúncio será removido e não será mais sincronizado.
+                                                  </AlertDialogDescription>
+                                                </AlertDialogHeader>
+                                                <AlertDialogFooter>
+                                                  <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                                                  <AlertDialogAction
+                                                    onClick={() => handleDeleteIcal(source.id)}
+                                                    className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                                                  >
+                                                    Excluir
+                                                  </AlertDialogAction>
+                                                </AlertDialogFooter>
+                                              </AlertDialogContent>
+                                            </AlertDialog>
+                                          </>
+                                        )}
+                                      </div>
+                                    </div>
+                                  ))}
+                                </div>
+                              ) : (
+                                <div className="flex flex-col items-center justify-center py-8 text-center">
+                                  <div className="flex h-12 w-12 items-center justify-center rounded-full bg-muted mb-3">
+                                    <span className="material-symbols-outlined text-muted-foreground text-[24px]">link_off</span>
+                                  </div>
+                                  <p className="text-sm text-muted-foreground">
+                                    Nenhum anúncio configurado.
+                                  </p>
+                                </div>
                               )}
                             </div>
-                            
-                            {icalSources[property.id]?.length > 0 ? (
-                              <div className="space-y-2">
-                                {icalSources[property.id].map((source) => (
-                                  <div
-                                    key={source.id}
-                                    className="flex items-center justify-between p-3 bg-muted/50 rounded-lg border"
-                                  >
-                                    <div className="flex-1 min-w-0">
-                                      <div className="flex items-center gap-2">
-                                        <p className="text-sm font-medium truncate">
-                                          {source.custom_name || 'Anúncio sem nome'}
-                                        </p>
-                                        {source.last_error ? (
-                                          <span className="text-xs bg-destructive/10 text-destructive px-2 py-0.5 rounded-full">
-                                            Erro
-                                          </span>
-                                        ) : source.last_sync_at ? (
-                                          <span className="text-xs bg-green-500/10 text-green-600 dark:text-green-400 px-2 py-0.5 rounded-full">
-                                            Sincronizado
-                                          </span>
-                                        ) : (
-                                          <span className="text-xs bg-muted text-muted-foreground px-2 py-0.5 rounded-full">
-                                            Pendente
-                                          </span>
-                                        )}
-                                      </div>
-                                      <div className="flex items-center gap-3 text-xs text-muted-foreground mt-1">
-                                        <span>{source.reservations_count} reservas</span>
-                                        {source.last_sync_at && (
-                                          <span>
-                                            Atualizado: {format(new Date(source.last_sync_at), "dd/MM HH:mm", { locale: ptBR })}
-                                          </span>
-                                        )}
-                                      </div>
-                                      {source.last_error && (
-                                        <p className="text-xs text-destructive mt-1 truncate">
-                                          {source.last_error}
-                                        </p>
-                                      )}
-                                    </div>
-                                    <div className="flex items-center gap-1 ml-2">
-                                      <Button
-                                        variant="ghost"
-                                        size="icon"
-                                        className="h-8 w-8"
-                                        onClick={() => handleSyncSource(source.id)}
-                                        disabled={isSyncing !== null}
-                                      >
-                                        <RefreshCw className={`h-4 w-4 ${isSyncing === source.id ? 'animate-spin' : ''}`} />
-                                      </Button>
-                                      {canManage && (
-                                        <>
-                                          <Button
-                                            variant="ghost"
-                                            size="icon"
-                                            className="h-8 w-8"
-                                            onClick={() => handleEditIcal(source)}
-                                          >
-                                            <Pencil className="h-4 w-4" />
-                                          </Button>
-                                          <AlertDialog>
-                                            <AlertDialogTrigger asChild>
-                                              <Button
-                                                variant="ghost"
-                                                size="icon"
-                                                className="h-8 w-8 text-destructive hover:text-destructive"
-                                              >
-                                                <Trash2 className="h-4 w-4" />
-                                              </Button>
-                                            </AlertDialogTrigger>
-                                            <AlertDialogContent>
-                                              <AlertDialogHeader>
-                                                <AlertDialogTitle>Excluir anúncio?</AlertDialogTitle>
-                                                <AlertDialogDescription>
-                                                  Esta ação não pode ser desfeita. O anúncio será removido e não será mais sincronizado.
-                                                </AlertDialogDescription>
-                                              </AlertDialogHeader>
-                                              <AlertDialogFooter>
-                                                <AlertDialogCancel>Cancelar</AlertDialogCancel>
-                                                <AlertDialogAction
-                                                  onClick={() => handleDeleteIcal(source.id)}
-                                                  className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                                                >
-                                                  Excluir
-                                                </AlertDialogAction>
-                                              </AlertDialogFooter>
-                                            </AlertDialogContent>
-                                          </AlertDialog>
-                                        </>
-                                      )}
-                                    </div>
-                                  </div>
-                                ))}
-                              </div>
+                          </TabsContent>
+                          
+                          <TabsContent value="checklist" className="mt-0">
+                            {canManage ? (
+                              <ChecklistManager
+                                propertyId={property.id}
+                                propertyName={property.name}
+                                allChecklists={propertyChecklists}
+                                onChecklistsChange={fetchChecklists}
+                              />
                             ) : (
-                              <p className="text-sm text-muted-foreground py-2">
-                                Nenhum anúncio configurado. Adicione uma URL iCal para sincronizar reservas.
+                              <p className="text-sm text-muted-foreground py-4 text-center">
+                                {propertyChecklistCount} checklist(s) configurado(s).
                               </p>
                             )}
-                          </div>
-                        </TabsContent>
-                        
-                        <TabsContent value="checklist" className="mt-0">
-                          {canManage ? (
-                            <ChecklistManager
-                              propertyId={property.id}
-                              propertyName={property.name}
-                              allChecklists={propertyChecklists}
-                              onChecklistsChange={fetchChecklists}
-                            />
-                          ) : (
-                            <p className="text-sm text-muted-foreground py-2">
-                              {propertyChecklists.filter(c => c.property_id === property.id).length} checklist(s) configurado(s).
-                            </p>
+                          </TabsContent>
+
+                          {canManage && (
+                            <TabsContent value="password" className="mt-0">
+                              <PasswordModeConfig 
+                                propertyId={property.id} 
+                                propertyName={property.name} 
+                              />
+                            </TabsContent>
                           )}
-                        </TabsContent>
 
-                        {canManage && (
-                          <TabsContent value="password" className="mt-0">
-                            <PasswordModeConfig 
-                              propertyId={property.id} 
-                              propertyName={property.name} 
-                            />
-                          </TabsContent>
-                        )}
-
-                        {canManage && (
-                          <TabsContent value="rules" className="mt-0">
-                            <AdvancedRulesConfig 
-                              propertyId={property.id} 
-                              propertyName={property.name} 
-                            />
-                          </TabsContent>
-                        )}
-                      </Tabs>
-                    </CardContent>
-                  </Card>
-                ))}
+                          {canManage && (
+                            <TabsContent value="rules" className="mt-0">
+                              <AdvancedRulesConfig 
+                                propertyId={property.id} 
+                                propertyName={property.name} 
+                              />
+                            </TabsContent>
+                          )}
+                        </Tabs>
+                      </div>
+                    </div>
+                  );
+                })}
               </div>
             )}
           </main>
@@ -855,38 +878,43 @@ export default function Properties() {
           }}>
             <DialogContent className="max-w-md">
               <DialogHeader>
-                <DialogTitle>
+                <DialogTitle className="text-lg font-bold">
                   {editingIcal ? 'Editar Anúncio' : 'Adicionar Anúncio'}
                 </DialogTitle>
               </DialogHeader>
               <div className="space-y-4 py-4">
                 <div className="space-y-2">
-                  <Label htmlFor="custom_name">Nome do Anúncio</Label>
+                  <Label htmlFor="custom_name" className="text-sm font-medium">Nome do Anúncio</Label>
                   <Input
                     id="custom_name"
                     value={icalFormData.custom_name}
                     onChange={(e) => setIcalFormData({ ...icalFormData, custom_name: e.target.value })}
                     placeholder="Ex: Apartamento Airbnb"
+                    className="rounded-xl"
                   />
                   <p className="text-xs text-muted-foreground">
-                    Nome para identificar este anúncio no sistema
+                    Nome para identificar este anúncio
                   </p>
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="ical_url">URL do iCal *</Label>
+                  <Label htmlFor="ical_url" className="text-sm font-medium">URL do iCal *</Label>
                   <Input
                     id="ical_url"
                     value={icalFormData.ical_url}
                     onChange={(e) => setIcalFormData({ ...icalFormData, ical_url: e.target.value })}
                     placeholder="https://www.airbnb.com/calendar/ical/..."
+                    className="rounded-xl"
                   />
                   <p className="text-xs text-muted-foreground">
-                    Encontre em: Airbnb → Seu anúncio → Disponibilidade → Sincronização do calendário
+                    Encontre em: Airbnb → Seu anúncio → Disponibilidade → Sincronização
                   </p>
                 </div>
-                <Button onClick={handleSubmitIcal} className="w-full">
+                <button 
+                  onClick={handleSubmitIcal} 
+                  className="w-full rounded-xl bg-primary py-3 text-sm font-bold text-primary-foreground shadow-sm transition-all hover:bg-primary/90 active:scale-[0.98]"
+                >
                   {editingIcal ? 'Salvar Alterações' : 'Adicionar Anúncio'}
-                </Button>
+                </button>
               </div>
             </DialogContent>
           </Dialog>
