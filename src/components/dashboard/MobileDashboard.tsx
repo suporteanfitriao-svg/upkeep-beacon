@@ -404,8 +404,8 @@ export function MobileDashboard({ schedules, onScheduleClick, onStartCleaning }:
             </div>
 
             <div className="px-6 flex flex-col gap-4">
-              {/* Featured Pending Card */}
-              {pendingSchedules.slice(0, 1).map(schedule => (
+              {/* All Pending Cards - following the same pattern */}
+              {pendingSchedules.map(schedule => (
                 <div 
                   key={schedule.id}
                   className="overflow-hidden rounded-2xl bg-white dark:bg-[#2d3138] shadow-soft transition-all hover:shadow-md border border-slate-100 dark:border-slate-700"
@@ -429,7 +429,7 @@ export function MobileDashboard({ schedules, onScheduleClick, onStartCleaning }:
                       <button 
                         onClick={(e) => {
                           e.stopPropagation();
-                          onStartCleaning(schedule.id);
+                          onScheduleClick(schedule);
                         }}
                         className="mt-4 flex w-fit items-center gap-2 rounded-lg bg-primary px-4 py-2.5 text-sm font-bold text-white transition-colors hover:bg-[#267373] active:bg-[#267373]"
                       >
@@ -453,45 +453,73 @@ export function MobileDashboard({ schedules, onScheduleClick, onStartCleaning }:
                   </div>
                   <div className="border-t border-slate-100 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/50 px-4 py-2 flex justify-between items-center">
                     <div className="flex -space-x-2">
-                      <span className="flex h-6 w-6 items-center justify-center rounded-full bg-slate-200 dark:bg-slate-700 text-[10px] font-bold ring-2 ring-white dark:ring-[#2d3138]">
-                        {schedule.cleanerName?.split(' ').map(n => n[0]).join('').slice(0, 2) || 'AS'}
+                      <span className="flex h-6 w-6 items-center justify-center rounded-full bg-primary/20 text-primary text-[10px] font-bold ring-2 ring-white dark:ring-[#2d3138]">
+                        {schedule.cleanerName?.split(' ').map(n => n[0]).join('').slice(0, 2) || 'N'}
                       </span>
-                      <span className="flex h-6 w-6 items-center justify-center rounded-full bg-orange-200 text-[10px] font-bold ring-2 ring-white dark:ring-[#2d3138]">JP</span>
+                      <span className="flex h-6 w-6 items-center justify-center rounded-full bg-orange-200 text-orange-700 text-[10px] font-bold ring-2 ring-white dark:ring-[#2d3138]">JP</span>
                     </div>
                     <span className="text-xs font-medium text-[#8A8B88]">Checkout acontecendo</span>
                   </div>
                 </div>
               ))}
 
-              {/* Next Checkout Card */}
-              {(nextCheckout || inProgressSchedules[0]) && (
-                <button
-                  onClick={() => onScheduleClick(nextCheckout || inProgressSchedules[0])}
-                  className="group relative overflow-hidden rounded-2xl bg-white dark:bg-[#2d3138] shadow-soft border border-slate-100 dark:border-slate-700 text-left"
+              {/* In Progress Cards - same pattern but with different status */}
+              {inProgressSchedules.map(schedule => (
+                <div 
+                  key={schedule.id}
+                  className="overflow-hidden rounded-2xl bg-white dark:bg-[#2d3138] shadow-soft transition-all hover:shadow-md border border-slate-100 dark:border-slate-700"
                 >
-                  <div className="absolute left-0 top-0 h-full w-1 bg-[#E0C051]" />
-                  <div className="p-4 flex items-center justify-between">
-                    <div className="flex flex-col gap-1">
-                      <div className="mb-1 flex items-center gap-1.5">
-                        <span className="text-xs font-bold uppercase tracking-wider text-[#E0C051]">Check out Próximo</span>
-                      </div>
-                      <h3 className="text-base font-bold text-slate-900 dark:text-white">
-                        {(nextCheckout || inProgressSchedules[0])?.propertyName}
-                      </h3>
-                      <div className="mt-1 flex flex-col">
-                        <span className="text-[10px] font-bold uppercase tracking-wider text-[#8A8B88] mb-0.5">Checkout</span>
-                        <div className="flex items-center gap-1 text-[#8A8B88]">
-                          <Clock className="w-4 h-4" />
-                          <p className="text-sm font-bold">{formatTime((nextCheckout || inProgressSchedules[0])?.checkOut)}</p>
+                  <div className="flex flex-row p-4 gap-4">
+                    <div className="flex-1 flex flex-col justify-between">
+                      <div>
+                        <div className="mb-1 flex items-center gap-1.5">
+                          <span className="inline-flex h-2 w-2 rounded-full bg-[#E0C051] animate-pulse" />
+                          <span className="text-xs font-bold uppercase tracking-wider text-[#E0C051]">Em Limpeza</span>
+                        </div>
+                        <h3 className="text-lg font-bold text-slate-900 dark:text-white leading-tight mb-2">{schedule.propertyName}</h3>
+                        <div className="flex flex-col">
+                          <span className="text-[10px] font-bold uppercase tracking-wider text-[#8A8B88] mb-0.5">Checkout</span>
+                          <div className="flex items-center gap-1 text-[#8A8B88]">
+                            <Clock className="w-4 h-4" />
+                            <p className="text-sm font-bold">{formatTime(schedule.checkOut)}</p>
+                          </div>
                         </div>
                       </div>
+                      <button 
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onScheduleClick(schedule);
+                        }}
+                        className="mt-4 flex w-fit items-center gap-2 rounded-lg bg-[#E0C051] px-4 py-2.5 text-sm font-bold text-white transition-colors hover:bg-[#c9a844] active:bg-[#c9a844]"
+                      >
+                        <Play className="w-5 h-5" />
+                        Continuar Limpeza
+                      </button>
                     </div>
-                    <div className="flex h-10 w-10 items-center justify-center rounded-full bg-slate-100 dark:bg-slate-800 text-[#8A8B88]">
-                      <ChevronRight className="w-6 h-6" />
-                    </div>
+                    {schedule.propertyImageUrl ? (
+                      <img 
+                        src={schedule.propertyImageUrl} 
+                        alt={schedule.propertyName}
+                        className="w-28 shrink-0 rounded-xl object-cover"
+                      />
+                    ) : (
+                      <div 
+                        className="w-28 shrink-0 rounded-xl bg-slate-100 dark:bg-slate-800 flex items-center justify-center"
+                      >
+                        <span className="material-symbols-outlined text-slate-400 text-[32px]">apartment</span>
+                      </div>
+                    )}
                   </div>
-                </button>
-              )}
+                  <div className="border-t border-slate-100 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/50 px-4 py-2 flex justify-between items-center">
+                    <div className="flex -space-x-2">
+                      <span className="flex h-6 w-6 items-center justify-center rounded-full bg-[#E0C051]/20 text-[#E0C051] text-[10px] font-bold ring-2 ring-white dark:ring-[#2d3138]">
+                        {schedule.cleanerName?.split(' ').map(n => n[0]).join('').slice(0, 2) || 'N'}
+                      </span>
+                    </div>
+                    <span className="text-xs font-medium text-[#8A8B88]">Limpeza em andamento</span>
+                  </div>
+                </div>
+              ))}
 
               {/* Completed Section */}
               {completedSchedules.length > 0 && (
