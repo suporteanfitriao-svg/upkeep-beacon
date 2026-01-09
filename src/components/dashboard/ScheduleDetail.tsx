@@ -1,34 +1,11 @@
 import { Schedule, ScheduleStatus, ChecklistItem, MaintenanceIssue } from '@/types/scheduling';
 import { cn } from '@/lib/utils';
-import { 
-  ArrowLeft,
-  Clock, 
-  MapPin, 
-  Camera,
-  AlertTriangle,
-  CheckCircle2,
-  Wrench,
-  MessageSquare,
-  LogIn,
-  Timer,
-  History,
-  ChevronDown,
-  ChevronUp,
-  Play,
-  Key,
-  Info,
-  X,
-  Check,
-  Edit3
-} from 'lucide-react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Textarea } from '@/components/ui/textarea';
 import { Input } from '@/components/ui/input';
-import { Badge } from '@/components/ui/badge';
-import { ScrollArea } from '@/components/ui/scroll-area';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useState } from 'react';
 import { toast } from 'sonner';
@@ -50,28 +27,32 @@ const SPACE_OPTIONS = [
   'Outro'
 ];
 
-const statusConfig: Record<ScheduleStatus, { label: string; className: string; next?: ScheduleStatus; nextLabel?: string }> = {
+const statusConfig: Record<ScheduleStatus, { label: string; className: string; badgeClass: string; next?: ScheduleStatus; nextLabel?: string }> = {
   waiting: { 
     label: 'Aguardando', 
-    className: 'text-amber-500',
+    className: 'text-orange-600',
+    badgeClass: 'bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200',
     next: 'released',
     nextLabel: 'Liberar para Limpeza'
   },
   released: { 
     label: 'Liberado', 
-    className: 'text-teal-500',
+    className: 'text-primary',
+    badgeClass: 'bg-primary/10 text-primary',
     next: 'cleaning',
     nextLabel: 'Iniciar Limpeza'
   },
   cleaning: { 
     label: 'Em Limpeza', 
     className: 'text-blue-500',
+    badgeClass: 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200',
     next: 'completed',
     nextLabel: 'Finalizar Limpeza'
   },
   completed: { 
     label: 'Finalizado', 
-    className: 'text-emerald-500'
+    className: 'text-emerald-500',
+    badgeClass: 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900 dark:text-emerald-200'
   },
 };
 
@@ -84,6 +65,7 @@ export function ScheduleDetail({ schedule, onClose, onUpdateSchedule }: Schedule
   const [issuePhoto, setIssuePhoto] = useState<File | null>(null);
   const [expandedCategories, setExpandedCategories] = useState<Record<string, boolean>>({});
   const [acknowledgedInfo, setAcknowledgedInfo] = useState(false);
+  const [checklistItemStates, setChecklistItemStates] = useState<Record<string, 'yes' | 'no' | null>>({});
   const statusStyle = statusConfig[schedule.status];
 
   const toggleCategory = (category: string) => {
@@ -93,21 +75,25 @@ export function ScheduleDetail({ schedule, onClose, onUpdateSchedule }: Schedule
     }));
   };
 
-  const handleChecklistToggle = (itemId: string) => {
-    const updatedChecklist = checklist.map(item =>
-      item.id === itemId ? { ...item, completed: !item.completed } : item
-    );
-    setChecklist(updatedChecklist);
-    onUpdateSchedule({ ...schedule, checklist: updatedChecklist });
-  };
-
-  const handleCategoryToggle = (category: string, items: ChecklistItem[]) => {
-    const allCompleted = items.every(item => item.completed);
-    const updatedChecklist = checklist.map(item =>
-      item.category === category ? { ...item, completed: !allCompleted } : item
-    );
-    setChecklist(updatedChecklist);
-    onUpdateSchedule({ ...schedule, checklist: updatedChecklist });
+  const handleChecklistItemChange = (itemId: string, value: 'yes' | 'no') => {
+    setChecklistItemStates(prev => ({
+      ...prev,
+      [itemId]: value
+    }));
+    
+    if (value === 'yes') {
+      const updatedChecklist = checklist.map(item =>
+        item.id === itemId ? { ...item, completed: true } : item
+      );
+      setChecklist(updatedChecklist);
+      onUpdateSchedule({ ...schedule, checklist: updatedChecklist });
+    } else {
+      const updatedChecklist = checklist.map(item =>
+        item.id === itemId ? { ...item, completed: false } : item
+      );
+      setChecklist(updatedChecklist);
+      onUpdateSchedule({ ...schedule, checklist: updatedChecklist });
+    }
   };
 
   const getCategoryCompletion = () => {
@@ -202,395 +188,384 @@ export function ScheduleDetail({ schedule, onClose, onUpdateSchedule }: Schedule
     return acc;
   }, {} as Record<string, ChecklistItem[]>);
 
-  // Format duration
-  const hours = Math.floor(schedule.estimatedDuration / 60);
-  const minutes = schedule.estimatedDuration % 60;
-  const durationFormatted = `${hours}h ${minutes.toString().padStart(2, '0')}m`;
+  // Get current time
+  const currentTime = format(new Date(), "HH:mm");
 
   return (
-    <div className="fixed inset-0 z-50 bg-background">
-      <div className="flex flex-col h-full">
+    <div className="fixed inset-0 z-50 bg-stone-50 dark:bg-[#22252a] font-display text-slate-800 dark:text-slate-100 antialiased">
+      <div className="relative flex min-h-screen w-full flex-col overflow-x-hidden pb-24">
         {/* Header */}
-        <div className="flex items-start justify-between p-4 bg-background border-b">
-          <div className="flex items-start gap-3">
-            <button onClick={onClose} className="mt-1">
-              <ArrowLeft className="w-5 h-5 text-foreground" />
+        <header className="sticky top-0 z-20 flex items-center bg-stone-50/90 dark:bg-[#22252a]/90 px-4 py-4 backdrop-blur-md border-b border-slate-100 dark:border-slate-800">
+          <button 
+            onClick={onClose}
+            className="flex items-center justify-center rounded-full p-2 transition-colors hover:bg-slate-200 dark:hover:bg-slate-700 mr-2"
+          >
+            <span className="material-symbols-outlined text-slate-900 dark:text-white">arrow_back</span>
+          </button>
+          <div className="flex flex-col">
+            <h2 className="text-lg font-bold leading-none tracking-tight text-slate-900 dark:text-white">{schedule.propertyName}</h2>
+            <span className="text-xs font-medium text-[#8A8B88] dark:text-slate-400">{schedule.propertyAddress}</span>
+          </div>
+          <div className="ml-auto">
+            <span className={cn(
+              "inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium",
+              statusStyle.badgeClass
+            )}>
+              {statusStyle.label}
+            </span>
+          </div>
+        </header>
+
+        {/* Main Content */}
+        <main className="flex flex-col gap-6 p-6 overflow-y-auto" style={{ maxHeight: 'calc(100vh - 180px)' }}>
+          {/* Action Buttons */}
+          <div className="grid grid-cols-2 gap-3">
+            <button className="flex items-center justify-center gap-2 rounded-xl bg-slate-900 py-3.5 text-sm font-bold text-white shadow-[0_4px_20px_-2px_rgba(0,0,0,0.05)] transition-all active:scale-[0.98] dark:bg-white dark:text-slate-900">
+              <span className="material-symbols-outlined text-[18px]">map</span>
+              Ver Endereço
             </button>
-            <div>
-              <h1 className="text-lg font-semibold text-foreground">{schedule.propertyName}</h1>
-              <p className="text-sm text-muted-foreground">{schedule.propertyAddress}</p>
-            </div>
+            <button className="flex items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white py-3.5 text-xs font-bold text-slate-500 shadow-sm transition-all hover:bg-slate-50 active:scale-[0.98] dark:border-slate-700 dark:bg-[#2d3138] dark:text-slate-400 dark:hover:bg-slate-800">
+              <span className="material-symbols-outlined text-[18px]">vpn_key</span>
+              Ver Senha da Porta
+            </button>
           </div>
-          <span className={cn('text-sm font-medium', statusStyle.className)}>
-            {statusStyle.label}
-          </span>
-        </div>
 
-        {/* Content */}
-        <ScrollArea className="flex-1">
-          <div className="p-4 space-y-6">
-            {/* Action Buttons */}
-            <div className="flex gap-3">
-              <Button className="flex-1 bg-teal-500 hover:bg-teal-600 text-white">
-                <MapPin className="w-4 h-4 mr-2" />
-                Ver Endereço
-              </Button>
-              <Button variant="outline" className="flex-1 border-muted-foreground/30">
-                <Key className="w-4 h-4 mr-2" />
-                Ver Senha da Porta
-              </Button>
+          {/* Info Card */}
+          <section className="rounded-2xl bg-white dark:bg-[#2d3138] shadow-[0_4px_20px_-2px_rgba(0,0,0,0.05)] p-5 border border-slate-100 dark:border-slate-700">
+            {/* Time Grid */}
+            <div className="mb-5 grid grid-cols-2 gap-3">
+              <div className="rounded-xl bg-slate-50 dark:bg-slate-800/50 p-3 border border-slate-100 dark:border-slate-700 flex flex-col items-center justify-center gap-1">
+                <span className="text-[10px] font-bold uppercase text-[#8A8B88] dark:text-slate-400 tracking-wide">Hora Atual</span>
+                <div className="flex items-center gap-1.5 text-slate-900 dark:text-white">
+                  <span className="material-symbols-outlined text-[18px] text-primary">schedule</span>
+                  <span className="text-sm font-bold">{currentTime}</span>
+                </div>
+              </div>
+              <div className="rounded-xl bg-slate-50 dark:bg-slate-800/50 p-3 border border-slate-100 dark:border-slate-700 flex flex-col items-center justify-center gap-1">
+                <span className="text-[10px] font-bold uppercase text-[#8A8B88] dark:text-slate-400 tracking-wide">Próximo Hóspede</span>
+                <div className="flex items-center gap-1.5 text-slate-900 dark:text-white">
+                  <span className="material-symbols-outlined text-[18px] text-primary">login</span>
+                  <span className="text-sm font-bold">{format(schedule.checkIn, "HH:mm")}</span>
+                </div>
+              </div>
             </div>
 
-            {/* Time Info Card */}
-            <div className="bg-muted/50 rounded-xl p-4 space-y-4">
-              <div className="flex justify-center gap-8">
-                <div className="text-center">
-                  <p className="text-xs text-muted-foreground uppercase tracking-wide mb-1">CHECK-IN</p>
-                  <div className="flex items-center gap-1.5 justify-center">
-                    <LogIn className="w-4 h-4 text-foreground" />
-                    <span className="font-semibold">{format(schedule.checkIn, "HH:mm")}</span>
-                  </div>
-                </div>
-                <div className="text-center">
-                  <p className="text-xs text-muted-foreground uppercase tracking-wide mb-1">TEMPO ESTIMADO</p>
-                  <div className="flex items-center gap-1.5 justify-center">
-                    <Timer className="w-4 h-4 text-foreground" />
-                    <span className="font-semibold">{durationFormatted}</span>
-                  </div>
-                </div>
+            {/* Important Info */}
+            <div className="flex flex-col gap-3 mb-6">
+              <div className="flex items-center gap-2 mb-1">
+                <span className="material-symbols-outlined text-[#E0C051] text-[20px]">info</span>
+                <h3 className="text-sm font-bold uppercase tracking-wide text-slate-900 dark:text-white">Informações Importantes</h3>
               </div>
-
-              {/* Important Info */}
-              <div>
-                <div className="flex items-center gap-2 mb-2">
-                  <Info className="w-4 h-4 text-amber-500" />
-                  <span className="text-sm font-semibold">INFORMAÇÕES IMPORTANTES</span>
-                </div>
-                <div className="bg-amber-50 dark:bg-amber-950/30 rounded-lg p-3 border border-amber-200 dark:border-amber-800">
-                  <p className="text-sm">
-                    <span className="text-amber-600 dark:text-amber-400 font-medium">⚠️ Atenção:</span>{' '}
-                    O hóspede solicitou especial cuidado com os tapetes da sala devido a alergias. Utilize o aspirador em potência máxima.
-                  </p>
-                </div>
+              <div className="rounded-xl bg-slate-50 dark:bg-slate-800/50 p-4 border border-slate-100 dark:border-slate-700">
+                <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed font-medium">
+                  ⚠️ <span className="font-bold text-slate-800 dark:text-slate-200">Atenção:</span> O hóspede solicitou especial cuidado com os tapetes da sala devido a alergias. Utilize o aspirador em potência máxima.
+                </p>
               </div>
-
-              {/* Acknowledgment Checkbox */}
-              <label className="flex items-center gap-3 cursor-pointer">
-                <Checkbox 
+              <label className="flex items-center gap-3 p-1 cursor-pointer group">
+                <input 
+                  type="checkbox"
                   checked={acknowledgedInfo}
-                  onCheckedChange={(checked) => setAcknowledgedInfo(checked as boolean)}
-                  className="data-[state=checked]:bg-teal-500 data-[state=checked]:border-teal-500"
+                  onChange={(e) => setAcknowledgedInfo(e.target.checked)}
+                  className="h-5 w-5 rounded border-slate-300 text-primary focus:ring-primary dark:border-slate-600 dark:bg-slate-700 transition-colors"
                 />
-                <span className="text-sm text-foreground">Li e compreendi as informações</span>
+                <span className="text-xs font-bold text-slate-700 dark:text-slate-300 group-hover:text-primary transition-colors">Li e compreendi as informações</span>
               </label>
-
-              {/* Start Button */}
-              {schedule.status === 'released' && (
-                <Button 
-                  className="w-full bg-gradient-to-r from-teal-400 to-teal-500 hover:from-teal-500 hover:to-teal-600 text-white shadow-lg"
-                  size="lg"
-                  onClick={() => handleStatusChange('cleaning')}
-                  disabled={!acknowledgedInfo}
-                >
-                  <Play className="w-4 h-4 mr-2" />
-                  Iniciar Limpeza
-                </Button>
-              )}
             </div>
 
-            {/* Progress */}
-            <div className="flex items-center justify-between">
-              <span className="text-base font-semibold">Progresso do Checklist</span>
-              <span className="text-sm text-teal-500 font-medium">{completedTasks}/{totalTasks} Concluídos</span>
-            </div>
-
-            {/* Checklist Section */}
-            <div>
-              <div className="flex items-center gap-2 mb-4">
-                <CheckCircle2 className="w-5 h-5 text-teal-500" />
-                <span className="font-semibold">CHECKLIST DE LIMPEZA</span>
-              </div>
-              
-              <div className="space-y-3">
-                {Object.entries(groupedChecklist).map(([category, items]) => {
-                  const completedInCategory = items.filter(item => item.completed).length;
-                  const totalInCategory = items.length;
-                  const isExpanded = expandedCategories[category] ?? false;
-                  const allCompleted = items.every(item => item.completed);
-                  
-                  return (
-                    <div key={category} className="border border-muted rounded-xl overflow-hidden bg-card">
-                      {/* Category Header */}
-                      <div 
-                        className="flex items-center justify-between p-4 cursor-pointer"
-                        onClick={() => toggleCategory(category)}
-                      >
-                        <div className="flex items-center gap-3">
-                          <div className={cn(
-                            "w-5 h-5 rounded-full border-2 flex items-center justify-center",
-                            allCompleted ? "bg-teal-500 border-teal-500" : "border-muted-foreground/40"
-                          )}>
-                            {allCompleted && <Check className="w-3 h-3 text-white" />}
-                          </div>
-                          <span className="font-medium">{category}</span>
-                        </div>
-                        <div className="flex items-center gap-3">
-                          <button className="p-1.5 hover:bg-muted rounded-md">
-                            <Camera className="w-4 h-4 text-muted-foreground" />
-                          </button>
-                          <button className="p-1.5 hover:bg-muted rounded-md">
-                            <Wrench className="w-4 h-4 text-muted-foreground" />
-                          </button>
-                          {!isExpanded && (
-                            <span className="text-sm text-muted-foreground">{completedInCategory}/{totalInCategory}</span>
-                          )}
-                          {isExpanded ? (
-                            <ChevronUp className="w-5 h-5 text-muted-foreground" />
-                          ) : (
-                            <ChevronDown className="w-5 h-5 text-muted-foreground" />
-                          )}
-                        </div>
-                      </div>
-                      
-                      {/* Items */}
-                      {isExpanded && (
-                        <div className="px-4 pb-4 space-y-3">
-                          {items.map(item => (
-                            <div 
-                              key={item.id}
-                              className="flex items-center gap-3 pl-8"
-                            >
-                              <button
-                                onClick={() => handleChecklistToggle(item.id)}
-                                className="flex items-center gap-3"
-                              >
-                                <div className="flex items-center gap-1.5">
-                                  <div className="w-5 h-5 rounded-full bg-red-100 flex items-center justify-center">
-                                    <X className="w-3 h-3 text-red-500" />
-                                  </div>
-                                  <div className={cn(
-                                    "w-5 h-5 rounded-full flex items-center justify-center",
-                                    item.completed ? "bg-teal-500" : "bg-teal-100"
-                                  )}>
-                                    <Check className={cn(
-                                      "w-3 h-3",
-                                      item.completed ? "text-white" : "text-teal-500"
-                                    )} />
-                                  </div>
-                                </div>
-                                <span className={cn(
-                                  "text-sm",
-                                  item.completed && "line-through text-muted-foreground"
-                                )}>
-                                  {item.title}
-                                </span>
-                              </button>
-                            </div>
-                          ))}
-                        </div>
-                      )}
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-
-            {/* Maintenance Section */}
-            <div>
-              <div className="flex items-center gap-2 mb-4">
-                <Wrench className="w-5 h-5 text-muted-foreground" />
-                <span className="font-semibold">MANUTENÇÃO</span>
-              </div>
-              
-              {schedule.maintenanceIssues.length > 0 && (
-                <div className="space-y-2 mb-3">
-                  {schedule.maintenanceIssues.map(issue => (
-                    <div 
-                      key={issue.id}
-                      className="bg-amber-50 dark:bg-amber-950/30 rounded-lg p-3 border-l-4 border-amber-500"
-                    >
-                      <div className="flex items-start gap-2">
-                        <AlertTriangle className="w-4 h-4 text-amber-500 mt-0.5" />
-                        <div>
-                          <p className="text-sm font-medium">{issue.description}</p>
-                          <p className="text-xs text-muted-foreground mt-1">
-                            Reportado em {format(issue.reportedAt, "dd/MM - HH:mm")}
-                          </p>
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-
-              {showIssueForm ? (
-                <div className="border rounded-xl p-4 space-y-3 bg-muted/30">
-                  <Select value={issueSpace} onValueChange={setIssueSpace}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Selecione o espaço" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {SPACE_OPTIONS.map(space => (
-                        <SelectItem key={space} value={space}>{space}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-
-                  <Input
-                    placeholder="Breve descrição da avaria"
-                    value={issueDescription}
-                    onChange={(e) => setIssueDescription(e.target.value)}
-                  />
-
-                  <div>
-                    <label className="flex flex-col items-center justify-center gap-2 p-4 border-2 border-dashed rounded-lg cursor-pointer hover:bg-muted/50 transition-colors">
-                      <Camera className="w-5 h-5 text-muted-foreground" />
-                      <span className="text-sm text-muted-foreground">
-                        {issuePhoto ? issuePhoto.name : 'Adicionar foto (opcional)'}
-                      </span>
-                      <input
-                        type="file"
-                        accept="image/*"
-                        className="hidden"
-                        onChange={(e) => setIssuePhoto(e.target.files?.[0] || null)}
-                      />
-                    </label>
-                  </div>
-
-                  <div className="flex gap-2">
-                    <Button 
-                      variant="outline" 
-                      className="flex-1"
-                      onClick={() => setShowIssueForm(false)}
-                    >
-                      Cancelar
-                    </Button>
-                    <Button 
-                      className="flex-1"
-                      onClick={handleSubmitIssue}
-                    >
-                      Enviar
-                    </Button>
-                  </div>
-                </div>
-              ) : (
-                <Button 
-                  variant="outline" 
-                  className="w-full border-dashed"
-                  onClick={() => setShowIssueForm(true)}
-                >
-                  <AlertTriangle className="w-4 h-4 mr-2" />
-                  Reportar Avaria
-                </Button>
-              )}
-            </div>
-
-            {/* Observations Section */}
-            <div>
-              <div className="flex items-center gap-2 mb-4">
-                <MessageSquare className="w-5 h-5 text-teal-500" />
-                <span className="font-semibold">OBSERVAÇÕES</span>
-              </div>
-              
-              <div className="relative">
-                <Textarea
-                  placeholder="Adicione observações sobre este agendamento..."
-                  value={notes}
-                  onChange={(e) => setNotes(e.target.value)}
-                  className="min-h-[100px] pr-10 resize-none"
-                />
-                <Edit3 className="w-4 h-4 text-muted-foreground absolute right-3 bottom-3" />
-              </div>
-              
-              <Button 
-                className="w-full mt-3 bg-amber-100 hover:bg-amber-200 text-amber-800 dark:bg-amber-900/30 dark:text-amber-200"
-                onClick={handleSaveNotes}
+            {/* Start Cleaning Button */}
+            {(schedule.status === 'released' || schedule.status === 'waiting') && (
+              <button 
+                onClick={() => handleStatusChange(schedule.status === 'waiting' ? 'released' : 'cleaning')}
+                disabled={schedule.status === 'released' && !acknowledgedInfo}
+                className="flex w-full items-center justify-center gap-2 rounded-xl bg-primary py-4 font-bold text-white shadow-[0_4px_20px_-2px_rgba(51,153,153,0.3)] transition-all active:scale-[0.98] hover:bg-[#267373] disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                Salvar Observações
-              </Button>
+                <span className="material-symbols-outlined filled">play_circle</span>
+                {schedule.status === 'waiting' ? 'Liberar para Limpeza' : 'Iniciar Limpeza'}
+              </button>
+            )}
+          </section>
+
+          {/* Progress Section */}
+          <section className="flex flex-col gap-3">
+            <div className="flex items-center justify-between">
+              <h3 className="text-base font-bold text-slate-900 dark:text-white">Progresso do Checklist</h3>
+              <span className="text-xs font-bold text-primary">{completedTasks}/{totalTasks} Concluídos</span>
+            </div>
+            <div className="h-2 w-full rounded-full bg-slate-100 dark:bg-slate-700 overflow-hidden">
+              <div 
+                className="h-full rounded-full bg-primary transition-all duration-500" 
+                style={{ width: `${totalTasks > 0 ? (completedTasks / totalTasks) * 100 : 0}%` }}
+              />
+            </div>
+          </section>
+
+          {/* Checklist Section */}
+          <section className="flex flex-col gap-4">
+            <div className="flex items-center gap-2 mb-1">
+              <span className="material-symbols-outlined text-primary text-[20px]">check_circle</span>
+              <h3 className="text-sm font-bold uppercase tracking-wide text-slate-900 dark:text-white">Checklist de Limpeza</h3>
             </div>
 
-            {/* History Section */}
-            <div className="pb-20">
-              <div className="flex items-center gap-2 mb-4">
-                <History className="w-5 h-5 text-muted-foreground" />
-                <span className="font-semibold">HISTÓRICO</span>
+            {Object.entries(groupedChecklist).map(([category, items]) => {
+              const completedInCategory = items.filter(item => item.completed).length;
+              const totalInCategory = items.length;
+              const isExpanded = expandedCategories[category] ?? false;
+              const allCompleted = items.every(item => item.completed);
+
+              return (
+                <div key={category} className="overflow-hidden rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-[#2d3138]">
+                  <details open={isExpanded} className="group">
+                    <summary 
+                      onClick={(e) => { e.preventDefault(); toggleCategory(category); }}
+                      className="flex cursor-pointer items-center justify-between bg-slate-50 dark:bg-slate-800/50 p-4 font-medium"
+                    >
+                      <div className="flex items-center gap-3">
+                        <div className={cn(
+                          "h-4 w-4 rounded-full border-2 flex items-center justify-center",
+                          allCompleted ? "bg-primary border-primary" : "border-slate-300 dark:border-slate-500"
+                        )}>
+                          {allCompleted && (
+                            <span className="material-symbols-outlined text-white text-[12px]">check</span>
+                          )}
+                        </div>
+                        <span className="font-bold text-slate-900 dark:text-white">{category}</span>
+                      </div>
+                      <div className="flex items-center gap-2.5">
+                        <button aria-label="Adicionar Foto" className="rounded-full p-1 text-slate-400 hover:text-primary transition-colors">
+                          <span className="material-symbols-outlined text-[20px]">photo_camera</span>
+                        </button>
+                        <button aria-label="Reportar Problema" className="rounded-full p-1 text-slate-400 hover:text-orange-500 transition-colors">
+                          <span className="material-symbols-outlined text-[20px]">build</span>
+                        </button>
+                        <div className="h-4 w-px bg-slate-200 dark:bg-slate-600 mx-1" />
+                        {!isExpanded && (
+                          <span className="text-xs font-semibold text-[#8A8B88]">{completedInCategory}/{totalInCategory}</span>
+                        )}
+                        <span className={cn(
+                          "material-symbols-outlined text-slate-400 transition",
+                          isExpanded && "rotate-180"
+                        )}>expand_more</span>
+                      </div>
+                    </summary>
+
+                    {isExpanded && (
+                      <div className="flex flex-col divide-y divide-slate-100 dark:divide-slate-700/50 p-0">
+                        {items.map(item => {
+                          const itemState = checklistItemStates[item.id] || (item.completed ? 'yes' : null);
+                          
+                          return (
+                            <div key={item.id} className="flex items-center px-4 py-3 gap-3 hover:bg-slate-50 dark:hover:bg-slate-800/30 transition-colors">
+                              <div className="flex items-center gap-2 shrink-0">
+                                <label className="relative cursor-pointer">
+                                  <input 
+                                    type="radio" 
+                                    name={`item-${item.id}`} 
+                                    value="no"
+                                    checked={itemState === 'no'}
+                                    onChange={() => handleChecklistItemChange(item.id, 'no')}
+                                    className="peer sr-only" 
+                                  />
+                                  <div className="flex h-7 w-7 items-center justify-center rounded-full bg-slate-100/50 text-slate-300 transition-all hover:bg-red-50 hover:text-red-300 peer-checked:bg-red-500 peer-checked:text-white peer-checked:shadow-md peer-checked:scale-110 dark:bg-slate-700/50 dark:text-slate-500 dark:hover:bg-red-900/20 dark:hover:text-red-400 dark:peer-checked:bg-red-500">
+                                    <span className="material-symbols-outlined text-[16px] font-bold">close</span>
+                                  </div>
+                                </label>
+                                <label className="relative cursor-pointer">
+                                  <input 
+                                    type="radio" 
+                                    name={`item-${item.id}`} 
+                                    value="yes"
+                                    checked={itemState === 'yes'}
+                                    onChange={() => handleChecklistItemChange(item.id, 'yes')}
+                                    className="peer sr-only" 
+                                  />
+                                  <div className="flex h-7 w-7 items-center justify-center rounded-full bg-slate-100/50 text-slate-300 transition-all hover:bg-green-50 hover:text-green-300 peer-checked:bg-green-500 peer-checked:text-white peer-checked:shadow-md peer-checked:scale-110 dark:bg-slate-700/50 dark:text-slate-500 dark:hover:bg-green-900/20 dark:hover:text-green-400 dark:peer-checked:bg-green-500">
+                                    <span className="material-symbols-outlined text-[16px] font-bold">check</span>
+                                  </div>
+                                </label>
+                              </div>
+                              <span className="text-sm font-medium text-slate-700 dark:text-slate-300">{item.title}</span>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </details>
+                </div>
+              );
+            })}
+          </section>
+
+          {/* Maintenance Section */}
+          <section className="flex flex-col gap-3 mt-2">
+            <div className="flex items-center gap-2">
+              <span className="material-symbols-outlined text-primary text-[20px]">build</span>
+              <h3 className="text-sm font-bold uppercase tracking-wide text-slate-900 dark:text-white">Manutenção</h3>
+            </div>
+            
+            {schedule.maintenanceIssues.length > 0 && (
+              <div className="flex flex-col gap-3">
+                {schedule.maintenanceIssues.map(issue => (
+                  <div key={issue.id} className="rounded-xl border border-orange-200 bg-orange-50 p-3 dark:border-orange-900/50 dark:bg-orange-900/10">
+                    <div className="flex items-start gap-3">
+                      <span className="material-symbols-outlined text-orange-500 mt-0.5 text-[20px]">warning</span>
+                      <div className="flex flex-col">
+                        <p className="text-sm font-bold text-slate-900 dark:text-white">{issue.description}</p>
+                        <span className="text-[10px] text-[#8A8B88] dark:text-slate-400">
+                          Reportado em {format(issue.reportedAt, "dd/MM - HH:mm")}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {showIssueForm ? (
+              <div className="rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-[#2d3138] p-4 space-y-3">
+                <Select value={issueSpace} onValueChange={setIssueSpace}>
+                  <SelectTrigger className="bg-slate-50 dark:bg-slate-800">
+                    <SelectValue placeholder="Selecione o espaço" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {SPACE_OPTIONS.map(space => (
+                      <SelectItem key={space} value={space}>{space}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+
+                <Input
+                  placeholder="Breve descrição da avaria"
+                  value={issueDescription}
+                  onChange={(e) => setIssueDescription(e.target.value)}
+                  className="bg-slate-50 dark:bg-slate-800"
+                />
+
+                <div className="flex gap-2">
+                  <button 
+                    onClick={() => setShowIssueForm(false)}
+                    className="flex-1 rounded-xl border border-slate-200 bg-white py-2.5 text-sm font-bold text-slate-700 dark:border-slate-700 dark:bg-slate-800 dark:text-white"
+                  >
+                    Cancelar
+                  </button>
+                  <button 
+                    onClick={handleSubmitIssue}
+                    className="flex-1 rounded-xl bg-primary py-2.5 text-sm font-bold text-white"
+                  >
+                    Enviar
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <button 
+                onClick={() => setShowIssueForm(true)}
+                className="mt-1 flex w-full items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white py-3 font-bold text-slate-700 shadow-sm transition-colors hover:bg-slate-50 dark:border-slate-700 dark:bg-[#2d3138] dark:text-white dark:hover:bg-slate-700"
+              >
+                <span className="material-symbols-outlined text-[20px]">report_problem</span>
+                Reportar Avaria
+              </button>
+            )}
+          </section>
+
+          {/* Observations Section */}
+          <section className="flex flex-col gap-3 mt-2">
+            <div className="flex items-center gap-2">
+              <span className="material-symbols-outlined text-primary text-[20px]">chat_bubble</span>
+              <h3 className="text-sm font-bold uppercase tracking-wide text-slate-900 dark:text-white">Observações</h3>
+            </div>
+            <div className="relative">
+              <textarea 
+                value={notes}
+                onChange={(e) => setNotes(e.target.value)}
+                className="w-full rounded-xl border-slate-200 bg-slate-50 p-4 pb-10 text-sm focus:border-primary focus:ring-primary dark:border-slate-700 dark:bg-slate-800 dark:text-white" 
+                placeholder="Adicione observações sobre este agendamento..." 
+                rows={3}
+              />
+              <span className="material-symbols-outlined absolute bottom-3 right-3 text-slate-400 text-[18px]">edit</span>
+            </div>
+            <button 
+              onClick={handleSaveNotes}
+              className="w-full rounded-lg bg-slate-200 py-2.5 text-xs font-bold text-slate-600 transition-colors hover:bg-slate-300 dark:bg-slate-700 dark:text-slate-300 dark:hover:bg-slate-600"
+            >
+              Salvar Observações
+            </button>
+          </section>
+
+          {/* History Section */}
+          <section className="flex flex-col gap-3 mt-2">
+            <div className="flex items-center gap-2 mb-1">
+              <span className="material-symbols-outlined text-primary text-[20px]">history</span>
+              <h3 className="text-sm font-bold uppercase tracking-wide text-slate-900 dark:text-white">Histórico</h3>
+            </div>
+            <div className="relative pl-4 border-l-2 border-slate-100 dark:border-slate-700 ml-2 space-y-6">
+              <div className="relative">
+                <span className="absolute -left-[21px] top-1 h-3 w-3 rounded-full border-2 border-white bg-slate-300 dark:border-[#2d3138] dark:bg-slate-600" />
+                <div className="flex flex-col">
+                  <span className="text-xs font-bold text-slate-900 dark:text-white">Agendamento criado</span>
+                  <span className="text-[10px] text-[#8A8B88] dark:text-slate-500">10/09 às 14:00</span>
+                </div>
               </div>
               
-              <div className="space-y-3">
-                <div className="flex items-start gap-3">
-                  <div className="w-2 h-2 rounded-full bg-muted-foreground mt-2" />
-                  <div>
-                    <p className="text-sm font-medium">Agendamento criado</p>
-                    <p className="text-xs text-muted-foreground">10/09 às 14:00</p>
+              <div className={cn("relative", !schedule.teamArrival && "opacity-50")}>
+                <span className={cn(
+                  "absolute -left-[21px] top-1 h-3 w-3 rounded-full border-2 border-white dark:border-[#2d3138]",
+                  schedule.teamArrival ? "bg-primary" : "bg-slate-200 dark:bg-slate-700"
+                )} />
+                <div className="flex flex-col">
+                  <span className={cn(
+                    "text-xs font-bold",
+                    schedule.teamArrival ? "text-slate-900 dark:text-white" : "text-slate-500 dark:text-slate-400"
+                  )}>Início da Limpeza</span>
+                  <span className="text-[10px] text-[#8A8B88] dark:text-slate-600">
+                    {schedule.teamArrival ? format(schedule.teamArrival, "dd/MM 'às' HH:mm") : "--:--"}
+                  </span>
+                </div>
+              </div>
+              
+              <div className={cn("relative", !schedule.teamDeparture && "opacity-50")}>
+                <span className={cn(
+                  "absolute -left-[21px] top-1 h-3 w-3 rounded-full border-2 border-white dark:border-[#2d3138]",
+                  schedule.teamDeparture ? "bg-primary" : "bg-slate-200 dark:bg-slate-700"
+                )} />
+                <div className="flex flex-col">
+                  <span className={cn(
+                    "text-xs font-bold",
+                    schedule.teamDeparture ? "text-slate-900 dark:text-white" : "text-slate-500 dark:text-slate-400"
+                  )}>Fim da Limpeza</span>
+                  <div className="flex items-center gap-2">
+                    <span className="text-[10px] text-[#8A8B88] dark:text-slate-600">
+                      {schedule.teamDeparture ? format(schedule.teamDeparture, "dd/MM 'às' HH:mm") : "--:--"}
+                    </span>
+                    {schedule.teamArrival && schedule.teamDeparture && (
+                      <span className="text-[10px] font-medium text-slate-400 bg-slate-100 dark:bg-slate-800 px-1.5 rounded">
+                        Duração: {Math.round((schedule.teamDeparture.getTime() - schedule.teamArrival.getTime()) / 60000)} min
+                      </span>
+                    )}
+                    {!schedule.teamDeparture && (
+                      <span className="text-[10px] font-medium text-slate-400 bg-slate-100 dark:bg-slate-800 px-1.5 rounded">
+                        Duração: -- min
+                      </span>
+                    )}
                   </div>
                 </div>
-                
-                {schedule.teamArrival && (
-                  <div className="flex items-start gap-3">
-                    <div className="w-2 h-2 rounded-full bg-teal-500 mt-2" />
-                    <div>
-                      <p className="text-sm font-medium text-teal-600">Início da Limpeza</p>
-                      <p className="text-xs text-muted-foreground">{format(schedule.teamArrival, "dd/MM 'às' HH:mm")}</p>
-                    </div>
-                  </div>
-                )}
-                
-                {schedule.teamDeparture ? (
-                  <div className="flex items-start gap-3">
-                    <div className="w-2 h-2 rounded-full bg-teal-500 mt-2" />
-                    <div>
-                      <p className="text-sm font-medium text-teal-600">Fim da Limpeza</p>
-                      <p className="text-xs text-muted-foreground">{format(schedule.teamDeparture, "dd/MM 'às' HH:mm")}</p>
-                    </div>
-                  </div>
-                ) : (
-                  <>
-                    <div className="flex items-start gap-3">
-                      <div className="w-2 h-2 rounded-full bg-muted-foreground/30 mt-2" />
-                      <div>
-                        <p className="text-sm text-muted-foreground">Início da Limpeza</p>
-                        <p className="text-xs text-muted-foreground">--</p>
-                      </div>
-                    </div>
-                    <div className="flex items-start gap-3">
-                      <div className="w-2 h-2 rounded-full bg-muted-foreground/30 mt-2" />
-                      <div>
-                        <p className="text-sm text-muted-foreground">Fim da Limpeza</p>
-                        <p className="text-xs text-muted-foreground">-- Duração: - min</p>
-                      </div>
-                    </div>
-                  </>
-                )}
               </div>
             </div>
-          </div>
-        </ScrollArea>
+          </section>
+        </main>
 
-        {/* Footer Action */}
-        <div className="fixed bottom-0 left-0 right-0 p-4 bg-background border-t">
+        {/* Footer Button */}
+        <div className="fixed bottom-0 left-0 right-0 z-50 bg-stone-50/95 dark:bg-[#22252a]/95 backdrop-blur-md border-t border-slate-200/50 dark:border-slate-700/50 p-4">
           {schedule.status === 'cleaning' && (
-            <Button 
-              className="w-full bg-gradient-to-r from-teal-400 to-teal-500 hover:from-teal-500 hover:to-teal-600 text-white shadow-lg"
-              size="lg"
+            <button 
               onClick={() => handleStatusChange('completed')}
+              className="w-full rounded-xl bg-primary py-4 text-base font-bold text-white shadow-[0_4px_20px_-2px_rgba(51,153,153,0.3)] transition-all hover:bg-[#267373] active:scale-[0.98]"
             >
               Finalizar Limpeza
-            </Button>
-          )}
-          {schedule.status === 'waiting' && (
-            <Button 
-              className="w-full bg-gradient-to-r from-teal-400 to-teal-500 hover:from-teal-500 hover:to-teal-600 text-white shadow-lg"
-              size="lg"
-              onClick={() => handleStatusChange('released')}
-            >
-              Liberar para Limpeza
-            </Button>
+            </button>
           )}
           {schedule.status === 'completed' && (
-            <div className="flex items-center justify-center gap-2 text-teal-500 py-2">
-              <CheckCircle2 className="w-5 h-5" />
-              <span className="font-medium">Limpeza Finalizada</span>
+            <div className="flex items-center justify-center gap-2 text-primary py-2">
+              <span className="material-symbols-outlined">check_circle</span>
+              <span className="font-bold">Limpeza Finalizada</span>
             </div>
           )}
         </div>
