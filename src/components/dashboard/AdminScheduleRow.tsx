@@ -1,11 +1,18 @@
+import { useState, useEffect } from 'react';
 import { Schedule, ScheduleStatus } from '@/types/scheduling';
 import { cn } from '@/lib/utils';
 import { AlertTriangle, Check, Clock, Sparkles, ChevronDown } from 'lucide-react';
 import { format } from 'date-fns';
+import { AssignCleanerPopover } from './AssignCleanerPopover';
+import { EditTimesPopover } from './EditTimesPopover';
+import { useUserRole } from '@/hooks/useUserRole';
+import { useAuth } from '@/hooks/useAuth';
+import { supabase } from '@/integrations/supabase/client';
 
 interface AdminScheduleRowProps {
   schedule: Schedule;
   onClick: () => void;
+  onScheduleUpdated?: (schedule: Schedule) => void;
 }
 
 const statusConfig: Record<ScheduleStatus, { 
@@ -76,13 +83,62 @@ function getInitials(name: string): string {
     .toUpperCase();
 }
 
-export function AdminScheduleRow({ schedule, onClick }: AdminScheduleRowProps) {
-  const statusStyle = statusConfig[schedule.status];
-  const hasIssue = schedule.maintenanceStatus !== 'ok';
-  const checkoutTime = format(schedule.checkOut, "HH:mm");
-  const avatarColor = getAvatarColor(schedule.cleanerName);
+export function AdminScheduleRow({ schedule, onClick, onScheduleUpdated }: AdminScheduleRowProps) {
+  const { isAdmin, isManager } = useUserRole();
+  const { user } = useAuth();
+  const [teamMemberId, setTeamMemberId] = useState<string | null>(null);
+  const [localSchedule, setLocalSchedule] = useState(schedule);
+
+  const statusStyle = statusConfig[localSchedule.status];
+  const hasIssue = localSchedule.maintenanceStatus !== 'ok';
+  const checkoutTime = format(localSchedule.checkOut, "HH:mm");
+  const avatarColor = getAvatarColor(localSchedule.cleanerName);
   const Icon = statusStyle.icon;
-  const isCompleted = schedule.status === 'completed';
+  const isCompleted = localSchedule.status === 'completed';
+  const canManage = isAdmin || isManager;
+
+  // Fetch team member id for current user
+  useEffect(() => {
+    const fetchTeamMemberId = async () => {
+      if (!user?.id) return;
+      const { data } = await supabase
+        .from('team_members')
+        .select('id')
+        .eq('user_id', user.id)
+        .maybeSingle();
+      if (data) setTeamMemberId(data.id);
+    };
+    fetchTeamMemberId();
+  }, [user?.id]);
+
+  // Sync with parent schedule updates
+  useEffect(() => {
+    setLocalSchedule(schedule);
+  }, [schedule]);
+
+  const handleAssigned = (cleanerName: string, cleanerTeamMemberId: string) => {
+    const updated = {
+      ...localSchedule,
+      cleanerName,
+      responsibleTeamMemberId: cleanerTeamMemberId,
+    };
+    setLocalSchedule(updated);
+    onScheduleUpdated?.(updated);
+  };
+
+  const handleTimesUpdated = (checkIn: Date, checkOut: Date) => {
+    const updated = {
+      ...localSchedule,
+      checkIn,
+      checkOut,
+    };
+    setLocalSchedule(updated);
+    onScheduleUpdated?.(updated);
+  };
+
+  // Cleaner cannot reassign during cleaning, only admin can
+  const canReassignDuringCleaning = isAdmin;
+  const isReassignDisabled = localSchedule.status === 'cleaning' && !canReassignDuringCleaning;
 
   return (
     <article 
@@ -102,7 +158,7 @@ export function AdminScheduleRow({ schedule, onClick }: AdminScheduleRowProps) {
             'w-10 h-10 rounded-full flex items-center justify-center group-hover:scale-110 transition-transform',
             statusStyle.iconBgColor
           )}>
-            {schedule.status === 'cleaning' ? (
+            {localSchedule.status === 'cleaning' ? (
               <Sparkles className={cn('w-5 h-5', statusStyle.textColor)} />
             ) : (
               <Icon className={cn('w-5 h-5', statusStyle.textColor)} />
@@ -111,9 +167,9 @@ export function AdminScheduleRow({ schedule, onClick }: AdminScheduleRowProps) {
           
           {/* Property Info */}
           <div>
-            <h4 className="font-bold text-foreground">{schedule.propertyName}</h4>
+            <h4 className="font-bold text-foreground">{localSchedule.propertyName}</h4>
             <div className="flex items-center gap-2">
-              {schedule.status === 'cleaning' && (
+              {localSchedule.status === 'cleaning' && (
                 <span className="w-2 h-2 rounded-full bg-primary animate-pulse" />
               )}
               <p className={cn('text-sm font-medium', statusStyle.textColor)}>
@@ -133,6 +189,29 @@ export function AdminScheduleRow({ schedule, onClick }: AdminScheduleRowProps) {
         </div>
         
         <div className="flex items-center gap-6 md:gap-10">
+          {/* Quick Actions - Only for admin/manager */}
+          {canManage && (
+            <div className="hidden lg:flex items-center gap-1">
+              <AssignCleanerPopover
+                scheduleId={localSchedule.id}
+                propertyId={localSchedule.propertyId}
+                currentCleanerName={localSchedule.cleanerName}
+                responsibleTeamMemberId={localSchedule.responsibleTeamMemberId || null}
+                status={localSchedule.status}
+                onAssigned={handleAssigned}
+                disabled={isReassignDisabled}
+              />
+              <EditTimesPopover
+                scheduleId={localSchedule.id}
+                checkIn={localSchedule.checkIn}
+                checkOut={localSchedule.checkOut}
+                status={localSchedule.status}
+                onUpdated={handleTimesUpdated}
+                teamMemberId={teamMemberId}
+              />
+            </div>
+          )}
+
           {/* Checkout Time */}
           <div className="hidden md:block text-right">
             <p className="text-[10px] uppercase tracking-wider font-bold text-muted-foreground mb-0.5">
@@ -150,7 +229,7 @@ export function AdminScheduleRow({ schedule, onClick }: AdminScheduleRowProps) {
               <p className="text-[10px] uppercase tracking-wider font-bold text-muted-foreground mb-0.5">
                 Responsável
               </p>
-              <p className="text-xs font-semibold text-foreground">{schedule.cleanerName}</p>
+              <p className="text-xs font-semibold text-foreground">{localSchedule.cleanerName}</p>
             </div>
             <div 
               className={cn(
@@ -159,9 +238,9 @@ export function AdminScheduleRow({ schedule, onClick }: AdminScheduleRowProps) {
                 avatarColor.border,
                 avatarColor.text
               )}
-              title={schedule.cleanerName}
+              title={localSchedule.cleanerName}
             >
-              {getInitials(schedule.cleanerName)}
+              {getInitials(localSchedule.cleanerName)}
             </div>
           </div>
           

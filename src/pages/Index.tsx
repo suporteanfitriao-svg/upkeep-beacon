@@ -253,6 +253,12 @@ const Index = () => {
                     key={schedule.id}
                     schedule={schedule}
                     onClick={() => setSelectedSchedule(schedule)}
+                    onScheduleUpdated={(updated) => {
+                      // Update local schedule state when quick actions are used
+                      if (selectedSchedule?.id === updated.id) {
+                        setSelectedSchedule(updated);
+                      }
+                    }}
                   />
                 ))
               )}
