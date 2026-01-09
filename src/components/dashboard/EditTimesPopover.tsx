@@ -69,9 +69,22 @@ export function EditTimesPopover({
 
     setIsSubmitting(true);
     try {
-      // Build new dates with updated times
-      const newCheckIn = new Date(checkIn);
-      const newCheckOut = new Date(checkOut);
+      // Get current schedule data first to ensure we use fresh values
+      const { data: currentData, error: fetchError } = await supabase
+        .from('schedules')
+        .select('check_in_time, check_out_time, history')
+        .eq('id', scheduleId)
+        .single();
+
+      if (fetchError) throw fetchError;
+
+      // Use current DB values as previous values
+      const currentCheckIn = new Date(currentData.check_in_time);
+      const currentCheckOut = new Date(currentData.check_out_time);
+
+      // Build new dates with updated times, keeping original dates
+      const newCheckIn = new Date(currentCheckIn);
+      const newCheckOut = new Date(currentCheckOut);
 
       const [inHours, inMinutes] = checkInTime.split(':').map(Number);
       const [outHours, outMinutes] = checkOutTime.split(':').map(Number);
@@ -89,21 +102,12 @@ export function EditTimesPopover({
         from_status: status,
         to_status: status,
         payload: {
-          previous_check_in: checkIn.toISOString(),
-          previous_check_out: checkOut.toISOString(),
+          previous_check_in: currentCheckIn.toISOString(),
+          previous_check_out: currentCheckOut.toISOString(),
           new_check_in: newCheckIn.toISOString(),
           new_check_out: newCheckOut.toISOString(),
         },
       };
-
-      // Get current history
-      const { data: currentData, error: fetchError } = await supabase
-        .from('schedules')
-        .select('history')
-        .eq('id', scheduleId)
-        .single();
-
-      if (fetchError) throw fetchError;
 
       const currentHistory = Array.isArray(currentData?.history) ? currentData.history : [];
       const newHistory = [...currentHistory, historyEvent];
