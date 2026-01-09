@@ -198,6 +198,22 @@ serve(async (req) => {
       const property = source.properties as any;
       if (!property) continue;
 
+      // Validate mandatory default times - block sync if not configured
+      if (!property.default_check_in_time || !property.default_check_out_time) {
+        console.log(`Skipping source ${source.id}: Property ${property.name} missing default times`);
+        
+        await supabase
+          .from('property_ical_sources')
+          .update({
+            last_sync_at: new Date().toISOString(),
+            last_error: 'Horários padrão não configurados na propriedade',
+            reservations_count: 0
+          })
+          .eq('id', source.id);
+        
+        continue;
+      }
+
       console.log(`Syncing source: ${source.custom_name || source.id} for property ${property.name}`);
 
       let lastError: string | null = null;

@@ -164,20 +164,70 @@ export default function Properties() {
     setDialogOpen(true);
   };
 
+  const validateTimes = (checkIn: string, checkOut: string): boolean => {
+    if (!checkIn || !checkOut) {
+      toast.error('Horários de check-in e check-out são obrigatórios');
+      return false;
+    }
+    
+    const [inHours, inMinutes] = checkIn.split(':').map(Number);
+    const [outHours, outMinutes] = checkOut.split(':').map(Number);
+    
+    const checkInMins = inHours * 60 + inMinutes;
+    const checkOutMins = outHours * 60 + outMinutes;
+    
+    if (checkOutMins >= checkInMins) {
+      toast.error('Check-out deve ser anterior ao check-in (hóspede sai antes do próximo entrar)');
+      return false;
+    }
+    
+    return true;
+  };
+
   const handleSubmit = async () => {
     if (!formData.name.trim()) {
       toast.error('Nome é obrigatório');
       return;
     }
 
+    // Validate mandatory times
+    if (!formData.default_check_in_time || !formData.default_check_out_time) {
+      toast.error('Horários padrão de check-in e check-out são obrigatórios');
+      return;
+    }
+
+    // Validate time format and logic (checkout must be before checkin - guest leaves before next arrives)
+    if (!validateTimes(formData.default_check_in_time, formData.default_check_out_time)) {
+      return;
+    }
+
     const propertyData = {
       name: formData.name.trim(),
       address: formData.address.trim() || null,
-      default_check_in_time: formData.default_check_in_time || '14:00',
-      default_check_out_time: formData.default_check_out_time || '11:00'
+      default_check_in_time: formData.default_check_in_time,
+      default_check_out_time: formData.default_check_out_time
     };
 
+    // Get current user's team member ID for audit
+    const { data: { user } } = await supabase.auth.getUser();
+    let teamMemberId: string | null = null;
+    
+    if (user) {
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('team_member_id')
+        .eq('id', user.id)
+        .single();
+      teamMemberId = profile?.team_member_id || null;
+    }
+
     if (editingProperty) {
+      // Log audit for time changes if they changed
+      const oldCheckIn = editingProperty.default_check_in_time?.slice(0, 5);
+      const oldCheckOut = editingProperty.default_check_out_time?.slice(0, 5);
+      const timesChanged = oldCheckIn !== formData.default_check_in_time || 
+                          oldCheckOut !== formData.default_check_out_time;
+
       const { error } = await supabase
         .from('properties')
         .update(propertyData)
@@ -188,17 +238,39 @@ export default function Properties() {
         console.error(error);
         return;
       }
+
+      // Log time change audit if times changed
+      if (timesChanged && teamMemberId) {
+        await supabase.from('password_audit_logs').insert({
+          property_id: editingProperty.id,
+          team_member_id: teamMemberId,
+          action: `alteracao_horario_propriedade:checkin:${oldCheckIn}->${formData.default_check_in_time},checkout:${oldCheckOut}->${formData.default_check_out_time}`
+        });
+      }
+
       toast.success('Propriedade atualizada com sucesso');
     } else {
-      const { error } = await supabase
+      const { data: newProperty, error } = await supabase
         .from('properties')
-        .insert(propertyData);
+        .insert(propertyData)
+        .select('id')
+        .single();
 
       if (error) {
         toast.error('Erro ao criar propriedade');
         console.error(error);
         return;
       }
+
+      // Log audit for new property time config
+      if (teamMemberId && newProperty) {
+        await supabase.from('password_audit_logs').insert({
+          property_id: newProperty.id,
+          team_member_id: teamMemberId,
+          action: `configuracao_horario_propriedade:checkin:${formData.default_check_in_time},checkout:${formData.default_check_out_time}`
+        });
+      }
+
       toast.success('Propriedade criada com sucesso');
     }
 
@@ -424,24 +496,37 @@ export default function Properties() {
                           placeholder="Ex: Rua das Flores, 123"
                         />
                       </div>
-                      <div className="grid grid-cols-2 gap-4">
-                        <div className="space-y-2">
-                          <Label htmlFor="check_in_time">Horário Check-in</Label>
-                          <Input
-                            id="check_in_time"
-                            type="time"
-                            value={formData.default_check_in_time}
-                            onChange={(e) => setFormData({ ...formData, default_check_in_time: e.target.value })}
-                          />
+                      <div className="space-y-2">
+                        <div className="flex items-center gap-2 text-sm font-medium">
+                          <Clock className="h-4 w-4 text-primary" />
+                          <span>Horários Padrão do Imóvel *</span>
                         </div>
-                        <div className="space-y-2">
-                          <Label htmlFor="check_out_time">Horário Check-out</Label>
-                          <Input
-                            id="check_out_time"
-                            type="time"
-                            value={formData.default_check_out_time}
-                            onChange={(e) => setFormData({ ...formData, default_check_out_time: e.target.value })}
-                          />
+                        <p className="text-xs text-muted-foreground mb-2">
+                          Obrigatório. O check-out deve ser antes do check-in (hóspede sai antes do próximo entrar).
+                        </p>
+                        <div className="grid grid-cols-2 gap-4">
+                          <div className="space-y-2">
+                            <Label htmlFor="check_out_time">Check-out *</Label>
+                            <Input
+                              id="check_out_time"
+                              type="time"
+                              value={formData.default_check_out_time}
+                              onChange={(e) => setFormData({ ...formData, default_check_out_time: e.target.value })}
+                              required
+                            />
+                            <p className="text-[10px] text-muted-foreground">Saída do hóspede</p>
+                          </div>
+                          <div className="space-y-2">
+                            <Label htmlFor="check_in_time">Check-in *</Label>
+                            <Input
+                              id="check_in_time"
+                              type="time"
+                              value={formData.default_check_in_time}
+                              onChange={(e) => setFormData({ ...formData, default_check_in_time: e.target.value })}
+                              required
+                            />
+                            <p className="text-[10px] text-muted-foreground">Entrada do próximo</p>
+                          </div>
                         </div>
                       </div>
                       <Button onClick={handleSubmit} className="w-full">
