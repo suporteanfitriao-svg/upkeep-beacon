@@ -71,6 +71,7 @@ export function ScheduleDetail({ schedule, onClose, onUpdateSchedule }: Schedule
   const [requirePhotoPerCategory, setRequirePhotoPerCategory] = useState(false);
   const [categoryPhotosData, setCategoryPhotosData] = useState<Record<string, CategoryPhoto[]>>({});
   const [confirmMarkCategory, setConfirmMarkCategory] = useState<{ open: boolean; category: string | null }>({ open: false, category: null });
+  const [unsavedCategories, setUnsavedCategories] = useState<Set<string>>(new Set());
   const [photoUploadModal, setPhotoUploadModal] = useState<{ open: boolean; category: string | null }>({ open: false, category: null });
   const statusStyle = statusConfig[schedule.status];
 
@@ -164,26 +165,38 @@ export function ScheduleDetail({ schedule, onClose, onUpdateSchedule }: Schedule
     }));
   };
 
-  const handleChecklistItemChange = (itemId: string, value: 'yes' | 'no') => {
+  const handleChecklistItemChange = (itemId: string, value: 'yes' | 'no', category: string) => {
     setChecklistItemStates(prev => ({
       ...prev,
       [itemId]: value
     }));
     
-    if (value === 'yes') {
-      const updatedChecklist = checklist.map(item =>
-        item.id === itemId ? { ...item, completed: true } : item
-      );
-      setChecklist(updatedChecklist);
-      onUpdateSchedule({ ...schedule, checklist: updatedChecklist }, undefined, teamMemberId || undefined);
-    } else {
-      const updatedChecklist = checklist.map(item =>
-        item.id === itemId ? { ...item, completed: false } : item
-      );
-      setChecklist(updatedChecklist);
-      onUpdateSchedule({ ...schedule, checklist: updatedChecklist }, undefined, teamMemberId || undefined);
-    }
+    // Update local checklist state without saving
+    const updatedChecklist = checklist.map(item =>
+      item.id === itemId ? { ...item, completed: value === 'yes' } : item
+    );
+    setChecklist(updatedChecklist);
+    
+    // Mark category as having unsaved changes
+    setUnsavedCategories(prev => new Set(prev).add(category));
   };
+
+  // Save category changes to database
+  const handleSaveCategory = useCallback(async (category: string) => {
+    if (!teamMemberId) return;
+    
+    // Update schedule with current checklist state
+    await onUpdateSchedule({ ...schedule, checklist }, undefined, teamMemberId);
+    
+    // Remove category from unsaved set
+    setUnsavedCategories(prev => {
+      const newSet = new Set(prev);
+      newSet.delete(category);
+      return newSet;
+    });
+    
+    toast.success(`Categoria "${category}" salva!`);
+  }, [schedule, checklist, teamMemberId, onUpdateSchedule]);
 
   // Handle marking entire category as complete
   const handleMarkCategoryComplete = useCallback(async (category: string) => {
@@ -661,44 +674,59 @@ export function ScheduleDetail({ schedule, onClose, onUpdateSchedule }: Schedule
                     </summary>
 
                     {isExpanded && (
-                      <div className="flex flex-col divide-y divide-slate-100 dark:divide-slate-700/50 p-0">
-                        {items.map(item => {
-                          const itemState = checklistItemStates[item.id] || (item.completed ? 'yes' : null);
-                          
-                          return (
-                            <div key={item.id} className="flex items-center px-4 py-3 gap-3 hover:bg-slate-50 dark:hover:bg-slate-800/30 transition-colors">
-                              <div className="flex items-center gap-2 shrink-0">
-                                <label className="relative cursor-pointer">
-                                  <input 
-                                    type="radio" 
-                                    name={`item-${item.id}`} 
-                                    value="no"
-                                    checked={itemState === 'no'}
-                                    onChange={() => handleChecklistItemChange(item.id, 'no')}
-                                    className="peer sr-only" 
-                                  />
-                                  <div className="flex h-7 w-7 items-center justify-center rounded-full bg-slate-100/50 text-slate-300 transition-all hover:bg-red-50 hover:text-red-300 peer-checked:bg-red-500 peer-checked:text-white peer-checked:shadow-md peer-checked:scale-110 dark:bg-slate-700/50 dark:text-slate-500 dark:hover:bg-red-900/20 dark:hover:text-red-400 dark:peer-checked:bg-red-500">
-                                    <span className="material-symbols-outlined text-[16px] font-bold">close</span>
-                                  </div>
-                                </label>
-                                <label className="relative cursor-pointer">
-                                  <input 
-                                    type="radio" 
-                                    name={`item-${item.id}`} 
-                                    value="yes"
-                                    checked={itemState === 'yes'}
-                                    onChange={() => handleChecklistItemChange(item.id, 'yes')}
-                                    className="peer sr-only" 
-                                  />
-                                  <div className="flex h-7 w-7 items-center justify-center rounded-full bg-slate-100/50 text-slate-300 transition-all hover:bg-green-50 hover:text-green-300 peer-checked:bg-green-500 peer-checked:text-white peer-checked:shadow-md peer-checked:scale-110 dark:bg-slate-700/50 dark:text-slate-500 dark:hover:bg-green-900/20 dark:hover:text-green-400 dark:peer-checked:bg-green-500">
-                                    <span className="material-symbols-outlined text-[16px] font-bold">check</span>
-                                  </div>
-                                </label>
+                      <div className="flex flex-col">
+                        <div className="divide-y divide-slate-100 dark:divide-slate-700/50">
+                          {items.map(item => {
+                            const itemState = checklistItemStates[item.id] || (item.completed ? 'yes' : null);
+                            
+                            return (
+                              <div key={item.id} className="flex items-center px-4 py-3 gap-3 hover:bg-slate-50 dark:hover:bg-slate-800/30 transition-colors">
+                                <div className="flex items-center gap-2 shrink-0">
+                                  <label className="relative cursor-pointer">
+                                    <input 
+                                      type="radio" 
+                                      name={`item-${item.id}`} 
+                                      value="no"
+                                      checked={itemState === 'no'}
+                                      onChange={() => handleChecklistItemChange(item.id, 'no', category)}
+                                      className="peer sr-only" 
+                                    />
+                                    <div className="flex h-7 w-7 items-center justify-center rounded-full bg-slate-100/50 text-slate-300 transition-all hover:bg-red-50 hover:text-red-300 peer-checked:bg-red-500 peer-checked:text-white peer-checked:shadow-md peer-checked:scale-110 dark:bg-slate-700/50 dark:text-slate-500 dark:hover:bg-red-900/20 dark:hover:text-red-400 dark:peer-checked:bg-red-500">
+                                      <span className="material-symbols-outlined text-[16px] font-bold">close</span>
+                                    </div>
+                                  </label>
+                                  <label className="relative cursor-pointer">
+                                    <input 
+                                      type="radio" 
+                                      name={`item-${item.id}`} 
+                                      value="yes"
+                                      checked={itemState === 'yes'}
+                                      onChange={() => handleChecklistItemChange(item.id, 'yes', category)}
+                                      className="peer sr-only" 
+                                    />
+                                    <div className="flex h-7 w-7 items-center justify-center rounded-full bg-slate-100/50 text-slate-300 transition-all hover:bg-green-50 hover:text-green-300 peer-checked:bg-green-500 peer-checked:text-white peer-checked:shadow-md peer-checked:scale-110 dark:bg-slate-700/50 dark:text-slate-500 dark:hover:bg-green-900/20 dark:hover:text-green-400 dark:peer-checked:bg-green-500">
+                                      <span className="material-symbols-outlined text-[16px] font-bold">check</span>
+                                    </div>
+                                  </label>
+                                </div>
+                                <span className="text-sm font-medium text-slate-700 dark:text-slate-300">{item.title}</span>
                               </div>
-                              <span className="text-sm font-medium text-slate-700 dark:text-slate-300">{item.title}</span>
-                            </div>
-                          );
-                        })}
+                            );
+                          })}
+                        </div>
+                        
+                        {/* Save button for category - only shows when there are unsaved changes */}
+                        {unsavedCategories.has(category) && schedule.status === 'cleaning' && (
+                          <div className="p-3 border-t border-slate-100 dark:border-slate-700/50 bg-slate-50/50 dark:bg-slate-800/30">
+                            <button
+                              onClick={() => handleSaveCategory(category)}
+                              className="w-full flex items-center justify-center gap-2 rounded-lg bg-primary py-2 text-sm font-bold text-white shadow-sm transition-all hover:bg-primary/90 active:scale-[0.98]"
+                            >
+                              <span className="material-symbols-outlined text-[18px]">save</span>
+                              Salvar Categoria
+                            </button>
+                          </div>
+                        )}
                       </div>
                     )}
                   </details>
