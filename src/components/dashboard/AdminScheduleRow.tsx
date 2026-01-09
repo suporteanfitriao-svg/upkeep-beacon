@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
-import { Schedule, ScheduleStatus } from '@/types/scheduling';
+import { Schedule, ScheduleStatus, STATUS_FLOW, STATUS_LABELS, STATUS_ALLOWED_ROLES } from '@/types/scheduling';
 import { cn } from '@/lib/utils';
-import { AlertTriangle, Check, Clock, Sparkles, ChevronDown, ChevronUp, ExternalLink, User, Timer } from 'lucide-react';
+import { AlertTriangle, Check, Clock, Sparkles, ChevronDown, ChevronUp, ExternalLink, User, Timer, Play, CircleCheck } from 'lucide-react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { AssignCleanerPopover } from './AssignCleanerPopover';
@@ -11,7 +11,13 @@ import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
-
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+import { toast } from 'sonner';
 interface AdminScheduleRowProps {
   schedule: Schedule;
   onClick: () => void;
@@ -155,6 +161,132 @@ export function AdminScheduleRow({ schedule, onClick, onScheduleUpdated }: Admin
     onClick();
   };
 
+  const handleReleaseForCleaning = async (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (!teamMemberId || localSchedule.status !== 'waiting') return;
+    
+    try {
+      const { data: currentData, error: fetchError } = await supabase
+        .from('schedules')
+        .select('history')
+        .eq('id', localSchedule.id)
+        .single();
+
+      if (fetchError) throw fetchError;
+
+      const existingHistory = Array.isArray(currentData?.history) ? currentData.history : [];
+      const historyEvent = {
+        timestamp: new Date().toISOString(),
+        team_member_id: teamMemberId,
+        team_member_name: null,
+        role: isAdmin ? 'admin' : 'manager',
+        action: 'status_change',
+        from_status: 'waiting',
+        to_status: 'released',
+        payload: {},
+      };
+
+      const { error } = await supabase
+        .from('schedules')
+        .update({
+          status: 'released',
+          history: [...existingHistory, historyEvent],
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', localSchedule.id);
+
+      if (error) throw error;
+
+      const updated = { ...localSchedule, status: 'released' as ScheduleStatus };
+      setLocalSchedule(updated);
+      onScheduleUpdated?.(updated);
+      toast.success('Liberado para limpeza!');
+    } catch (error) {
+      console.error('Error releasing schedule:', error);
+      toast.error('Erro ao liberar para limpeza');
+    }
+  };
+
+  const handleStatusChange = async (newStatus: ScheduleStatus) => {
+    if (!teamMemberId || newStatus === localSchedule.status) return;
+
+    // Check if transition is valid
+    const nextStatus = STATUS_FLOW[localSchedule.status];
+    if (nextStatus !== newStatus) {
+      toast.error('Transição de status inválida');
+      return;
+    }
+
+    // Check if user role is allowed
+    const userRole = isAdmin ? 'admin' : isManager ? 'manager' : 'cleaner';
+    if (!STATUS_ALLOWED_ROLES[newStatus].includes(userRole as any)) {
+      toast.error('Você não tem permissão para esta transição');
+      return;
+    }
+
+    try {
+      const { data: currentData, error: fetchError } = await supabase
+        .from('schedules')
+        .select('history')
+        .eq('id', localSchedule.id)
+        .single();
+
+      if (fetchError) throw fetchError;
+
+      const existingHistory = Array.isArray(currentData?.history) ? currentData.history : [];
+      const historyEvent = {
+        timestamp: new Date().toISOString(),
+        team_member_id: teamMemberId,
+        team_member_name: null,
+        role: userRole,
+        action: 'status_change',
+        from_status: localSchedule.status,
+        to_status: newStatus,
+        payload: {},
+      };
+
+      const updateData: Record<string, unknown> = {
+        status: newStatus,
+        history: [...existingHistory, historyEvent],
+        updated_at: new Date().toISOString(),
+      };
+
+      if (newStatus === 'cleaning') {
+        updateData.start_at = new Date().toISOString();
+      } else if (newStatus === 'completed') {
+        updateData.end_at = new Date().toISOString();
+      }
+
+      const { error } = await supabase
+        .from('schedules')
+        .update(updateData)
+        .eq('id', localSchedule.id);
+
+      if (error) throw error;
+
+      const updated = { ...localSchedule, status: newStatus };
+      setLocalSchedule(updated);
+      onScheduleUpdated?.(updated);
+      toast.success(`Status alterado para: ${STATUS_LABELS[newStatus]}`);
+    } catch (error) {
+      console.error('Error changing status:', error);
+      toast.error('Erro ao alterar status');
+    }
+  };
+
+  const getAvailableTransitions = (): ScheduleStatus[] => {
+    const nextStatus = STATUS_FLOW[localSchedule.status];
+    if (!nextStatus) return [];
+    
+    const userRole = isAdmin ? 'admin' : isManager ? 'manager' : 'cleaner';
+    if (!STATUS_ALLOWED_ROLES[nextStatus].includes(userRole as any)) return [];
+    
+    return [nextStatus];
+  };
+
+  const canRelease = canManage && localSchedule.status === 'waiting';
+  const availableTransitions = canManage ? getAvailableTransitions() : [];
+
   return (
     <Collapsible open={isExpanded} onOpenChange={setIsExpanded}>
       <article 
@@ -241,6 +373,53 @@ export function AdminScheduleRow({ schedule, onClick, onScheduleUpdated }: Admin
                   {getInitials(localSchedule.cleanerName)}
                 </div>
               </div>
+
+              {/* Status Actions - Release Button */}
+              {canRelease && (
+                <button
+                  onClick={handleReleaseForCleaning}
+                  className="flex items-center gap-1.5 px-3 py-1.5 bg-green-100 dark:bg-green-900/30 text-green-600 dark:text-green-400 rounded-full hover:bg-green-200 dark:hover:bg-green-900/50 transition-colors text-xs font-semibold"
+                  title="Liberar para limpeza"
+                >
+                  <Play className="w-3.5 h-3.5" />
+                  <span className="hidden sm:inline">Liberar</span>
+                </button>
+              )}
+
+              {/* Status Dropdown for transitions */}
+              {availableTransitions.length > 0 && localSchedule.status !== 'waiting' && (
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <button
+                      onClick={(e) => e.stopPropagation()}
+                      className={cn(
+                        'flex items-center gap-1.5 px-3 py-1.5 rounded-full transition-colors text-xs font-semibold border',
+                        statusStyle.bgColor,
+                        statusStyle.textColor,
+                        'hover:opacity-80'
+                      )}
+                    >
+                      <Icon className="w-3.5 h-3.5" />
+                      <span className="hidden sm:inline">{statusStyle.label}</span>
+                      <ChevronDown className="w-3 h-3" />
+                    </button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end" onClick={(e) => e.stopPropagation()}>
+                    {availableTransitions.map((status) => (
+                      <DropdownMenuItem
+                        key={status}
+                        onClick={() => handleStatusChange(status)}
+                        className="gap-2"
+                      >
+                        {status === 'released' && <Play className="w-4 h-4" />}
+                        {status === 'cleaning' && <Sparkles className="w-4 h-4" />}
+                        {status === 'completed' && <CircleCheck className="w-4 h-4" />}
+                        {STATUS_LABELS[status]}
+                      </DropdownMenuItem>
+                    ))}
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              )}
               
               {/* Chevron */}
               <button className="text-muted-foreground hover:text-primary transition-colors ml-2">
