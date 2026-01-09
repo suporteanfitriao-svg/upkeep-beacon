@@ -7,6 +7,7 @@ import { toast } from 'sonner';
 import { LocationModal } from './LocationModal';
 import { PasswordModal } from './PasswordModal';
 import { IssueReportModal } from './IssueReportModal';
+import { AttentionModal } from './AttentionModal';
 
 interface ScheduleDetailProps {
   schedule: Schedule;
@@ -52,6 +53,7 @@ export function ScheduleDetail({ schedule, onClose, onUpdateSchedule }: Schedule
   const [checklistItemStates, setChecklistItemStates] = useState<Record<string, 'yes' | 'no' | null>>({});
   const [showLocationModal, setShowLocationModal] = useState(false);
   const [showPasswordModal, setShowPasswordModal] = useState(false);
+  const [showAttentionModal, setShowAttentionModal] = useState(false);
   const statusStyle = statusConfig[schedule.status];
 
   const toggleCategory = (category: string) => {
@@ -256,9 +258,14 @@ export function ScheduleDetail({ schedule, onClose, onUpdateSchedule }: Schedule
             {/* Start Cleaning Button */}
             {(schedule.status === 'released' || schedule.status === 'waiting') && (
               <button 
-                onClick={() => handleStatusChange(schedule.status === 'waiting' ? 'released' : 'cleaning')}
-                disabled={schedule.status === 'released' && !acknowledgedInfo}
-                className="flex w-full items-center justify-center gap-2 rounded-xl bg-primary py-4 font-bold text-white shadow-[0_4px_20px_-2px_rgba(51,153,153,0.3)] transition-all active:scale-[0.98] hover:bg-[#267373] disabled:opacity-50 disabled:cursor-not-allowed"
+                onClick={() => {
+                  if (schedule.status === 'released' && !acknowledgedInfo) {
+                    setShowAttentionModal(true);
+                    return;
+                  }
+                  handleStatusChange(schedule.status === 'waiting' ? 'released' : 'cleaning');
+                }}
+                className="flex w-full items-center justify-center gap-2 rounded-xl bg-primary py-4 font-bold text-white shadow-[0_4px_20px_-2px_rgba(51,153,153,0.3)] transition-all active:scale-[0.98] hover:bg-[#267373]"
               >
                 <span className="material-symbols-outlined filled">play_circle</span>
                 {schedule.status === 'waiting' ? 'Liberar para Limpeza' : 'Iniciar Limpeza'}
@@ -539,6 +546,13 @@ export function ScheduleDetail({ schedule, onClose, onUpdateSchedule }: Schedule
         <IssueReportModal
           onClose={() => setShowIssueForm(false)}
           onSubmit={handleIssueSubmit}
+        />
+      )}
+
+      {/* Attention Modal */}
+      {showAttentionModal && (
+        <AttentionModal
+          onClose={() => setShowAttentionModal(false)}
         />
       )}
     </div>
