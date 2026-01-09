@@ -1,33 +1,18 @@
 import { Schedule, ScheduleStatus, ChecklistItem, MaintenanceIssue } from '@/types/scheduling';
 import { cn } from '@/lib/utils';
 import { format } from 'date-fns';
-import { ptBR } from 'date-fns/locale';
-import { Button } from '@/components/ui/button';
-import { Checkbox } from '@/components/ui/checkbox';
 import { Textarea } from '@/components/ui/textarea';
-import { Input } from '@/components/ui/input';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useState } from 'react';
 import { toast } from 'sonner';
 import { LocationModal } from './LocationModal';
 import { PasswordModal } from './PasswordModal';
+import { IssueReportModal } from './IssueReportModal';
 
 interface ScheduleDetailProps {
   schedule: Schedule;
   onClose: () => void;
   onUpdateSchedule: (schedule: Schedule, previousStatus?: ScheduleStatus) => void;
 }
-
-const SPACE_OPTIONS = [
-  'Cozinha',
-  'Sala',
-  'Quarto 1',
-  'Quarto 2',
-  'Banheiro',
-  'Varanda',
-  'Área de Serviço',
-  'Outro'
-];
 
 const statusConfig: Record<ScheduleStatus, { label: string; className: string; badgeClass: string; next?: ScheduleStatus; nextLabel?: string }> = {
   waiting: { 
@@ -62,9 +47,6 @@ export function ScheduleDetail({ schedule, onClose, onUpdateSchedule }: Schedule
   const [notes, setNotes] = useState(schedule.notes);
   const [checklist, setChecklist] = useState(schedule.checklist);
   const [showIssueForm, setShowIssueForm] = useState(false);
-  const [issueSpace, setIssueSpace] = useState('');
-  const [issueDescription, setIssueDescription] = useState('');
-  const [issuePhoto, setIssuePhoto] = useState<File | null>(null);
   const [expandedCategories, setExpandedCategories] = useState<Record<string, boolean>>({});
   const [acknowledgedInfo, setAcknowledgedInfo] = useState(false);
   const [checklistItemStates, setChecklistItemStates] = useState<Record<string, 'yes' | 'no' | null>>({});
@@ -147,15 +129,10 @@ export function ScheduleDetail({ schedule, onClose, onUpdateSchedule }: Schedule
     }
   };
 
-  const handleSubmitIssue = () => {
-    if (!issueSpace || !issueDescription) {
-      toast.error('Preencha o espaço e a descrição');
-      return;
-    }
-
+  const handleIssueSubmit = (issue: { section: string; item: string; description: string; photos: string[] }) => {
     const newIssue: MaintenanceIssue = {
       id: `issue-${Date.now()}`,
-      description: `[${issueSpace}] ${issueDescription}`,
+      description: `[${issue.section}${issue.item ? ` - ${issue.item}` : ''}] ${issue.description}`,
       severity: 'medium',
       reportedAt: new Date(),
       resolved: false
@@ -167,12 +144,6 @@ export function ScheduleDetail({ schedule, onClose, onUpdateSchedule }: Schedule
       maintenanceIssues: updatedIssues,
       maintenanceStatus: 'needs_maintenance'
     });
-
-    setShowIssueForm(false);
-    setIssueSpace('');
-    setIssueDescription('');
-    setIssuePhoto(null);
-    toast.success('Avaria reportada com sucesso!');
   };
 
   const handleSaveNotes = () => {
@@ -430,50 +401,13 @@ export function ScheduleDetail({ schedule, onClose, onUpdateSchedule }: Schedule
               </div>
             )}
 
-            {showIssueForm ? (
-              <div className="rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-[#2d3138] p-4 space-y-3">
-                <Select value={issueSpace} onValueChange={setIssueSpace}>
-                  <SelectTrigger className="bg-slate-50 dark:bg-slate-800">
-                    <SelectValue placeholder="Selecione o espaço" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {SPACE_OPTIONS.map(space => (
-                      <SelectItem key={space} value={space}>{space}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-
-                <Input
-                  placeholder="Breve descrição da avaria"
-                  value={issueDescription}
-                  onChange={(e) => setIssueDescription(e.target.value)}
-                  className="bg-slate-50 dark:bg-slate-800"
-                />
-
-                <div className="flex gap-2">
-                  <button 
-                    onClick={() => setShowIssueForm(false)}
-                    className="flex-1 rounded-xl border border-slate-200 bg-white py-2.5 text-sm font-bold text-slate-700 dark:border-slate-700 dark:bg-slate-800 dark:text-white"
-                  >
-                    Cancelar
-                  </button>
-                  <button 
-                    onClick={handleSubmitIssue}
-                    className="flex-1 rounded-xl bg-primary py-2.5 text-sm font-bold text-white"
-                  >
-                    Enviar
-                  </button>
-                </div>
-              </div>
-            ) : (
-              <button 
-                onClick={() => setShowIssueForm(true)}
-                className="mt-1 flex w-full items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white py-3 font-bold text-slate-700 shadow-sm transition-colors hover:bg-slate-50 dark:border-slate-700 dark:bg-[#2d3138] dark:text-white dark:hover:bg-slate-700"
-              >
-                <span className="material-symbols-outlined text-[20px]">report_problem</span>
-                Reportar Avaria
-              </button>
-            )}
+            <button 
+              onClick={() => setShowIssueForm(true)}
+              className="mt-1 flex w-full items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white py-3 font-bold text-slate-700 shadow-sm transition-colors hover:bg-slate-50 dark:border-slate-700 dark:bg-[#2d3138] dark:text-white dark:hover:bg-slate-700"
+            >
+              <span className="material-symbols-outlined text-[20px]">report_problem</span>
+              Reportar Avaria
+            </button>
           </section>
 
           {/* Observations Section */}
@@ -597,6 +531,14 @@ export function ScheduleDetail({ schedule, onClose, onUpdateSchedule }: Schedule
           propertyName={schedule.propertyName}
           password="8042#"
           onClose={() => setShowPasswordModal(false)}
+        />
+      )}
+
+      {/* Issue Report Modal */}
+      {showIssueForm && (
+        <IssueReportModal
+          onClose={() => setShowIssueForm(false)}
+          onSubmit={handleIssueSubmit}
         />
       )}
     </div>
