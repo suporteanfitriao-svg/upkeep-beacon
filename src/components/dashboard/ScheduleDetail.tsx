@@ -8,11 +8,13 @@ import { PasswordModal } from './PasswordModal';
 import { IssueReportModal } from './IssueReportModal';
 import { AttentionModal } from './AttentionModal';
 import { ChecklistPendingModal } from './ChecklistPendingModal';
+import { NoChecklistModal } from './NoChecklistModal';
 import { useUserRole } from '@/hooks/useUserRole';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
 import { useCreateMaintenanceIssue } from '@/hooks/useCreateMaintenanceIssue';
 import { useAcknowledgeInfo } from '@/hooks/useAcknowledgeInfo';
+import { usePropertyChecklist } from '@/hooks/usePropertyChecklist';
 interface ScheduleDetailProps {
   schedule: Schedule;
   onClose: () => void;
@@ -60,6 +62,7 @@ export function ScheduleDetail({ schedule, onClose, onUpdateSchedule }: Schedule
   const [showPasswordModal, setShowPasswordModal] = useState(false);
   const [showAttentionModal, setShowAttentionModal] = useState(false);
   const [showChecklistPendingModal, setShowChecklistPendingModal] = useState(false);
+  const [showNoChecklistModal, setShowNoChecklistModal] = useState(false);
   const [pendingCategories, setPendingCategories] = useState<{ name: string; pendingCount: number; totalCount: number }[]>([]);
   const [teamMemberId, setTeamMemberId] = useState<string | null>(null);
   const statusStyle = statusConfig[schedule.status];
@@ -92,6 +95,16 @@ export function ScheduleDetail({ schedule, onClose, onUpdateSchedule }: Schedule
   // Check if important info exists
   const hasImportantInfo = Boolean(schedule.importantInfo && schedule.importantInfo.trim().length > 0);
 
+  // Check if property has checklist configured (only for released status, to validate before starting)
+  const shouldCheckForChecklist = schedule.status === 'released';
+  const { 
+    hasChecklist: hasPropertyChecklist, 
+    isLoading: isCheckingChecklist 
+  } = usePropertyChecklist({
+    propertyId: schedule.propertyId,
+    enabled: shouldCheckForChecklist,
+  });
+
   // Check if user can perform status transition
   const canTransition = useMemo(() => {
     const nextStatus = statusConfig[schedule.status].next;
@@ -115,14 +128,6 @@ export function ScheduleDetail({ schedule, onClose, onUpdateSchedule }: Schedule
 
     return { allowed: true };
   }, [schedule.status, schedule.responsibleTeamMemberId, role, teamMemberId]);
-
-  // Check if property has checklist configured
-  const hasPropertyChecklist = useMemo(() => {
-    // If we're in cleaning status, we already have the checklist loaded
-    if (schedule.status === 'cleaning' || schedule.status === 'completed') return true;
-    // For other statuses, assume it exists (will be validated on backend)
-    return true;
-  }, [schedule.status]);
 
   const toggleCategory = (category: string) => {
     setExpandedCategories(prev => ({
@@ -395,23 +400,40 @@ export function ScheduleDetail({ schedule, onClose, onUpdateSchedule }: Schedule
             {(schedule.status === 'released' || schedule.status === 'waiting') && (
               <button 
                 onClick={() => {
-                  // For released status, require acknowledgment before starting cleaning
-                  if (schedule.status === 'released' && !hasAcknowledged) {
-                    setShowAttentionModal(true);
-                    return;
+                  // For released status, check requirements before starting cleaning
+                  if (schedule.status === 'released') {
+                    // First check if property has checklist
+                    if (!hasPropertyChecklist && !isCheckingChecklist) {
+                      setShowNoChecklistModal(true);
+                      return;
+                    }
+                    // Then check if info was acknowledged
+                    if (!hasAcknowledged) {
+                      setShowAttentionModal(true);
+                      return;
+                    }
                   }
                   handleStatusChange(schedule.status === 'waiting' ? 'released' : 'cleaning');
                 }}
-                disabled={isAckSubmitting}
+                disabled={isAckSubmitting || isCheckingChecklist}
                 className={cn(
                   "flex w-full items-center justify-center gap-2 rounded-xl py-4 font-bold text-white shadow-[0_4px_20px_-2px_rgba(51,153,153,0.3)] transition-all active:scale-[0.98]",
-                  schedule.status === 'released' && !hasAcknowledged
+                  (schedule.status === 'released' && (!hasAcknowledged || !hasPropertyChecklist))
                     ? "bg-slate-400 hover:bg-slate-500 cursor-not-allowed"
                     : "bg-primary hover:bg-[#267373]"
                 )}
               >
-                <span className="material-symbols-outlined filled">play_circle</span>
-                {schedule.status === 'waiting' ? 'Liberar para Limpeza' : 'Iniciar Limpeza'}
+                {isCheckingChecklist ? (
+                  <>
+                    <span className="material-symbols-outlined animate-spin">progress_activity</span>
+                    Verificando...
+                  </>
+                ) : (
+                  <>
+                    <span className="material-symbols-outlined filled">play_circle</span>
+                    {schedule.status === 'waiting' ? 'Liberar para Limpeza' : 'Iniciar Limpeza'}
+                  </>
+                )}
               </button>
             )}
           </section>
@@ -706,6 +728,14 @@ export function ScheduleDetail({ schedule, onClose, onUpdateSchedule }: Schedule
         <ChecklistPendingModal
           pendingCategories={pendingCategories}
           onClose={() => setShowChecklistPendingModal(false)}
+        />
+      )}
+
+      {/* No Checklist Modal */}
+      {showNoChecklistModal && (
+        <NoChecklistModal
+          propertyName={schedule.propertyName}
+          onClose={() => setShowNoChecklistModal(false)}
         />
       )}
     </div>
