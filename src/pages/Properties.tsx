@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { SidebarProvider, SidebarInset, SidebarTrigger } from '@/components/ui/sidebar';
 import { AppSidebar } from '@/components/dashboard/AppSidebar';
 import { Button } from '@/components/ui/button';
@@ -16,6 +16,7 @@ import { ChecklistManager } from '@/components/properties/ChecklistManager';
 import { PasswordModeConfig } from '@/components/properties/PasswordModeConfig';
 import { AdvancedRulesConfig } from '@/components/properties/AdvancedRulesConfig';
 import { cn } from '@/lib/utils';
+import { useImageCompression } from '@/hooks/useImageCompression';
 
 interface Property {
   id: string;
@@ -23,6 +24,7 @@ interface Property {
   address: string | null;
   default_check_in_time: string | null;
   default_check_out_time: string | null;
+  image_url: string | null;
   created_at: string;
 }
 
@@ -61,6 +63,11 @@ export default function Properties() {
     default_check_in_time: '14:00',
     default_check_out_time: '11:00'
   });
+  const [imageFile, setImageFile] = useState<File | null>(null);
+  const [imagePreview, setImagePreview] = useState<string | null>(null);
+  const [isUploading, setIsUploading] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const { compressImage, isCompressing } = useImageCompression();
   
   const [icalDialogOpen, setIcalDialogOpen] = useState(false);
   const [selectedPropertyId, setSelectedPropertyId] = useState<string | null>(null);
@@ -86,7 +93,7 @@ export default function Properties() {
     setIsLoading(true);
     const { data, error } = await supabase
       .from('properties')
-      .select('id, name, address, default_check_in_time, default_check_out_time, created_at')
+      .select('id, name, address, default_check_in_time, default_check_out_time, image_url, created_at')
       .order('name', { ascending: true });
 
     if (error) {
@@ -144,6 +151,8 @@ export default function Properties() {
       default_check_out_time: '11:00'
     });
     setEditingProperty(null);
+    setImageFile(null);
+    setImagePreview(null);
   };
 
   const resetIcalForm = () => {
@@ -160,7 +169,59 @@ export default function Properties() {
       default_check_in_time: property.default_check_in_time?.slice(0, 5) || '14:00',
       default_check_out_time: property.default_check_out_time?.slice(0, 5) || '11:00'
     });
+    setImagePreview(property.image_url);
+    setImageFile(null);
     setDialogOpen(true);
+  };
+
+  const handleImageSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const validTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp'];
+    if (!validTypes.includes(file.type)) {
+      toast.error('Formato não suportado. Use JPG, PNG ou WebP.');
+      return;
+    }
+
+    if (file.size > 8 * 1024 * 1024) {
+      toast.error('Arquivo muito grande. Máximo 8MB.');
+      return;
+    }
+
+    setImageFile(file);
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      setImagePreview(event.target?.result as string);
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const uploadImage = async (propertyId: string): Promise<string | null> => {
+    if (!imageFile) return null;
+
+    try {
+      const compressedBlob = await compressImage(imageFile);
+      const fileName = `${propertyId}/${Date.now()}.jpg`;
+      
+      const { error: uploadError } = await supabase.storage
+        .from('property-images')
+        .upload(fileName, compressedBlob, {
+          contentType: 'image/jpeg',
+          upsert: true
+        });
+
+      if (uploadError) throw uploadError;
+
+      const { data } = supabase.storage
+        .from('property-images')
+        .getPublicUrl(fileName);
+
+      return data.publicUrl;
+    } catch (error) {
+      console.error('Upload error:', error);
+      throw error;
+    }
   };
 
   const validateTimes = (checkIn: string, checkOut: string): boolean => {
@@ -189,6 +250,12 @@ export default function Properties() {
       return;
     }
 
+    // Image is required for new properties
+    if (!editingProperty && !imageFile) {
+      toast.error('Imagem da propriedade é obrigatória');
+      return;
+    }
+
     if (!formData.default_check_in_time || !formData.default_check_out_time) {
       toast.error('Horários padrão de check-in e check-out são obrigatórios');
       return;
@@ -198,78 +265,113 @@ export default function Properties() {
       return;
     }
 
-    const propertyData = {
-      name: formData.name.trim(),
-      address: formData.address.trim() || null,
-      default_check_in_time: formData.default_check_in_time,
-      default_check_out_time: formData.default_check_out_time
-    };
+    setIsUploading(true);
 
-    const { data: { user } } = await supabase.auth.getUser();
-    let teamMemberId: string | null = null;
-    
-    if (user) {
-      const { data: profile } = await supabase
-        .from('profiles')
-        .select('team_member_id')
-        .eq('id', user.id)
-        .single();
-      teamMemberId = profile?.team_member_id || null;
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      let teamMemberId: string | null = null;
+      
+      if (user) {
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('team_member_id')
+          .eq('id', user.id)
+          .single();
+        teamMemberId = profile?.team_member_id || null;
+      }
+
+      if (editingProperty) {
+        // Upload new image if selected
+        let imageUrl = editingProperty.image_url;
+        if (imageFile) {
+          imageUrl = await uploadImage(editingProperty.id);
+        }
+
+        const propertyData = {
+          name: formData.name.trim(),
+          address: formData.address.trim() || null,
+          default_check_in_time: formData.default_check_in_time,
+          default_check_out_time: formData.default_check_out_time,
+          image_url: imageUrl
+        };
+
+        const oldCheckIn = editingProperty.default_check_in_time?.slice(0, 5);
+        const oldCheckOut = editingProperty.default_check_out_time?.slice(0, 5);
+        const timesChanged = oldCheckIn !== formData.default_check_in_time || 
+                            oldCheckOut !== formData.default_check_out_time;
+
+        const { error } = await supabase
+          .from('properties')
+          .update(propertyData)
+          .eq('id', editingProperty.id);
+
+        if (error) {
+          toast.error('Erro ao atualizar propriedade');
+          console.error(error);
+          return;
+        }
+
+        if (timesChanged && teamMemberId) {
+          await supabase.from('password_audit_logs').insert({
+            property_id: editingProperty.id,
+            team_member_id: teamMemberId,
+            action: `alteracao_horario_propriedade:checkin:${oldCheckIn}->${formData.default_check_in_time},checkout:${oldCheckOut}->${formData.default_check_out_time}`
+          });
+        }
+
+        toast.success('Propriedade atualizada com sucesso');
+      } else {
+        // Create property first to get the ID
+        const propertyData = {
+          name: formData.name.trim(),
+          address: formData.address.trim() || null,
+          default_check_in_time: formData.default_check_in_time,
+          default_check_out_time: formData.default_check_out_time
+        };
+
+        const { data: newProperty, error } = await supabase
+          .from('properties')
+          .insert(propertyData)
+          .select('id')
+          .single();
+
+        if (error) {
+          toast.error('Erro ao criar propriedade');
+          console.error(error);
+          return;
+        }
+
+        // Upload image and update property
+        if (newProperty && imageFile) {
+          const imageUrl = await uploadImage(newProperty.id);
+          if (imageUrl) {
+            await supabase
+              .from('properties')
+              .update({ image_url: imageUrl })
+              .eq('id', newProperty.id);
+          }
+        }
+
+        if (teamMemberId && newProperty) {
+          await supabase.from('password_audit_logs').insert({
+            property_id: newProperty.id,
+            team_member_id: teamMemberId,
+            action: `configuracao_horario_propriedade:checkin:${formData.default_check_in_time},checkout:${formData.default_check_out_time}`
+          });
+        }
+
+        toast.success('Propriedade criada com sucesso');
+      }
+
+      setDialogOpen(false);
+      resetForm();
+      fetchProperties();
+    } catch (error) {
+      console.error('Submit error:', error);
+      toast.error('Erro ao salvar propriedade');
+    } finally {
+      setIsUploading(false);
     }
-
-    if (editingProperty) {
-      const oldCheckIn = editingProperty.default_check_in_time?.slice(0, 5);
-      const oldCheckOut = editingProperty.default_check_out_time?.slice(0, 5);
-      const timesChanged = oldCheckIn !== formData.default_check_in_time || 
-                          oldCheckOut !== formData.default_check_out_time;
-
-      const { error } = await supabase
-        .from('properties')
-        .update(propertyData)
-        .eq('id', editingProperty.id);
-
-      if (error) {
-        toast.error('Erro ao atualizar propriedade');
-        console.error(error);
-        return;
-      }
-
-      if (timesChanged && teamMemberId) {
-        await supabase.from('password_audit_logs').insert({
-          property_id: editingProperty.id,
-          team_member_id: teamMemberId,
-          action: `alteracao_horario_propriedade:checkin:${oldCheckIn}->${formData.default_check_in_time},checkout:${oldCheckOut}->${formData.default_check_out_time}`
-        });
-      }
-
-      toast.success('Propriedade atualizada com sucesso');
-    } else {
-      const { data: newProperty, error } = await supabase
-        .from('properties')
-        .insert(propertyData)
-        .select('id')
-        .single();
-
-      if (error) {
-        toast.error('Erro ao criar propriedade');
-        console.error(error);
-        return;
-      }
-
-      if (teamMemberId && newProperty) {
-        await supabase.from('password_audit_logs').insert({
-          property_id: newProperty.id,
-          team_member_id: teamMemberId,
-          action: `configuracao_horario_propriedade:checkin:${formData.default_check_in_time},checkout:${formData.default_check_out_time}`
-        });
-      }
-
-      toast.success('Propriedade criada com sucesso');
-    }
-
-    setDialogOpen(false);
-    resetForm();
-    fetchProperties();
   };
 
   const handleDelete = async (id: string) => {
@@ -467,13 +569,56 @@ export default function Properties() {
                       <span className="hidden sm:inline">Nova Propriedade</span>
                     </button>
                   </DialogTrigger>
-                  <DialogContent className="max-w-md">
+                  <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto">
                     <DialogHeader>
                       <DialogTitle className="text-lg font-bold">
                         {editingProperty ? 'Editar Propriedade' : 'Nova Propriedade'}
                       </DialogTitle>
                     </DialogHeader>
                     <div className="space-y-4 py-4">
+                      {/* Image Upload */}
+                      <div className="space-y-2">
+                        <Label className="text-sm font-medium">
+                          Imagem da Propriedade {!editingProperty && '*'}
+                        </Label>
+                        <div 
+                          onClick={() => fileInputRef.current?.click()}
+                          className={cn(
+                            "relative flex flex-col items-center justify-center rounded-xl border-2 border-dashed cursor-pointer transition-colors overflow-hidden",
+                            imagePreview 
+                              ? "border-primary/50 bg-primary/5" 
+                              : "border-border hover:border-primary/50 hover:bg-muted/50",
+                            "h-40"
+                          )}
+                        >
+                          {imagePreview ? (
+                            <>
+                              <img 
+                                src={imagePreview} 
+                                alt="Preview" 
+                                className="absolute inset-0 w-full h-full object-cover"
+                              />
+                              <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 hover:opacity-100 transition-opacity">
+                                <span className="material-symbols-outlined text-white text-[32px]">edit</span>
+                              </div>
+                            </>
+                          ) : (
+                            <>
+                              <span className="material-symbols-outlined text-muted-foreground text-[32px] mb-2">add_photo_alternate</span>
+                              <p className="text-sm text-muted-foreground">Clique para adicionar imagem</p>
+                              <p className="text-xs text-muted-foreground">JPG, PNG ou WebP (máx. 8MB)</p>
+                            </>
+                          )}
+                        </div>
+                        <input
+                          ref={fileInputRef}
+                          type="file"
+                          accept="image/jpeg,image/jpg,image/png,image/webp"
+                          onChange={handleImageSelect}
+                          className="hidden"
+                        />
+                      </div>
+
                       <div className="space-y-2">
                         <Label htmlFor="name" className="text-sm font-medium">Nome *</Label>
                         <Input
@@ -528,9 +673,13 @@ export default function Properties() {
                         </div>
                       </div>
                       <button 
-                        onClick={handleSubmit} 
-                        className="w-full rounded-xl bg-primary py-3 text-sm font-bold text-primary-foreground shadow-sm transition-all hover:bg-primary/90 active:scale-[0.98]"
+                        onClick={handleSubmit}
+                        disabled={isUploading || isCompressing}
+                        className="w-full rounded-xl bg-primary py-3 text-sm font-bold text-primary-foreground shadow-sm transition-all hover:bg-primary/90 active:scale-[0.98] disabled:opacity-50 flex items-center justify-center gap-2"
                       >
+                        {(isUploading || isCompressing) && (
+                          <div className="animate-spin rounded-full h-4 w-4 border-2 border-primary-foreground border-t-transparent" />
+                        )}
                         {editingProperty ? 'Salvar Alterações' : 'Criar Propriedade'}
                       </button>
                     </div>

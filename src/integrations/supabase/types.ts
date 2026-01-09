@@ -240,6 +240,7 @@ export type Database = {
           default_check_in_time: string | null
           default_check_out_time: string | null
           id: string
+          image_url: string | null
           name: string
           password_mode: Database["public"]["Enums"]["property_password_mode"]
           require_photo_per_category: boolean
@@ -253,6 +254,7 @@ export type Database = {
           default_check_in_time?: string | null
           default_check_out_time?: string | null
           id?: string
+          image_url?: string | null
           name: string
           password_mode?: Database["public"]["Enums"]["property_password_mode"]
           require_photo_per_category?: boolean
@@ -266,6 +268,7 @@ export type Database = {
           default_check_in_time?: string | null
           default_check_out_time?: string | null
           id?: string
+          image_url?: string | null
           name?: string
           password_mode?: Database["public"]["Enums"]["property_password_mode"]
           require_photo_per_category?: boolean

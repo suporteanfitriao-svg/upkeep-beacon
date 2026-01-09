@@ -55,6 +55,7 @@ export interface Schedule {
   propertyId: string;
   propertyName: string;
   propertyAddress: string;
+  propertyImageUrl?: string;
   guestName: string;
   numberOfGuests: number;
   checkIn: Date;
