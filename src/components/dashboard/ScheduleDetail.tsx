@@ -543,7 +543,7 @@ export function ScheduleDetail({ schedule, onClose, onUpdateSchedule }: Schedule
       {showPasswordModal && (
         <PasswordModal
           propertyName={schedule.propertyName}
-          password="8042#"
+          password={schedule.doorPassword || 'Senha não disponível'}
           onClose={() => setShowPasswordModal(false)}
         />
       )}
