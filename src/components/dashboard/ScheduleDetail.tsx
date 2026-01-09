@@ -1,7 +1,7 @@
 import { Schedule, ScheduleStatus, ChecklistItem, MaintenanceIssue, STATUS_LABELS, STATUS_FLOW, STATUS_ALLOWED_ROLES, AppRole } from '@/types/scheduling';
 import { cn } from '@/lib/utils';
 import { format } from 'date-fns';
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { toast } from 'sonner';
 import { LocationModal } from './LocationModal';
 import { PasswordModal } from './PasswordModal';
@@ -12,7 +12,7 @@ import { useUserRole } from '@/hooks/useUserRole';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
 import { useCreateMaintenanceIssue } from '@/hooks/useCreateMaintenanceIssue';
-
+import { useAcknowledgeInfo } from '@/hooks/useAcknowledgeInfo';
 interface ScheduleDetailProps {
   schedule: Schedule;
   onClose: () => void;
@@ -55,9 +55,6 @@ export function ScheduleDetail({ schedule, onClose, onUpdateSchedule }: Schedule
   const [checklist, setChecklist] = useState(schedule.checklist);
   const [showIssueForm, setShowIssueForm] = useState(false);
   const [expandedCategories, setExpandedCategories] = useState<Record<string, boolean>>({});
-  const [acknowledgedInfo, setAcknowledgedInfo] = useState(
-    schedule.ackByTeamMembers?.some(ack => ack.team_member_id === user?.id) ?? false
-  );
   const [checklistItemStates, setChecklistItemStates] = useState<Record<string, 'yes' | 'no' | null>>({});
   const [showLocationModal, setShowLocationModal] = useState(false);
   const [showPasswordModal, setShowPasswordModal] = useState(false);
@@ -68,7 +65,7 @@ export function ScheduleDetail({ schedule, onClose, onUpdateSchedule }: Schedule
   const statusStyle = statusConfig[schedule.status];
 
   // Fetch team member id for current user
-  useMemo(() => {
+  useEffect(() => {
     const fetchTeamMemberId = async () => {
       if (!user?.id) return;
       const { data } = await supabase
@@ -80,6 +77,20 @@ export function ScheduleDetail({ schedule, onClose, onUpdateSchedule }: Schedule
     };
     fetchTeamMemberId();
   }, [user?.id]);
+
+  // Use the acknowledge hook for "Li e Compreendi" functionality
+  const { 
+    hasAcknowledged, 
+    isSubmitting: isAckSubmitting, 
+    toggleAcknowledge 
+  } = useAcknowledgeInfo({
+    scheduleId: schedule.id,
+    currentAcks: schedule.ackByTeamMembers || [],
+    teamMemberId,
+  });
+
+  // Check if important info exists
+  const hasImportantInfo = Boolean(schedule.importantInfo && schedule.importantInfo.trim().length > 0);
 
   // Check if user can perform status transition
   const canTransition = useMemo(() => {
@@ -334,39 +345,70 @@ export function ScheduleDetail({ schedule, onClose, onUpdateSchedule }: Schedule
               </div>
             </div>
 
-            {/* Important Info */}
-            <div className="flex flex-col gap-3 mb-6">
-              <div className="flex items-center gap-2 mb-1">
-                <span className="material-symbols-outlined text-[#E0C051] text-[20px]">info</span>
-                <h3 className="text-sm font-bold uppercase tracking-wide text-slate-900 dark:text-white">Informações Importantes</h3>
+            {/* Important Info - Only show if there's important info */}
+            {(hasImportantInfo || true) && (
+              <div className="flex flex-col gap-3 mb-6">
+                <div className="flex items-center gap-2 mb-1">
+                  <span className="material-symbols-outlined text-[#E0C051] text-[20px]">info</span>
+                  <h3 className="text-sm font-bold uppercase tracking-wide text-slate-900 dark:text-white">Informações Importantes</h3>
+                </div>
+                <div className="rounded-xl bg-slate-50 dark:bg-slate-800/50 p-4 border border-slate-100 dark:border-slate-700">
+                  <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed font-medium whitespace-pre-wrap">
+                    ⚠️ <span className="font-bold text-slate-800 dark:text-slate-200">Atenção:</span>{' '}
+                    {schedule.importantInfo || 'O hóspede solicitou especial cuidado com os tapetes da sala devido a alergias. Utilize o aspirador em potência máxima.'}
+                  </p>
+                </div>
+                <label className={cn(
+                  "flex items-center gap-3 p-1 cursor-pointer group",
+                  hasAcknowledged && "opacity-75 cursor-default"
+                )}>
+                  <input 
+                    type="checkbox"
+                    checked={hasAcknowledged}
+                    disabled={hasAcknowledged || isAckSubmitting}
+                    onChange={async (e) => {
+                      if (e.target.checked && !hasAcknowledged) {
+                        const success = await toggleAcknowledge(true);
+                        if (success) {
+                          toast.success('Confirmação registrada!');
+                        }
+                      }
+                    }}
+                    className="h-5 w-5 rounded border-slate-300 text-primary focus:ring-primary dark:border-slate-600 dark:bg-slate-700 transition-colors disabled:opacity-50"
+                  />
+                  <span className={cn(
+                    "text-xs font-bold transition-colors",
+                    hasAcknowledged 
+                      ? "text-emerald-600 dark:text-emerald-400" 
+                      : "text-slate-700 dark:text-slate-300 group-hover:text-primary"
+                  )}>
+                    {hasAcknowledged ? '✓ Leitura confirmada' : 'Li e compreendi as informações'}
+                  </span>
+                  {isAckSubmitting && (
+                    <span className="text-xs text-slate-400">Salvando...</span>
+                  )}
+                </label>
               </div>
-              <div className="rounded-xl bg-slate-50 dark:bg-slate-800/50 p-4 border border-slate-100 dark:border-slate-700">
-                <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed font-medium">
-                  ⚠️ <span className="font-bold text-slate-800 dark:text-slate-200">Atenção:</span> O hóspede solicitou especial cuidado com os tapetes da sala devido a alergias. Utilize o aspirador em potência máxima.
-                </p>
-              </div>
-              <label className="flex items-center gap-3 p-1 cursor-pointer group">
-                <input 
-                  type="checkbox"
-                  checked={acknowledgedInfo}
-                  onChange={(e) => setAcknowledgedInfo(e.target.checked)}
-                  className="h-5 w-5 rounded border-slate-300 text-primary focus:ring-primary dark:border-slate-600 dark:bg-slate-700 transition-colors"
-                />
-                <span className="text-xs font-bold text-slate-700 dark:text-slate-300 group-hover:text-primary transition-colors">Li e compreendi as informações</span>
-              </label>
-            </div>
+            )}
 
             {/* Start Cleaning Button */}
             {(schedule.status === 'released' || schedule.status === 'waiting') && (
               <button 
                 onClick={() => {
-                  if (schedule.status === 'released' && !acknowledgedInfo) {
+                  // For released status, require acknowledgment before starting cleaning
+                  if (schedule.status === 'released' && !hasAcknowledged) {
                     setShowAttentionModal(true);
                     return;
                   }
                   handleStatusChange(schedule.status === 'waiting' ? 'released' : 'cleaning');
                 }}
-                className="flex w-full items-center justify-center gap-2 rounded-xl bg-primary py-4 font-bold text-white shadow-[0_4px_20px_-2px_rgba(51,153,153,0.3)] transition-all active:scale-[0.98] hover:bg-[#267373]"
+                disabled={isAckSubmitting}
+                className={cn(
+                  "flex w-full items-center justify-center gap-2 rounded-xl py-4 font-bold text-white shadow-[0_4px_20px_-2px_rgba(51,153,153,0.3)] transition-all active:scale-[0.98]",
+                  schedule.status === 'released' && !hasAcknowledged
+                    ? "bg-slate-400 hover:bg-slate-500 cursor-not-allowed"
+                    : "bg-primary hover:bg-[#267373]"
+                )}
               >
                 <span className="material-symbols-outlined filled">play_circle</span>
                 {schedule.status === 'waiting' ? 'Liberar para Limpeza' : 'Iniciar Limpeza'}
