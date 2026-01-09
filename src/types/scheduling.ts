@@ -44,6 +44,12 @@ export interface TeamMemberAck {
   acknowledged_at: string;
 }
 
+export interface CategoryPhoto {
+  url: string;
+  uploadedAt: string;
+  uploadedBy?: string;
+}
+
 export interface Schedule {
   id: string;
   propertyId: string;
@@ -78,6 +84,7 @@ export interface Schedule {
   checklistLoadedAt?: Date;
   adminRevertReason?: string;
   accessPassword?: string;
+  categoryPhotos?: Record<string, CategoryPhoto[]>;
 }
 
 export interface DashboardStats {

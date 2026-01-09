@@ -467,6 +467,7 @@ export type Database = {
           access_password: string | null
           ack_by_team_members: Json | null
           admin_revert_reason: string | null
+          category_photos: Json | null
           check_in_time: string
           check_out_time: string
           checklist_loaded_at: string | null
@@ -500,6 +501,7 @@ export type Database = {
           access_password?: string | null
           ack_by_team_members?: Json | null
           admin_revert_reason?: string | null
+          category_photos?: Json | null
           check_in_time: string
           check_out_time: string
           checklist_loaded_at?: string | null
@@ -533,6 +535,7 @@ export type Database = {
           access_password?: string | null
           ack_by_team_members?: Json | null
           admin_revert_reason?: string | null
+          category_photos?: Json | null
           check_in_time?: string
           check_out_time?: string
           checklist_loaded_at?: string | null
