@@ -359,105 +359,160 @@ export default function Manutencao() {
             <TabsContent value="avarias" className="space-y-6">
               {/* Stats Cards */}
               <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-            <MaintenanceStatCard 
-              title="Abertas" 
-              count={stats.open} 
-              icon={AlertTriangle} 
-              variant="warning" 
-            />
-            <MaintenanceStatCard 
-              title="Em Andamento" 
-              count={stats.in_progress} 
-              icon={Clock} 
-              variant="info" 
-            />
-            <MaintenanceStatCard 
-              title="Resolvidas" 
-              count={stats.resolved} 
-              icon={CheckCircle2} 
-              variant="success" 
-            />
-            <MaintenanceStatCard 
-              title="Alta Prioridade" 
-              count={stats.high_severity} 
-              icon={Wrench} 
-              variant="danger" 
-            />
-          </div>
-
-          {/* Filters */}
-          <Card className="mb-6">
-            <CardContent className="p-4">
-              <div className="flex flex-wrap gap-4">
-                <div className="flex-1 min-w-[200px]">
-                  <div className="relative">
-                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                    <Input
-                      placeholder="Buscar por propriedade, descrição..."
-                      value={searchQuery}
-                      onChange={(e) => setSearchQuery(e.target.value)}
-                      className="pl-9"
-                    />
-                  </div>
-                </div>
-                <Select value={statusFilter} onValueChange={setStatusFilter}>
-                  <SelectTrigger className="w-[160px]">
-                    <SelectValue placeholder="Status" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">Todos Status</SelectItem>
-                    <SelectItem value="open">Abertas</SelectItem>
-                    <SelectItem value="in_progress">Em Andamento</SelectItem>
-                    <SelectItem value="resolved">Resolvidas</SelectItem>
-                  </SelectContent>
-                </Select>
-                <Select value={severityFilter} onValueChange={setSeverityFilter}>
-                  <SelectTrigger className="w-[160px]">
-                    <SelectValue placeholder="Severidade" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">Todas</SelectItem>
-                    <SelectItem value="high">Alta</SelectItem>
-                    <SelectItem value="medium">Média</SelectItem>
-                    <SelectItem value="low">Baixa</SelectItem>
-                  </SelectContent>
-                </Select>
+                <MaintenanceStatCard 
+                  title="Abertas" 
+                  count={stats.open} 
+                  icon={AlertTriangle} 
+                  variant="warning" 
+                />
+                <MaintenanceStatCard 
+                  title="Em Andamento" 
+                  count={stats.in_progress} 
+                  icon={Clock} 
+                  variant="info" 
+                />
+                <MaintenanceStatCard 
+                  title="Resolvidas" 
+                  count={stats.resolved} 
+                  icon={CheckCircle2} 
+                  variant="success" 
+                />
+                <MaintenanceStatCard 
+                  title="Alta Prioridade" 
+                  count={stats.high_severity} 
+                  icon={Wrench} 
+                  variant="danger" 
+                />
               </div>
-            </CardContent>
-          </Card>
 
-          {/* Issues List */}
-          <div className="space-y-4">
-            {isLoading ? (
-              <>
-                <Skeleton className="h-32 w-full" />
-                <Skeleton className="h-32 w-full" />
-                <Skeleton className="h-32 w-full" />
-              </>
-            ) : filteredIssues.length === 0 ? (
+              {/* Filters */}
               <Card>
-                <CardContent className="p-8 text-center">
-                  <Wrench className="w-12 h-12 mx-auto text-muted-foreground mb-4" />
-                  <p className="text-lg font-medium">Nenhuma avaria encontrada</p>
-                  <p className="text-sm text-muted-foreground">
-                    {searchQuery || statusFilter !== 'all' || severityFilter !== 'all' 
-                      ? 'Tente ajustar os filtros de busca'
-                      : 'Quando avarias forem reportadas, elas aparecerão aqui'}
-                  </p>
+                <CardContent className="p-4">
+                  <div className="flex flex-wrap gap-4">
+                    <div className="flex-1 min-w-[200px]">
+                      <div className="relative">
+                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                        <Input
+                          placeholder="Buscar por propriedade, descrição..."
+                          value={searchQuery}
+                          onChange={(e) => setSearchQuery(e.target.value)}
+                          className="pl-9"
+                        />
+                      </div>
+                    </div>
+                    <Select value={statusFilter} onValueChange={setStatusFilter}>
+                      <SelectTrigger className="w-[160px]">
+                        <SelectValue placeholder="Status" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">Todos Status</SelectItem>
+                        <SelectItem value="open">Abertas</SelectItem>
+                        <SelectItem value="in_progress">Em Andamento</SelectItem>
+                        <SelectItem value="resolved">Resolvidas</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <Select value={severityFilter} onValueChange={setSeverityFilter}>
+                      <SelectTrigger className="w-[160px]">
+                        <SelectValue placeholder="Severidade" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">Todas</SelectItem>
+                        <SelectItem value="high">Alta</SelectItem>
+                        <SelectItem value="medium">Média</SelectItem>
+                        <SelectItem value="low">Baixa</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
                 </CardContent>
               </Card>
-            ) : (
-              filteredIssues.map(issue => (
-                <IssueCard 
-                  key={issue.id} 
-                  issue={issue}
-                  onResolve={handleResolve}
-                  onAssign={handleAssign}
-                  teamMembers={teamMembers}
-                />
-              ))
-            )}
-          </div>
+
+              {/* Issues List */}
+              <div className="space-y-4">
+                {isLoading ? (
+                  <>
+                    <Skeleton className="h-32 w-full" />
+                    <Skeleton className="h-32 w-full" />
+                    <Skeleton className="h-32 w-full" />
+                  </>
+                ) : filteredIssues.length === 0 ? (
+                  <Card>
+                    <CardContent className="p-8 text-center">
+                      <Wrench className="w-12 h-12 mx-auto text-muted-foreground mb-4" />
+                      <p className="text-lg font-medium">Nenhuma avaria encontrada</p>
+                      <p className="text-sm text-muted-foreground">
+                        {searchQuery || statusFilter !== 'all' || severityFilter !== 'all' 
+                          ? 'Tente ajustar os filtros de busca'
+                          : 'Quando avarias forem reportadas, elas aparecerão aqui'}
+                      </p>
+                    </CardContent>
+                  </Card>
+                ) : (
+                  filteredIssues.map(issue => (
+                    <IssueCard 
+                      key={issue.id} 
+                      issue={issue}
+                      onResolve={handleResolve}
+                      onAssign={handleAssign}
+                      teamMembers={teamMembers}
+                    />
+                  ))
+                )}
+              </div>
+            </TabsContent>
+
+            {/* Relatórios Tab */}
+            <TabsContent value="relatorios" className="space-y-6">
+              <ReportStatsCards stats={reportStats} />
+              
+              <ReportFilters
+                startDate={reportStartDate}
+                endDate={reportEndDate}
+                propertyFilter={reportPropertyFilter}
+                responsibleFilter={reportResponsibleFilter}
+                searchQuery={reportSearchQuery}
+                sortField={reportSortField}
+                sortOrder={reportSortOrder}
+                onStartDateChange={setReportStartDate}
+                onEndDateChange={setReportEndDate}
+                onPropertyFilterChange={setReportPropertyFilter}
+                onResponsibleFilterChange={setReportResponsibleFilter}
+                onSearchChange={setReportSearchQuery}
+                onSortChange={(field, order) => {
+                  setReportSortField(field);
+                  setReportSortOrder(order);
+                }}
+              />
+
+              {/* Completed Schedules List */}
+              <div className="space-y-3">
+                {reportsLoading ? (
+                  <>
+                    <Skeleton className="h-24 w-full" />
+                    <Skeleton className="h-24 w-full" />
+                    <Skeleton className="h-24 w-full" />
+                  </>
+                ) : completedSchedules.length === 0 ? (
+                  <Card>
+                    <CardContent className="p-8 text-center">
+                      <FileText className="w-12 h-12 mx-auto text-muted-foreground mb-4" />
+                      <p className="text-lg font-medium">Nenhum atendimento encontrado</p>
+                      <p className="text-sm text-muted-foreground">
+                        Ajuste os filtros ou aguarde atendimentos serem finalizados
+                      </p>
+                    </CardContent>
+                  </Card>
+                ) : (
+                  completedSchedules.map(schedule => (
+                    <CompletedScheduleRow
+                      key={schedule.id}
+                      schedule={schedule}
+                      onClick={() => setSelectedSchedule(schedule)}
+                    />
+                  ))
+                )}
+              </div>
+            </TabsContent>
+          </Tabs>
         </main>
       </div>
 
