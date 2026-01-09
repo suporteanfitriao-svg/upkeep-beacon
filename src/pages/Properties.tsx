@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Plus, RefreshCw, Home, Pencil, Trash2, Clock, AlertCircle, CheckCircle2, Link2, ClipboardList } from 'lucide-react';
+import { Plus, RefreshCw, Home, Pencil, Trash2, Clock, AlertCircle, CheckCircle2, Link2, ClipboardList, KeyRound } from 'lucide-react';
 import { SidebarProvider, SidebarInset, SidebarTrigger } from '@/components/ui/sidebar';
 import { AppSidebar } from '@/components/dashboard/AppSidebar';
 import { Button } from '@/components/ui/button';
@@ -15,6 +15,7 @@ import { useUserRole } from '@/hooks/useUserRole';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { ChecklistManager } from '@/components/properties/ChecklistManager';
+import { PasswordModeConfig } from '@/components/properties/PasswordModeConfig';
 
 interface Property {
   id: string;
@@ -579,7 +580,7 @@ export default function Properties() {
                     </CardHeader>
                     <CardContent className="pt-0">
                       <Tabs defaultValue="ical" className="w-full">
-                        <TabsList className="grid w-full grid-cols-2 mb-4">
+                        <TabsList className={`grid w-full mb-4 ${canManage ? 'grid-cols-3' : 'grid-cols-2'}`}>
                           <TabsTrigger value="ical" className="text-xs">
                             <Link2 className="h-3 w-3 mr-1" />
                             Anúncios ({icalSources[property.id]?.length || 0})
@@ -588,6 +589,12 @@ export default function Properties() {
                             <ClipboardList className="h-3 w-3 mr-1" />
                             Checklists ({propertyChecklists.filter(c => c.property_id === property.id).length})
                           </TabsTrigger>
+                          {canManage && (
+                            <TabsTrigger value="password" className="text-xs">
+                              <KeyRound className="h-3 w-3 mr-1" />
+                              Senha
+                            </TabsTrigger>
+                          )}
                         </TabsList>
                         
                         <TabsContent value="ical" className="mt-0">
@@ -723,6 +730,15 @@ export default function Properties() {
                             </p>
                           )}
                         </TabsContent>
+
+                        {canManage && (
+                          <TabsContent value="password" className="mt-0">
+                            <PasswordModeConfig 
+                              propertyId={property.id} 
+                              propertyName={property.name} 
+                            />
+                          </TabsContent>
+                        )}
                       </Tabs>
                     </CardContent>
                   </Card>

@@ -44,6 +44,7 @@ interface ScheduleRow {
   is_active: boolean | null;
   checklist_loaded_at: string | null;
   admin_revert_reason: string | null;
+  access_password: string | null;
   reservations?: {
     check_in: string;
     check_out: string;
@@ -231,6 +232,7 @@ const mapRowToSchedule = (row: ScheduleRow): Schedule => {
     isActive: row.is_active ?? true,
     checklistLoadedAt: row.checklist_loaded_at ? new Date(row.checklist_loaded_at) : undefined,
     adminRevertReason: row.admin_revert_reason || undefined,
+    accessPassword: row.access_password || undefined,
   };
 };
 

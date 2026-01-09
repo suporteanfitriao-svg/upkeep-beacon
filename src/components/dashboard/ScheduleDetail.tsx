@@ -700,9 +700,16 @@ export function ScheduleDetail({ schedule, onClose, onUpdateSchedule }: Schedule
       {/* Password Modal */}
       {showPasswordModal && (
         <PasswordModal
+          propertyId={schedule.propertyId}
           propertyName={schedule.propertyName}
-          password={schedule.doorPassword || 'Senha não disponível'}
+          scheduleId={schedule.id}
+          passwordFromIcal={schedule.doorPassword}
+          accessPassword={schedule.accessPassword}
+          teamMemberId={teamMemberId}
           onClose={() => setShowPasswordModal(false)}
+          onPasswordUpdated={(newPassword) => {
+            onUpdateSchedule({ ...schedule, accessPassword: newPassword });
+          }}
         />
       )}
 
