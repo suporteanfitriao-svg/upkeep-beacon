@@ -287,9 +287,17 @@ export function MobileDashboard({ schedules, onScheduleClick, onStartCleaning }:
                   className="overflow-hidden rounded-2xl bg-white dark:bg-[#2d3138] shadow-soft border border-slate-100 dark:border-slate-700 transition-transform active:scale-[0.98] text-left"
                 >
                   <div className="flex flex-row p-3 gap-3">
-                    <div className="w-16 h-16 shrink-0 rounded-xl bg-slate-50 dark:bg-slate-800 flex items-center justify-center border border-slate-100 dark:border-slate-700">
-                      <span className="material-symbols-outlined text-slate-400 text-[28px]">apartment</span>
-                    </div>
+                    {schedule.propertyImageUrl ? (
+                      <img 
+                        src={schedule.propertyImageUrl} 
+                        alt={schedule.propertyName}
+                        className="w-16 h-16 shrink-0 rounded-xl object-cover border border-slate-100 dark:border-slate-700"
+                      />
+                    ) : (
+                      <div className="w-16 h-16 shrink-0 rounded-xl bg-slate-50 dark:bg-slate-800 flex items-center justify-center border border-slate-100 dark:border-slate-700">
+                        <span className="material-symbols-outlined text-slate-400 text-[28px]">apartment</span>
+                      </div>
+                    )}
                     <div className="flex-1 flex flex-col justify-center">
                       <h3 className="text-sm font-bold text-slate-900 dark:text-white leading-tight mb-1">
                         {schedule.propertyName}
@@ -429,12 +437,19 @@ export function MobileDashboard({ schedules, onScheduleClick, onStartCleaning }:
                         Iniciar Limpeza
                       </button>
                     </div>
-                    <div 
-                      className="w-28 shrink-0 rounded-xl bg-slate-100 dark:bg-slate-800 bg-cover bg-center"
-                      style={{ backgroundImage: 'url("https://lh3.googleusercontent.com/aida-public/AB6AXuAQZ1I3CYnYqqEiuhrq2tbVgN3t8Z7HrwILWPCxwgUNVwieY1obhBX55oEL9CmXHad1VeI1NFMykr6ob4b9wDsu-g4DqlzR77f3bxPc-epeA5E4XyXz1Ey-rihJBZbnw2Oxv8ufUHDfUMazld15ptZG4SQ_HcWXy1B48idcbq-KsGmbPQxk7s-6kHBHmZqYPvDwZj28SWRo1DkvlhOaBLfP7KO4oXH0EpEPp9B6cbVBrOEHduEtWQ8pLnxfPQzYE7-gcnacXyTlhT9i")' }}
-                      role="img"
-                      aria-label="Interior do apartamento"
-                    />
+                    {schedule.propertyImageUrl ? (
+                      <img 
+                        src={schedule.propertyImageUrl} 
+                        alt={schedule.propertyName}
+                        className="w-28 shrink-0 rounded-xl object-cover"
+                      />
+                    ) : (
+                      <div 
+                        className="w-28 shrink-0 rounded-xl bg-slate-100 dark:bg-slate-800 flex items-center justify-center"
+                      >
+                        <span className="material-symbols-outlined text-slate-400 text-[32px]">apartment</span>
+                      </div>
+                    )}
                   </div>
                   <div className="border-t border-slate-100 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/50 px-4 py-2 flex justify-between items-center">
                     <div className="flex -space-x-2">
