@@ -239,7 +239,7 @@ export default function Manutencao() {
   const [selectedSchedule, setSelectedSchedule] = useState<Schedule | null>(null);
 
   // Fetch completed schedules for reports
-  const { schedules: completedSchedules, loading: reportsLoading, stats: reportStats } = useCompletedSchedules({
+  const { schedules: completedSchedules, loading: reportsLoading, stats: reportStats, refetch: refetchReports } = useCompletedSchedules({
     startDate: reportStartDate,
     endDate: reportEndDate,
     propertyId: reportPropertyFilter,
@@ -343,7 +343,13 @@ export default function Manutencao() {
             <p className="text-muted-foreground">Acompanhe avarias e visualize relatórios de atendimentos</p>
           </div>
 
-          <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
+          <Tabs value={activeTab} onValueChange={(value) => {
+              setActiveTab(value);
+              // Refetch reports when switching to reports tab
+              if (value === 'relatorios') {
+                refetchReports();
+              }
+            }} className="space-y-6">
             <TabsList className="grid w-full max-w-md grid-cols-2">
               <TabsTrigger value="avarias" className="gap-2">
                 <Wrench className="w-4 h-4" />
