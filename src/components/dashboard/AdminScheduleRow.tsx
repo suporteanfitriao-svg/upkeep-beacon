@@ -17,7 +17,18 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import { toast } from 'sonner';
+
 interface AdminScheduleRowProps {
   schedule: Schedule;
   onClick: () => void;
@@ -98,6 +109,11 @@ export function AdminScheduleRow({ schedule, onClick, onScheduleUpdated }: Admin
   const [teamMemberId, setTeamMemberId] = useState<string | null>(null);
   const [localSchedule, setLocalSchedule] = useState(schedule);
   const [isExpanded, setIsExpanded] = useState(false);
+  const [confirmDialog, setConfirmDialog] = useState<{
+    open: boolean;
+    targetStatus: ScheduleStatus | null;
+    isRelease: boolean;
+  }>({ open: false, targetStatus: null, isRelease: false });
 
   const statusStyle = statusConfig[localSchedule.status];
   const hasIssue = localSchedule.maintenanceStatus !== 'ok';
@@ -161,8 +177,13 @@ export function AdminScheduleRow({ schedule, onClick, onScheduleUpdated }: Admin
     onClick();
   };
 
-  const handleReleaseForCleaning = async (e: React.MouseEvent) => {
+  const handleReleaseClick = (e: React.MouseEvent) => {
     e.stopPropagation();
+    if (!teamMemberId || localSchedule.status !== 'waiting') return;
+    setConfirmDialog({ open: true, targetStatus: 'released', isRelease: true });
+  };
+
+  const handleReleaseForCleaning = async () => {
     if (!teamMemberId || localSchedule.status !== 'waiting') return;
     
     try {
@@ -205,6 +226,11 @@ export function AdminScheduleRow({ schedule, onClick, onScheduleUpdated }: Admin
       console.error('Error releasing schedule:', error);
       toast.error('Erro ao liberar para limpeza');
     }
+  };
+
+  const handleStatusClick = (status: ScheduleStatus) => {
+    if (!teamMemberId || status === localSchedule.status) return;
+    setConfirmDialog({ open: true, targetStatus: status, isRelease: false });
   };
 
   const handleStatusChange = async (newStatus: ScheduleStatus) => {
@@ -274,6 +300,15 @@ export function AdminScheduleRow({ schedule, onClick, onScheduleUpdated }: Admin
     }
   };
 
+  const handleConfirmStatusChange = async () => {
+    if (confirmDialog.isRelease) {
+      await handleReleaseForCleaning();
+    } else if (confirmDialog.targetStatus) {
+      await handleStatusChange(confirmDialog.targetStatus);
+    }
+    setConfirmDialog({ open: false, targetStatus: null, isRelease: false });
+  };
+
   const getAvailableTransitions = (): ScheduleStatus[] => {
     const nextStatus = STATUS_FLOW[localSchedule.status];
     if (!nextStatus) return [];
@@ -286,6 +321,22 @@ export function AdminScheduleRow({ schedule, onClick, onScheduleUpdated }: Admin
 
   const canRelease = canManage && localSchedule.status === 'waiting';
   const availableTransitions = canManage ? getAvailableTransitions() : [];
+
+  const getConfirmationMessage = () => {
+    if (confirmDialog.isRelease) {
+      return {
+        title: 'Liberar para Limpeza',
+        description: `Tem certeza que deseja liberar "${localSchedule.propertyName}" para limpeza? Esta ação permitirá que o responsável inicie o serviço.`,
+      };
+    }
+    if (confirmDialog.targetStatus) {
+      return {
+        title: `Alterar Status para "${STATUS_LABELS[confirmDialog.targetStatus]}"`,
+        description: `Tem certeza que deseja alterar o status de "${localSchedule.propertyName}" de "${STATUS_LABELS[localSchedule.status]}" para "${STATUS_LABELS[confirmDialog.targetStatus]}"?`,
+      };
+    }
+    return { title: '', description: '' };
+  };
 
   return (
     <Collapsible open={isExpanded} onOpenChange={setIsExpanded}>
@@ -377,7 +428,7 @@ export function AdminScheduleRow({ schedule, onClick, onScheduleUpdated }: Admin
               {/* Status Actions - Release Button */}
               {canRelease && (
                 <button
-                  onClick={handleReleaseForCleaning}
+                  onClick={handleReleaseClick}
                   className="flex items-center gap-1.5 px-3 py-1.5 bg-green-100 dark:bg-green-900/30 text-green-600 dark:text-green-400 rounded-full hover:bg-green-200 dark:hover:bg-green-900/50 transition-colors text-xs font-semibold"
                   title="Liberar para limpeza"
                 >
@@ -408,7 +459,7 @@ export function AdminScheduleRow({ schedule, onClick, onScheduleUpdated }: Admin
                     {availableTransitions.map((status) => (
                       <DropdownMenuItem
                         key={status}
-                        onClick={() => handleStatusChange(status)}
+                        onClick={() => handleStatusClick(status)}
                         className="gap-2"
                       >
                         {status === 'released' && <Play className="w-4 h-4" />}
@@ -543,6 +594,24 @@ export function AdminScheduleRow({ schedule, onClick, onScheduleUpdated }: Admin
           </div>
         </CollapsibleContent>
       </article>
+
+      {/* Confirmation Dialog */}
+      <AlertDialog open={confirmDialog.open} onOpenChange={(open) => !open && setConfirmDialog({ open: false, targetStatus: null, isRelease: false })}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>{getConfirmationMessage().title}</AlertDialogTitle>
+            <AlertDialogDescription>
+              {getConfirmationMessage().description}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction onClick={handleConfirmStatusChange}>
+              Confirmar
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </Collapsible>
   );
 }
