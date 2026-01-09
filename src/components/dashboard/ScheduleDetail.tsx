@@ -8,6 +8,7 @@ import { LocationModal } from './LocationModal';
 import { PasswordModal } from './PasswordModal';
 import { IssueReportModal } from './IssueReportModal';
 import { AttentionModal } from './AttentionModal';
+import { ChecklistPendingModal } from './ChecklistPendingModal';
 
 interface ScheduleDetailProps {
   schedule: Schedule;
@@ -54,6 +55,8 @@ export function ScheduleDetail({ schedule, onClose, onUpdateSchedule }: Schedule
   const [showLocationModal, setShowLocationModal] = useState(false);
   const [showPasswordModal, setShowPasswordModal] = useState(false);
   const [showAttentionModal, setShowAttentionModal] = useState(false);
+  const [showChecklistPendingModal, setShowChecklistPendingModal] = useState(false);
+  const [pendingCategories, setPendingCategories] = useState<{ name: string; pendingCount: number; totalCount: number }[]>([]);
   const statusStyle = statusConfig[schedule.status];
 
   const toggleCategory = (category: string) => {
@@ -84,31 +87,35 @@ export function ScheduleDetail({ schedule, onClose, onUpdateSchedule }: Schedule
     }
   };
 
-  const getCategoryCompletion = () => {
+
+  const getPendingCategoriesDetails = () => {
     const categories = Object.keys(groupedChecklist);
-    const incompleteCategories: string[] = [];
+    const pending: { name: string; pendingCount: number; totalCount: number }[] = [];
     
     categories.forEach(category => {
       const items = groupedChecklist[category];
-      const allCompleted = items.every(item => item.completed);
-      if (!allCompleted) {
-        incompleteCategories.push(category);
+      const completedCount = items.filter(item => item.completed).length;
+      const pendingCount = items.length - completedCount;
+      if (pendingCount > 0) {
+        pending.push({
+          name: category,
+          pendingCount,
+          totalCount: items.length
+        });
       }
     });
     
-    return { allComplete: incompleteCategories.length === 0, incompleteCategories };
+    return pending;
   };
 
   const handleStatusChange = (newStatus?: ScheduleStatus) => {
     const targetStatus = newStatus || statusConfig[schedule.status].next;
     if (targetStatus && targetStatus !== schedule.status) {
       if (targetStatus === 'completed' && checklist.length > 0) {
-        const { allComplete, incompleteCategories } = getCategoryCompletion();
-        if (!allComplete) {
-          toast.error(
-            `Complete todas as seções do checklist antes de finalizar. Seções pendentes: ${incompleteCategories.join(', ')}`,
-            { duration: 5000 }
-          );
+        const pending = getPendingCategoriesDetails();
+        if (pending.length > 0) {
+          setPendingCategories(pending);
+          setShowChecklistPendingModal(true);
           return;
         }
       }
@@ -553,6 +560,14 @@ export function ScheduleDetail({ schedule, onClose, onUpdateSchedule }: Schedule
       {showAttentionModal && (
         <AttentionModal
           onClose={() => setShowAttentionModal(false)}
+        />
+      )}
+
+      {/* Checklist Pending Modal */}
+      {showChecklistPendingModal && (
+        <ChecklistPendingModal
+          pendingCategories={pendingCategories}
+          onClose={() => setShowChecklistPendingModal(false)}
         />
       )}
     </div>
