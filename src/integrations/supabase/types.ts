@@ -14,6 +14,45 @@ export type Database = {
   }
   public: {
     Tables: {
+      auto_release_logs: {
+        Row: {
+          action: string
+          created_at: string
+          id: string
+          property_id: string
+          schedule_id: string
+        }
+        Insert: {
+          action?: string
+          created_at?: string
+          id?: string
+          property_id: string
+          schedule_id: string
+        }
+        Update: {
+          action?: string
+          created_at?: string
+          id?: string
+          property_id?: string
+          schedule_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "auto_release_logs_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: false
+            referencedRelation: "properties"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "auto_release_logs_schedule_id_fkey"
+            columns: ["schedule_id"]
+            isOneToOne: false
+            referencedRelation: "schedules"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       maintenance_issues: {
         Row: {
           assigned_to: string | null
@@ -196,34 +235,40 @@ export type Database = {
         Row: {
           address: string | null
           airbnb_ical_url: string | null
+          auto_release_on_checkout: boolean
           created_at: string
           default_check_in_time: string | null
           default_check_out_time: string | null
           id: string
           name: string
           password_mode: Database["public"]["Enums"]["property_password_mode"]
+          require_photo_per_category: boolean
           updated_at: string
         }
         Insert: {
           address?: string | null
           airbnb_ical_url?: string | null
+          auto_release_on_checkout?: boolean
           created_at?: string
           default_check_in_time?: string | null
           default_check_out_time?: string | null
           id?: string
           name: string
           password_mode?: Database["public"]["Enums"]["property_password_mode"]
+          require_photo_per_category?: boolean
           updated_at?: string
         }
         Update: {
           address?: string | null
           airbnb_ical_url?: string | null
+          auto_release_on_checkout?: boolean
           created_at?: string
           default_check_in_time?: string | null
           default_check_out_time?: string | null
           id?: string
           name?: string
           password_mode?: Database["public"]["Enums"]["property_password_mode"]
+          require_photo_per_category?: boolean
           updated_at?: string
         }
         Relationships: []
@@ -262,6 +307,57 @@ export type Database = {
             columns: ["property_id"]
             isOneToOne: false
             referencedRelation: "properties"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      property_config_audit_logs: {
+        Row: {
+          config_key: string
+          created_at: string
+          id: string
+          new_value: string
+          previous_value: string | null
+          property_id: string
+          role: string
+          team_member_id: string | null
+          user_id: string
+        }
+        Insert: {
+          config_key: string
+          created_at?: string
+          id?: string
+          new_value: string
+          previous_value?: string | null
+          property_id: string
+          role: string
+          team_member_id?: string | null
+          user_id: string
+        }
+        Update: {
+          config_key?: string
+          created_at?: string
+          id?: string
+          new_value?: string
+          previous_value?: string | null
+          property_id?: string
+          role?: string
+          team_member_id?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "property_config_audit_logs_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: false
+            referencedRelation: "properties"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "property_config_audit_logs_team_member_id_fkey"
+            columns: ["team_member_id"]
+            isOneToOne: false
+            referencedRelation: "team_members"
             referencedColumns: ["id"]
           },
         ]
