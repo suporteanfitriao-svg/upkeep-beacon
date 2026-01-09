@@ -192,8 +192,11 @@ export const canTransitionStatus = (
 };
 
 const mapRowToSchedule = (row: ScheduleRow): Schedule => {
-  const checkInSource = row.reservations?.check_in || row.check_in_time;
-  const checkOutSource = row.reservations?.check_out || row.check_out_time;
+  // Schedule times take priority over reservation times (schedule can be customized by admin/manager)
+  // The schedule's check_in_time and check_out_time are set from property defaults when created
+  // and can be overridden per schedule
+  const checkInSource = row.check_in_time;
+  const checkOutSource = row.check_out_time;
   const guestNameSource = row.reservations?.guest_name || row.guest_name;
   const listingNameSource = row.reservations?.listing_name || row.listing_name || row.property_name;
   const numberOfGuestsSource = row.reservations?.number_of_guests || row.number_of_guests || 1;
