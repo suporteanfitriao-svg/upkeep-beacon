@@ -33,6 +33,9 @@ export const mockSchedules: Schedule[] = [
     maintenanceIssues: [],
     notes: '',
     missingMaterials: [],
+    ackByTeamMembers: [],
+    history: [],
+    isActive: true,
   },
   {
     id: '2',
@@ -65,6 +68,10 @@ export const mockSchedules: Schedule[] = [
     notes: 'Hóspede anterior relatou problema com ar condicionado',
     teamArrival: new Date(today.setHours(10, 30, 0)),
     missingMaterials: ['Sabonete líquido', 'Papel higiênico'],
+    ackByTeamMembers: [],
+    history: [],
+    isActive: true,
+    startAt: new Date(today.setHours(10, 30, 0)),
   },
   {
     id: '3',
@@ -98,6 +105,9 @@ export const mockSchedules: Schedule[] = [
     teamArrival: new Date(today.setHours(9, 0, 0)),
     teamDeparture: new Date(today.setHours(12, 30, 0)),
     missingMaterials: [],
+    ackByTeamMembers: [],
+    history: [],
+    isActive: true,
   },
   {
     id: '4',
@@ -132,6 +142,11 @@ export const mockSchedules: Schedule[] = [
     teamArrival: new Date(today.setHours(8, 0, 0)),
     teamDeparture: new Date(today.setHours(11, 0, 0)),
     missingMaterials: [],
+    ackByTeamMembers: [],
+    history: [],
+    isActive: true,
+    startAt: new Date(today.setHours(8, 0, 0)),
+    endAt: new Date(today.setHours(11, 0, 0)),
   },
   {
     id: '5',
@@ -159,6 +174,9 @@ export const mockSchedules: Schedule[] = [
     ],
     notes: 'Aguardando técnico do ar condicionado',
     missingMaterials: [],
+    ackByTeamMembers: [],
+    history: [],
+    isActive: true,
   },
 ];
 

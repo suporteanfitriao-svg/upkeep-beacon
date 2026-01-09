@@ -4,6 +4,8 @@ export type MaintenanceStatus = 'ok' | 'needs_maintenance' | 'in_progress';
 
 export type Priority = 'high' | 'medium' | 'low';
 
+export type AppRole = 'admin' | 'manager' | 'cleaner';
+
 export interface ChecklistItem {
   id: string;
   title: string;
@@ -24,6 +26,22 @@ export interface MaintenanceIssue {
   severity: 'low' | 'medium' | 'high';
   reportedAt: Date;
   resolved: boolean;
+}
+
+export interface ScheduleHistoryEvent {
+  timestamp: string;
+  team_member_id: string;
+  team_member_name: string | null;
+  role: string | null;
+  action: string;
+  from_status: string | null;
+  to_status: string | null;
+  payload?: Record<string, unknown>;
+}
+
+export interface TeamMemberAck {
+  team_member_id: string;
+  acknowledged_at: string;
 }
 
 export interface Schedule {
@@ -49,6 +67,16 @@ export interface Schedule {
   teamDeparture?: Date;
   missingMaterials: string[];
   doorPassword?: string;
+  // New fields for status flow
+  startAt?: Date;
+  endAt?: Date;
+  responsibleTeamMemberId?: string;
+  importantInfo?: string;
+  ackByTeamMembers: TeamMemberAck[];
+  history: ScheduleHistoryEvent[];
+  isActive: boolean;
+  checklistLoadedAt?: Date;
+  adminRevertReason?: string;
 }
 
 export interface DashboardStats {
@@ -58,3 +86,26 @@ export interface DashboardStats {
   completed: number;
   maintenanceAlerts: number;
 }
+
+// Status flow validation
+export const STATUS_FLOW: Record<ScheduleStatus, ScheduleStatus | null> = {
+  waiting: 'released',
+  released: 'cleaning',
+  cleaning: 'completed',
+  completed: null,
+};
+
+export const STATUS_LABELS: Record<ScheduleStatus, string> = {
+  waiting: 'Aguardando Liberação',
+  released: 'Liberado',
+  cleaning: 'Em Limpeza',
+  completed: 'Finalizado',
+};
+
+// Roles that can transition to each status
+export const STATUS_ALLOWED_ROLES: Record<ScheduleStatus, AppRole[]> = {
+  waiting: [], // Can't transition TO waiting (only revert by admin)
+  released: ['admin', 'manager'],
+  cleaning: ['admin', 'manager', 'cleaner'],
+  completed: ['admin', 'manager', 'cleaner'],
+};
