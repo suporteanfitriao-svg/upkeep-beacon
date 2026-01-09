@@ -11,6 +11,7 @@ import { ChecklistPendingModal } from './ChecklistPendingModal';
 import { useUserRole } from '@/hooks/useUserRole';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
+import { useCreateMaintenanceIssue } from '@/hooks/useCreateMaintenanceIssue';
 
 interface ScheduleDetailProps {
   schedule: Schedule;
@@ -203,11 +204,39 @@ export function ScheduleDetail({ schedule, onClose, onUpdateSchedule }: Schedule
     toast.success(`Status atualizado para: ${statusConfig[targetStatus].label}`);
   };
 
-  const handleIssueSubmit = (issue: { section: string; item: string; description: string; photos: string[] }) => {
+  const { createIssue, isCompressing } = useCreateMaintenanceIssue();
+
+  const handleIssueSubmit = async (issue: { 
+    category: string; 
+    itemLabel: string; 
+    description: string; 
+    photoFile?: File;
+    severity: 'low' | 'medium' | 'high';
+  }) => {
+    // Get user profile for reported_by_name
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('name')
+      .eq('id', user?.id)
+      .maybeSingle();
+
+    await createIssue({
+      scheduleId: schedule.id,
+      propertyId: schedule.propertyId,
+      propertyName: schedule.propertyName,
+      category: issue.category,
+      itemLabel: issue.itemLabel,
+      description: issue.description,
+      severity: issue.severity,
+      photoFile: issue.photoFile,
+      reportedByName: profile?.name || 'Usuário',
+    });
+
+    // Update local state to show issue indicator
     const newIssue: MaintenanceIssue = {
       id: `issue-${Date.now()}`,
-      description: `[${issue.section}${issue.item ? ` - ${issue.item}` : ''}] ${issue.description}`,
-      severity: 'medium',
+      description: `[${issue.category} - ${issue.itemLabel}] ${issue.description}`,
+      severity: issue.severity,
       reportedAt: new Date(),
       resolved: false
     };
@@ -217,7 +246,7 @@ export function ScheduleDetail({ schedule, onClose, onUpdateSchedule }: Schedule
       ...schedule, 
       maintenanceIssues: updatedIssues,
       maintenanceStatus: 'needs_maintenance'
-    });
+    }, undefined, teamMemberId || undefined);
   };
 
   const handleSaveNotes = () => {
@@ -618,6 +647,8 @@ export function ScheduleDetail({ schedule, onClose, onUpdateSchedule }: Schedule
         <IssueReportModal
           onClose={() => setShowIssueForm(false)}
           onSubmit={handleIssueSubmit}
+          checklist={checklist}
+          isSubmitting={isCompressing}
         />
       )}
 
