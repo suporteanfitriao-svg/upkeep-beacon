@@ -9,6 +9,7 @@ import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useState } from 'react';
 import { toast } from 'sonner';
+import { LocationModal } from './LocationModal';
 
 interface ScheduleDetailProps {
   schedule: Schedule;
@@ -66,6 +67,7 @@ export function ScheduleDetail({ schedule, onClose, onUpdateSchedule }: Schedule
   const [expandedCategories, setExpandedCategories] = useState<Record<string, boolean>>({});
   const [acknowledgedInfo, setAcknowledgedInfo] = useState(false);
   const [checklistItemStates, setChecklistItemStates] = useState<Record<string, 'yes' | 'no' | null>>({});
+  const [showLocationModal, setShowLocationModal] = useState(false);
   const statusStyle = statusConfig[schedule.status];
 
   const toggleCategory = (category: string) => {
@@ -220,7 +222,10 @@ export function ScheduleDetail({ schedule, onClose, onUpdateSchedule }: Schedule
         <main className="flex flex-col gap-6 p-6 overflow-y-auto" style={{ maxHeight: 'calc(100vh - 180px)' }}>
           {/* Action Buttons */}
           <div className="grid grid-cols-2 gap-3">
-            <button className="flex items-center justify-center gap-2 rounded-xl bg-slate-900 py-3.5 text-sm font-bold text-white shadow-[0_4px_20px_-2px_rgba(0,0,0,0.05)] transition-all active:scale-[0.98] dark:bg-white dark:text-slate-900">
+            <button 
+              onClick={() => setShowLocationModal(true)}
+              className="flex items-center justify-center gap-2 rounded-xl bg-slate-900 py-3.5 text-sm font-bold text-white shadow-[0_4px_20px_-2px_rgba(0,0,0,0.05)] transition-all active:scale-[0.98] dark:bg-white dark:text-slate-900"
+            >
               <span className="material-symbols-outlined text-[18px]">map</span>
               Ver Endereço
             </button>
@@ -570,6 +575,15 @@ export function ScheduleDetail({ schedule, onClose, onUpdateSchedule }: Schedule
           )}
         </div>
       </div>
+
+      {/* Location Modal */}
+      {showLocationModal && (
+        <LocationModal
+          propertyName={schedule.propertyName}
+          address={schedule.propertyAddress || ''}
+          onClose={() => setShowLocationModal(false)}
+        />
+      )}
     </div>
   );
 }
