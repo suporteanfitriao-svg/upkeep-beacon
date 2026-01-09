@@ -1,141 +1,175 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useMemo } from 'react';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
+import { ChecklistItem } from '@/types/scheduling';
+import { Loader2 } from 'lucide-react';
 
 interface IssueReportModalProps {
   onClose: () => void;
   onSubmit: (issue: {
-    section: string;
-    item: string;
+    category: string;
+    itemLabel: string;
     description: string;
-    photos: string[];
-  }) => void;
+    photoFile?: File;
+    severity: 'low' | 'medium' | 'high';
+  }) => Promise<void>;
+  checklist: ChecklistItem[];
+  isSubmitting?: boolean;
 }
 
-const SECTIONS = [
-  { id: 'kitchen', name: 'Cozinha', description: 'Geladeira, fogão, pia, armários', icon: 'kitchen' },
-  { id: 'living', name: 'Sala de Estar', description: 'Sofá, TV, tapete, decoração', icon: 'chair' },
-  { id: 'bedroom', name: 'Quarto', description: 'Cama, roupa de cama, armários', icon: 'bed' },
-  { id: 'bathroom', name: 'Banheiro', description: 'Chuveiro, vaso, pia, toalhas', icon: 'bathtub' },
-  { id: 'laundry', name: 'Área de Serviço', description: 'Máquina de lavar, produtos', icon: 'local_laundry_service' },
-  { id: 'outdoor', name: 'Área Externa', description: 'Varanda, piscina, jardim', icon: 'deck' },
-  { id: 'other', name: 'Outro / Geral', description: 'Hall, corredor, porta de entrada', icon: 'category' },
+// Fallback sections if no checklist is provided
+const FALLBACK_SECTIONS = [
+  { id: 'kitchen', name: 'Cozinha', icon: 'kitchen' },
+  { id: 'living', name: 'Sala de Estar', icon: 'chair' },
+  { id: 'bedroom', name: 'Quarto', icon: 'bed' },
+  { id: 'bathroom', name: 'Banheiro', icon: 'bathtub' },
+  { id: 'laundry', name: 'Área de Serviço', icon: 'local_laundry_service' },
+  { id: 'outdoor', name: 'Área Externa', icon: 'deck' },
+  { id: 'other', name: 'Outro / Geral', icon: 'category' },
 ];
 
-const ITEMS_BY_SECTION: Record<string, { value: string; label: string }[]> = {
-  kitchen: [
-    { value: 'sink', label: 'Pia / Torneira' },
-    { value: 'fridge', label: 'Geladeira' },
-    { value: 'stove', label: 'Fogão' },
-    { value: 'microwave', label: 'Microondas' },
-    { value: 'cabinet', label: 'Armários' },
-    { value: 'floor', label: 'Piso / Azulejo' },
-    { value: 'other', label: 'Outros' },
-  ],
-  living: [
-    { value: 'sofa', label: 'Sofá' },
-    { value: 'tv', label: 'TV' },
-    { value: 'carpet', label: 'Tapete' },
-    { value: 'decoration', label: 'Decoração' },
-    { value: 'other', label: 'Outros' },
-  ],
-  bedroom: [
-    { value: 'bed', label: 'Cama' },
-    { value: 'bedding', label: 'Roupa de Cama' },
-    { value: 'wardrobe', label: 'Armários' },
-    { value: 'lamp', label: 'Luminária' },
-    { value: 'other', label: 'Outros' },
-  ],
-  bathroom: [
-    { value: 'shower', label: 'Chuveiro' },
-    { value: 'toilet', label: 'Vaso Sanitário' },
-    { value: 'sink', label: 'Pia' },
-    { value: 'towels', label: 'Toalhas' },
-    { value: 'other', label: 'Outros' },
-  ],
-  laundry: [
-    { value: 'washer', label: 'Máquina de Lavar' },
-    { value: 'dryer', label: 'Secadora' },
-    { value: 'products', label: 'Produtos' },
-    { value: 'other', label: 'Outros' },
-  ],
-  outdoor: [
-    { value: 'balcony', label: 'Varanda' },
-    { value: 'pool', label: 'Piscina' },
-    { value: 'garden', label: 'Jardim' },
-    { value: 'other', label: 'Outros' },
-  ],
-  other: [
-    { value: 'hall', label: 'Hall' },
-    { value: 'corridor', label: 'Corredor' },
-    { value: 'door', label: 'Porta de Entrada' },
-    { value: 'other', label: 'Outros' },
-  ],
+const SECTION_ICONS: Record<string, string> = {
+  'Cozinha': 'kitchen',
+  'Kitchen': 'kitchen',
+  'Sala': 'chair',
+  'Sala de Estar': 'chair',
+  'Living': 'chair',
+  'Quarto': 'bed',
+  'Bedroom': 'bed',
+  'Banheiro': 'bathtub',
+  'Bathroom': 'bathtub',
+  'Lavanderia': 'local_laundry_service',
+  'Área de Serviço': 'local_laundry_service',
+  'Laundry': 'local_laundry_service',
+  'Varanda': 'deck',
+  'Área Externa': 'deck',
+  'Outdoor': 'deck',
+  'Geral': 'category',
+  'General': 'category',
 };
 
-export function IssueReportModal({ onClose, onSubmit }: IssueReportModalProps) {
-  const [step, setStep] = useState<1 | 2>(1);
-  const [selectedSection, setSelectedSection] = useState<string | null>(null);
-  const [selectedItem, setSelectedItem] = useState('');
+const SEVERITY_OPTIONS = [
+  { value: 'low', label: 'Baixa', description: 'Não urgente, pode aguardar', color: 'bg-green-500' },
+  { value: 'medium', label: 'Média', description: 'Precisa de atenção em breve', color: 'bg-yellow-500' },
+  { value: 'high', label: 'Alta', description: 'Urgente, requer ação imediata', color: 'bg-red-500' },
+] as const;
+
+export function IssueReportModal({ onClose, onSubmit, checklist, isSubmitting = false }: IssueReportModalProps) {
+  const [step, setStep] = useState<1 | 2 | 3>(1);
+  const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
+  const [selectedItem, setSelectedItem] = useState<string>('');
   const [description, setDescription] = useState('');
-  const [photos, setPhotos] = useState<string[]>([]);
+  const [severity, setSeverity] = useState<'low' | 'medium' | 'high'>('medium');
+  const [photoFile, setPhotoFile] = useState<File | null>(null);
+  const [photoPreview, setPhotoPreview] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const selectedSectionData = SECTIONS.find(s => s.id === selectedSection);
-  const itemOptions = selectedSection ? ITEMS_BY_SECTION[selectedSection] || [] : [];
+  // Group checklist items by category
+  const categories = useMemo(() => {
+    if (!checklist || checklist.length === 0) {
+      return FALLBACK_SECTIONS.map(s => ({
+        name: s.name,
+        icon: s.icon,
+        items: [],
+      }));
+    }
+
+    const grouped = checklist.reduce((acc, item) => {
+      const category = item.category || 'Geral';
+      if (!acc[category]) {
+        acc[category] = [];
+      }
+      acc[category].push(item);
+      return acc;
+    }, {} as Record<string, ChecklistItem[]>);
+
+    return Object.entries(grouped).map(([name, items]) => ({
+      name,
+      icon: SECTION_ICONS[name] || 'category',
+      items,
+    }));
+  }, [checklist]);
+
+  const selectedCategoryData = categories.find(c => c.name === selectedCategory);
 
   const handleNextStep = () => {
-    if (!selectedSection) {
-      toast.error('Selecione uma seção');
+    if (step === 1 && !selectedCategory) {
+      toast.error('Selecione um cômodo');
       return;
     }
-    setStep(2);
+    if (step === 2 && !selectedItem) {
+      toast.error('Selecione um item');
+      return;
+    }
+    setStep(prev => Math.min(prev + 1, 3) as 1 | 2 | 3);
   };
 
   const handleBack = () => {
-    if (step === 2) {
-      setStep(1);
-    } else {
+    if (step === 1) {
       onClose();
+    } else {
+      setStep(prev => Math.max(prev - 1, 1) as 1 | 2 | 3);
     }
   };
 
   const handlePhotoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = e.target.files;
-    if (!files) return;
+    const file = e.target.files?.[0];
+    if (!file) return;
 
-    Array.from(files).forEach(file => {
-      if (photos.length >= 3) {
-        toast.error('Máximo de 3 fotos');
-        return;
-      }
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setPhotos(prev => [...prev, reader.result as string]);
-      };
-      reader.readAsDataURL(file);
-    });
+    // Validate file type
+    const validTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp'];
+    if (!validTypes.includes(file.type)) {
+      toast.error('Formato não suportado. Use JPG, PNG ou WebP.');
+      return;
+    }
+
+    // Check file size (max 8MB before compression)
+    if (file.size > 8 * 1024 * 1024) {
+      toast.error('Arquivo muito grande. Máximo de 8MB.');
+      return;
+    }
+
+    setPhotoFile(file);
+
+    // Create preview
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      setPhotoPreview(reader.result as string);
+    };
+    reader.readAsDataURL(file);
   };
 
-  const handleRemovePhoto = (index: number) => {
-    setPhotos(prev => prev.filter((_, i) => i !== index));
+  const handleRemovePhoto = () => {
+    setPhotoFile(null);
+    setPhotoPreview(null);
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
   };
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     if (!description.trim()) {
       toast.error('Preencha a descrição do problema');
       return;
     }
 
-    onSubmit({
-      section: selectedSectionData?.name || '',
-      item: itemOptions.find(i => i.value === selectedItem)?.label || selectedItem,
-      description,
-      photos,
-    });
-    
-    toast.success('Avaria reportada com sucesso!');
-    onClose();
+    if (!selectedCategory || !selectedItem) {
+      toast.error('Selecione o cômodo e item');
+      return;
+    }
+
+    try {
+      await onSubmit({
+        category: selectedCategory,
+        itemLabel: selectedItem,
+        description: description.trim(),
+        photoFile: photoFile || undefined,
+        severity,
+      });
+      onClose();
+    } catch (error) {
+      // Error already handled in onSubmit
+    }
   };
 
   return (
@@ -145,79 +179,98 @@ export function IssueReportModal({ onClose, onSubmit }: IssueReportModalProps) {
         <header className="sticky top-0 z-20 flex items-center bg-stone-50/90 dark:bg-[#22252a]/90 px-4 py-4 backdrop-blur-md border-b border-slate-100 dark:border-slate-800">
           <button 
             onClick={handleBack}
-            className="flex items-center justify-center rounded-full p-2 transition-colors hover:bg-slate-200 dark:hover:bg-slate-700 mr-2"
+            disabled={isSubmitting}
+            className="flex items-center justify-center rounded-full p-2 transition-colors hover:bg-slate-200 dark:hover:bg-slate-700 mr-2 disabled:opacity-50"
           >
             <span className="material-symbols-outlined text-slate-900 dark:text-white">arrow_back</span>
           </button>
           <div className="flex flex-col">
             <h2 className="text-lg font-bold leading-none tracking-tight text-slate-900 dark:text-white">
-              {step === 1 ? 'Reportar Avaria' : 'Detalhes da Avaria'}
+              Registrar Avaria
             </h2>
             <span className="text-xs font-medium text-[#8A8B88] dark:text-slate-400">
-              Etapa {step} de 2
+              Etapa {step} de 3
             </span>
           </div>
           <div className="ml-auto">
             <button 
               onClick={onClose}
-              className="text-xs font-bold text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-white transition-colors"
+              disabled={isSubmitting}
+              className="text-xs font-bold text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-white transition-colors disabled:opacity-50"
             >
               Cancelar
             </button>
           </div>
         </header>
 
-        {/* Step 1: Select Section */}
+        {/* Progress Bar */}
+        <div className="px-6 pt-4">
+          <div className="h-1.5 w-full rounded-full bg-slate-100 dark:bg-slate-700 overflow-hidden">
+            <div 
+              className="h-full rounded-full bg-primary transition-all duration-300" 
+              style={{ width: `${(step / 3) * 100}%` }}
+            />
+          </div>
+        </div>
+
+        {/* Step 1: Select Category (Room) */}
         {step === 1 && (
           <main className="flex flex-col gap-6 p-6">
             <div className="flex flex-col gap-2">
-              <h1 className="text-xl font-bold text-slate-900 dark:text-white">Onde é o problema?</h1>
+              <h1 className="text-xl font-bold text-slate-900 dark:text-white">Onde está o problema?</h1>
               <p className="text-sm text-slate-500 dark:text-slate-400 leading-relaxed">
-                Selecione a seção da propriedade onde você identificou a avaria ou item danificado.
+                Selecione o cômodo onde você identificou a avaria.
               </p>
             </div>
             
             <div className="flex flex-col gap-3">
-              {SECTIONS.map((section) => (
-                <label key={section.id} className="relative cursor-pointer group">
+              {categories.map((category) => (
+                <label key={category.name} className="relative cursor-pointer group">
                   <input 
                     type="radio" 
-                    name="section" 
-                    value={section.id}
-                    checked={selectedSection === section.id}
-                    onChange={() => setSelectedSection(section.id)}
+                    name="category" 
+                    value={category.name}
+                    checked={selectedCategory === category.name}
+                    onChange={() => {
+                      setSelectedCategory(category.name);
+                      setSelectedItem('');
+                    }}
                     className="peer sr-only" 
                   />
                   <div className={cn(
                     "flex items-center gap-4 p-4 rounded-xl bg-white dark:bg-[#2d3138] border shadow-[0_4px_20px_-2px_rgba(0,0,0,0.05)] transition-all",
-                    selectedSection === section.id 
+                    selectedCategory === category.name 
                       ? "border-primary ring-1 ring-primary" 
                       : "border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800/50"
                   )}>
                     <div className={cn(
                       "h-12 w-12 shrink-0 rounded-full flex items-center justify-center transition-colors",
-                      selectedSection === section.id 
+                      selectedCategory === category.name 
                         ? "bg-primary text-white" 
                         : "bg-slate-100 dark:bg-slate-800 text-slate-500 group-hover:text-primary"
                     )}>
-                      <span className="material-symbols-outlined">{section.icon}</span>
+                      <span className="material-symbols-outlined">{category.icon}</span>
                     </div>
                     <div className="flex-1">
                       <h3 className={cn(
                         "font-bold transition-colors",
-                        selectedSection === section.id 
+                        selectedCategory === category.name 
                           ? "text-primary" 
                           : "text-slate-900 dark:text-white group-hover:text-primary"
-                      )}>{section.name}</h3>
-                      <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">{section.description}</p>
+                      )}>{category.name}</h3>
+                      {category.items.length > 0 && (
+                        <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+                          {category.items.length} itens
+                        </p>
+                      )}
                     </div>
                     <div className={cn(
                       "h-6 w-6 rounded-full border-2 flex items-center justify-center transition-all",
-                      selectedSection === section.id 
+                      selectedCategory === category.name 
                         ? "border-primary bg-primary" 
                         : "border-slate-300 dark:border-slate-600"
                     )}>
-                      {selectedSection === section.id && (
+                      {selectedCategory === category.name && (
                         <div className="h-2.5 w-2.5 rounded-full bg-white" />
                       )}
                     </div>
@@ -228,40 +281,144 @@ export function IssueReportModal({ onClose, onSubmit }: IssueReportModalProps) {
           </main>
         )}
 
-        {/* Step 2: Details */}
-        {step === 2 && selectedSectionData && (
+        {/* Step 2: Select Item */}
+        {step === 2 && selectedCategoryData && (
           <main className="flex flex-col gap-6 p-6">
-            {/* Section Header */}
             <div className="flex items-center gap-4 px-1">
               <div className="h-12 w-12 rounded-2xl bg-gradient-to-br from-primary to-teal-600 flex items-center justify-center text-white shadow-[0_4px_20px_-2px_rgba(51,153,153,0.3)]">
-                <span className="material-symbols-outlined text-[24px]">{selectedSectionData.icon}</span>
+                <span className="material-symbols-outlined text-[24px]">{selectedCategoryData.icon}</span>
               </div>
               <div>
-                <p className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest mb-0.5">Seção</p>
-                <h1 className="text-2xl font-extrabold text-slate-900 dark:text-white leading-none">{selectedSectionData.name}</h1>
+                <p className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest mb-0.5">Cômodo</p>
+                <h1 className="text-2xl font-extrabold text-slate-900 dark:text-white leading-none">{selectedCategoryData.name}</h1>
               </div>
             </div>
 
-            {/* Item Select */}
+            <div className="flex flex-col gap-2">
+              <h2 className="text-lg font-bold text-slate-900 dark:text-white">Qual item está avariado?</h2>
+              <p className="text-sm text-slate-500 dark:text-slate-400">
+                Selecione o item específico do checklist.
+              </p>
+            </div>
+
+            <div className="flex flex-col gap-2">
+              {selectedCategoryData.items.length > 0 ? (
+                selectedCategoryData.items.map((item) => (
+                  <label key={item.id} className="relative cursor-pointer group">
+                    <input 
+                      type="radio" 
+                      name="item" 
+                      value={item.title}
+                      checked={selectedItem === item.title}
+                      onChange={() => setSelectedItem(item.title)}
+                      className="peer sr-only" 
+                    />
+                    <div className={cn(
+                      "flex items-center gap-3 p-4 rounded-xl bg-white dark:bg-[#2d3138] border transition-all",
+                      selectedItem === item.title 
+                        ? "border-primary ring-1 ring-primary" 
+                        : "border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800/50"
+                    )}>
+                      <div className={cn(
+                        "h-6 w-6 rounded-full border-2 flex items-center justify-center transition-all shrink-0",
+                        selectedItem === item.title 
+                          ? "border-primary bg-primary" 
+                          : "border-slate-300 dark:border-slate-600"
+                      )}>
+                        {selectedItem === item.title && (
+                          <div className="h-2.5 w-2.5 rounded-full bg-white" />
+                        )}
+                      </div>
+                      <span className={cn(
+                        "font-medium transition-colors",
+                        selectedItem === item.title 
+                          ? "text-primary" 
+                          : "text-slate-700 dark:text-slate-300"
+                      )}>{item.title}</span>
+                    </div>
+                  </label>
+                ))
+              ) : (
+                // Fallback: text input for item
+                <div className="bg-white dark:bg-[#2d3138] rounded-xl p-4 border border-slate-200 dark:border-slate-700">
+                  <input
+                    type="text"
+                    value={selectedItem}
+                    onChange={(e) => setSelectedItem(e.target.value)}
+                    placeholder="Digite o nome do item..."
+                    className="w-full bg-transparent border-none outline-none text-slate-900 dark:text-white placeholder-slate-400"
+                  />
+                </div>
+              )}
+
+              {/* Option to add custom item */}
+              {selectedCategoryData.items.length > 0 && (
+                <div className="mt-2">
+                  <button
+                    onClick={() => setSelectedItem('outro')}
+                    className={cn(
+                      "w-full flex items-center gap-3 p-4 rounded-xl border transition-all",
+                      selectedItem === 'outro'
+                        ? "border-primary ring-1 ring-primary bg-primary/5"
+                        : "border-dashed border-slate-300 dark:border-slate-600 hover:border-primary"
+                    )}
+                  >
+                    <span className="material-symbols-outlined text-slate-400">add</span>
+                    <span className="text-sm font-medium text-slate-500 dark:text-slate-400">Outro item não listado</span>
+                  </button>
+                  {selectedItem === 'outro' && (
+                    <input
+                      type="text"
+                      placeholder="Descreva o item..."
+                      onChange={(e) => setSelectedItem(e.target.value || 'outro')}
+                      className="mt-2 w-full bg-white dark:bg-[#2d3138] rounded-xl p-4 border border-slate-200 dark:border-slate-700 outline-none focus:ring-2 focus:ring-primary/50"
+                    />
+                  )}
+                </div>
+              )}
+            </div>
+          </main>
+        )}
+
+        {/* Step 3: Description, Photo & Severity */}
+        {step === 3 && (
+          <main className="flex flex-col gap-6 p-6">
+            {/* Summary */}
+            <div className="flex items-center gap-3 px-1">
+              <div className="h-10 w-10 rounded-xl bg-primary/10 flex items-center justify-center text-primary">
+                <span className="material-symbols-outlined text-[20px]">{selectedCategoryData?.icon || 'category'}</span>
+              </div>
+              <div>
+                <p className="text-xs font-bold text-slate-500 dark:text-slate-400">{selectedCategory}</p>
+                <p className="font-bold text-slate-900 dark:text-white">{selectedItem}</p>
+              </div>
+            </div>
+
+            {/* Severity */}
             <section className="bg-white dark:bg-[#2d3138] rounded-2xl shadow-[0_4px_20px_-2px_rgba(0,0,0,0.05)] p-5 border border-slate-100 dark:border-slate-700">
               <label className="flex items-center gap-2 text-sm font-bold text-slate-700 dark:text-slate-300 mb-3">
-                <span className="material-symbols-outlined text-primary text-[18px]">check_box_outline_blank</span>
-                Item Avariado
+                <span className="material-symbols-outlined text-primary text-[18px]">priority_high</span>
+                Gravidade
               </label>
-              <div className="relative group">
-                <select 
-                  value={selectedItem}
-                  onChange={(e) => setSelectedItem(e.target.value)}
-                  className="w-full appearance-none rounded-xl bg-stone-50 dark:bg-[#22252a] border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white py-4 px-4 pr-10 focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary transition-all font-medium cursor-pointer hover:border-primary/50"
-                >
-                  <option value="">Selecione uma opção...</option>
-                  {itemOptions.map(item => (
-                    <option key={item.value} value={item.value}>{item.label}</option>
-                  ))}
-                </select>
-                <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-4 text-slate-500 group-hover:text-primary transition-colors">
-                  <span className="material-symbols-outlined">expand_more</span>
-                </div>
+              <div className="flex gap-2">
+                {SEVERITY_OPTIONS.map((option) => (
+                  <button
+                    key={option.value}
+                    onClick={() => setSeverity(option.value)}
+                    className={cn(
+                      "flex-1 flex flex-col items-center gap-2 p-3 rounded-xl border transition-all",
+                      severity === option.value
+                        ? "border-primary ring-1 ring-primary bg-primary/5"
+                        : "border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800/50"
+                    )}
+                  >
+                    <div className={cn("h-3 w-3 rounded-full", option.color)} />
+                    <span className={cn(
+                      "text-sm font-bold",
+                      severity === option.value ? "text-primary" : "text-slate-700 dark:text-slate-300"
+                    )}>{option.label}</span>
+                  </button>
+                ))}
               </div>
             </section>
 
@@ -270,71 +427,61 @@ export function IssueReportModal({ onClose, onSubmit }: IssueReportModalProps) {
               <label className="flex items-center gap-2 text-sm font-bold text-slate-700 dark:text-slate-300 mb-3">
                 <span className="material-symbols-outlined text-primary text-[18px]">edit_note</span>
                 Descrição do Problema
+                <span className="ml-auto text-[10px] font-semibold text-orange-500 bg-orange-100 dark:bg-orange-900/30 px-2 py-0.5 rounded-full">Obrigatório</span>
               </label>
-              <div className="relative">
-                <textarea 
-                  value={description}
-                  onChange={(e) => setDescription(e.target.value)}
-                  className="w-full min-h-[160px] rounded-xl bg-stone-50 dark:bg-[#22252a] border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white p-4 focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary transition-all resize-none placeholder-slate-400 dark:placeholder-slate-500 text-base leading-relaxed"
-                  placeholder="Descreva os detalhes aqui. Ex: A torneira está vazando água mesmo fechada..."
-                />
-                <div className="absolute bottom-3 right-3">
-                  <span className="text-[10px] font-semibold text-slate-400 bg-white dark:bg-[#22252a] px-2 py-1 rounded-md border border-slate-100 dark:border-slate-700">Obrigatório</span>
-                </div>
-              </div>
+              <textarea 
+                value={description}
+                onChange={(e) => setDescription(e.target.value)}
+                className="w-full min-h-[120px] rounded-xl bg-stone-50 dark:bg-[#22252a] border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white p-4 focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary transition-all resize-none placeholder-slate-400 dark:placeholder-slate-500 text-base leading-relaxed"
+                placeholder="Descreva o problema encontrado..."
+              />
             </section>
 
             {/* Photo Upload */}
             <section className="bg-white dark:bg-[#2d3138] rounded-2xl shadow-[0_4px_20px_-2px_rgba(0,0,0,0.05)] p-5 border border-slate-100 dark:border-slate-700">
-              <div className="flex justify-between items-end mb-4">
+              <div className="flex justify-between items-center mb-4">
                 <label className="flex items-center gap-2 text-sm font-bold text-slate-700 dark:text-slate-300">
                   <span className="material-symbols-outlined text-primary text-[18px]">photo_camera</span>
-                  Evidência
+                  Foto da Avaria
                 </label>
                 <span className="text-xs font-medium text-primary bg-primary/10 px-2 py-1 rounded-full">Recomendado</span>
               </div>
-              <div className="grid grid-cols-3 gap-3">
-                {/* Add Photo Button */}
-                {photos.length < 3 && (
+
+              {!photoPreview ? (
+                <button 
+                  onClick={() => fileInputRef.current?.click()}
+                  className="w-full aspect-video flex flex-col items-center justify-center rounded-xl border-2 border-dashed border-primary bg-primary/5 hover:bg-primary/10 active:scale-[0.99] transition-all cursor-pointer"
+                >
+                  <div className="h-14 w-14 rounded-full bg-white dark:bg-slate-800 text-primary flex items-center justify-center mb-3 shadow-sm">
+                    <span className="material-symbols-outlined text-[28px]">add_a_photo</span>
+                  </div>
+                  <span className="text-sm font-bold text-primary">Tirar foto ou selecionar</span>
+                  <span className="text-xs text-slate-500 mt-1">JPG, PNG ou WebP (máx. 8MB)</span>
+                </button>
+              ) : (
+                <div className="relative">
+                  <img 
+                    src={photoPreview} 
+                    alt="Preview" 
+                    className="w-full aspect-video object-cover rounded-xl"
+                  />
                   <button 
-                    onClick={() => fileInputRef.current?.click()}
-                    className="aspect-square flex flex-col items-center justify-center rounded-xl border-2 border-dashed border-primary bg-primary/5 hover:bg-primary/10 active:scale-95 transition-all group cursor-pointer relative overflow-hidden"
+                    onClick={handleRemovePhoto}
+                    className="absolute top-2 right-2 h-8 w-8 rounded-full bg-red-500 text-white flex items-center justify-center shadow-lg hover:bg-red-600 transition-colors"
                   >
-                    <div className="absolute inset-0 bg-gradient-to-br from-primary/0 to-primary/5 opacity-0 group-hover:opacity-100 transition-opacity" />
-                    <div className="h-10 w-10 rounded-full bg-white dark:bg-slate-800 text-primary flex items-center justify-center mb-2 shadow-sm group-hover:scale-110 transition-transform z-10">
-                      <span className="material-symbols-outlined text-[20px]">add_a_photo</span>
-                    </div>
-                    <span className="text-[10px] font-bold text-primary uppercase tracking-wide z-10">FOTO</span>
+                    <span className="material-symbols-outlined text-[18px]">close</span>
                   </button>
-                )}
-                
-                {/* Uploaded Photos */}
-                {photos.map((photo, index) => (
-                  <div key={index} className="aspect-square rounded-xl overflow-hidden relative group">
-                    <img src={photo} alt={`Foto ${index + 1}`} className="w-full h-full object-cover" />
-                    <button 
-                      onClick={() => handleRemovePhoto(index)}
-                      className="absolute top-1 right-1 h-6 w-6 rounded-full bg-red-500 text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
-                    >
-                      <span className="material-symbols-outlined text-[14px]">close</span>
-                    </button>
-                  </div>
-                ))}
-                
-                {/* Empty Slots */}
-                {Array.from({ length: Math.max(0, 2 - photos.length) }).map((_, index) => (
-                  <div key={`empty-${index}`} className="aspect-square rounded-xl bg-slate-50 dark:bg-slate-800/50 flex items-center justify-center border border-slate-100 dark:border-slate-700/50 opacity-60">
-                    <div className="h-1 w-8 bg-slate-200 dark:bg-slate-700 rounded-full" />
-                  </div>
-                ))}
-              </div>
-              <p className="text-xs text-slate-400 mt-3 text-center">Toque para abrir a câmera ou galeria</p>
+                  <p className="text-xs text-slate-500 mt-2 text-center">
+                    A imagem será comprimida automaticamente
+                  </p>
+                </div>
+              )}
               
               <input 
                 ref={fileInputRef}
                 type="file"
-                accept="image/*"
-                multiple
+                accept="image/jpeg,image/jpg,image/png,image/webp"
+                capture="environment"
                 onChange={handlePhotoUpload}
                 className="hidden"
               />
@@ -344,10 +491,10 @@ export function IssueReportModal({ onClose, onSubmit }: IssueReportModalProps) {
 
         {/* Footer Button */}
         <div className="fixed bottom-0 left-0 right-0 z-50 bg-stone-50/95 dark:bg-[#22252a]/95 backdrop-blur-md border-t border-slate-200/50 dark:border-slate-700/50 p-4">
-          {step === 1 ? (
+          {step < 3 ? (
             <button 
               onClick={handleNextStep}
-              disabled={!selectedSection}
+              disabled={(step === 1 && !selectedCategory) || (step === 2 && !selectedItem)}
               className="flex w-full items-center justify-center gap-2 rounded-xl bg-primary py-4 font-bold text-white shadow-[0_4px_20px_-2px_rgba(51,153,153,0.3)] transition-all hover:bg-[#267373] active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed"
             >
               <span>Avançar</span>
@@ -356,10 +503,20 @@ export function IssueReportModal({ onClose, onSubmit }: IssueReportModalProps) {
           ) : (
             <button 
               onClick={handleSubmit}
-              className="w-full bg-primary hover:bg-[#267373] text-white font-bold text-lg py-4 rounded-xl shadow-lg shadow-primary/25 flex items-center justify-center gap-2 transition-all active:scale-[0.98]"
+              disabled={isSubmitting || !description.trim()}
+              className="w-full bg-primary hover:bg-[#267373] text-white font-bold text-lg py-4 rounded-xl shadow-lg shadow-primary/25 flex items-center justify-center gap-2 transition-all active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              <span className="material-symbols-outlined">save</span>
-              Salvar Relatório
+              {isSubmitting ? (
+                <>
+                  <Loader2 className="h-5 w-5 animate-spin" />
+                  <span>Salvando...</span>
+                </>
+              ) : (
+                <>
+                  <span className="material-symbols-outlined">save</span>
+                  <span>Registrar Avaria</span>
+                </>
+              )}
             </button>
           )}
         </div>
