@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
-import { format } from 'date-fns';
+import { format, addDays, subDays } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { Calendar as CalendarIcon, Search, ChevronDown } from 'lucide-react';
+import { Calendar as CalendarIcon, Search, ChevronDown, ChevronLeft, ChevronRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
@@ -72,13 +72,62 @@ export function AdminFilters({
     setCalendarOpen(false);
   };
 
+  // Navigate to previous day
+  const handlePrevDay = () => {
+    if (dateFilter === 'today') {
+      // Go to yesterday (custom date)
+      const yesterday = subDays(new Date(), 1);
+      onCustomDateChange(yesterday);
+      onDateFilterChange('custom');
+    } else if (dateFilter === 'tomorrow') {
+      onDateFilterChange('today');
+    } else if (dateFilter === 'custom' && customDate) {
+      const prevDay = subDays(customDate, 1);
+      onCustomDateChange(prevDay);
+    }
+  };
+
+  // Navigate to next day
+  const handleNextDay = () => {
+    if (dateFilter === 'today') {
+      onDateFilterChange('tomorrow');
+    } else if (dateFilter === 'tomorrow') {
+      // Go to day after tomorrow (custom date)
+      const dayAfter = addDays(new Date(), 2);
+      onCustomDateChange(dayAfter);
+      onDateFilterChange('custom');
+    } else if (dateFilter === 'custom' && customDate) {
+      const nextDay = addDays(customDate, 1);
+      onCustomDateChange(nextDay);
+    }
+  };
+
+  // Get current date label
+  const getDateLabel = () => {
+    if (dateFilter === 'today') return 'Hoje';
+    if (dateFilter === 'tomorrow') return 'Amanhã';
+    if (dateFilter === 'custom' && customDate) {
+      return format(customDate, "dd 'de' MMM", { locale: ptBR });
+    }
+    return 'Data';
+  };
+
   const selectedStatus = statusOptions.find(s => s.value === statusFilter)?.label || 'Todos Status';
 
   return (
     <div className="mb-6">
-      {/* Date Toggle Buttons - Right Aligned */}
+      {/* Date Navigation with Arrows */}
       <div className="flex justify-end mb-6">
-        <div className="bg-card p-1 rounded-xl shadow-sm flex items-center">
+        <div className="bg-card p-1 rounded-xl shadow-sm flex items-center gap-1">
+          {/* Previous Day Arrow */}
+          <button
+            onClick={handlePrevDay}
+            className="flex items-center justify-center w-8 h-8 rounded-lg text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
+            title="Dia anterior"
+          >
+            <ChevronLeft className="w-5 h-5" />
+          </button>
+
           <button
             onClick={() => onDateFilterChange('today')}
             className={cn(
@@ -101,6 +150,14 @@ export function AdminFilters({
           >
             Amanhã
           </button>
+          
+          {/* Custom date indicator */}
+          {dateFilter === 'custom' && customDate && (
+            <span className="px-3 py-1.5 text-sm font-medium bg-primary text-primary-foreground rounded-lg">
+              {format(customDate, "dd/MM", { locale: ptBR })}
+            </span>
+          )}
+          
           <div className="w-px h-4 bg-border mx-1" />
           <Popover open={calendarOpen} onOpenChange={setCalendarOpen}>
             <PopoverTrigger asChild>
@@ -126,6 +183,15 @@ export function AdminFilters({
               />
             </PopoverContent>
           </Popover>
+
+          {/* Next Day Arrow */}
+          <button
+            onClick={handleNextDay}
+            className="flex items-center justify-center w-8 h-8 rounded-lg text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
+            title="Próximo dia"
+          >
+            <ChevronRight className="w-5 h-5" />
+          </button>
         </div>
       </div>
 

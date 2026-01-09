@@ -126,6 +126,12 @@ export function MobileDashboard({ schedules, onScheduleClick, onStartCleaning }:
           </>
         ) : (
           <>
+            <button 
+              onClick={() => setSelectedDate(prev => addDays(prev, -7))}
+              className="flex items-center justify-center rounded-full p-2 transition-colors hover:bg-muted"
+            >
+              <span className="material-symbols-outlined text-muted-foreground text-[20px]">chevron_left</span>
+            </button>
             <div className="flex items-center gap-3">
               <button className="flex items-center justify-center rounded-full p-1 transition-colors hover:bg-muted">
                 <Calendar className="w-6 h-6 text-muted-foreground" />
@@ -137,6 +143,12 @@ export function MobileDashboard({ schedules, onScheduleClick, onStartCleaning }:
                 <span className="text-xs font-medium text-muted-foreground">Semana {weekNumber}</span>
               </div>
             </div>
+            <button 
+              onClick={() => setSelectedDate(prev => addDays(prev, 7))}
+              className="flex items-center justify-center rounded-full p-2 transition-colors hover:bg-muted"
+            >
+              <span className="material-symbols-outlined text-muted-foreground text-[20px]">chevron_right</span>
+            </button>
           </>
         )}
         <button className="relative flex h-10 w-10 overflow-hidden rounded-full border-2 border-white shadow-sm dark:border-slate-600">
