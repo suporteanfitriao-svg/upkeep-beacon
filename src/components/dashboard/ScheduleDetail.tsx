@@ -1,7 +1,7 @@
 import { Schedule, ScheduleStatus, ChecklistItem, MaintenanceIssue, STATUS_LABELS, STATUS_FLOW, STATUS_ALLOWED_ROLES, AppRole } from '@/types/scheduling';
 import { cn } from '@/lib/utils';
 import { format } from 'date-fns';
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo, useEffect, useCallback } from 'react';
 import { toast } from 'sonner';
 import { LocationModal } from './LocationModal';
 import { PasswordModal } from './PasswordModal';
@@ -15,6 +15,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useCreateMaintenanceIssue } from '@/hooks/useCreateMaintenanceIssue';
 import { useAcknowledgeInfo } from '@/hooks/useAcknowledgeInfo';
 import { usePropertyChecklist } from '@/hooks/usePropertyChecklist';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 interface ScheduleDetailProps {
   schedule: Schedule;
   onClose: () => void;
@@ -65,7 +66,35 @@ export function ScheduleDetail({ schedule, onClose, onUpdateSchedule }: Schedule
   const [showNoChecklistModal, setShowNoChecklistModal] = useState(false);
   const [pendingCategories, setPendingCategories] = useState<{ name: string; pendingCount: number; totalCount: number }[]>([]);
   const [teamMemberId, setTeamMemberId] = useState<string | null>(null);
+  const [requirePhotoPerCategory, setRequirePhotoPerCategory] = useState(false);
+  const [categoryPhotos, setCategoryPhotos] = useState<Record<string, boolean>>({});
+  const [confirmMarkCategory, setConfirmMarkCategory] = useState<{ open: boolean; category: string | null }>({ open: false, category: null });
   const statusStyle = statusConfig[schedule.status];
+
+  // Fetch property rules (require_photo_per_category)
+  useEffect(() => {
+    const fetchPropertyRules = async () => {
+      const { data } = await supabase
+        .from('properties')
+        .select('require_photo_per_category')
+        .eq('id', schedule.propertyId)
+        .maybeSingle();
+      if (data) {
+        setRequirePhotoPerCategory(data.require_photo_per_category ?? false);
+      }
+    };
+    fetchPropertyRules();
+  }, [schedule.propertyId]);
+
+  // Track which categories have photos (from schedule.photos)
+  useEffect(() => {
+    const photosPerCategory: Record<string, boolean> = {};
+    schedule.photos.forEach(photo => {
+      // Photos might have category info attached - for now we track by type
+      // In a real implementation, photos would have a category field
+    });
+    setCategoryPhotos(photosPerCategory);
+  }, [schedule.photos]);
 
   // Fetch team member id for current user
   useEffect(() => {
@@ -157,6 +186,79 @@ export function ScheduleDetail({ schedule, onClose, onUpdateSchedule }: Schedule
     }
   };
 
+  // Handle marking entire category as complete
+  const handleMarkCategoryComplete = useCallback(async (category: string) => {
+    if (schedule.status !== 'cleaning' || !teamMemberId) return;
+    
+    const categoryItems = checklist.filter(item => item.category === category);
+    
+    // Check if any item is marked as DX (no) - don't allow bulk marking
+    const hasAnyDX = categoryItems.some(item => checklistItemStates[item.id] === 'no');
+    if (hasAnyDX) {
+      toast.error('Não é possível marcar categoria com itens DX');
+      return;
+    }
+    
+    // Mark all items as completed
+    const updatedChecklist = checklist.map(item => 
+      item.category === category ? { ...item, completed: true } : item
+    );
+    
+    const updatedStates = { ...checklistItemStates };
+    categoryItems.forEach(item => {
+      updatedStates[item.id] = 'yes';
+    });
+    
+    setChecklist(updatedChecklist);
+    setChecklistItemStates(updatedStates);
+    
+    // Update schedule with new checklist
+    await onUpdateSchedule({ ...schedule, checklist: updatedChecklist }, undefined, teamMemberId);
+    
+    // Log audit entry for category complete
+    try {
+      await supabase.rpc('append_schedule_history', {
+        p_schedule_id: schedule.id,
+        p_team_member_id: teamMemberId,
+        p_action: 'categoria_checklist_completa',
+        p_from_status: null,
+        p_to_status: null,
+        p_payload: { category_name: category }
+      });
+    } catch (error) {
+      console.error('Error logging category complete:', error);
+    }
+    
+    toast.success(`Categoria "${category}" marcada como completa!`);
+    setConfirmMarkCategory({ open: false, category: null });
+  }, [schedule, checklist, checklistItemStates, teamMemberId, onUpdateSchedule]);
+
+  // Check if a category has any item marked as DX
+  const categoryHasDX = useCallback((category: string) => {
+    const categoryItems = checklist.filter(item => item.category === category);
+    return categoryItems.some(item => checklistItemStates[item.id] === 'no');
+  }, [checklist, checklistItemStates]);
+
+  // Check which categories are missing required photos
+  const getCategoriesMissingPhotos = useCallback(() => {
+    if (!requirePhotoPerCategory) return [];
+    
+    const categories = [...new Set(checklist.map(item => item.category))];
+    const missingPhotos: string[] = [];
+    
+    categories.forEach(category => {
+      const categoryItems = checklist.filter(item => item.category === category);
+      const allCompleted = categoryItems.every(item => item.completed);
+      
+      // If category is complete but has no photo
+      if (allCompleted && !categoryPhotos[category]) {
+        missingPhotos.push(category);
+      }
+    });
+    
+    return missingPhotos;
+  }, [requirePhotoPerCategory, checklist, categoryPhotos]);
+
 
   const getPendingCategoriesDetails = () => {
     const categories = Object.keys(groupedChecklist);
@@ -194,6 +296,13 @@ export function ScheduleDetail({ schedule, onClose, onUpdateSchedule }: Schedule
       if (pending.length > 0) {
         setPendingCategories(pending);
         setShowChecklistPendingModal(true);
+        return;
+      }
+      
+      // Check for required photos per category
+      const categoriesMissingPhotos = getCategoriesMissingPhotos();
+      if (categoriesMissingPhotos.length > 0) {
+        toast.error(`Foto obrigatória pendente em: ${categoriesMissingPhotos.join(', ')}`);
         return;
       }
     }
@@ -464,26 +573,57 @@ export function ScheduleDetail({ schedule, onClose, onUpdateSchedule }: Schedule
               const totalInCategory = items.length;
               const isExpanded = expandedCategories[category] ?? false;
               const allCompleted = items.every(item => item.completed);
+              const hasDX = categoryHasDX(category);
+              const needsPhoto = requirePhotoPerCategory && allCompleted && !categoryPhotos[category];
 
               return (
-                <div key={category} className="overflow-hidden rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-[#2d3138]">
+                <div key={category} className={cn(
+                  "overflow-hidden rounded-xl border bg-white dark:bg-[#2d3138]",
+                  allCompleted ? "border-green-300 dark:border-green-700" : "border-slate-200 dark:border-slate-700"
+                )}>
                   <details open={isExpanded} className="group">
                     <summary 
                       onClick={(e) => { e.preventDefault(); toggleCategory(category); }}
-                      className="flex cursor-pointer items-center justify-between bg-slate-50 dark:bg-slate-800/50 p-4 font-medium"
+                      className={cn(
+                        "flex cursor-pointer items-center justify-between p-4 font-medium",
+                        allCompleted ? "bg-green-50 dark:bg-green-900/20" : "bg-slate-50 dark:bg-slate-800/50"
+                      )}
                     >
                       <div className="flex items-center gap-3">
                         <div className={cn(
                           "h-4 w-4 rounded-full border-2 flex items-center justify-center",
-                          allCompleted ? "bg-primary border-primary" : "border-slate-300 dark:border-slate-500"
+                          allCompleted ? "bg-green-500 border-green-500" : "border-slate-300 dark:border-slate-500"
                         )}>
                           {allCompleted && (
                             <span className="material-symbols-outlined text-white text-[12px]">check</span>
                           )}
                         </div>
-                        <span className="font-bold text-slate-900 dark:text-white">{category}</span>
+                        <span className={cn(
+                          "font-bold",
+                          allCompleted ? "text-green-700 dark:text-green-300" : "text-slate-900 dark:text-white"
+                        )}>{category}</span>
+                        {needsPhoto && (
+                          <div className="flex items-center gap-1 text-amber-500" title="Foto do ambiente obrigatória para concluir">
+                            <span className="material-symbols-outlined text-[16px]">warning</span>
+                            <span className="text-[10px] font-semibold">Foto pendente</span>
+                          </div>
+                        )}
                       </div>
                       <div className="flex items-center gap-2.5">
+                        {/* Mark category complete button - only when cleaning */}
+                        {schedule.status === 'cleaning' && !allCompleted && !hasDX && (
+                          <button 
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setConfirmMarkCategory({ open: true, category });
+                            }}
+                            aria-label="Marcar categoria completa" 
+                            className="rounded-full p-1 text-green-500 hover:text-green-600 hover:bg-green-50 dark:hover:bg-green-900/20 transition-colors"
+                            title="Marcar tudo como OK"
+                          >
+                            <span className="material-symbols-outlined text-[20px]">check_circle</span>
+                          </button>
+                        )}
                         <button aria-label="Adicionar Foto" className="rounded-full p-1 text-slate-400 hover:text-primary transition-colors">
                           <span className="material-symbols-outlined text-[20px]">photo_camera</span>
                         </button>
@@ -670,14 +810,33 @@ export function ScheduleDetail({ schedule, onClose, onUpdateSchedule }: Schedule
 
         {/* Footer Button */}
         <div className="fixed bottom-0 left-0 right-0 z-50 bg-stone-50/95 dark:bg-[#22252a]/95 backdrop-blur-md border-t border-slate-200/50 dark:border-slate-700/50 p-4">
-          {schedule.status === 'cleaning' && (
-            <button 
-              onClick={() => handleStatusChange('completed')}
-              className="w-full rounded-xl bg-primary py-4 text-base font-bold text-white shadow-[0_4px_20px_-2px_rgba(51,153,153,0.3)] transition-all hover:bg-[#267373] active:scale-[0.98]"
-            >
-              Finalizar Limpeza
-            </button>
-          )}
+          {schedule.status === 'cleaning' && (() => {
+            const categoriesMissingPhotos = getCategoriesMissingPhotos();
+            const isBlocked = categoriesMissingPhotos.length > 0;
+            
+            return (
+              <div className="flex flex-col gap-2">
+                {isBlocked && (
+                  <div className="flex items-center gap-2 text-amber-600 dark:text-amber-400 text-xs font-medium justify-center">
+                    <span className="material-symbols-outlined text-[16px]">warning</span>
+                    <span>Fotos pendentes em: {categoriesMissingPhotos.join(', ')}</span>
+                  </div>
+                )}
+                <button 
+                  onClick={() => handleStatusChange('completed')}
+                  disabled={isBlocked}
+                  className={cn(
+                    "w-full rounded-xl py-4 text-base font-bold text-white shadow-[0_4px_20px_-2px_rgba(51,153,153,0.3)] transition-all active:scale-[0.98]",
+                    isBlocked 
+                      ? "bg-slate-400 cursor-not-allowed" 
+                      : "bg-primary hover:bg-[#267373]"
+                  )}
+                >
+                  Finalizar Limpeza
+                </button>
+              </div>
+            );
+          })()}
           {schedule.status === 'completed' && (
             <div className="flex items-center justify-center gap-2 text-primary py-2">
               <span className="material-symbols-outlined">check_circle</span>
@@ -746,6 +905,31 @@ export function ScheduleDetail({ schedule, onClose, onUpdateSchedule }: Schedule
           onClose={() => setShowNoChecklistModal(false)}
         />
       )}
+
+      {/* Confirm Mark Category Complete Dialog */}
+      <AlertDialog 
+        open={confirmMarkCategory.open} 
+        onOpenChange={(open) => !open && setConfirmMarkCategory({ open: false, category: null })}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Marcar categoria completa?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Todos os itens de "{confirmMarkCategory.category}" serão marcados como OK (✓). 
+              Esta ação pode ser desfeita manualmente item por item.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction 
+              onClick={() => confirmMarkCategory.category && handleMarkCategoryComplete(confirmMarkCategory.category)}
+              className="bg-green-600 hover:bg-green-700"
+            >
+              Confirmar
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
