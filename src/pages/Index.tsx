@@ -1,4 +1,4 @@
-import { useState, useMemo, useCallback } from 'react';
+import { useState, useMemo, useCallback, useEffect } from 'react';
 import { Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { isToday, isTomorrow, isSameDay } from 'date-fns';
@@ -16,15 +16,40 @@ import { Schedule, ScheduleStatus } from '@/types/scheduling';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { supabase } from '@/integrations/supabase/client';
 
+const SYNC_STORAGE_KEY = 'lastSyncData';
+
 const Index = () => {
   const isMobile = useIsMobile();
   const { schedules, loading, error, refetch, updateSchedule, updateScheduleTimes } = useSchedules();
   const [selectedSchedule, setSelectedSchedule] = useState<Schedule | null>(null);
   const [activeStatusFilter, setActiveStatusFilter] = useState<ScheduleStatus | 'all'>('all');
   
-  // Sync tracking
-  const [lastSyncTime, setLastSyncTime] = useState<Date | null>(null);
-  const [newReservationsCount, setNewReservationsCount] = useState(0);
+  // Sync tracking - initialize from localStorage
+  const [lastSyncTime, setLastSyncTime] = useState<Date | null>(() => {
+    const stored = localStorage.getItem(SYNC_STORAGE_KEY);
+    if (stored) {
+      const data = JSON.parse(stored);
+      return data.lastSyncTime ? new Date(data.lastSyncTime) : null;
+    }
+    return null;
+  });
+  const [newReservationsCount, setNewReservationsCount] = useState(() => {
+    const stored = localStorage.getItem(SYNC_STORAGE_KEY);
+    if (stored) {
+      const data = JSON.parse(stored);
+      return data.newReservationsCount || 0;
+    }
+    return 0;
+  });
+  
+  // Persist sync data to localStorage
+  useEffect(() => {
+    const data = {
+      lastSyncTime: lastSyncTime?.toISOString() || null,
+      newReservationsCount
+    };
+    localStorage.setItem(SYNC_STORAGE_KEY, JSON.stringify(data));
+  }, [lastSyncTime, newReservationsCount]);
   
   // Filters
   const [dateFilter, setDateFilter] = useState<DateFilter>('today');
