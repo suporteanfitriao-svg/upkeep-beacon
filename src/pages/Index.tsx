@@ -138,6 +138,33 @@ const Index = () => {
     }
   }, [refetch]);
 
+  // Auto-sync every 5 minutes (admin panel only, not mobile)
+  useEffect(() => {
+    if (isMobile) return;
+    
+    const AUTO_SYNC_INTERVAL = 5 * 60 * 1000; // 5 minutes
+    
+    const autoSync = async () => {
+      console.log('Auto-sync triggered');
+      const result = await syncAndRefresh();
+      setLastSyncTime(new Date());
+      
+      if (result?.synced !== undefined) {
+        setNewReservationsCount(result.synced);
+        if (result.synced > 0) {
+          toast.success(`${result.synced} nova${result.synced > 1 ? 's' : ''} reserva${result.synced > 1 ? 's' : ''} sincronizada${result.synced > 1 ? 's' : ''}!`, {
+            description: 'Sincronização automática',
+            duration: 4000,
+          });
+        }
+      }
+    };
+    
+    const intervalId = setInterval(autoSync, AUTO_SYNC_INTERVAL);
+    
+    return () => clearInterval(intervalId);
+  }, [isMobile, syncAndRefresh]);
+
   const handleRefresh = async () => {
     const result = await syncAndRefresh();
     setLastSyncTime(new Date());
