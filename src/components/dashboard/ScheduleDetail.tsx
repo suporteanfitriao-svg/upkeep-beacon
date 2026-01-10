@@ -1,7 +1,7 @@
 import { Schedule, ScheduleStatus, ChecklistItem, ChecklistItemStatus, MaintenanceIssue, STATUS_LABELS, STATUS_FLOW, STATUS_ALLOWED_ROLES, AppRole, CategoryPhoto } from '@/types/scheduling';
 import { cn } from '@/lib/utils';
 import { format } from 'date-fns';
-import { useState, useMemo, useEffect, useCallback } from 'react';
+import { useState, useMemo, useEffect, useCallback, useRef } from 'react';
 import { toast } from 'sonner';
 import { LocationModal } from './LocationModal';
 import { PasswordModal } from './PasswordModal';
@@ -16,6 +16,7 @@ import { useCreateMaintenanceIssue } from '@/hooks/useCreateMaintenanceIssue';
 import { useAcknowledgeInfo } from '@/hooks/useAcknowledgeInfo';
 import { usePropertyChecklist } from '@/hooks/usePropertyChecklist';
 import { usePropertyAccess } from '@/hooks/usePropertyAccess';
+import { useCleaningCache } from '@/hooks/useCleaningCache';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { CategoryPhotoUpload } from './CategoryPhotoUpload';
 
@@ -58,7 +59,9 @@ export function ScheduleDetail({ schedule, onClose, onUpdateSchedule }: Schedule
   const { role, isAdmin, isManager } = useUserRole();
   const { user } = useAuth();
   const [notes, setNotes] = useState(schedule.notes);
+  const [cleanerObservations, setCleanerObservations] = useState('');
   const [checklist, setChecklist] = useState(schedule.checklist);
+  const [localIssues, setLocalIssues] = useState<MaintenanceIssue[]>(schedule.maintenanceIssues);
   const [showIssueForm, setShowIssueForm] = useState(false);
   const [expandedCategories, setExpandedCategories] = useState<Record<string, boolean>>({});
   // Initialize checklistItemStates from saved checklist status
@@ -88,7 +91,56 @@ export function ScheduleDetail({ schedule, onClose, onUpdateSchedule }: Schedule
   const [unsavedCategories, setUnsavedCategories] = useState<Set<string>>(new Set());
   const [photoUploadModal, setPhotoUploadModal] = useState<{ open: boolean; category: string | null }>({ open: false, category: null });
   const [deleteIssueConfirm, setDeleteIssueConfirm] = useState<{ open: boolean; issueId: string | null }>({ open: false, issueId: null });
+  const [isCommitting, setIsCommitting] = useState(false);
+  const cacheInitializedRef = useRef(false);
   const statusStyle = statusConfig[schedule.status];
+
+  // Cleaning cache hook - only active during cleaning status (Rule 41.3, 44.3)
+  const { loadCache, saveCache, clearCache } = useCleaningCache({
+    scheduleId: schedule.id,
+    teamMemberId,
+    isActive: schedule.status === 'cleaning',
+  });
+
+  // Load cache on mount if cleaning (Rule 41.3.3, 44.3.3)
+  useEffect(() => {
+    if (schedule.status === 'cleaning' && teamMemberId && !cacheInitializedRef.current) {
+      const cachedData = loadCache();
+      if (cachedData) {
+        console.log('[ScheduleDetail] Restoring from cache...');
+        if (cachedData.checklistState.length > 0) {
+          setChecklist(cachedData.checklistState);
+        }
+        if (Object.keys(cachedData.checklistItemStates).length > 0) {
+          setChecklistItemStates(cachedData.checklistItemStates);
+        }
+        if (cachedData.observationsText) {
+          setCleanerObservations(cachedData.observationsText);
+        }
+        if (cachedData.draftIssues.length > 0) {
+          setLocalIssues(cachedData.draftIssues);
+        }
+        if (Object.keys(cachedData.categoryPhotos).length > 0) {
+          setCategoryPhotosData(cachedData.categoryPhotos);
+        }
+        toast.info('Progresso anterior restaurado');
+      }
+      cacheInitializedRef.current = true;
+    }
+  }, [schedule.status, teamMemberId, loadCache]);
+
+  // Auto-save to cache on state changes (Rule 41.3.2, 44.3.2)
+  useEffect(() => {
+    if (schedule.status === 'cleaning' && teamMemberId && cacheInitializedRef.current) {
+      saveCache({
+        checklistState: checklist,
+        checklistItemStates,
+        observationsText: cleanerObservations,
+        draftIssues: localIssues,
+        categoryPhotos: categoryPhotosData,
+      });
+    }
+  }, [checklist, checklistItemStates, cleanerObservations, localIssues, categoryPhotosData, schedule.status, teamMemberId, saveCache]);
 
   // Fetch property rules (require_photo_per_category)
   useEffect(() => {
@@ -360,7 +412,7 @@ export function ScheduleDetail({ schedule, onClose, onUpdateSchedule }: Schedule
     return pending;
   };
 
-  const handleStatusChange = (newStatus?: ScheduleStatus) => {
+  const handleStatusChange = async (newStatus?: ScheduleStatus) => {
     const targetStatus = newStatus || statusConfig[schedule.status].next;
     if (!targetStatus || targetStatus === schedule.status) return;
 
@@ -399,10 +451,60 @@ export function ScheduleDetail({ schedule, onClose, onUpdateSchedule }: Schedule
       toast.success('Chegada da equipe registrada! Checklist carregado.');
     }
     
-    if (targetStatus === 'completed' && !schedule.endAt) {
-      updates.endAt = new Date();
-      updates.teamDeparture = new Date();
-      toast.success('Saída da equipe registrada!');
+    // Rule 41.8: Single commit when finalizing
+    if (targetStatus === 'completed') {
+      setIsCommitting(true);
+      try {
+        // Commit all data: checklist, observations, issues, photos
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const commitPayload: any = {
+          status: 'completed',
+          end_at: new Date().toISOString(),
+          checklists: checklist,
+          cleaner_observations: cleanerObservations || null,
+          maintenance_issues: localIssues,
+          category_photos: categoryPhotosData,
+          maintenance_status: localIssues.length > 0 ? 'needs_maintenance' : 'ok',
+        };
+
+        const { error } = await supabase
+          .from('schedules')
+          .update(commitPayload)
+          .eq('id', schedule.id);
+
+        if (error) {
+          throw error;
+        }
+
+        // Log observations in history (Rule 41.10.1)
+        if (teamMemberId && cleanerObservations) {
+          await supabase.rpc('append_schedule_history', {
+            p_schedule_id: schedule.id,
+            p_team_member_id: teamMemberId,
+            p_action: 'observacoes_enviadas',
+            p_from_status: 'cleaning',
+            p_to_status: 'completed',
+            p_payload: { has_observations: true }
+          });
+        }
+
+        // Clear cache after successful commit (Rule 41.8.1)
+        clearCache();
+        
+        updates.endAt = new Date();
+        updates.teamDeparture = new Date();
+        toast.success('Limpeza finalizada com sucesso!');
+        
+        onUpdateSchedule({ ...schedule, ...updates }, previousStatus, teamMemberId || undefined);
+      } catch (error) {
+        // Rule 41.8.2: On failure, don't clear cache, allow retry
+        console.error('Error committing cleaning:', error);
+        toast.error('Erro ao finalizar limpeza. Tente novamente.');
+        setIsCommitting(false);
+        return;
+      }
+      setIsCommitting(false);
+      return;
     }
     
     onUpdateSchedule({ ...schedule, ...updates }, previousStatus, teamMemberId || undefined);
@@ -437,7 +539,7 @@ export function ScheduleDetail({ schedule, onClose, onUpdateSchedule }: Schedule
       reportedByName: profile?.name || 'Usuário',
     });
 
-    // Update local state to show issue indicator
+    // Update LOCAL state only (Rule 41.1 - no reload)
     const newIssue: MaintenanceIssue = {
       id: `issue-${Date.now()}`,
       description: `[${issue.category} - ${issue.itemLabel}] ${issue.description}`,
@@ -446,12 +548,8 @@ export function ScheduleDetail({ schedule, onClose, onUpdateSchedule }: Schedule
       resolved: false
     };
 
-    const updatedIssues = [...schedule.maintenanceIssues, newIssue];
-    onUpdateSchedule({ 
-      ...schedule, 
-      maintenanceIssues: updatedIssues,
-      maintenanceStatus: 'needs_maintenance'
-    }, undefined, teamMemberId || undefined);
+    setLocalIssues(prev => [...prev, newIssue]);
+    // Cache auto-saves via useEffect
   };
 
   const handleSaveNotes = () => {
@@ -459,20 +557,31 @@ export function ScheduleDetail({ schedule, onClose, onUpdateSchedule }: Schedule
     toast.success('Observações salvas!');
   };
 
+  // Rule 41.6, 44.1: Delete issue WITHOUT reload - only update local state
   const handleDeleteIssue = async (issueId: string) => {
-    const updatedIssues = schedule.maintenanceIssues.filter(issue => issue.id !== issueId);
+    // Update local state only (no server call until commit)
+    const updatedIssues = localIssues.filter(issue => issue.id !== issueId);
+    setLocalIssues(updatedIssues);
     
-    // Update maintenance status if no more issues
-    const newMaintenanceStatus = updatedIssues.length === 0 ? 'ok' : 'needs_maintenance';
-    
-    onUpdateSchedule({ 
-      ...schedule, 
-      maintenanceIssues: updatedIssues,
-      maintenanceStatus: newMaintenanceStatus
-    }, undefined, teamMemberId || undefined);
-    
+    // Cache is auto-saved via useEffect
     toast.success('Avaria removida!');
     setDeleteIssueConfirm({ open: false, issueId: null });
+    
+    // Log the removal in history (soft delete audit - Rule 41.10.1)
+    if (teamMemberId) {
+      try {
+        await supabase.rpc('append_schedule_history', {
+          p_schedule_id: schedule.id,
+          p_team_member_id: teamMemberId,
+          p_action: 'avaria_removida',
+          p_from_status: null,
+          p_to_status: null,
+          p_payload: { issue_id: issueId }
+        });
+      } catch (error) {
+        console.error('Error logging issue removal:', error);
+      }
+    }
   };
 
   const completedTasks = checklist.filter(item => item.completed).length;
@@ -843,16 +952,19 @@ export function ScheduleDetail({ schedule, onClose, onUpdateSchedule }: Schedule
             })}
           </section>
 
-          {/* Maintenance Section */}
+          {/* Maintenance Section - Uses localIssues (Rule 41.1, 44.1) */}
           <section className="flex flex-col gap-3 mt-2">
             <div className="flex items-center gap-2">
               <span className="material-symbols-outlined text-primary text-[20px]">build</span>
               <h3 className="text-sm font-bold uppercase tracking-wide text-slate-900 dark:text-white">Manutenção</h3>
+              {localIssues.length > 0 && (
+                <span className="text-xs font-bold text-orange-500">({localIssues.length})</span>
+              )}
             </div>
             
-            {schedule.maintenanceIssues.length > 0 && (
+            {localIssues.length > 0 && (
               <div className="flex flex-col gap-3">
-                {schedule.maintenanceIssues.map(issue => (
+                {localIssues.map(issue => (
                   <div key={issue.id} className="rounded-xl border border-orange-200 bg-orange-50 p-3 dark:border-orange-900/50 dark:bg-orange-900/10">
                     <div className="flex items-start gap-3">
                       <span className="material-symbols-outlined text-orange-500 mt-0.5 text-[20px]">warning</span>
@@ -886,29 +998,58 @@ export function ScheduleDetail({ schedule, onClose, onUpdateSchedule }: Schedule
             </button>
           </section>
 
-          {/* Observations Section */}
-          <section className="flex flex-col gap-3 mt-2">
-            <div className="flex items-center gap-2">
-              <span className="material-symbols-outlined text-primary text-[20px]">chat_bubble</span>
-              <h3 className="text-sm font-bold uppercase tracking-wide text-slate-900 dark:text-white">Observações</h3>
-            </div>
-            <div className="relative">
-              <textarea 
-                value={notes}
-                onChange={(e) => setNotes(e.target.value)}
-                className="w-full rounded-xl border-slate-200 bg-slate-50 p-4 pb-10 text-sm focus:border-primary focus:ring-primary dark:border-slate-700 dark:bg-slate-800 dark:text-white" 
-                placeholder="Adicione observações sobre este agendamento..." 
-                rows={3}
-              />
-              <span className="material-symbols-outlined absolute bottom-3 right-3 text-slate-400 text-[18px]">edit</span>
-            </div>
-            <button 
-              onClick={handleSaveNotes}
-              className="w-full rounded-lg bg-slate-200 py-2.5 text-xs font-bold text-slate-600 transition-colors hover:bg-slate-300 dark:bg-slate-700 dark:text-slate-300 dark:hover:bg-slate-600"
-            >
-              Salvar Observações
-            </button>
-          </section>
+          {/* Cleaner Observations Section - Rule 41.2, 44.2 */}
+          {schedule.status === 'cleaning' && (
+            <section className="flex flex-col gap-3 mt-2">
+              <div className="flex items-center gap-2">
+                <span className="material-symbols-outlined text-primary text-[20px]">edit_note</span>
+                <h3 className="text-sm font-bold uppercase tracking-wide text-slate-900 dark:text-white">Observações da Limpeza</h3>
+              </div>
+              <p className="text-xs text-slate-500 dark:text-slate-400">
+                Adicione observações que serão visíveis para o gestor após a limpeza.
+              </p>
+              <div className="relative">
+                <textarea 
+                  value={cleanerObservations}
+                  onChange={(e) => setCleanerObservations(e.target.value)}
+                  className="w-full rounded-xl border-slate-200 bg-slate-50 p-4 pb-10 text-sm focus:border-primary focus:ring-primary dark:border-slate-700 dark:bg-slate-800 dark:text-white" 
+                  placeholder="Ex: Porta do banheiro com dificuldade para fechar..." 
+                  rows={3}
+                />
+                <span className="material-symbols-outlined absolute bottom-3 right-3 text-slate-400 text-[18px]">edit</span>
+              </div>
+              <div className="flex items-center gap-2 text-xs text-slate-400">
+                <span className="material-symbols-outlined text-[14px]">save</span>
+                <span>Salvo automaticamente</span>
+              </div>
+            </section>
+          )}
+
+          {/* Admin/Manager Observations Section */}
+          {(isAdmin || isManager) && (
+            <section className="flex flex-col gap-3 mt-2">
+              <div className="flex items-center gap-2">
+                <span className="material-symbols-outlined text-primary text-[20px]">chat_bubble</span>
+                <h3 className="text-sm font-bold uppercase tracking-wide text-slate-900 dark:text-white">Notas do Gestor</h3>
+              </div>
+              <div className="relative">
+                <textarea 
+                  value={notes}
+                  onChange={(e) => setNotes(e.target.value)}
+                  className="w-full rounded-xl border-slate-200 bg-slate-50 p-4 pb-10 text-sm focus:border-primary focus:ring-primary dark:border-slate-700 dark:bg-slate-800 dark:text-white" 
+                  placeholder="Notas internas do gestor..." 
+                  rows={3}
+                />
+                <span className="material-symbols-outlined absolute bottom-3 right-3 text-slate-400 text-[18px]">edit</span>
+              </div>
+              <button 
+                onClick={handleSaveNotes}
+                className="w-full rounded-lg bg-slate-200 py-2.5 text-xs font-bold text-slate-600 transition-colors hover:bg-slate-300 dark:bg-slate-700 dark:text-slate-300 dark:hover:bg-slate-600"
+              >
+                Salvar Notas
+              </button>
+            </section>
+          )}
 
           {/* History Section */}
           <section className="flex flex-col gap-3 mt-2">
@@ -988,15 +1129,22 @@ export function ScheduleDetail({ schedule, onClose, onUpdateSchedule }: Schedule
                 )}
                 <button 
                   onClick={() => handleStatusChange('completed')}
-                  disabled={isBlocked}
+                  disabled={isBlocked || isCommitting}
                   className={cn(
                     "w-full rounded-xl py-4 text-base font-bold text-white shadow-[0_4px_20px_-2px_rgba(51,153,153,0.3)] transition-all active:scale-[0.98]",
-                    isBlocked 
+                    (isBlocked || isCommitting)
                       ? "bg-slate-400 cursor-not-allowed" 
                       : "bg-primary hover:bg-[#267373]"
                   )}
                 >
-                  Finalizar Limpeza
+                  {isCommitting ? (
+                    <span className="flex items-center justify-center gap-2">
+                      <span className="material-symbols-outlined animate-spin text-[18px]">progress_activity</span>
+                      Finalizando...
+                    </span>
+                  ) : (
+                    'Finalizar Limpeza'
+                  )}
                 </button>
               </div>
             );
