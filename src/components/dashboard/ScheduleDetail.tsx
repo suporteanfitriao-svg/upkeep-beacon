@@ -15,6 +15,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useCreateMaintenanceIssue } from '@/hooks/useCreateMaintenanceIssue';
 import { useAcknowledgeInfo } from '@/hooks/useAcknowledgeInfo';
 import { usePropertyChecklist } from '@/hooks/usePropertyChecklist';
+import { usePropertyAccess } from '@/hooks/usePropertyAccess';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { CategoryPhotoUpload } from './CategoryPhotoUpload';
 
@@ -135,11 +136,30 @@ export function ScheduleDetail({ schedule, onClose, onUpdateSchedule }: Schedule
     enabled: shouldCheckForChecklist,
   });
 
-  // Check if user can perform status transition
+  // Check if user has access to this property (via team_member_properties or has_all_properties)
+  const { 
+    hasAccess: hasPropertyAccess, 
+    isLoading: isCheckingAccess 
+  } = usePropertyAccess({
+    propertyId: schedule.propertyId,
+    teamMemberId,
+    enabled: !!teamMemberId,
+  });
+
+  // Check if user can perform status transition - Complete business rules validation
   const canTransition = useMemo(() => {
     const nextStatus = statusConfig[schedule.status].next;
     if (!nextStatus || !role) return { allowed: false, reason: 'Sem permissão' };
 
+    // Rule 1: INICIAR LIMPEZA only for status = released
+    if (nextStatus === 'cleaning' && schedule.status !== 'released') {
+      return { 
+        allowed: false, 
+        reason: 'Limpeza só pode ser iniciada quando o status for LIBERADO' 
+      };
+    }
+
+    // Rule 3: Check role permission
     const allowedRoles = STATUS_ALLOWED_ROLES[nextStatus];
     if (!allowedRoles.includes(role as AppRole)) {
       return { 
@@ -148,16 +168,44 @@ export function ScheduleDetail({ schedule, onClose, onUpdateSchedule }: Schedule
       };
     }
 
-    // For cleaning status, check if there's already a responsible
-    if (nextStatus === 'cleaning' && schedule.responsibleTeamMemberId && schedule.responsibleTeamMemberId !== teamMemberId) {
+    // Rule 4: Check property access (only for cleaners starting cleaning)
+    if (nextStatus === 'cleaning' && role === 'cleaner' && !hasPropertyAccess && !isCheckingAccess) {
       return { 
         allowed: false, 
-        reason: 'Limpeza já iniciada por outro responsável' 
+        reason: 'Você não está vinculado a este imóvel' 
       };
     }
 
+    // Rule 5: Check important info acknowledgment (for starting cleaning)
+    if (nextStatus === 'cleaning' && hasImportantInfo && !hasAcknowledged) {
+      return { 
+        allowed: false, 
+        reason: 'É necessário confirmar a leitura das informações importantes' 
+      };
+    }
+
+    // Rule 6: Check if property has checklist (for starting cleaning)
+    if (nextStatus === 'cleaning' && !hasPropertyChecklist && !isCheckingChecklist) {
+      return { 
+        allowed: false, 
+        reason: 'Este imóvel não possui checklist configurado' 
+      };
+    }
+
+    // Rule 7: Check concurrency - if there's already a responsible
+    if (nextStatus === 'cleaning' && schedule.responsibleTeamMemberId && schedule.responsibleTeamMemberId !== teamMemberId) {
+      // Only admin can override
+      if (role !== 'admin') {
+        return { 
+          allowed: false, 
+          reason: 'Limpeza já iniciada por outro responsável' 
+        };
+      }
+      // Admin can override but should be logged in history
+    }
+
     return { allowed: true };
-  }, [schedule.status, schedule.responsibleTeamMemberId, role, teamMemberId]);
+  }, [schedule.status, schedule.responsibleTeamMemberId, role, teamMemberId, hasPropertyAccess, isCheckingAccess, hasImportantInfo, hasAcknowledged, hasPropertyChecklist, isCheckingChecklist]);
 
   const toggleCategory = (category: string) => {
     setExpandedCategories(prev => ({
@@ -535,34 +583,38 @@ export function ScheduleDetail({ schedule, onClose, onUpdateSchedule }: Schedule
               </div>
             )}
 
-            {/* Start Cleaning Button */}
-            {(schedule.status === 'released' || schedule.status === 'waiting') && (
+            {/* Start Cleaning Button - Only show for released status (Rule 1) */}
+            {schedule.status === 'released' && (
               <button 
                 onClick={() => {
-                  // For released status, check requirements before starting cleaning
-                  if (schedule.status === 'released') {
-                    // First check if property has checklist
-                    if (!hasPropertyChecklist && !isCheckingChecklist) {
-                      setShowNoChecklistModal(true);
-                      return;
-                    }
-                    // Then check if info was acknowledged
-                    if (!hasAcknowledged) {
-                      setShowAttentionModal(true);
-                      return;
-                    }
+                  // Validate all requirements before starting cleaning
+                  if (!canTransition.allowed) {
+                    toast.error(canTransition.reason);
+                    return;
                   }
-                  handleStatusChange(schedule.status === 'waiting' ? 'released' : 'cleaning');
+                  
+                  // Show specific modals for user-friendly feedback
+                  if (!hasPropertyChecklist && !isCheckingChecklist) {
+                    setShowNoChecklistModal(true);
+                    return;
+                  }
+                  
+                  if (hasImportantInfo && !hasAcknowledged) {
+                    setShowAttentionModal(true);
+                    return;
+                  }
+                  
+                  handleStatusChange('cleaning');
                 }}
-                disabled={isAckSubmitting || isCheckingChecklist}
+                disabled={isAckSubmitting || isCheckingChecklist || isCheckingAccess || !canTransition.allowed}
                 className={cn(
                   "flex w-full items-center justify-center gap-2 rounded-xl py-4 font-bold text-white shadow-[0_4px_20px_-2px_rgba(51,153,153,0.3)] transition-all active:scale-[0.98]",
-                  (schedule.status === 'released' && (!hasAcknowledged || !hasPropertyChecklist))
+                  !canTransition.allowed
                     ? "bg-slate-400 hover:bg-slate-500 cursor-not-allowed"
                     : "bg-primary hover:bg-[#267373]"
                 )}
               >
-                {isCheckingChecklist ? (
+                {(isCheckingChecklist || isCheckingAccess) ? (
                   <>
                     <span className="material-symbols-outlined animate-spin">progress_activity</span>
                     Verificando...
@@ -570,10 +622,31 @@ export function ScheduleDetail({ schedule, onClose, onUpdateSchedule }: Schedule
                 ) : (
                   <>
                     <span className="material-symbols-outlined filled">play_circle</span>
-                    {schedule.status === 'waiting' ? 'Liberar para Limpeza' : 'Iniciar Limpeza'}
+                    Iniciar Limpeza
                   </>
                 )}
               </button>
+            )}
+
+            {/* Liberar para Limpeza Button - Only for waiting status and admin/manager */}
+            {schedule.status === 'waiting' && (isAdmin || isManager) && (
+              <button 
+                onClick={() => handleStatusChange('released')}
+                className="flex w-full items-center justify-center gap-2 rounded-xl py-4 font-bold text-white bg-primary hover:bg-[#267373] shadow-[0_4px_20px_-2px_rgba(51,153,153,0.3)] transition-all active:scale-[0.98]"
+              >
+                <span className="material-symbols-outlined filled">check_circle</span>
+                Liberar para Limpeza
+              </button>
+            )}
+
+            {/* Status info for cleaners on waiting status */}
+            {schedule.status === 'waiting' && role === 'cleaner' && (
+              <div className="flex w-full items-center justify-center gap-2 rounded-xl py-4 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800">
+                <span className="material-symbols-outlined text-amber-600 dark:text-amber-400">schedule</span>
+                <span className="text-sm font-medium text-amber-700 dark:text-amber-300">
+                  Aguardando liberação pelo gestor
+                </span>
+              </div>
             )}
           </section>
 

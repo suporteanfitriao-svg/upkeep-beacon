@@ -56,8 +56,9 @@ export function PasswordModal({
   const [isSaving, setIsSaving] = useState(false);
   const [hasLoggedView, setHasLoggedView] = useState(false);
 
-  // Check if cleaner can view iCal password (temporal rule)
-  const isCleaningDay = isScheduleDay(scheduleDate);
+  // Check if cleaner can view password (temporal rule - Rule 10-12)
+  // Password can only be viewed by cleaner from 00:01 of checkout day
+  const isCheckoutDay = isScheduleDay(scheduleDate);
 
   // Fetch property password mode
   useEffect(() => {
@@ -85,31 +86,32 @@ export function PasswordModal({
   const displayPassword = passwordMode === 'ical' ? passwordFromIcal : accessPassword;
   const hasPassword = Boolean(displayPassword && displayPassword.trim());
 
-  // Temporal visibility: cleaner can only see iCal password on cleaning day
-  const isBlockedByTemporalRule = role === 'cleaner' && passwordMode === 'ical' && !isCleaningDay;
+  // Rule 10-12: Temporal visibility applies to ALL passwords (both iCal and manual)
+  // Cleaners can only view password from 00:01 of checkout day
+  const isBlockedByTemporalRule = role === 'cleaner' && !isCheckoutDay;
 
-  // Log view action when password is displayed (only once per modal open)
+  // Log view action when password is displayed (only once per modal open) - Rule 13
   useEffect(() => {
     if (!isLoading && hasPassword && teamMemberId && !hasLoggedView && !isBlockedByTemporalRule) {
       logAction({
         scheduleId,
         propertyId,
         teamMemberId,
-        action: passwordMode === 'ical' ? 'visualizou_senha_ical' : 'viewed',
+        action: 'visualizou_senha', // Rule 13: Log all password views with unified action
       });
       setHasLoggedView(true);
     }
-  }, [isLoading, hasPassword, teamMemberId, scheduleId, propertyId, logAction, hasLoggedView, isBlockedByTemporalRule, passwordMode]);
+  }, [isLoading, hasPassword, teamMemberId, scheduleId, propertyId, logAction, hasLoggedView, isBlockedByTemporalRule]);
 
-  // Check if cleaner can view password
+  // Check if cleaner can view password (Rule 10-12)
   const canView = () => {
-    // Admin and manager can always view (no temporal restriction)
+    // Admin and manager can always view (no temporal restriction - Rule 12)
     if (canManage) return true;
     
-    // Cleaner: check temporal rule for iCal mode
+    // Cleaner: check temporal rule (Rule 10-11)
     if (role === 'cleaner') {
-      // iCal mode: blocked before cleaning day
-      if (passwordMode === 'ical' && !isCleaningDay) {
+      // Blocked before checkout day (applies to ALL passwords)
+      if (!isCheckoutDay) {
         return false;
       }
       // Must have password
@@ -166,16 +168,16 @@ export function PasswordModal({
       );
     }
 
-    // Temporal restriction message for cleaner (iCal mode, before cleaning day)
+    // Temporal restriction message for cleaner (before checkout day - Rule 10-11)
     if (isBlockedByTemporalRule) {
       return (
         <div className="mt-6 mb-4 flex w-full flex-col items-center justify-center rounded-xl bg-blue-50 border border-blue-200 py-5 dark:bg-blue-900/20 dark:border-blue-800">
           <span className="material-symbols-outlined text-3xl text-blue-600 dark:text-blue-400 mb-2">schedule</span>
           <span className="text-sm font-medium text-blue-700 dark:text-blue-300">
-            Senha disponível apenas no dia da limpeza
+            Senha disponível apenas no dia do checkout
           </span>
           <span className="text-xs text-blue-600 dark:text-blue-400 mt-1 text-center px-4">
-            Por segurança, a senha será liberada automaticamente na data agendada
+            Por segurança, a senha será liberada automaticamente às 00:01 do dia agendado
           </span>
         </div>
       );
