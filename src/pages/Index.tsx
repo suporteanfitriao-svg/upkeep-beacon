@@ -1,5 +1,5 @@
 import { useState, useMemo, useCallback, useEffect } from 'react';
-import { Loader2 } from 'lucide-react';
+import { Loader2, CalendarX } from 'lucide-react';
 import { toast } from 'sonner';
 import { isToday, isTomorrow, isSameDay } from 'date-fns';
 
@@ -11,6 +11,7 @@ import { AdminFilters, DateFilter } from '@/components/dashboard/AdminFilters';
 import { AdminScheduleRow } from '@/components/dashboard/AdminScheduleRow';
 import { ScheduleDetail } from '@/components/dashboard/ScheduleDetail';
 import { MobileDashboard } from '@/components/dashboard/MobileDashboard';
+import { UpcomingSchedules } from '@/components/dashboard/UpcomingSchedules';
 import { useSchedules, calculateStats } from '@/hooks/useSchedules';
 import { Schedule, ScheduleStatus } from '@/types/scheduling';
 import { useIsMobile } from '@/hooks/use-mobile';
@@ -340,11 +341,25 @@ const Index = () => {
             {/* Schedules List */}
             <section className="space-y-4">
               {filteredSchedules.length === 0 ? (
-                <div className="text-center py-12 bg-card rounded-3xl border shadow-sm">
-                  <p className="text-muted-foreground">Nenhum agendamento encontrado</p>
-                  <p className="text-sm text-muted-foreground mt-1">
-                    Tente ajustar os filtros de data ou busca
+                <div className="bg-card dark:bg-slate-800/50 rounded-3xl border border-slate-100 dark:border-slate-800 p-12 flex flex-col items-center justify-center text-center">
+                  <div className="w-20 h-20 bg-slate-50 dark:bg-slate-800 rounded-full flex items-center justify-center mb-6">
+                    <CalendarX className="h-10 w-10 text-slate-300 dark:text-slate-600" />
+                  </div>
+                  <h4 className="text-xl font-bold text-slate-800 dark:text-white mb-2">
+                    Nenhum agendamento encontrado
+                  </h4>
+                  <p className="text-muted-foreground max-w-md mx-auto">
+                    Tente ajustar os filtros de data ou busca para encontrar o que procura.
                   </p>
+                  
+                  {/* Upcoming Schedules Section */}
+                  <UpcomingSchedules 
+                    schedules={schedules} 
+                    onGoToDate={(date) => {
+                      setDateFilter('custom');
+                      setCustomDate(date);
+                    }}
+                  />
                 </div>
               ) : (
                 filteredSchedules.map(schedule => (
