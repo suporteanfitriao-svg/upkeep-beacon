@@ -1,25 +1,46 @@
-import { Bell, Moon, Sun } from 'lucide-react';
+import { Bell, Moon, Sun, RefreshCw, Calendar } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { SidebarTrigger } from '@/components/ui/sidebar';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { Badge } from '@/components/ui/badge';
 import { useAuth } from '@/hooks/useAuth';
 import { useState } from 'react';
+import { format } from 'date-fns';
+import { ptBR } from 'date-fns/locale';
 
 interface AdminDashboardHeaderProps {
   onRefresh?: () => void;
+  lastSyncTime?: Date | null;
+  newReservationsCount?: number;
 }
 
-export function AdminDashboardHeader({ onRefresh }: AdminDashboardHeaderProps) {
+export function AdminDashboardHeader({ onRefresh, lastSyncTime, newReservationsCount = 0 }: AdminDashboardHeaderProps) {
   const { user } = useAuth();
   const [isDark, setIsDark] = useState(false);
+  const [isRefreshing, setIsRefreshing] = useState(false);
 
   const toggleTheme = () => {
     setIsDark(!isDark);
     document.documentElement.classList.toggle('dark');
   };
 
+  const handleRefresh = async () => {
+    if (onRefresh) {
+      setIsRefreshing(true);
+      try {
+        await onRefresh();
+      } finally {
+        setIsRefreshing(false);
+      }
+    }
+  };
+
   const userName = user?.email?.split('@')[0] || 'Admin User';
   const userInitials = userName.substring(0, 2).toUpperCase();
+
+  const formatLastSync = (date: Date) => {
+    return format(date, "dd/MM 'às' HH:mm", { locale: ptBR });
+  };
 
   return (
     <header className="h-20 bg-card border-b border-border flex items-center justify-between px-8 mb-6 -mx-6 -mt-6">
@@ -33,6 +54,32 @@ export function AdminDashboardHeader({ onRefresh }: AdminDashboardHeaderProps) {
       </div>
       
       <div className="flex items-center gap-6">
+        {/* Sync info and refresh button */}
+        <div className="flex items-center gap-3">
+          {lastSyncTime && (
+            <div className="hidden md:flex items-center gap-2 text-xs text-muted-foreground">
+              <Calendar className="w-3.5 h-3.5" />
+              <span>Última sync: {formatLastSync(lastSyncTime)}</span>
+            </div>
+          )}
+          
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleRefresh}
+            disabled={isRefreshing}
+            className="gap-2"
+          >
+            <RefreshCw className={`w-4 h-4 ${isRefreshing ? 'animate-spin' : ''}`} />
+            <span className="hidden sm:inline">Sincronizar</span>
+            {newReservationsCount > 0 && (
+              <Badge variant="default" className="ml-1 h-5 px-1.5 text-xs bg-primary">
+                +{newReservationsCount}
+              </Badge>
+            )}
+          </Button>
+        </div>
+
         <Button 
           variant="ghost" 
           size="icon" 

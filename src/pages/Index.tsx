@@ -22,6 +22,10 @@ const Index = () => {
   const [selectedSchedule, setSelectedSchedule] = useState<Schedule | null>(null);
   const [activeStatusFilter, setActiveStatusFilter] = useState<ScheduleStatus | 'all'>('all');
   
+  // Sync tracking
+  const [lastSyncTime, setLastSyncTime] = useState<Date | null>(null);
+  const [newReservationsCount, setNewReservationsCount] = useState(0);
+  
   // Filters
   const [dateFilter, setDateFilter] = useState<DateFilter>('today');
   const [customDate, setCustomDate] = useState<Date | undefined>(undefined);
@@ -111,7 +115,10 @@ const Index = () => {
 
   const handleRefresh = async () => {
     const result = await syncAndRefresh();
+    setLastSyncTime(new Date());
+    
     if (result?.synced !== undefined) {
+      setNewReservationsCount(result.synced);
       if (result.synced > 0) {
         toast.success(`${result.synced} reserva${result.synced > 1 ? 's' : ''} sincronizada${result.synced > 1 ? 's' : ''}!`, {
           description: 'Dashboard atualizado com sucesso',
@@ -122,6 +129,7 @@ const Index = () => {
         });
       }
     } else {
+      setNewReservationsCount(0);
       toast.success('Dashboard atualizado!');
     }
   };
@@ -249,7 +257,11 @@ const Index = () => {
         <AdminSidebar />
         
         <main className="flex-1 flex flex-col h-screen relative overflow-hidden">
-          <AdminDashboardHeader onRefresh={handleRefresh} />
+          <AdminDashboardHeader 
+            onRefresh={handleRefresh} 
+            lastSyncTime={lastSyncTime}
+            newReservationsCount={newReservationsCount}
+          />
 
           <div className="flex-1 overflow-y-auto p-8 scroll-smooth">
             {/* Status Cards */}
