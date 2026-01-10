@@ -89,27 +89,41 @@ const Index = () => {
   }, [schedules]);
 
   // Sync iCal reservations and refetch schedules
-  const syncAndRefresh = useCallback(async () => {
+  const syncAndRefresh = useCallback(async (): Promise<{ synced: number } | null> => {
     try {
       // Call edge function to sync iCal reservations
-      const { error: syncError } = await supabase.functions.invoke('sync-ical-reservations');
+      const { data, error: syncError } = await supabase.functions.invoke('sync-ical-reservations');
       
       if (syncError) {
         console.error('Error syncing iCal:', syncError);
-        // Continue with refetch even if sync fails
       }
       
       // Refetch schedules from database
       await refetch();
+      
+      return data as { synced: number } | null;
     } catch (err) {
       console.error('Sync error:', err);
       await refetch(); // Still refetch even if sync fails
+      return null;
     }
   }, [refetch]);
 
   const handleRefresh = async () => {
-    await syncAndRefresh();
-    toast.success('Dashboard sincronizado!');
+    const result = await syncAndRefresh();
+    if (result?.synced !== undefined) {
+      if (result.synced > 0) {
+        toast.success(`${result.synced} reserva${result.synced > 1 ? 's' : ''} sincronizada${result.synced > 1 ? 's' : ''}!`, {
+          description: 'Dashboard atualizado com sucesso',
+        });
+      } else {
+        toast.success('Dashboard atualizado!', {
+          description: 'Nenhuma nova reserva encontrada',
+        });
+      }
+    } else {
+      toast.success('Dashboard atualizado!');
+    }
   };
 
   const handleUpdateSchedule = async (updatedSchedule: Schedule, previousStatus?: ScheduleStatus) => {
