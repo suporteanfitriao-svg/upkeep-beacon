@@ -1,4 +1,4 @@
-import { Schedule, ScheduleStatus, ChecklistItem, MaintenanceIssue, STATUS_LABELS, STATUS_FLOW, STATUS_ALLOWED_ROLES, AppRole, CategoryPhoto } from '@/types/scheduling';
+import { Schedule, ScheduleStatus, ChecklistItem, ChecklistItemStatus, MaintenanceIssue, STATUS_LABELS, STATUS_FLOW, STATUS_ALLOWED_ROLES, AppRole, CategoryPhoto } from '@/types/scheduling';
 import { cn } from '@/lib/utils';
 import { format } from 'date-fns';
 import { useState, useMemo, useEffect, useCallback } from 'react';
@@ -61,7 +61,20 @@ export function ScheduleDetail({ schedule, onClose, onUpdateSchedule }: Schedule
   const [checklist, setChecklist] = useState(schedule.checklist);
   const [showIssueForm, setShowIssueForm] = useState(false);
   const [expandedCategories, setExpandedCategories] = useState<Record<string, boolean>>({});
-  const [checklistItemStates, setChecklistItemStates] = useState<Record<string, 'yes' | 'no' | null>>({});
+  // Initialize checklistItemStates from saved checklist status
+  const [checklistItemStates, setChecklistItemStates] = useState<Record<string, 'yes' | 'no' | null>>(() => {
+    const initialStates: Record<string, 'yes' | 'no' | null> = {};
+    schedule.checklist.forEach(item => {
+      if (item.status === 'ok') {
+        initialStates[item.id] = 'yes';
+      } else if (item.status === 'not_ok') {
+        initialStates[item.id] = 'no';
+      } else {
+        initialStates[item.id] = null;
+      }
+    });
+    return initialStates;
+  });
   const [showLocationModal, setShowLocationModal] = useState(false);
   const [showPasswordModal, setShowPasswordModal] = useState(false);
   const [showAttentionModal, setShowAttentionModal] = useState(false);
@@ -220,9 +233,14 @@ export function ScheduleDetail({ schedule, onClose, onUpdateSchedule }: Schedule
       [itemId]: value
     }));
     
-    // Update local checklist state without saving
+    // Update local checklist state - include status field to persist the NOT OK state
+    const itemStatus: ChecklistItemStatus = value === 'yes' ? 'ok' : 'not_ok';
     const updatedChecklist = checklist.map(item =>
-      item.id === itemId ? { ...item, completed: value === 'yes' } : item
+      item.id === itemId ? { 
+        ...item, 
+        completed: value === 'yes',
+        status: itemStatus
+      } : item
     );
     setChecklist(updatedChecklist);
     
