@@ -4,6 +4,7 @@ import { ptBR } from 'date-fns/locale';
 import { Calendar, Play, Clock, Check, ChevronRight, LayoutGrid, MessageSquare, Menu, RefreshCw } from 'lucide-react';
 import { Schedule } from '@/types/scheduling';
 import { cn } from '@/lib/utils';
+import { toast } from 'sonner';
 
 interface MobileDashboardProps {
   schedules: Schedule[];
@@ -15,6 +16,13 @@ interface MobileDashboardProps {
 const dayNames = ['DOM', 'SEG', 'TER', 'QUA', 'QUI', 'SEX', 'SÁB'];
 const AUTO_SYNC_INTERVAL = 60000; // 1 minute
 const PULL_THRESHOLD = 80; // pixels to trigger refresh
+
+// Vibrate helper function
+const vibrate = (pattern: number | number[] = 50) => {
+  if ('vibrate' in navigator) {
+    navigator.vibrate(pattern);
+  }
+};
 
 export function MobileDashboard({ schedules, onScheduleClick, onStartCleaning, onRefresh }: MobileDashboardProps) {
   const [selectedDate, setSelectedDate] = useState(new Date());
@@ -29,16 +37,32 @@ export function MobileDashboard({ schedules, onScheduleClick, onStartCleaning, o
   const [isPulling, setIsPulling] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
   const startYRef = useRef(0);
+  const isAutoSyncRef = useRef(false);
 
   // Handle manual refresh
-  const handleRefresh = useCallback(async () => {
+  const handleRefresh = useCallback(async (isAutoSync = false) => {
     if (isSyncing || !onRefresh) return;
+    isAutoSyncRef.current = isAutoSync;
     setIsSyncing(true);
     try {
       await onRefresh();
       setLastSyncTime(new Date());
+      
+      // Show toast for auto-sync
+      if (isAutoSync) {
+        toast.success('Sincronização automática concluída', {
+          duration: 2000,
+          position: 'top-center',
+        });
+      }
+      
+      // Vibrate on successful refresh (manual pull-to-refresh)
+      if (!isAutoSync) {
+        vibrate([50, 30, 50]); // Double vibration pattern
+      }
     } finally {
       setIsSyncing(false);
+      isAutoSyncRef.current = false;
     }
   }, [onRefresh, isSyncing]);
 
@@ -47,7 +71,7 @@ export function MobileDashboard({ schedules, onScheduleClick, onStartCleaning, o
     if (!onRefresh) return;
 
     const interval = setInterval(() => {
-      handleRefresh();
+      handleRefresh(true); // Pass true to indicate auto-sync
     }, AUTO_SYNC_INTERVAL);
 
     return () => clearInterval(interval);
@@ -70,12 +94,17 @@ export function MobileDashboard({ schedules, onScheduleClick, onStartCleaning, o
     if (diff > 0 && containerRef.current?.scrollTop === 0) {
       e.preventDefault();
       setPullDistance(Math.min(diff * 0.5, PULL_THRESHOLD * 1.5));
+      
+      // Light vibration when reaching threshold
+      if (diff * 0.5 >= PULL_THRESHOLD && diff * 0.5 < PULL_THRESHOLD + 5) {
+        vibrate(20);
+      }
     }
   }, [isPulling, isSyncing]);
 
   const handleTouchEnd = useCallback(async () => {
     if (pullDistance >= PULL_THRESHOLD && !isSyncing) {
-      await handleRefresh();
+      await handleRefresh(false); // Manual refresh
     }
     setPullDistance(0);
     setIsPulling(false);
@@ -266,7 +295,7 @@ export function MobileDashboard({ schedules, onScheduleClick, onStartCleaning, o
           {/* Sync Button */}
           {onRefresh && (
             <button 
-              onClick={handleRefresh}
+              onClick={() => handleRefresh(false)}
               disabled={isSyncing}
               className="relative flex h-10 w-10 items-center justify-center rounded-full transition-colors hover:bg-muted disabled:opacity-50"
             >
