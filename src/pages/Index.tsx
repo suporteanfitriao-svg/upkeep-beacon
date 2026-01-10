@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useCallback } from 'react';
 import { Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { isToday, isTomorrow, isSameDay } from 'date-fns';
@@ -14,6 +14,7 @@ import { MobileDashboard } from '@/components/dashboard/MobileDashboard';
 import { useSchedules, calculateStats } from '@/hooks/useSchedules';
 import { Schedule, ScheduleStatus } from '@/types/scheduling';
 import { useIsMobile } from '@/hooks/use-mobile';
+import { supabase } from '@/integrations/supabase/client';
 
 const Index = () => {
   const isMobile = useIsMobile();
@@ -87,9 +88,28 @@ const Index = () => {
     return schedules.filter(schedule => isToday(schedule.checkOut)).length;
   }, [schedules]);
 
+  // Sync iCal reservations and refetch schedules
+  const syncAndRefresh = useCallback(async () => {
+    try {
+      // Call edge function to sync iCal reservations
+      const { error: syncError } = await supabase.functions.invoke('sync-ical-reservations');
+      
+      if (syncError) {
+        console.error('Error syncing iCal:', syncError);
+        // Continue with refetch even if sync fails
+      }
+      
+      // Refetch schedules from database
+      await refetch();
+    } catch (err) {
+      console.error('Sync error:', err);
+      await refetch(); // Still refetch even if sync fails
+    }
+  }, [refetch]);
+
   const handleRefresh = async () => {
-    await refetch();
-    toast.success('Dashboard atualizado!');
+    await syncAndRefresh();
+    toast.success('Dashboard sincronizado!');
   };
 
   const handleUpdateSchedule = async (updatedSchedule: Schedule, previousStatus?: ScheduleStatus) => {
@@ -196,7 +216,7 @@ const Index = () => {
           schedules={schedules}
           onScheduleClick={setSelectedSchedule}
           onStartCleaning={handleStartCleaning}
-          onRefresh={refetch}
+          onRefresh={syncAndRefresh}
         />
         {selectedSchedule && (
           <ScheduleDetail
