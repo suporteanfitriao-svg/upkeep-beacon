@@ -196,6 +196,7 @@ const Index = () => {
           schedules={schedules}
           onScheduleClick={setSelectedSchedule}
           onStartCleaning={handleStartCleaning}
+          onRefresh={refetch}
         />
         {selectedSchedule && (
           <ScheduleDetail
