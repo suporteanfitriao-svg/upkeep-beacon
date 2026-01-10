@@ -10,7 +10,7 @@ interface MobileDashboardProps {
   schedules: Schedule[];
   onScheduleClick: (schedule: Schedule) => void;
   onStartCleaning: (scheduleId: string) => void;
-  onRefresh?: () => Promise<void>;
+  onRefresh?: () => Promise<{ synced: number } | null>;
 }
 
 const dayNames = ['DOM', 'SEG', 'TER', 'QUA', 'QUI', 'SEX', 'SÁB'];
@@ -45,20 +45,36 @@ export function MobileDashboard({ schedules, onScheduleClick, onStartCleaning, o
     isAutoSyncRef.current = isAutoSync;
     setIsSyncing(true);
     try {
-      await onRefresh();
+      const result = await onRefresh();
       setLastSyncTime(new Date());
       
-      // Show toast for auto-sync
+      // Show toast with sync count
       if (isAutoSync) {
-        toast.success('Sincronização automática concluída', {
-          duration: 2000,
-          position: 'top-center',
-        });
+        if (result?.synced && result.synced > 0) {
+          toast.success(`${result.synced} reserva${result.synced > 1 ? 's' : ''} sincronizada${result.synced > 1 ? 's' : ''}!`, {
+            duration: 3000,
+            position: 'top-center',
+          });
+        } else {
+          toast.success('Sincronização automática concluída', {
+            duration: 2000,
+            position: 'top-center',
+          });
+        }
       }
       
       // Vibrate on successful refresh (manual pull-to-refresh)
       if (!isAutoSync) {
         vibrate([50, 30, 50]); // Double vibration pattern
+        
+        // Show toast for manual refresh
+        if (result?.synced !== undefined) {
+          if (result.synced > 0) {
+            toast.success(`${result.synced} reserva${result.synced > 1 ? 's' : ''} sincronizada${result.synced > 1 ? 's' : ''}!`);
+          } else {
+            toast.success('Nenhuma nova reserva');
+          }
+        }
       }
     } finally {
       setIsSyncing(false);
