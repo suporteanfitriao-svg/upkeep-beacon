@@ -1,7 +1,7 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect, useCallback } from 'react';
 import { format, isSameDay, addDays, startOfWeek, getWeek, isAfter, startOfDay, isToday as checkIsToday, startOfMonth, endOfMonth, eachDayOfInterval, addMonths, subMonths, getDay } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { Calendar, Play, Clock, Check, ChevronRight, LayoutGrid, MessageSquare, Menu } from 'lucide-react';
+import { Calendar, Play, Clock, Check, ChevronRight, LayoutGrid, MessageSquare, Menu, RefreshCw } from 'lucide-react';
 import { Schedule } from '@/types/scheduling';
 import { cn } from '@/lib/utils';
 
@@ -9,15 +9,42 @@ interface MobileDashboardProps {
   schedules: Schedule[];
   onScheduleClick: (schedule: Schedule) => void;
   onStartCleaning: (scheduleId: string) => void;
+  onRefresh?: () => Promise<void>;
 }
 
 const dayNames = ['DOM', 'SEG', 'TER', 'QUA', 'QUI', 'SEX', 'SÁB'];
+const AUTO_SYNC_INTERVAL = 60000; // 1 minute
 
-export function MobileDashboard({ schedules, onScheduleClick, onStartCleaning }: MobileDashboardProps) {
+export function MobileDashboard({ schedules, onScheduleClick, onStartCleaning, onRefresh }: MobileDashboardProps) {
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [activeTab, setActiveTab] = useState<'inicio' | 'agenda' | 'msgs' | 'menu'>('inicio');
   const [viewMode, setViewMode] = useState<'dia' | 'calendario'>('dia');
   const [currentMonth, setCurrentMonth] = useState(new Date());
+  const [isSyncing, setIsSyncing] = useState(false);
+  const [lastSyncTime, setLastSyncTime] = useState<Date | null>(null);
+
+  // Handle manual refresh
+  const handleRefresh = useCallback(async () => {
+    if (isSyncing || !onRefresh) return;
+    setIsSyncing(true);
+    try {
+      await onRefresh();
+      setLastSyncTime(new Date());
+    } finally {
+      setIsSyncing(false);
+    }
+  }, [onRefresh, isSyncing]);
+
+  // Auto-sync every minute
+  useEffect(() => {
+    if (!onRefresh) return;
+
+    const interval = setInterval(() => {
+      handleRefresh();
+    }, AUTO_SYNC_INTERVAL);
+
+    return () => clearInterval(interval);
+  }, [handleRefresh, onRefresh]);
 
   // Generate week days for the calendar strip (Dia view)
   const weekDays = useMemo(() => {
@@ -151,13 +178,28 @@ export function MobileDashboard({ schedules, onScheduleClick, onStartCleaning }:
             </button>
           </>
         )}
-        <button className="relative flex h-10 w-10 overflow-hidden rounded-full border-2 border-white shadow-sm dark:border-slate-600">
-          <img 
-            alt="Profile" 
-            className="h-full w-full object-cover" 
-            src="https://lh3.googleusercontent.com/aida-public/AB6AXuCp65lGt4lxJFFm-TGO-aIzx2sbcbs3rx9y7l4YFYJ3H4XYtGxLsjG-HTXQ1vYcnIvJibtUKZFMVCRYmEHabCfeC1YblSD4Mh_Naf4Pshd0mXFz0I3iBc07YtELAj5xOZO9NIkMVQycxZHlzhXHFnf95lrmJuG6cQVXr7ifsokiBBbLd9F5hh7uHa765-m2naizne6TJbvT_CeV1dmJCmyrDm42szalavocy6zqBJNWiMam9g3DWEKmAn7eJxQHww-n9ndHlQjpCEUl"
-          />
-        </button>
+        <div className="flex items-center gap-2">
+          {/* Sync Button */}
+          {onRefresh && (
+            <button 
+              onClick={handleRefresh}
+              disabled={isSyncing}
+              className="relative flex h-10 w-10 items-center justify-center rounded-full transition-colors hover:bg-muted disabled:opacity-50"
+            >
+              <RefreshCw className={cn("w-5 h-5 text-muted-foreground", isSyncing && "animate-spin")} />
+              {lastSyncTime && !isSyncing && (
+                <span className="absolute -bottom-0.5 -right-0.5 h-2.5 w-2.5 rounded-full bg-primary border-2 border-stone-50 dark:border-[#22252a]" />
+              )}
+            </button>
+          )}
+          <button className="relative flex h-10 w-10 overflow-hidden rounded-full border-2 border-white shadow-sm dark:border-slate-600">
+            <img 
+              alt="Profile" 
+              className="h-full w-full object-cover" 
+              src="https://lh3.googleusercontent.com/aida-public/AB6AXuCp65lGt4lxJFFm-TGO-aIzx2sbcbs3rx9y7l4YFYJ3H4XYtGxLsjG-HTXQ1vYcnIvJibtUKZFMVCRYmEHabCfeC1YblSD4Mh_Naf4Pshd0mXFz0I3iBc07YtELAj5xOZO9NIkMVQycxZHlzhXHFnf95lrmJuG6cQVXr7ifsokiBBbLd9F5hh7uHa765-m2naizne6TJbvT_CeV1dmJCmyrDm42szalavocy6zqBJNWiMam9g3DWEKmAn7eJxQHww-n9ndHlQjpCEUl"
+            />
+          </button>
+        </div>
       </header>
 
       {/* View Toggle */}
