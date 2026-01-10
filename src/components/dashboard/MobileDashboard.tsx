@@ -1,5 +1,5 @@
-import { useState, useMemo, useEffect, useCallback } from 'react';
-import { format, isSameDay, addDays, startOfWeek, getWeek, isAfter, startOfDay, isToday as checkIsToday, startOfMonth, endOfMonth, eachDayOfInterval, addMonths, subMonths, getDay } from 'date-fns';
+import { useState, useMemo, useEffect, useCallback, useRef } from 'react';
+import { format, isSameDay, addDays, startOfWeek, getWeek, isAfter, startOfDay, isToday as checkIsToday, startOfMonth, endOfMonth, eachDayOfInterval, addMonths, subMonths, getDay, formatDistanceToNow } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { Calendar, Play, Clock, Check, ChevronRight, LayoutGrid, MessageSquare, Menu, RefreshCw } from 'lucide-react';
 import { Schedule } from '@/types/scheduling';
@@ -14,6 +14,7 @@ interface MobileDashboardProps {
 
 const dayNames = ['DOM', 'SEG', 'TER', 'QUA', 'QUI', 'SEX', 'SÁB'];
 const AUTO_SYNC_INTERVAL = 60000; // 1 minute
+const PULL_THRESHOLD = 80; // pixels to trigger refresh
 
 export function MobileDashboard({ schedules, onScheduleClick, onStartCleaning, onRefresh }: MobileDashboardProps) {
   const [selectedDate, setSelectedDate] = useState(new Date());
@@ -22,6 +23,12 @@ export function MobileDashboard({ schedules, onScheduleClick, onStartCleaning, o
   const [currentMonth, setCurrentMonth] = useState(new Date());
   const [isSyncing, setIsSyncing] = useState(false);
   const [lastSyncTime, setLastSyncTime] = useState<Date | null>(null);
+  
+  // Pull-to-refresh state
+  const [pullDistance, setPullDistance] = useState(0);
+  const [isPulling, setIsPulling] = useState(false);
+  const containerRef = useRef<HTMLDivElement>(null);
+  const startYRef = useRef(0);
 
   // Handle manual refresh
   const handleRefresh = useCallback(async () => {
@@ -45,6 +52,40 @@ export function MobileDashboard({ schedules, onScheduleClick, onStartCleaning, o
 
     return () => clearInterval(interval);
   }, [handleRefresh, onRefresh]);
+
+  // Pull-to-refresh handlers
+  const handleTouchStart = useCallback((e: React.TouchEvent) => {
+    if (containerRef.current?.scrollTop === 0) {
+      startYRef.current = e.touches[0].clientY;
+      setIsPulling(true);
+    }
+  }, []);
+
+  const handleTouchMove = useCallback((e: React.TouchEvent) => {
+    if (!isPulling || isSyncing) return;
+    
+    const currentY = e.touches[0].clientY;
+    const diff = currentY - startYRef.current;
+    
+    if (diff > 0 && containerRef.current?.scrollTop === 0) {
+      e.preventDefault();
+      setPullDistance(Math.min(diff * 0.5, PULL_THRESHOLD * 1.5));
+    }
+  }, [isPulling, isSyncing]);
+
+  const handleTouchEnd = useCallback(async () => {
+    if (pullDistance >= PULL_THRESHOLD && !isSyncing) {
+      await handleRefresh();
+    }
+    setPullDistance(0);
+    setIsPulling(false);
+  }, [pullDistance, isSyncing, handleRefresh]);
+
+  // Format last sync time
+  const lastSyncText = useMemo(() => {
+    if (!lastSyncTime) return null;
+    return formatDistanceToNow(lastSyncTime, { addSuffix: true, locale: ptBR });
+  }, [lastSyncTime]);
 
   // Generate week days for the calendar strip (Dia view)
   const weekDays = useMemo(() => {
@@ -123,9 +164,47 @@ export function MobileDashboard({ schedules, onScheduleClick, onStartCleaning, o
   const handleNextMonth = () => setCurrentMonth(prev => addMonths(prev, 1));
 
   return (
-    <div className="relative flex min-h-screen w-full flex-col overflow-x-hidden pb-24 bg-stone-50 dark:bg-[#22252a] font-display text-slate-800 dark:text-slate-100 antialiased">
+    <div 
+      ref={containerRef}
+      onTouchStart={handleTouchStart}
+      onTouchMove={handleTouchMove}
+      onTouchEnd={handleTouchEnd}
+      className="relative flex min-h-screen w-full flex-col overflow-x-hidden pb-24 bg-stone-50 dark:bg-[#22252a] font-display text-slate-800 dark:text-slate-100 antialiased touch-pan-y"
+    >
+      {/* Pull-to-refresh indicator */}
+      <div 
+        className={cn(
+          "absolute left-0 right-0 flex items-center justify-center transition-all duration-200 z-30",
+          pullDistance > 0 ? "opacity-100" : "opacity-0"
+        )}
+        style={{ 
+          top: Math.min(pullDistance - 40, 60),
+          transform: `scale(${Math.min(pullDistance / PULL_THRESHOLD, 1)})`
+        }}
+      >
+        <div className={cn(
+          "flex items-center gap-2 px-4 py-2 rounded-full bg-white dark:bg-slate-800 shadow-lg border border-slate-200 dark:border-slate-700",
+          pullDistance >= PULL_THRESHOLD && "bg-primary text-white border-primary"
+        )}>
+          <RefreshCw className={cn(
+            "w-4 h-4",
+            isSyncing && "animate-spin",
+            pullDistance >= PULL_THRESHOLD ? "text-white" : "text-primary"
+          )} />
+          <span className={cn(
+            "text-xs font-medium",
+            pullDistance >= PULL_THRESHOLD ? "text-white" : "text-slate-600 dark:text-slate-300"
+          )}>
+            {pullDistance >= PULL_THRESHOLD ? "Solte para atualizar" : "Puxe para atualizar"}
+          </span>
+        </div>
+      </div>
+
       {/* Header */}
-      <header className="sticky top-0 z-20 flex items-center justify-between bg-stone-50/90 dark:bg-[#22252a]/90 px-6 py-4 backdrop-blur-md transition-all">
+      <header 
+        className="sticky top-0 z-20 flex items-center justify-between bg-stone-50/90 dark:bg-[#22252a]/90 px-6 py-4 backdrop-blur-md transition-all"
+        style={{ transform: pullDistance > 0 ? `translateY(${pullDistance * 0.3}px)` : undefined }}
+      >
         {viewMode === 'calendario' ? (
           <>
             <button className="flex items-center justify-center rounded-full p-1 transition-colors hover:bg-slate-200 dark:hover:bg-slate-700">
@@ -167,7 +246,12 @@ export function MobileDashboard({ schedules, onScheduleClick, onStartCleaning, o
                 <h2 className="text-xl font-extrabold leading-none tracking-tight text-foreground">
                   <span className="capitalize">{monthName}</span> <span className="text-primary">{yearNumber}</span>
                 </h2>
-                <span className="text-xs font-medium text-muted-foreground">Semana {weekNumber}</span>
+                <div className="flex items-center gap-2">
+                  <span className="text-xs font-medium text-muted-foreground">Semana {weekNumber}</span>
+                  {lastSyncText && (
+                    <span className="text-[10px] text-muted-foreground/70">• Sync {lastSyncText}</span>
+                  )}
+                </div>
               </div>
             </div>
             <button 
