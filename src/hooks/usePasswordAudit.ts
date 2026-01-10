@@ -1,7 +1,7 @@
 import { useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 
-type PasswordAction = 'viewed' | 'created' | 'updated' | 'visualizou_senha_ical';
+type PasswordAction = 'viewed' | 'created' | 'updated' | 'visualizou_senha_ical' | 'visualizou_senha';
 
 interface LogPasswordActionParams {
   scheduleId?: string;
