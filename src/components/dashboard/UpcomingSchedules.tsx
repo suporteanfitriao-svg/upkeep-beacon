@@ -77,7 +77,7 @@ export const UpcomingSchedules = ({ schedules, onGoToDate }: UpcomingSchedulesPr
   return (
     <div className="w-full border-t border-slate-100 dark:border-slate-700 pt-10 mt-6">
       <p className="text-[10px] uppercase tracking-[0.2em] font-bold text-muted-foreground mb-6 text-left">
-        Próximos agendamentos
+        Próximos agendamentos <span className="text-primary">({upcomingSchedules.length})</span>
       </p>
       
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">

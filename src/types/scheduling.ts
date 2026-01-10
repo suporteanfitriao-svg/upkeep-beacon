@@ -6,11 +6,14 @@ export type Priority = 'high' | 'medium' | 'low';
 
 export type AppRole = 'admin' | 'manager' | 'cleaner';
 
+export type ChecklistItemStatus = 'pending' | 'ok' | 'not_ok';
+
 export interface ChecklistItem {
   id: string;
   title: string;
   completed: boolean;
   category: string;
+  status?: ChecklistItemStatus; // 'pending' | 'ok' | 'not_ok' - tracks if marked as OK or NOT OK
 }
 
 export interface PhotoUpload {

@@ -768,8 +768,18 @@ export function MobileDashboard({ schedules, onScheduleClick, onStartCleaning, o
 
             {/* Empty state when no schedules */}
             {selectedDaySchedules.length === 0 && (
-              <div className="px-6 py-12 text-center">
-                <p className="text-[#8A8B88]">Nenhum agendamento para este dia</p>
+              <div className="px-6 py-12 flex flex-col items-center text-center">
+                <div className="w-20 h-20 bg-slate-100 dark:bg-slate-800 rounded-full flex items-center justify-center mb-4">
+                  <Calendar className="h-10 w-10 text-slate-300 dark:text-slate-600" />
+                </div>
+                <h3 className="text-lg font-bold text-slate-800 dark:text-white mb-2">
+                  Nenhum agendamento
+                </h3>
+                <p className="text-sm text-[#8A8B88] max-w-[280px]">
+                  {checkIsToday(selectedDate) 
+                    ? 'Você não tem tarefas para hoje. Aproveite o dia! 🎉' 
+                    : 'Não há agendamentos para esta data.'}
+                </p>
               </div>
             )}
           </main>
