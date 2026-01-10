@@ -239,6 +239,7 @@ export type Database = {
           created_at: string
           default_check_in_time: string | null
           default_check_out_time: string | null
+          global_access_password: string | null
           id: string
           image_url: string | null
           name: string
@@ -253,6 +254,7 @@ export type Database = {
           created_at?: string
           default_check_in_time?: string | null
           default_check_out_time?: string | null
+          global_access_password?: string | null
           id?: string
           image_url?: string | null
           name: string
@@ -267,6 +269,7 @@ export type Database = {
           created_at?: string
           default_check_in_time?: string | null
           default_check_out_time?: string | null
+          global_access_password?: string | null
           id?: string
           image_url?: string | null
           name?: string
@@ -477,6 +480,7 @@ export type Database = {
           checklists: Json | null
           cleaner_avatar: string | null
           cleaner_name: string | null
+          cleaner_observations: string | null
           created_at: string
           end_at: string | null
           estimated_duration: number | null
@@ -511,6 +515,7 @@ export type Database = {
           checklists?: Json | null
           cleaner_avatar?: string | null
           cleaner_name?: string | null
+          cleaner_observations?: string | null
           created_at?: string
           end_at?: string | null
           estimated_duration?: number | null
@@ -545,6 +550,7 @@ export type Database = {
           checklists?: Json | null
           cleaner_avatar?: string | null
           cleaner_name?: string | null
+          cleaner_observations?: string | null
           created_at?: string
           end_at?: string | null
           estimated_duration?: number | null
