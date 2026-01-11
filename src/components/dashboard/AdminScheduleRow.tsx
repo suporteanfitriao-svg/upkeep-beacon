@@ -407,20 +407,37 @@ export function AdminScheduleRow({ schedule, onClick, onScheduleUpdated }: Admin
                     </div>
                   )}
                   {/* Password indicator for manual mode */}
-                  {passwordMode === 'manual' && canManage && !hasManualPassword && (
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setShowPasswordModal(true);
-                      }}
-                      className="flex items-center gap-1 bg-purple-100 dark:bg-purple-900/40 px-2 py-0.5 rounded-full hover:bg-purple-200 dark:hover:bg-purple-900/60 transition-colors"
-                      title="Definir senha manual"
-                    >
-                      <KeyRound className="w-3 h-3 text-purple-500" />
-                      <span className="text-[10px] font-bold text-purple-600 dark:text-purple-400 uppercase tracking-wide">
-                        Senha
-                      </span>
-                    </button>
+                  {passwordMode === 'manual' && canManage && (
+                    hasManualPassword ? (
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setShowPasswordModal(true);
+                        }}
+                        className="flex items-center gap-1 bg-green-100 dark:bg-green-900/40 px-2 py-0.5 rounded-full hover:bg-green-200 dark:hover:bg-green-900/60 transition-colors"
+                        title="Senha definida - clique para alterar"
+                      >
+                        <Check className="w-3 h-3 text-green-500" />
+                        <KeyRound className="w-3 h-3 text-green-500" />
+                        <span className="text-[10px] font-bold text-green-600 dark:text-green-400 uppercase tracking-wide">
+                          Senha
+                        </span>
+                      </button>
+                    ) : (
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setShowPasswordModal(true);
+                        }}
+                        className="flex items-center gap-1 bg-purple-100 dark:bg-purple-900/40 px-2 py-0.5 rounded-full hover:bg-purple-200 dark:hover:bg-purple-900/60 transition-colors"
+                        title="Definir senha manual"
+                      >
+                        <KeyRound className="w-3 h-3 text-purple-500" />
+                        <span className="text-[10px] font-bold text-purple-600 dark:text-purple-400 uppercase tracking-wide">
+                          Senha
+                        </span>
+                      </button>
+                    )
                   )}
                 </div>
               </div>
