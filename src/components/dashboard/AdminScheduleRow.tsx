@@ -1,11 +1,12 @@
 import { useState, useEffect } from 'react';
 import { Schedule, ScheduleStatus, STATUS_FLOW, STATUS_LABELS, STATUS_ALLOWED_ROLES } from '@/types/scheduling';
 import { cn } from '@/lib/utils';
-import { AlertTriangle, Check, Clock, Sparkles, ChevronDown, ChevronUp, ExternalLink, User, Timer, Play, CircleCheck } from 'lucide-react';
+import { AlertTriangle, Check, Clock, Sparkles, ChevronDown, ChevronUp, ExternalLink, User, Timer, Play, CircleCheck, KeyRound } from 'lucide-react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { AssignCleanerPopover } from './AssignCleanerPopover';
 import { EditTimesPopover } from './EditTimesPopover';
+import { PasswordModal } from './PasswordModal';
 import { useUserRole } from '@/hooks/useUserRole';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
@@ -114,6 +115,8 @@ export function AdminScheduleRow({ schedule, onClick, onScheduleUpdated }: Admin
     targetStatus: ScheduleStatus | null;
     isRelease: boolean;
   }>({ open: false, targetStatus: null, isRelease: false });
+  const [passwordMode, setPasswordMode] = useState<'ical' | 'manual' | 'global' | null>(null);
+  const [showPasswordModal, setShowPasswordModal] = useState(false);
 
   const statusStyle = statusConfig[localSchedule.status];
   const hasIssue = localSchedule.maintenanceStatus !== 'ok';
@@ -123,6 +126,21 @@ export function AdminScheduleRow({ schedule, onClick, onScheduleUpdated }: Admin
   const Icon = statusStyle.icon;
   const isCompleted = localSchedule.status === 'completed';
   const canManage = isAdmin || isManager;
+  const hasManualPassword = Boolean(localSchedule.accessPassword);
+
+  // Fetch property password mode
+  useEffect(() => {
+    const fetchPasswordMode = async () => {
+      if (!localSchedule.propertyId) return;
+      const { data } = await supabase
+        .from('properties')
+        .select('password_mode')
+        .eq('id', localSchedule.propertyId)
+        .single();
+      if (data) setPasswordMode(data.password_mode as 'ical' | 'manual' | 'global');
+    };
+    fetchPasswordMode();
+  }, [localSchedule.propertyId]);
 
   // Fetch team member id for current user
   useEffect(() => {
@@ -388,6 +406,22 @@ export function AdminScheduleRow({ schedule, onClick, onScheduleUpdated }: Admin
                       </span>
                     </div>
                   )}
+                  {/* Password indicator for manual mode */}
+                  {passwordMode === 'manual' && canManage && !hasManualPassword && (
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setShowPasswordModal(true);
+                      }}
+                      className="flex items-center gap-1 bg-purple-100 dark:bg-purple-900/40 px-2 py-0.5 rounded-full hover:bg-purple-200 dark:hover:bg-purple-900/60 transition-colors"
+                      title="Definir senha manual"
+                    >
+                      <KeyRound className="w-3 h-3 text-purple-500" />
+                      <span className="text-[10px] font-bold text-purple-600 dark:text-purple-400 uppercase tracking-wide">
+                        Senha
+                      </span>
+                    </button>
+                  )}
                 </div>
               </div>
             </div>
@@ -556,6 +590,50 @@ export function AdminScheduleRow({ schedule, onClick, onScheduleUpdated }: Admin
                 </div>
               </div>
 
+              {/* Password Section - Only for manual mode */}
+              {passwordMode === 'manual' && canManage && (
+                <div className="bg-muted/30 rounded-xl p-4">
+                  <div className="flex items-center gap-2 mb-3">
+                    <KeyRound className="w-4 h-4 text-muted-foreground" />
+                    <span className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
+                      Senha Manual
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between gap-2">
+                    <div className="flex items-center gap-2">
+                      {hasManualPassword ? (
+                        <>
+                          <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 text-xs font-medium">
+                            <Check className="w-3 h-3" />
+                            Definida
+                          </span>
+                          <span className="font-mono text-sm font-bold text-foreground tracking-widest">
+                            {localSchedule.accessPassword}
+                          </span>
+                        </>
+                      ) : (
+                        <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400 text-xs font-medium">
+                          <AlertTriangle className="w-3 h-3" />
+                          Não definida
+                        </span>
+                      )}
+                    </div>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="gap-1.5"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setShowPasswordModal(true);
+                      }}
+                    >
+                      <KeyRound className="w-3.5 h-3.5" />
+                      {hasManualPassword ? 'Alterar' : 'Definir'}
+                    </Button>
+                  </div>
+                </div>
+              )}
+
               {/* Quick Info & Open Details */}
               <div className="bg-muted/30 rounded-xl p-4 flex flex-col justify-between">
                 <div className="flex items-center gap-2 mb-3">
@@ -594,6 +672,25 @@ export function AdminScheduleRow({ schedule, onClick, onScheduleUpdated }: Admin
           </div>
         </CollapsibleContent>
       </article>
+
+      {/* Password Modal */}
+      {showPasswordModal && (
+        <PasswordModal
+          propertyId={localSchedule.propertyId}
+          propertyName={localSchedule.propertyName}
+          scheduleId={localSchedule.id}
+          scheduleDate={localSchedule.checkOut.toISOString()}
+          passwordFromIcal={localSchedule.doorPassword}
+          accessPassword={localSchedule.accessPassword}
+          teamMemberId={teamMemberId}
+          onClose={() => setShowPasswordModal(false)}
+          onPasswordUpdated={(newPassword) => {
+            const updated = { ...localSchedule, accessPassword: newPassword };
+            setLocalSchedule(updated);
+            onScheduleUpdated?.(updated);
+          }}
+        />
+      )}
 
       {/* Confirmation Dialog */}
       <AlertDialog open={confirmDialog.open} onOpenChange={(open) => !open && setConfirmDialog({ open: false, targetStatus: null, isRelease: false })}>
