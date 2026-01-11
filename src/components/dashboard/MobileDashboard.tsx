@@ -332,9 +332,9 @@ export function MobileDashboard({ schedules, onScheduleClick, onStartCleaning, o
         </div>
       </header>
 
-      {/* View Toggle */}
-      <div className="px-6 pt-2">
-        <div className="relative flex h-10 w-full items-center rounded-xl bg-slate-100 dark:bg-slate-800 p-1">
+      {/* View Toggle + Today Button */}
+      <div className="px-6 pt-2 flex items-center gap-2">
+        <div className="relative flex h-10 flex-1 items-center rounded-xl bg-slate-100 dark:bg-slate-800 p-1">
           <button 
             onClick={() => setViewMode('dia')}
             className={cn(
@@ -358,6 +358,22 @@ export function MobileDashboard({ schedules, onScheduleClick, onStartCleaning, o
             Calendário
           </button>
         </div>
+        
+        {/* Today Button - only shows when not on today */}
+        {!isSelectedToday && (
+          <button
+            onClick={() => {
+              const today = new Date();
+              setSelectedDate(startOfDay(today));
+              setCurrentMonth(startOfMonth(today));
+              vibrate(30);
+            }}
+            className="flex h-10 items-center gap-1.5 px-3 rounded-xl bg-primary text-white text-xs font-bold shadow-sm hover:bg-primary/90 transition-all active:scale-95"
+          >
+            <Calendar className="w-3.5 h-3.5" />
+            Hoje
+          </button>
+        )}
       </div>
 
       {viewMode === 'calendario' ? (
