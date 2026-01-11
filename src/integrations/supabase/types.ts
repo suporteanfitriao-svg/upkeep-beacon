@@ -283,6 +283,7 @@ export type Database = {
         Row: {
           created_at: string
           id: string
+          is_active: boolean
           is_default: boolean
           items: Json
           name: string
@@ -292,6 +293,7 @@ export type Database = {
         Insert: {
           created_at?: string
           id?: string
+          is_active?: boolean
           is_default?: boolean
           items?: Json
           name?: string
@@ -301,6 +303,7 @@ export type Database = {
         Update: {
           created_at?: string
           id?: string
+          is_active?: boolean
           is_default?: boolean
           items?: Json
           name?: string
@@ -477,6 +480,7 @@ export type Database = {
           check_in_time: string
           check_out_time: string
           checklist_loaded_at: string | null
+          checklist_state: Json | null
           checklists: Json | null
           cleaner_avatar: string | null
           cleaner_name: string | null
@@ -512,6 +516,7 @@ export type Database = {
           check_in_time: string
           check_out_time: string
           checklist_loaded_at?: string | null
+          checklist_state?: Json | null
           checklists?: Json | null
           cleaner_avatar?: string | null
           cleaner_name?: string | null
@@ -547,6 +552,7 @@ export type Database = {
           check_in_time?: string
           check_out_time?: string
           checklist_loaded_at?: string | null
+          checklist_state?: Json | null
           checklists?: Json | null
           cleaner_avatar?: string | null
           cleaner_name?: string | null
@@ -757,6 +763,10 @@ export type Database = {
           p_to_status: string
         }
         Returns: undefined
+      }
+      can_deactivate_checklist: {
+        Args: { p_checklist_id?: string; p_property_id: string }
+        Returns: Json
       }
       has_any_role: { Args: { _user_id: string }; Returns: boolean }
       has_role: {

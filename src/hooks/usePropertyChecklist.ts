@@ -35,6 +35,7 @@ export function usePropertyChecklist({
         .from('property_checklists')
         .select('id, name, items')
         .eq('property_id', propertyId)
+        .eq('is_active', true)
         .limit(1);
 
       if (error) throw error;

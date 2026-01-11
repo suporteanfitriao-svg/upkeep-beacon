@@ -45,6 +45,7 @@ interface PropertyChecklist {
   name: string;
   items: any[];
   is_default: boolean;
+  is_active?: boolean;
   created_at: string;
 }
 
@@ -139,7 +140,8 @@ export default function Properties() {
 
     setPropertyChecklists((data || []).map(item => ({
       ...item,
-      items: Array.isArray(item.items) ? item.items : []
+      items: Array.isArray(item.items) ? item.items : [],
+      is_active: item.is_active ?? true
     })));
   };
 
