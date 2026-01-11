@@ -7,6 +7,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { useState } from 'react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
+import { useNavigate } from 'react-router-dom';
 
 interface AdminDashboardHeaderProps {
   onRefresh?: () => void;
@@ -16,6 +17,7 @@ interface AdminDashboardHeaderProps {
 
 export function AdminDashboardHeader({ onRefresh, lastSyncTime, newReservationsCount = 0 }: AdminDashboardHeaderProps) {
   const { user } = useAuth();
+  const navigate = useNavigate();
   const [isDark, setIsDark] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
 
@@ -96,18 +98,22 @@ export function AdminDashboardHeader({ onRefresh, lastSyncTime, newReservationsC
         
         <div className="flex items-center gap-3 pl-6 border-l border-border">
           <div className="text-right hidden sm:block">
-            <p className="text-sm font-semibold text-foreground">Admin User</p>
+            <p className="text-sm font-semibold text-foreground">{userName}</p>
             <p className="text-xs text-muted-foreground">Gerente</p>
           </div>
-          <div className="relative">
+          <button 
+            onClick={() => navigate('/minha-conta')}
+            className="relative cursor-pointer hover:opacity-80 transition-opacity focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 rounded-full"
+            title="Minha Conta"
+          >
             <Avatar className="h-10 w-10 border-2 border-muted">
-              <AvatarImage src="https://lh3.googleusercontent.com/aida-public/AB6AXuBnwibARpZ3nGPa0lil8MyTuRYfmBm8TiWYhkJivKL95XoNdzgh3JS6Vn6Z-o5w72gEEEuR9WgmXwYZXh1SsHbZXyz6PfdjODOCqDuqQob5wnR3nj_ZnAsTPEz_8vl7NDqCiqr315tnDh_FqUlBcMNj-fqoztJ06ckDNfm2C1-sqn0jJ8Wrqo6-LguiqHsACXN1O2c6eC6Z11TrhdoHs_tMUYAet8m-SEExoEdNYJCFM1RDJwkOwVP3YlVaPae6bGzoF_M-Fa0h-34" />
+              <AvatarImage src="" />
               <AvatarFallback className="bg-primary/10 text-primary">
                 {userInitials}
               </AvatarFallback>
             </Avatar>
             <span className="absolute bottom-0 right-0 w-3 h-3 bg-status-completed border-2 border-card rounded-full" />
-          </div>
+          </button>
         </div>
       </div>
     </header>
