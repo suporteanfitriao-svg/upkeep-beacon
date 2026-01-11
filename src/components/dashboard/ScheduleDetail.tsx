@@ -626,65 +626,72 @@ export function ScheduleDetail({ schedule, onClose, onUpdateSchedule }: Schedule
 
         {/* Main Content */}
         <main className="flex flex-col gap-6 p-6 overflow-y-auto" style={{ maxHeight: 'calc(100vh - 180px)' }}>
-          {/* Action Buttons */}
-          <div className="grid grid-cols-2 gap-3">
-            <button 
-              onClick={() => setShowLocationModal(true)}
-              className="flex items-center justify-center gap-2 rounded-xl bg-slate-900 py-3.5 text-sm font-bold text-white shadow-[0_4px_20px_-2px_rgba(0,0,0,0.05)] transition-all active:scale-[0.98] dark:bg-white dark:text-slate-900"
-            >
-              <span className="material-symbols-outlined text-[18px]">map</span>
-              Ver Endereço
-            </button>
-            <button 
-              onClick={() => setShowPasswordModal(true)}
-              className="flex items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white py-3.5 text-xs font-bold text-slate-500 shadow-sm transition-all hover:bg-slate-50 active:scale-[0.98] dark:border-slate-700 dark:bg-[#2d3138] dark:text-slate-400 dark:hover:bg-slate-800"
-            >
-              <span className="material-symbols-outlined text-[18px]">vpn_key</span>
-              Ver Senha da Porta
-            </button>
-          </div>
-
-          {/* Info Card */}
-          <section className="rounded-2xl bg-white dark:bg-[#2d3138] shadow-[0_4px_20px_-2px_rgba(0,0,0,0.05)] p-5 border border-slate-100 dark:border-slate-700">
-            {/* Time Grid */}
-            <div className="mb-5 grid grid-cols-2 gap-3">
-              <div className="rounded-xl bg-slate-50 dark:bg-slate-800/50 p-3 border border-slate-100 dark:border-slate-700 flex flex-col items-center justify-center gap-1">
-                <span className="text-[10px] font-bold uppercase text-[#8A8B88] dark:text-slate-400 tracking-wide">Hora Atual</span>
-                <div className="flex items-center gap-1.5 text-slate-900 dark:text-white">
-                  <span className="material-symbols-outlined text-[18px] text-primary">schedule</span>
-                  <span className="text-sm font-bold">{currentTime}</span>
-                </div>
-              </div>
-              <div className="rounded-xl bg-slate-50 dark:bg-slate-800/50 p-3 border border-slate-100 dark:border-slate-700 flex flex-col items-center justify-center gap-1">
-                <span className="text-[10px] font-bold uppercase text-[#8A8B88] dark:text-slate-400 tracking-wide">Próximo Hóspede</span>
-                <div className="flex items-center gap-1.5 text-slate-900 dark:text-white">
-                  <span className="material-symbols-outlined text-[18px] text-primary">login</span>
-                  <span className="text-sm font-bold">{format(schedule.checkIn, "HH:mm")}</span>
-                </div>
+          {/* Waiting Status Alert Card - Rule 41 */}
+          {schedule.status === 'waiting' && (
+            <div className="rounded-2xl bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800/50 p-4 flex gap-3 items-start">
+              <span className="material-symbols-outlined text-amber-500 text-[22px] mt-0.5">lock_clock</span>
+              <div className="flex-1">
+                <h4 className="font-bold text-amber-700 dark:text-amber-400 text-sm mb-1">Aguardando Liberação</h4>
+                <p className="text-xs text-amber-600 dark:text-amber-500/80 leading-relaxed">
+                  Checkout ainda não realizado pelo hóspede. A limpeza só poderá ser iniciada após a saída confirmada.
+                </p>
               </div>
             </div>
+          )}
 
-            {/* Important Info - Only show if there's important info */}
-            {(hasImportantInfo || true) && (
-              <div className="flex flex-col gap-3 mb-6">
+          {/* Time Cards */}
+          <div className="grid grid-cols-2 gap-3">
+            <div className="rounded-xl bg-white dark:bg-[#2d3138] p-4 border border-slate-200 dark:border-slate-700 shadow-sm flex flex-col items-center justify-center gap-1">
+              <span className="text-[10px] font-bold uppercase text-[#8A8B88] dark:text-slate-400 tracking-wide">Hora Atual</span>
+              <div className="flex items-center gap-1.5 text-slate-900 dark:text-white">
+                <span className="material-symbols-outlined text-[18px] text-primary">schedule</span>
+                <span className="text-lg font-bold">{currentTime}</span>
+              </div>
+            </div>
+            <div className="rounded-xl bg-white dark:bg-[#2d3138] p-4 border border-slate-200 dark:border-slate-700 shadow-sm flex flex-col items-center justify-center gap-1">
+              <span className="text-[10px] font-bold uppercase text-[#8A8B88] dark:text-slate-400 tracking-wide">Próximo Hóspede</span>
+              <div className="flex items-center gap-1.5 text-slate-900 dark:text-white">
+                <span className="material-symbols-outlined text-[18px] text-primary">login</span>
+                <span className="text-lg font-bold">{format(schedule.checkIn, "HH:mm")}</span>
+              </div>
+            </div>
+          </div>
+
+          {/* Info Card with lock overlay for waiting status */}
+          <section className="rounded-2xl bg-white dark:bg-[#2d3138] shadow-[0_4px_20px_-2px_rgba(0,0,0,0.05)] p-5 border border-slate-100 dark:border-slate-700 relative">
+            {/* Important Info */}
+            {(hasImportantInfo || schedule.importantInfo) && (
+              <div className="flex flex-col gap-3 mb-6 relative">
                 <div className="flex items-center gap-2 mb-1">
                   <span className="material-symbols-outlined text-[#E0C051] text-[20px]">info</span>
                   <h3 className="text-sm font-bold uppercase tracking-wide text-slate-900 dark:text-white">Informações Importantes</h3>
                 </div>
-                <div className="rounded-xl bg-slate-50 dark:bg-slate-800/50 p-4 border border-slate-100 dark:border-slate-700">
-                  <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed font-medium whitespace-pre-wrap">
+                <div className="rounded-xl bg-slate-50 dark:bg-slate-800/50 p-4 border border-slate-100 dark:border-slate-700 relative">
+                  <p className={cn(
+                    "text-xs text-slate-600 dark:text-slate-300 leading-relaxed font-medium whitespace-pre-wrap",
+                    schedule.status === 'waiting' && "blur-[2px] select-none"
+                  )}>
                     ⚠️ <span className="font-bold text-slate-800 dark:text-slate-200">Atenção:</span>{' '}
-                    {schedule.importantInfo || 'O hóspede solicitou especial cuidado com os tapetes da sala devido a alergias. Utilize o aspirador em potência máxima.'}
+                    {schedule.importantInfo || 'Nenhuma informação importante para esta limpeza.'}
                   </p>
+                  {/* Lock overlay for waiting status */}
+                  {schedule.status === 'waiting' && (
+                    <div className="absolute inset-0 flex items-center justify-center rounded-xl">
+                      <div className="bg-white/80 dark:bg-slate-800/80 rounded-full p-3 shadow-lg">
+                        <span className="material-symbols-outlined text-slate-400 text-[28px]">lock</span>
+                      </div>
+                    </div>
+                  )}
                 </div>
                 <label className={cn(
                   "flex items-center gap-3 p-1 cursor-pointer group",
-                  hasAcknowledged && "opacity-75 cursor-default"
+                  hasAcknowledged && "opacity-75 cursor-default",
+                  schedule.status === 'waiting' && "opacity-50 pointer-events-none"
                 )}>
                   <input 
                     type="checkbox"
                     checked={hasAcknowledged}
-                    disabled={hasAcknowledged || isAckSubmitting}
+                    disabled={hasAcknowledged || isAckSubmitting || schedule.status === 'waiting'}
                     onChange={async (e) => {
                       if (e.target.checked && !hasAcknowledged) {
                         const success = await toggleAcknowledge(true);
@@ -710,27 +717,22 @@ export function ScheduleDetail({ schedule, onClose, onUpdateSchedule }: Schedule
               </div>
             )}
 
-            {/* Start Cleaning Button - Only show for released status (Rule 1) */}
+            {/* Action button for Iniciar Limpeza - Only when status is released */}
             {schedule.status === 'released' && (
               <button 
                 onClick={() => {
-                  // Validate all requirements before starting cleaning
                   if (!canTransition.allowed) {
                     toast.error(canTransition.reason);
                     return;
                   }
-                  
-                  // Show specific modals for user-friendly feedback
                   if (!hasPropertyChecklist && !isCheckingChecklist) {
                     setShowNoChecklistModal(true);
                     return;
                   }
-                  
                   if (hasImportantInfo && !hasAcknowledged) {
                     setShowAttentionModal(true);
                     return;
                   }
-                  
                   handleStatusChange('cleaning');
                 }}
                 disabled={isAckSubmitting || isCheckingChecklist || isCheckingAccess || !canTransition.allowed}
@@ -755,27 +757,46 @@ export function ScheduleDetail({ schedule, onClose, onUpdateSchedule }: Schedule
               </button>
             )}
 
+            {/* Disabled Iniciar Limpeza button for waiting status */}
+            {schedule.status === 'waiting' && (
+              <button 
+                disabled
+                className="flex w-full items-center justify-center gap-2 rounded-xl py-4 font-bold text-slate-400 bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 cursor-not-allowed"
+              >
+                <span className="material-symbols-outlined">play_circle</span>
+                Iniciar Limpeza
+              </button>
+            )}
+
             {/* Liberar para Limpeza Button - Only for waiting status and admin/manager */}
             {schedule.status === 'waiting' && (isAdmin || isManager) && (
               <button 
                 onClick={() => handleStatusChange('released')}
-                className="flex w-full items-center justify-center gap-2 rounded-xl py-4 font-bold text-white bg-primary hover:bg-[#267373] shadow-[0_4px_20px_-2px_rgba(51,153,153,0.3)] transition-all active:scale-[0.98]"
+                className="flex w-full items-center justify-center gap-2 rounded-xl py-4 font-bold text-white bg-primary hover:bg-[#267373] shadow-[0_4px_20px_-2px_rgba(51,153,153,0.3)] transition-all active:scale-[0.98] mt-4"
               >
                 <span className="material-symbols-outlined filled">check_circle</span>
                 Liberar para Limpeza
               </button>
             )}
-
-            {/* Status info for cleaners on waiting status */}
-            {schedule.status === 'waiting' && role === 'cleaner' && (
-              <div className="flex w-full items-center justify-center gap-2 rounded-xl py-4 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800">
-                <span className="material-symbols-outlined text-amber-600 dark:text-amber-400">schedule</span>
-                <span className="text-sm font-medium text-amber-700 dark:text-amber-300">
-                  Aguardando liberação pelo gestor
-                </span>
-              </div>
-            )}
           </section>
+
+          {/* Action Buttons - Ver Endereço e Ver Senha */}
+          <div className="grid grid-cols-2 gap-3">
+            <button 
+              onClick={() => setShowLocationModal(true)}
+              className="flex items-center justify-center gap-2 rounded-xl bg-slate-900 py-3.5 text-sm font-bold text-white shadow-[0_4px_20px_-2px_rgba(0,0,0,0.05)] transition-all active:scale-[0.98] dark:bg-white dark:text-slate-900"
+            >
+              <span className="material-symbols-outlined text-[18px]">map</span>
+              Ver Endereço
+            </button>
+            <button 
+              onClick={() => setShowPasswordModal(true)}
+              className="flex items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white py-3.5 text-xs font-bold text-slate-500 shadow-sm transition-all hover:bg-slate-50 active:scale-[0.98] dark:border-slate-700 dark:bg-[#2d3138] dark:text-slate-400 dark:hover:bg-slate-800"
+            >
+              <span className="material-symbols-outlined text-[18px]">vpn_key</span>
+              Ver Senha da Porta
+            </button>
+          </div>
 
           {/* Progress Section */}
           <section className="flex flex-col gap-3">
