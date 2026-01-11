@@ -206,6 +206,14 @@ export function MobileDashboard({ schedules, onScheduleClick, onStartCleaning, o
   const weekNumber = getWeek(selectedDate, { weekStartsOn: 0 });
   const isSelectedToday = isSameDay(selectedDate, new Date());
 
+  // Count today's pending tasks for badge
+  const todayTasksCount = useMemo(() => {
+    const today = new Date();
+    return schedules.filter(s => 
+      isSameDay(s.checkOut, today) && s.status !== 'completed'
+    ).length;
+  }, [schedules]);
+
   const handlePrevMonth = () => setCurrentMonth(prev => subMonths(prev, 1));
   const handleNextMonth = () => setCurrentMonth(prev => addMonths(prev, 1));
 
@@ -368,10 +376,15 @@ export function MobileDashboard({ schedules, onScheduleClick, onStartCleaning, o
               setCurrentMonth(startOfMonth(today));
               vibrate(30);
             }}
-            className="flex h-10 items-center gap-1.5 px-3 rounded-xl bg-primary text-white text-xs font-bold shadow-sm hover:bg-primary/90 transition-all active:scale-95"
+            className="relative flex h-10 items-center gap-1.5 px-3 rounded-xl bg-primary text-white text-xs font-bold shadow-sm hover:bg-primary/90 transition-all active:scale-95"
           >
             <Calendar className="w-3.5 h-3.5" />
             Hoje
+            {todayTasksCount > 0 && (
+              <span className="absolute -top-1.5 -right-1.5 flex h-5 min-w-5 items-center justify-center rounded-full bg-amber-500 text-[10px] font-bold text-white px-1 shadow-md border-2 border-stone-50 dark:border-[#22252a]">
+                {todayTasksCount > 9 ? '9+' : todayTasksCount}
+              </span>
+            )}
           </button>
         )}
       </div>
