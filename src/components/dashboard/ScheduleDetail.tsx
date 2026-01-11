@@ -802,13 +802,21 @@ export function ScheduleDetail({ schedule, onClose, onUpdateSchedule }: Schedule
               <span className="material-symbols-outlined text-[18px]">map</span>
               Ver Endereço
             </button>
-            <button 
-              onClick={() => setShowPasswordModal(true)}
-              className="flex items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white py-3.5 text-xs font-bold text-slate-500 shadow-sm transition-all hover:bg-slate-50 active:scale-[0.98] dark:border-slate-700 dark:bg-[#2d3138] dark:text-slate-400 dark:hover:bg-slate-800"
-            >
-              <span className="material-symbols-outlined text-[18px]">vpn_key</span>
-              Ver Senha da Porta
-            </button>
+            {/* Rule: Cleaners can only see password button when schedule is released/cleaning/completed AND it's checkout day */}
+            {(isAdmin || isManager || (schedule.status !== 'waiting')) ? (
+              <button 
+                onClick={() => setShowPasswordModal(true)}
+                className="flex items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white py-3.5 text-xs font-bold text-slate-500 shadow-sm transition-all hover:bg-slate-50 active:scale-[0.98] dark:border-slate-700 dark:bg-[#2d3138] dark:text-slate-400 dark:hover:bg-slate-800"
+              >
+                <span className="material-symbols-outlined text-[18px]">vpn_key</span>
+                Ver Senha da Porta
+              </button>
+            ) : (
+              <div className="flex items-center justify-center gap-2 rounded-xl border border-slate-200 bg-slate-50 py-3.5 text-xs font-medium text-slate-400 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-500">
+                <span className="material-symbols-outlined text-[18px]">lock</span>
+                Senha Bloqueada
+              </div>
+            )}
           </div>
 
           {/* === Content with opacity-40 when waiting === */}
