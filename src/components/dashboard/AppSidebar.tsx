@@ -1,4 +1,4 @@
-import { Home, Users, HelpCircle, ClipboardCheck, LogOut, Building2, CalendarDays, Wrench } from 'lucide-react';
+import { Home, Users, HelpCircle, ClipboardCheck, LogOut, Building2, CalendarDays, Wrench, UserCog, Building } from 'lucide-react';
 import { NavLink } from '@/components/NavLink';
 import { useAuth } from '@/hooks/useAuth';
 import { useNavigate } from 'react-router-dom';
@@ -8,7 +8,6 @@ import {
   SidebarContent,
   SidebarGroup,
   SidebarGroupContent,
-  SidebarGroupLabel,
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
@@ -19,12 +18,13 @@ import {
 import logo from '@/assets/logo.png';
 
 const menuItems = [
-  { title: 'Dashboard', url: '/', icon: CalendarDays },
+  { title: 'Inicio', url: '/', icon: Home },
   { title: 'Propriedades', url: '/propriedades', icon: Building2 },
+  { title: 'Inspeção', url: '/inspecoes', icon: ClipboardCheck },
+  { title: 'Propriedade', url: '/propriedade', icon: Building },
   { title: 'Equipe', url: '/equipe', icon: Users },
   { title: 'Manutenção', url: '/manutencao', icon: Wrench },
-  { title: 'Inspeções', url: '/inspecoes', icon: ClipboardCheck },
-  { title: 'Ajuda', url: '/ajuda', icon: HelpCircle },
+  { title: 'Minha Conta', url: '/minha-conta', icon: UserCog },
 ];
 
 export function AppSidebar() {
@@ -40,32 +40,33 @@ export function AppSidebar() {
   };
 
   return (
-    <Sidebar collapsible="icon">
-      <SidebarHeader className="p-4 border-b">
+    <Sidebar collapsible="icon" className="border-r border-border shadow-lg bg-card">
+      <SidebarHeader className="p-6 border-b border-border">
         <div className="flex items-center gap-3">
-          <img src={logo} alt="Super Host Lab" className="w-10 h-10 object-contain" />
+          <div className="w-10 h-10 bg-primary/10 rounded-xl flex items-center justify-center overflow-hidden">
+            <img src={logo} alt="Super Host Lab" className="w-8 h-8 object-contain" />
+          </div>
           {!collapsed && (
-            <span className="font-bold text-lg text-foreground">Super Host Lab</span>
+            <h1 className="font-bold text-lg tracking-tight text-foreground">AdminPanel</h1>
           )}
         </div>
       </SidebarHeader>
 
-      <SidebarContent>
+      <SidebarContent className="px-4 py-6">
         <SidebarGroup>
-          <SidebarGroupLabel>Menu</SidebarGroupLabel>
           <SidebarGroupContent>
-            <SidebarMenu>
+            <SidebarMenu className="space-y-2">
               {menuItems.map((item) => (
                 <SidebarMenuItem key={item.title}>
                   <SidebarMenuButton asChild tooltip={item.title}>
                     <NavLink 
                       to={item.url} 
-                      end 
-                      className="hover:bg-muted/50" 
-                      activeClassName="bg-muted text-primary font-medium"
+                      end={item.url === '/'} 
+                      className="flex items-center gap-4 px-4 py-3 rounded-xl transition-colors text-muted-foreground hover:bg-muted hover:text-primary"
+                      activeClassName="bg-primary/10 text-primary font-medium"
                     >
                       <item.icon className="h-5 w-5" />
-                      <span>{item.title}</span>
+                      {!collapsed && <span>{item.title}</span>}
                     </NavLink>
                   </SidebarMenuButton>
                 </SidebarMenuItem>
@@ -75,24 +76,19 @@ export function AppSidebar() {
         </SidebarGroup>
       </SidebarContent>
 
-      <SidebarFooter className="border-t p-2">
+      <SidebarFooter className="border-t border-border p-4 mt-auto">
         <SidebarMenu>
           <SidebarMenuItem>
             <SidebarMenuButton 
               onClick={handleSignOut}
               tooltip="Sair"
-              className="hover:bg-destructive/10 hover:text-destructive"
+              className="flex items-center gap-4 px-4 py-3 rounded-xl text-muted-foreground hover:bg-destructive/10 hover:text-destructive transition-colors w-full"
             >
               <LogOut className="h-5 w-5" />
-              <span>Sair</span>
+              {!collapsed && <span>Sair</span>}
             </SidebarMenuButton>
           </SidebarMenuItem>
         </SidebarMenu>
-        {!collapsed && user && (
-          <div className="px-2 py-1 text-xs text-muted-foreground truncate">
-            {user.email}
-          </div>
-        )}
       </SidebarFooter>
     </Sidebar>
   );

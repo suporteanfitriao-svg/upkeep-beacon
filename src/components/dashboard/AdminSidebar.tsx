@@ -6,7 +6,9 @@ import {
   Users, 
   Package, 
   HelpCircle, 
-  LogOut 
+  LogOut,
+  UserCog,
+  Wrench,
 } from 'lucide-react';
 import { NavLink } from '@/components/NavLink';
 import { useAuth } from '@/hooks/useAuth';
@@ -24,7 +26,7 @@ import {
   SidebarFooter,
   useSidebar,
 } from '@/components/ui/sidebar';
-import { cn } from '@/lib/utils';
+import logo from '@/assets/logo.png';
 
 const menuItems = [
   { title: 'Inicio', url: '/', icon: Home },
@@ -32,8 +34,8 @@ const menuItems = [
   { title: 'Inspeção', url: '/inspecoes', icon: ClipboardCheck },
   { title: 'Propriedade', url: '/propriedade', icon: Building },
   { title: 'Equipe', url: '/equipe', icon: Users },
-  { title: 'Inventário', url: '/inventario', icon: Package },
-  { title: 'Ajuda', url: '/ajuda', icon: HelpCircle },
+  { title: 'Manutenção', url: '/manutencao', icon: Wrench },
+  { title: 'Minha Conta', url: '/minha-conta', icon: UserCog },
 ];
 
 export function AdminSidebar() {
@@ -52,8 +54,8 @@ export function AdminSidebar() {
     <Sidebar collapsible="icon" className="border-r border-border shadow-lg bg-card">
       <SidebarHeader className="p-6 border-b border-border">
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 bg-primary/10 rounded-xl flex items-center justify-center">
-            <Building className="w-5 h-5 text-primary" />
+          <div className="w-10 h-10 bg-primary/10 rounded-xl flex items-center justify-center overflow-hidden">
+            <img src={logo} alt="Super Host Lab" className="w-8 h-8 object-contain" />
           </div>
           {!collapsed && (
             <h1 className="font-bold text-lg tracking-tight text-foreground">AdminPanel</h1>
