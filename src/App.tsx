@@ -12,6 +12,7 @@ import Properties from "./pages/Properties";
 import Inspections from "./pages/Inspections";
 import Help from "./pages/Help";
 import Manutencao from "./pages/Manutencao";
+import Profile from "./pages/Profile";
 import Landing from "./pages/Landing";
 import NotFound from "./pages/NotFound";
 
@@ -72,6 +73,14 @@ const App = () => (
               element={
                 <ProtectedRoute>
                   <Manutencao />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/minha-conta"
+              element={
+                <ProtectedRoute>
+                  <Profile />
                 </ProtectedRoute>
               }
             />
