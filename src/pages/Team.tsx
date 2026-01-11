@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Plus, Pencil, Trash2, Phone, Mail, UserCheck, UserX, Building2, Loader2 } from 'lucide-react';
+import { Plus, Pencil, Trash2, Phone, Mail, UserCheck, UserX, Building2, Loader2, Key, MapPin, Calendar } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -7,15 +7,20 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { Badge } from '@/components/ui/badge';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Switch } from '@/components/ui/switch';
+import { Separator } from '@/components/ui/separator';
 import { toast } from 'sonner';
 import { SidebarProvider } from '@/components/ui/sidebar';
 import { AppSidebar } from '@/components/dashboard/AppSidebar';
 import { DashboardHeader } from '@/components/dashboard/DashboardHeader';
 import { useUserRole } from '@/hooks/useUserRole';
 import { Navigate } from 'react-router-dom';
+import { format } from 'date-fns';
+import { ptBR } from 'date-fns/locale';
+import { validateCPF, formatCPF, formatWhatsApp, formatCEP, UF_OPTIONS } from '@/lib/formatters';
 
 interface TeamMember {
   id: string;
@@ -27,6 +32,14 @@ interface TeamMember {
   is_active: boolean;
   has_all_properties: boolean;
   created_at: string;
+  activated_at: string | null;
+  address_cep: string | null;
+  address_street: string | null;
+  address_number: string | null;
+  address_complement: string | null;
+  address_district: string | null;
+  address_city: string | null;
+  address_state: string | null;
 }
 
 interface Property {
@@ -46,29 +59,16 @@ const roleColors: Record<string, string> = {
   cleaner: 'bg-muted text-muted-foreground',
 };
 
-function formatCPF(value: string): string {
-  const numbers = value.replace(/\D/g, '').slice(0, 11);
-  return numbers
-    .replace(/(\d{3})(\d)/, '$1.$2')
-    .replace(/(\d{3})(\d)/, '$1.$2')
-    .replace(/(\d{3})(\d{1,2})$/, '$1-$2');
-}
-
-function formatWhatsApp(value: string): string {
-  const numbers = value.replace(/\D/g, '').slice(0, 11);
-  if (numbers.length <= 2) return numbers;
-  if (numbers.length <= 7) return `(${numbers.slice(0, 2)}) ${numbers.slice(2)}`;
-  return `(${numbers.slice(0, 2)}) ${numbers.slice(2, 7)}-${numbers.slice(7)}`;
-}
-
 export default function Team() {
-  const { isAdmin, loading: roleLoading } = useUserRole();
+  const { isAdmin, role, loading: roleLoading } = useUserRole();
   const [members, setMembers] = useState<TeamMember[]>([]);
   const [properties, setProperties] = useState<Property[]>([]);
   const [loading, setLoading] = useState(true);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingMember, setEditingMember] = useState<TeamMember | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  const [resetDialogOpen, setResetDialogOpen] = useState(false);
+  const [sendingReset, setSendingReset] = useState(false);
   const [formData, setFormData] = useState({
     name: '',
     email: '',
@@ -77,7 +77,17 @@ export default function Team() {
     role: 'cleaner' as 'admin' | 'manager' | 'cleaner',
     hasAllProperties: true,
     selectedProperties: [] as string[],
+    // Address fields
+    address_cep: '',
+    address_street: '',
+    address_number: '',
+    address_complement: '',
+    address_district: '',
+    address_city: '',
+    address_state: '',
   });
+
+  const canManage = role === 'admin' || role === 'manager';
 
   useEffect(() => {
     if (isAdmin) {
@@ -141,6 +151,13 @@ export default function Team() {
       role: 'cleaner',
       hasAllProperties: true,
       selectedProperties: [],
+      address_cep: '',
+      address_street: '',
+      address_number: '',
+      address_complement: '',
+      address_district: '',
+      address_city: '',
+      address_state: '',
     });
     setEditingMember(null);
   }
@@ -156,6 +173,13 @@ export default function Team() {
       role: member.role,
       hasAllProperties: member.has_all_properties,
       selectedProperties: memberProperties,
+      address_cep: member.address_cep ? formatCEP(member.address_cep) : '',
+      address_street: member.address_street || '',
+      address_number: member.address_number || '',
+      address_complement: member.address_complement || '',
+      address_district: member.address_district || '',
+      address_city: member.address_city || '',
+      address_state: member.address_state || '',
     });
     setDialogOpen(true);
   }
@@ -183,15 +207,24 @@ export default function Team() {
 
     const cleanCPF = formData.cpf.replace(/\D/g, '');
     const cleanWhatsApp = formData.whatsapp.replace(/\D/g, '');
+    const cleanCEP = formData.address_cep.replace(/\D/g, '');
 
-    if (cleanCPF.length !== 11) {
-      toast.error('CPF deve ter 11 dígitos');
+    // Validate CPF with checksum
+    if (!validateCPF(cleanCPF)) {
+      toast.error('CPF inválido');
       setSubmitting(false);
       return;
     }
 
     if (cleanWhatsApp.length < 10) {
       toast.error('WhatsApp inválido');
+      setSubmitting(false);
+      return;
+    }
+
+    // Validate address fields
+    if (cleanCEP && cleanCEP.length !== 8) {
+      toast.error('CEP deve ter 8 dígitos');
       setSubmitting(false);
       return;
     }
@@ -203,17 +236,26 @@ export default function Team() {
     }
 
     try {
+      const memberData = {
+        name: formData.name,
+        email: formData.email,
+        cpf: cleanCPF,
+        whatsapp: cleanWhatsApp,
+        role: formData.role,
+        has_all_properties: formData.hasAllProperties,
+        address_cep: cleanCEP || null,
+        address_street: formData.address_street || null,
+        address_number: formData.address_number || null,
+        address_complement: formData.address_complement || null,
+        address_district: formData.address_district || null,
+        address_city: formData.address_city || null,
+        address_state: formData.address_state || null,
+      };
+
       if (editingMember) {
         const { error } = await supabase
           .from('team_members')
-          .update({
-            name: formData.name,
-            email: formData.email,
-            cpf: cleanCPF,
-            whatsapp: cleanWhatsApp,
-            role: formData.role,
-            has_all_properties: formData.hasAllProperties,
-          })
+          .update(memberData)
           .eq('id', editingMember.id);
 
         if (error) throw error;
@@ -241,14 +283,7 @@ export default function Team() {
       } else {
         const { data: newMember, error } = await supabase
           .from('team_members')
-          .insert({
-            name: formData.name,
-            email: formData.email,
-            cpf: cleanCPF,
-            whatsapp: cleanWhatsApp,
-            role: formData.role,
-            has_all_properties: formData.hasAllProperties,
-          })
+          .insert(memberData)
           .select()
           .single();
 
@@ -276,7 +311,7 @@ export default function Team() {
       fetchMembers();
     } catch (error: any) {
       console.error('Error saving member:', error);
-      if (error.message?.includes('duplicate')) {
+      if (error.message?.includes('duplicate') || error.code === '23505') {
         toast.error('CPF ou email já cadastrado');
       } else {
         toast.error('Erro ao salvar membro');
@@ -288,9 +323,18 @@ export default function Team() {
 
   async function handleToggleActive(member: TeamMember) {
     try {
+      const updateData: { is_active: boolean; activated_at?: string } = {
+        is_active: !member.is_active,
+      };
+
+      // Set activated_at only on first activation
+      if (!member.is_active && !member.activated_at) {
+        updateData.activated_at = new Date().toISOString();
+      }
+
       const { error } = await supabase
         .from('team_members')
-        .update({ is_active: !member.is_active })
+        .update(updateData)
         .eq('id', member.id);
 
       if (error) throw error;
@@ -317,6 +361,33 @@ export default function Team() {
     } catch (error) {
       console.error('Error deleting member:', error);
       toast.error('Erro ao excluir membro');
+    }
+  }
+
+  async function handleSendPasswordReset() {
+    if (!editingMember) return;
+    
+    setSendingReset(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('send-password-reset', {
+        body: {
+          teamMemberId: editingMember.id,
+          teamMemberName: editingMember.name,
+          email: editingMember.email,
+          appUrl: window.location.origin,
+        },
+      });
+
+      if (error) throw error;
+      if (!data.success) throw new Error(data.error);
+
+      toast.success('Email de redefinição de senha enviado!');
+      setResetDialogOpen(false);
+    } catch (error: any) {
+      console.error('Error sending password reset:', error);
+      toast.error(error.message || 'Erro ao enviar email de redefinição');
+    } finally {
+      setSendingReset(false);
     }
   }
 
@@ -378,13 +449,30 @@ export default function Team() {
                     Novo Membro
                   </Button>
                 </DialogTrigger>
-                <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
+                <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
                   <DialogHeader>
                     <DialogTitle>
                       {editingMember ? 'Editar Membro' : 'Novo Membro'}
                     </DialogTitle>
                   </DialogHeader>
                   <form onSubmit={handleSubmit} className="space-y-4">
+                    {/* Dates section (read-only) */}
+                    {editingMember && (
+                      <div className="flex items-center gap-4 p-3 bg-muted/30 rounded-lg text-sm">
+                        <div className="flex items-center gap-2 text-muted-foreground">
+                          <Calendar className="h-4 w-4" />
+                          <span>Cadastro: {format(new Date(editingMember.created_at), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}</span>
+                        </div>
+                        {editingMember.activated_at && (
+                          <div className="flex items-center gap-2 text-muted-foreground">
+                            <UserCheck className="h-4 w-4" />
+                            <span>Ativação: {format(new Date(editingMember.activated_at), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}</span>
+                          </div>
+                        )}
+                      </div>
+                    )}
+
+                    {/* Basic info */}
                     <div className="space-y-2">
                       <Label htmlFor="name">Nome completo</Label>
                       <Input
@@ -408,7 +496,7 @@ export default function Team() {
 
                     <div className="grid grid-cols-2 gap-4">
                       <div className="space-y-2">
-                        <Label htmlFor="cpf">CPF</Label>
+                        <Label htmlFor="cpf">CPF *</Label>
                         <Input
                           id="cpf"
                           value={formData.cpf}
@@ -449,7 +537,97 @@ export default function Team() {
                       </Select>
                     </div>
 
-                    <div className="space-y-4 pt-2 border-t">
+                    {/* Address section */}
+                    <Separator />
+                    <div className="space-y-4">
+                      <div className="flex items-center gap-2">
+                        <MapPin className="h-4 w-4 text-muted-foreground" />
+                        <Label className="text-base font-medium">Endereço</Label>
+                      </div>
+                      
+                      <div className="grid grid-cols-3 gap-4">
+                        <div className="space-y-2">
+                          <Label htmlFor="address_cep">CEP</Label>
+                          <Input
+                            id="address_cep"
+                            value={formData.address_cep}
+                            onChange={(e) => setFormData({ ...formData, address_cep: formatCEP(e.target.value) })}
+                            placeholder="00000-000"
+                          />
+                        </div>
+                        <div className="space-y-2 col-span-2">
+                          <Label htmlFor="address_street">Rua</Label>
+                          <Input
+                            id="address_street"
+                            value={formData.address_street}
+                            onChange={(e) => setFormData({ ...formData, address_street: e.target.value })}
+                            placeholder="Nome da rua"
+                          />
+                        </div>
+                      </div>
+
+                      <div className="grid grid-cols-3 gap-4">
+                        <div className="space-y-2">
+                          <Label htmlFor="address_number">Número</Label>
+                          <Input
+                            id="address_number"
+                            value={formData.address_number}
+                            onChange={(e) => setFormData({ ...formData, address_number: e.target.value })}
+                            placeholder="Nº ou S/N"
+                          />
+                        </div>
+                        <div className="space-y-2 col-span-2">
+                          <Label htmlFor="address_complement">Complemento</Label>
+                          <Input
+                            id="address_complement"
+                            value={formData.address_complement}
+                            onChange={(e) => setFormData({ ...formData, address_complement: e.target.value })}
+                            placeholder="Apto, Bloco, etc."
+                          />
+                        </div>
+                      </div>
+
+                      <div className="grid grid-cols-3 gap-4">
+                        <div className="space-y-2">
+                          <Label htmlFor="address_district">Bairro</Label>
+                          <Input
+                            id="address_district"
+                            value={formData.address_district}
+                            onChange={(e) => setFormData({ ...formData, address_district: e.target.value })}
+                            placeholder="Bairro"
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <Label htmlFor="address_city">Cidade</Label>
+                          <Input
+                            id="address_city"
+                            value={formData.address_city}
+                            onChange={(e) => setFormData({ ...formData, address_city: e.target.value })}
+                            placeholder="Cidade"
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <Label htmlFor="address_state">UF</Label>
+                          <Select
+                            value={formData.address_state}
+                            onValueChange={(value) => setFormData({ ...formData, address_state: value })}
+                          >
+                            <SelectTrigger>
+                              <SelectValue placeholder="UF" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {UF_OPTIONS.map(uf => (
+                                <SelectItem key={uf} value={uf}>{uf}</SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Property access */}
+                    <Separator />
+                    <div className="space-y-4">
                       <div className="flex items-center justify-between">
                         <div className="space-y-0.5">
                           <Label className="flex items-center gap-2">
@@ -517,6 +695,49 @@ export default function Team() {
                         </div>
                       )}
                     </div>
+
+                    {/* Password reset button (only for editing) */}
+                    {editingMember && canManage && (
+                      <>
+                        <Separator />
+                        <div className="flex items-center justify-between p-3 bg-muted/30 rounded-lg">
+                          <div className="space-y-0.5">
+                            <Label className="flex items-center gap-2">
+                              <Key className="h-4 w-4" />
+                              Redefinição de Senha
+                            </Label>
+                            <p className="text-sm text-muted-foreground">
+                              Enviar link para redefinir senha por email
+                            </p>
+                          </div>
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            onClick={() => setResetDialogOpen(true)}
+                          >
+                            <Key className="h-4 w-4 mr-2" />
+                            Enviar Nova Senha
+                          </Button>
+                        </div>
+                      </>
+                    )}
+
+                    {/* Active toggle */}
+                    {editingMember && canManage && (
+                      <div className="flex items-center justify-between p-3 border rounded-lg">
+                        <div className="space-y-0.5">
+                          <Label>Usuário Ativo</Label>
+                          <p className="text-sm text-muted-foreground">
+                            {editingMember.is_active ? 'Membro pode acessar o sistema' : 'Membro bloqueado'}
+                          </p>
+                        </div>
+                        <Switch
+                          checked={editingMember.is_active}
+                          onCheckedChange={() => handleToggleActive(editingMember)}
+                        />
+                      </div>
+                    )}
 
                     <div className="flex justify-end gap-2 pt-4">
                       <Button type="button" variant="outline" onClick={() => setDialogOpen(false)}>
@@ -604,6 +825,12 @@ export default function Team() {
                       <div className="text-muted-foreground">
                         CPF: {formatCPF(member.cpf)}
                       </div>
+                      {member.address_city && member.address_state && (
+                        <div className="flex items-center gap-2 text-muted-foreground">
+                          <MapPin className="h-4 w-4" />
+                          <span>{member.address_city}/{member.address_state}</span>
+                        </div>
+                      )}
                     </CardContent>
                   </Card>
                 ))}
@@ -612,6 +839,27 @@ export default function Team() {
           </main>
         </div>
       </div>
+
+      {/* Password reset confirmation dialog */}
+      <AlertDialog open={resetDialogOpen} onOpenChange={setResetDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Enviar redefinição de senha?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Um link para redefinição de senha será enviado para o email{' '}
+              <strong>{editingMember?.email}</strong>.
+              O link expira em 60 minutos.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={sendingReset}>Cancelar</AlertDialogCancel>
+            <AlertDialogAction onClick={handleSendPasswordReset} disabled={sendingReset}>
+              {sendingReset && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+              Confirmar
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </SidebarProvider>
   );
 }
