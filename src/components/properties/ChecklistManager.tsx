@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Plus, Trash2, Copy, Save, ChevronDown, ChevronUp, GripVertical } from 'lucide-react';
+import { Plus, Trash2, Copy, Save, ChevronDown, GripVertical, AlertTriangle, Lock } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -8,8 +8,10 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { Badge } from '@/components/ui/badge';
+import { Checkbox } from '@/components/ui/checkbox';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
+import { useChecklistValidation } from '@/hooks/useChecklistValidation';
 
 interface ChecklistItem {
   id: string;
@@ -23,6 +25,7 @@ interface PropertyChecklist {
   name: string;
   items: ChecklistItem[];
   is_default: boolean;
+  is_active?: boolean;
   created_at: string;
 }
 
@@ -71,11 +74,29 @@ export function ChecklistManager({ propertyId, propertyName, allChecklists, onCh
   const [newItemTitle, setNewItemTitle] = useState('');
   const [newItemCategory, setNewItemCategory] = useState('Geral');
   const [migrateFromId, setMigrateFromId] = useState<string>('');
+  
+  // 46.5: Confirmation state
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [checklistToDelete, setChecklistToDelete] = useState<PropertyChecklist | null>(null);
+  const [confirmationChecked, setConfirmationChecked] = useState(false);
+  const [validationResult, setValidationResult] = useState<{
+    canDeactivate: boolean;
+    requiresConfirmation: boolean;
+    cleaningCount: number;
+    pendingCount: number;
+    message: string;
+  } | null>(null);
+
+  const { validateDeactivation, isValidating } = useChecklistValidation();
 
   useEffect(() => {
-    const propertyChecklists = allChecklists.filter(c => c.property_id === propertyId);
+    // Filter only active checklists for this property
+    const propertyChecklists = allChecklists.filter(c => c.property_id === propertyId && c.is_active !== false);
     setChecklists(propertyChecklists);
   }, [allChecklists, propertyId]);
+
+  // 46.1: Check if property already has an active checklist
+  const hasActiveChecklist = checklists.length > 0;
 
   const handleCreateNew = (useDefault: boolean = false) => {
     setEditingChecklist(null);
@@ -133,14 +154,13 @@ export function ChecklistManager({ propertyId, propertyName, allChecklists, onCh
       category: item.category
     }));
 
-    const data = {
-      property_id: propertyId,
-      name: checklistName.trim(),
-      items: itemsJson as unknown as any,
-      is_default: checklists.length === 0
-    };
-
     if (editingChecklist) {
+      // Editing existing checklist
+      const data = {
+        name: checklistName.trim(),
+        items: itemsJson as unknown as any,
+      };
+
       const { error } = await supabase
         .from('property_checklists')
         .update(data)
@@ -153,12 +173,48 @@ export function ChecklistManager({ propertyId, propertyName, allChecklists, onCh
       }
       toast.success('Checklist atualizado!');
     } else {
+      // Creating new checklist - 46.1: Replace existing if any
+      if (hasActiveChecklist) {
+        // Validate if we can replace
+        const validation = await validateDeactivation(propertyId);
+        if (!validation.canDeactivate) {
+          toast.error(validation.message);
+          return;
+        }
+
+        // Deactivate existing checklists for this property
+        const { error: deactivateError } = await supabase
+          .from('property_checklists')
+          .update({ is_active: false })
+          .eq('property_id', propertyId)
+          .eq('is_active', true);
+
+        if (deactivateError) {
+          toast.error('Erro ao substituir checklist anterior');
+          console.error(deactivateError);
+          return;
+        }
+      }
+
+      // Create new checklist
+      const data = {
+        property_id: propertyId,
+        name: checklistName.trim(),
+        items: itemsJson as unknown as any,
+        is_default: true,
+        is_active: true
+      };
+
       const { error } = await supabase
         .from('property_checklists')
         .insert([data]);
 
       if (error) {
-        toast.error('Erro ao criar checklist');
+        if (error.code === '23505') {
+          toast.error('Já existe um checklist ativo para este imóvel');
+        } else {
+          toast.error('Erro ao criar checklist');
+        }
         console.error(error);
         return;
       }
@@ -169,18 +225,42 @@ export function ChecklistManager({ propertyId, propertyName, allChecklists, onCh
     onChecklistsChange();
   };
 
-  const handleDelete = async (checklistId: string) => {
+  // 46.3 & 46.4 & 46.5: Handle delete with validation
+  const handleDeleteClick = async (checklist: PropertyChecklist) => {
+    setChecklistToDelete(checklist);
+    setConfirmationChecked(false);
+    
+    // Validate if we can delete
+    const validation = await validateDeactivation(propertyId);
+    setValidationResult(validation);
+    setDeleteDialogOpen(true);
+  };
+
+  const handleConfirmDelete = async () => {
+    if (!checklistToDelete) return;
+
+    // 46.5: If requires confirmation, ensure checkbox is checked
+    if (validationResult?.requiresConfirmation && !confirmationChecked) {
+      toast.error('É necessário confirmar a substituição do checklist');
+      return;
+    }
+
+    // Deactivate instead of delete (soft delete)
     const { error } = await supabase
       .from('property_checklists')
-      .delete()
-      .eq('id', checklistId);
+      .update({ is_active: false })
+      .eq('id', checklistToDelete.id);
 
     if (error) {
-      toast.error('Erro ao excluir checklist');
+      toast.error('Erro ao desativar checklist');
       console.error(error);
       return;
     }
-    toast.success('Checklist excluído!');
+
+    toast.success('Checklist desativado!');
+    setDeleteDialogOpen(false);
+    setChecklistToDelete(null);
+    setValidationResult(null);
     onChecklistsChange();
   };
 
@@ -191,7 +271,7 @@ export function ChecklistManager({ propertyId, propertyName, allChecklists, onCh
   }, {} as Record<string, ChecklistItem[]>);
 
   // Get checklists from other properties for migration
-  const otherChecklists = allChecklists.filter(c => c.property_id !== propertyId);
+  const otherChecklists = allChecklists.filter(c => c.property_id !== propertyId && c.is_active !== false);
 
   return (
     <div className="space-y-3">
@@ -201,15 +281,27 @@ export function ChecklistManager({ propertyId, propertyName, allChecklists, onCh
           <DialogTrigger asChild>
             <Button variant="outline" size="sm" onClick={() => handleCreateNew(true)}>
               <Plus className="h-3 w-3 mr-1" />
-              Criar Checklist
+              {hasActiveChecklist ? 'Substituir Checklist' : 'Criar Checklist'}
             </Button>
           </DialogTrigger>
           <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle>
-                {editingChecklist ? 'Editar Checklist' : 'Novo Checklist'}
+                {editingChecklist ? 'Editar Checklist' : hasActiveChecklist ? 'Substituir Checklist' : 'Novo Checklist'}
               </DialogTitle>
             </DialogHeader>
+            
+            {/* 46.1: Warning when replacing */}
+            {!editingChecklist && hasActiveChecklist && (
+              <div className="flex items-start gap-2 p-3 bg-amber-500/10 border border-amber-500/20 rounded-lg text-amber-700 dark:text-amber-400">
+                <AlertTriangle className="h-4 w-4 mt-0.5 flex-shrink-0" />
+                <p className="text-sm">
+                  Este imóvel já possui um checklist ativo. Ao criar um novo, o checklist anterior será substituído.
+                  Agendamentos em andamento manterão o checklist original.
+                </p>
+              </div>
+            )}
+
             <div className="space-y-4 py-4">
               {/* Migrate from another checklist */}
               {!editingChecklist && otherChecklists.length > 0 && (
@@ -223,9 +315,7 @@ export function ChecklistManager({ propertyId, propertyName, allChecklists, onCh
                       <SelectContent>
                         {otherChecklists.map(c => (
                           <SelectItem key={c.id} value={c.id}>
-                            {allChecklists.find(p => p.property_id === c.property_id) 
-                              ? `${c.name}` 
-                              : c.name}
+                            {c.name}
                           </SelectItem>
                         ))}
                       </SelectContent>
@@ -339,7 +429,7 @@ export function ChecklistManager({ propertyId, propertyName, allChecklists, onCh
 
               <Button onClick={handleSave} className="w-full">
                 <Save className="h-4 w-4 mr-2" />
-                {editingChecklist ? 'Salvar Alterações' : 'Criar Checklist'}
+                {editingChecklist ? 'Salvar Alterações' : hasActiveChecklist ? 'Substituir Checklist' : 'Criar Checklist'}
               </Button>
             </div>
           </DialogContent>
@@ -356,9 +446,7 @@ export function ChecklistManager({ propertyId, propertyName, allChecklists, onCh
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2">
                   <p className="text-sm font-medium truncate">{checklist.name}</p>
-                  {checklist.is_default && (
-                    <Badge variant="secondary" className="text-xs">Padrão</Badge>
-                  )}
+                  <Badge variant="secondary" className="text-xs">Ativo</Badge>
                 </div>
                 <p className="text-xs text-muted-foreground mt-0.5">
                   {checklist.items.length} itens
@@ -373,34 +461,15 @@ export function ChecklistManager({ propertyId, propertyName, allChecklists, onCh
                 >
                   <ChevronDown className="h-4 w-4" />
                 </Button>
-                <AlertDialog>
-                  <AlertDialogTrigger asChild>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="h-8 w-8 text-destructive hover:text-destructive"
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
-                  </AlertDialogTrigger>
-                  <AlertDialogContent>
-                    <AlertDialogHeader>
-                      <AlertDialogTitle>Excluir checklist?</AlertDialogTitle>
-                      <AlertDialogDescription>
-                        Esta ação não pode ser desfeita.
-                      </AlertDialogDescription>
-                    </AlertDialogHeader>
-                    <AlertDialogFooter>
-                      <AlertDialogCancel>Cancelar</AlertDialogCancel>
-                      <AlertDialogAction
-                        onClick={() => handleDelete(checklist.id)}
-                        className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                      >
-                        Excluir
-                      </AlertDialogAction>
-                    </AlertDialogFooter>
-                  </AlertDialogContent>
-                </AlertDialog>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-8 w-8 text-destructive hover:text-destructive"
+                  onClick={() => handleDeleteClick(checklist)}
+                  disabled={isValidating}
+                >
+                  <Trash2 className="h-4 w-4" />
+                </Button>
               </div>
             </div>
           ))}
@@ -410,6 +479,81 @@ export function ChecklistManager({ propertyId, propertyName, allChecklists, onCh
           Nenhum checklist configurado. Crie um checklist para ser usado nas limpezas.
         </p>
       )}
+
+      {/* 46.3, 46.4, 46.5: Delete confirmation dialog */}
+      <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2">
+              {validationResult?.canDeactivate ? (
+                <>Desativar checklist?</>
+              ) : (
+                <>
+                  <Lock className="h-4 w-4 text-destructive" />
+                  Ação bloqueada
+                </>
+              )}
+            </AlertDialogTitle>
+            <AlertDialogDescription asChild>
+              <div className="space-y-3">
+                {/* 46.3: Block if cleaning in progress */}
+                {!validationResult?.canDeactivate && (
+                  <div className="flex items-start gap-2 p-3 bg-destructive/10 border border-destructive/20 rounded-lg text-destructive">
+                    <AlertTriangle className="h-4 w-4 mt-0.5 flex-shrink-0" />
+                    <p className="text-sm">{validationResult?.message}</p>
+                  </div>
+                )}
+
+                {/* 46.5: Confirmation required for pending schedules */}
+                {validationResult?.canDeactivate && validationResult?.requiresConfirmation && (
+                  <>
+                    <div className="flex items-start gap-2 p-3 bg-amber-500/10 border border-amber-500/20 rounded-lg text-amber-700 dark:text-amber-400">
+                      <AlertTriangle className="h-4 w-4 mt-0.5 flex-shrink-0" />
+                      <p className="text-sm">
+                        Existem {validationResult.pendingCount} agendamentos pendentes para este imóvel.
+                        Eles utilizarão o novo checklist quando a limpeza for iniciada.
+                      </p>
+                    </div>
+                    <div className="flex items-start gap-2 p-3 border rounded-lg">
+                      <Checkbox
+                        id="confirm-replacement"
+                        checked={confirmationChecked}
+                        onCheckedChange={(checked) => setConfirmationChecked(checked === true)}
+                      />
+                      <label htmlFor="confirm-replacement" className="text-sm cursor-pointer">
+                        Confirmo que os próximos agendamentos deste imóvel usarão o novo checklist e que o checklist anterior será substituído.
+                      </label>
+                    </div>
+                  </>
+                )}
+
+                {/* 46.4: Simple confirmation if no pending schedules */}
+                {validationResult?.canDeactivate && !validationResult?.requiresConfirmation && (
+                  <p>Esta ação desativará o checklist. Você poderá criar um novo checklist a qualquer momento.</p>
+                )}
+              </div>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => {
+              setChecklistToDelete(null);
+              setValidationResult(null);
+              setConfirmationChecked(false);
+            }}>
+              Cancelar
+            </AlertDialogCancel>
+            {validationResult?.canDeactivate && (
+              <AlertDialogAction
+                onClick={handleConfirmDelete}
+                disabled={validationResult.requiresConfirmation && !confirmationChecked}
+                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              >
+                Desativar
+              </AlertDialogAction>
+            )}
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

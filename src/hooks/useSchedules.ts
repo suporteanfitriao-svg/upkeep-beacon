@@ -325,6 +325,7 @@ export function useSchedules() {
             .from('property_checklists')
             .select('items, name')
             .eq('property_id', updatedSchedule.propertyId)
+            .eq('is_active', true)
             .limit(1);
 
           if (!checklistError && propertyChecklists && propertyChecklists.length > 0) {
