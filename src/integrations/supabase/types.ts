@@ -195,29 +195,44 @@ export type Database = {
       }
       profiles: {
         Row: {
+          activated_at: string | null
           avatar_url: string | null
           created_at: string
           email: string | null
           id: string
+          is_active: boolean | null
+          must_reset_password: boolean | null
           name: string | null
+          reset_token_expires_at: string | null
+          reset_token_hash: string | null
           team_member_id: string | null
           updated_at: string
         }
         Insert: {
+          activated_at?: string | null
           avatar_url?: string | null
           created_at?: string
           email?: string | null
           id: string
+          is_active?: boolean | null
+          must_reset_password?: boolean | null
           name?: string | null
+          reset_token_expires_at?: string | null
+          reset_token_hash?: string | null
           team_member_id?: string | null
           updated_at?: string
         }
         Update: {
+          activated_at?: string | null
           avatar_url?: string | null
           created_at?: string
           email?: string | null
           id?: string
+          is_active?: boolean | null
+          must_reset_password?: boolean | null
           name?: string | null
+          reset_token_expires_at?: string | null
+          reset_token_hash?: string | null
           team_member_id?: string | null
           updated_at?: string
         }
@@ -604,6 +619,41 @@ export type Database = {
           },
         ]
       }
+      team_member_audit_logs: {
+        Row: {
+          action: string
+          created_at: string
+          details: Json | null
+          id: string
+          team_member_id: string | null
+          user_id: string | null
+        }
+        Insert: {
+          action: string
+          created_at?: string
+          details?: Json | null
+          id?: string
+          team_member_id?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          action?: string
+          created_at?: string
+          details?: Json | null
+          id?: string
+          team_member_id?: string | null
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "team_member_audit_logs_team_member_id_fkey"
+            columns: ["team_member_id"]
+            isOneToOne: false
+            referencedRelation: "team_members"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       team_member_properties: {
         Row: {
           created_at: string
@@ -642,6 +692,14 @@ export type Database = {
       }
       team_members: {
         Row: {
+          activated_at: string | null
+          address_cep: string | null
+          address_city: string | null
+          address_complement: string | null
+          address_district: string | null
+          address_number: string | null
+          address_state: string | null
+          address_street: string | null
           cpf: string
           created_at: string
           email: string
@@ -655,6 +713,14 @@ export type Database = {
           whatsapp: string
         }
         Insert: {
+          activated_at?: string | null
+          address_cep?: string | null
+          address_city?: string | null
+          address_complement?: string | null
+          address_district?: string | null
+          address_number?: string | null
+          address_state?: string | null
+          address_street?: string | null
           cpf: string
           created_at?: string
           email: string
@@ -668,6 +734,14 @@ export type Database = {
           whatsapp: string
         }
         Update: {
+          activated_at?: string | null
+          address_cep?: string | null
+          address_city?: string | null
+          address_complement?: string | null
+          address_district?: string | null
+          address_number?: string | null
+          address_state?: string | null
+          address_street?: string | null
           cpf?: string
           created_at?: string
           email?: string
