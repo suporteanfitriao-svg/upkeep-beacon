@@ -640,7 +640,7 @@ export function ScheduleDetail({ schedule, onClose, onUpdateSchedule }: Schedule
           )}
 
           {/* Time Cards */}
-          <div className="grid grid-cols-2 gap-3">
+          <div className={cn("grid grid-cols-2 gap-3", schedule.status === 'waiting' && "opacity-60")}>
             <div className="rounded-xl bg-white dark:bg-[#2d3138] p-4 border border-slate-200 dark:border-slate-700 shadow-sm flex flex-col items-center justify-center gap-1">
               <span className="text-[10px] font-bold uppercase text-[#8A8B88] dark:text-slate-400 tracking-wide">Hora Atual</span>
               <div className="flex items-center gap-1.5 text-slate-900 dark:text-white">
@@ -658,127 +658,140 @@ export function ScheduleDetail({ schedule, onClose, onUpdateSchedule }: Schedule
           </div>
 
           {/* Info Card with lock overlay for waiting status */}
-          <section className="rounded-2xl bg-white dark:bg-[#2d3138] shadow-[0_4px_20px_-2px_rgba(0,0,0,0.05)] p-5 border border-slate-100 dark:border-slate-700 relative">
-            {/* Important Info */}
-            {(hasImportantInfo || schedule.importantInfo) && (
-              <div className="flex flex-col gap-3 mb-6 relative">
-                <div className="flex items-center gap-2 mb-1">
-                  <span className="material-symbols-outlined text-[#E0C051] text-[20px]">info</span>
-                  <h3 className="text-sm font-bold uppercase tracking-wide text-slate-900 dark:text-white">Informações Importantes</h3>
-                </div>
-                <div className="rounded-xl bg-slate-50 dark:bg-slate-800/50 p-4 border border-slate-100 dark:border-slate-700 relative">
-                  <p className={cn(
-                    "text-xs text-slate-600 dark:text-slate-300 leading-relaxed font-medium whitespace-pre-wrap",
-                    schedule.status === 'waiting' && "blur-[2px] select-none"
+          <div className="relative group">
+            <section className={cn(
+              "rounded-2xl bg-white dark:bg-[#2d3138] shadow-lg p-5 border border-slate-100 dark:border-slate-700 space-y-4",
+              schedule.status === 'waiting' && "opacity-50 grayscale-[0.5]"
+            )}>
+              {/* Important Info */}
+              {(hasImportantInfo || schedule.importantInfo) && (
+                <div className="flex flex-col gap-3">
+                  <div className="flex items-center gap-2">
+                    <span className="material-symbols-outlined text-amber-500 text-[18px]">info</span>
+                    <h3 className="text-xs font-bold uppercase tracking-widest text-slate-600 dark:text-slate-300">Informações Importantes</h3>
+                  </div>
+                  <div className="rounded-xl bg-slate-50 dark:bg-slate-800/50 p-4 border border-slate-100 dark:border-slate-700">
+                    <p className="text-sm text-slate-600 dark:text-slate-300 leading-relaxed">
+                      <span className="font-bold text-slate-800 dark:text-slate-100">⚠️ Atenção:</span>{' '}
+                      {schedule.importantInfo || 'Nenhuma informação importante para esta limpeza.'}
+                    </p>
+                  </div>
+                  <label className={cn(
+                    "flex items-center gap-3 py-2 cursor-pointer group/label",
+                    hasAcknowledged && "opacity-75 cursor-default",
+                    schedule.status === 'waiting' && "pointer-events-none"
                   )}>
-                    ⚠️ <span className="font-bold text-slate-800 dark:text-slate-200">Atenção:</span>{' '}
-                    {schedule.importantInfo || 'Nenhuma informação importante para esta limpeza.'}
-                  </p>
-                  {/* Lock overlay for waiting status */}
-                  {schedule.status === 'waiting' && (
-                    <div className="absolute inset-0 flex items-center justify-center rounded-xl">
-                      <div className="bg-white/80 dark:bg-slate-800/80 rounded-full p-3 shadow-lg">
-                        <span className="material-symbols-outlined text-slate-400 text-[28px]">lock</span>
-                      </div>
+                    <div className={cn(
+                      "w-6 h-6 border-2 rounded flex items-center justify-center transition-colors",
+                      hasAcknowledged 
+                        ? "bg-primary border-primary" 
+                        : "border-slate-300 dark:border-slate-600"
+                    )}>
+                      {hasAcknowledged && (
+                        <span className="material-symbols-outlined text-white text-[16px]">check</span>
+                      )}
                     </div>
-                  )}
-                </div>
-                <label className={cn(
-                  "flex items-center gap-3 p-1 cursor-pointer group",
-                  hasAcknowledged && "opacity-75 cursor-default",
-                  schedule.status === 'waiting' && "opacity-50 pointer-events-none"
-                )}>
-                  <input 
-                    type="checkbox"
-                    checked={hasAcknowledged}
-                    disabled={hasAcknowledged || isAckSubmitting || schedule.status === 'waiting'}
-                    onChange={async (e) => {
-                      if (e.target.checked && !hasAcknowledged) {
-                        const success = await toggleAcknowledge(true);
-                        if (success) {
-                          toast.success('Confirmação registrada!');
+                    <input 
+                      type="checkbox"
+                      checked={hasAcknowledged}
+                      disabled={hasAcknowledged || isAckSubmitting || schedule.status === 'waiting'}
+                      onChange={async (e) => {
+                        if (e.target.checked && !hasAcknowledged) {
+                          const success = await toggleAcknowledge(true);
+                          if (success) {
+                            toast.success('Confirmação registrada!');
+                          }
                         }
-                      }
-                    }}
-                    className="h-5 w-5 rounded border-slate-300 text-primary focus:ring-primary dark:border-slate-600 dark:bg-slate-700 transition-colors disabled:opacity-50"
-                  />
-                  <span className={cn(
-                    "text-xs font-bold transition-colors",
-                    hasAcknowledged 
-                      ? "text-emerald-600 dark:text-emerald-400" 
-                      : "text-slate-700 dark:text-slate-300 group-hover:text-primary"
-                  )}>
-                    {hasAcknowledged ? '✓ Leitura confirmada' : 'Li e compreendi as informações'}
-                  </span>
-                  {isAckSubmitting && (
-                    <span className="text-xs text-slate-400">Salvando...</span>
+                      }}
+                      className="sr-only"
+                    />
+                    <span className={cn(
+                      "text-sm transition-colors",
+                      hasAcknowledged 
+                        ? "text-emerald-600 dark:text-emerald-400 font-medium" 
+                        : "text-slate-500 dark:text-slate-400"
+                    )}>
+                      {hasAcknowledged ? '✓ Leitura confirmada' : 'Li e compreendi as informações'}
+                    </span>
+                    {isAckSubmitting && (
+                      <span className="text-xs text-slate-400">Salvando...</span>
+                    )}
+                  </label>
+                </div>
+              )}
+
+              {/* Action button for Iniciar Limpeza - Only when status is released */}
+              {schedule.status === 'released' && (
+                <button 
+                  onClick={() => {
+                    if (!canTransition.allowed) {
+                      toast.error(canTransition.reason);
+                      return;
+                    }
+                    if (!hasPropertyChecklist && !isCheckingChecklist) {
+                      setShowNoChecklistModal(true);
+                      return;
+                    }
+                    if (hasImportantInfo && !hasAcknowledged) {
+                      setShowAttentionModal(true);
+                      return;
+                    }
+                    handleStatusChange('cleaning');
+                  }}
+                  disabled={isAckSubmitting || isCheckingChecklist || isCheckingAccess || !canTransition.allowed}
+                  className={cn(
+                    "flex w-full items-center justify-center gap-2 rounded-xl py-4 font-bold text-white shadow-[0_4px_20px_-2px_rgba(51,153,153,0.3)] transition-all active:scale-[0.98]",
+                    !canTransition.allowed
+                      ? "bg-slate-400 hover:bg-slate-500 cursor-not-allowed"
+                      : "bg-primary hover:bg-[#267373]"
                   )}
-                </label>
+                >
+                  {(isCheckingChecklist || isCheckingAccess) ? (
+                    <>
+                      <span className="material-symbols-outlined animate-spin">progress_activity</span>
+                      Verificando...
+                    </>
+                  ) : (
+                    <>
+                      <span className="material-symbols-outlined filled">play_circle</span>
+                      Iniciar Limpeza
+                    </>
+                  )}
+                </button>
+              )}
+
+              {/* Disabled Iniciar Limpeza button for waiting status */}
+              {schedule.status === 'waiting' && (
+                <button 
+                  disabled
+                  className="flex w-full items-center justify-center gap-2 rounded-xl py-4 font-bold text-slate-500 dark:text-slate-400 bg-slate-300 dark:bg-slate-700 cursor-not-allowed"
+                >
+                  <span className="material-symbols-outlined">play_circle</span>
+                  Iniciar Limpeza
+                </button>
+              )}
+            </section>
+
+            {/* Lock overlay centered for waiting status */}
+            {schedule.status === 'waiting' && (
+              <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                <div className="bg-white/90 dark:bg-slate-900/90 p-3 rounded-full shadow-xl border border-slate-200 dark:border-slate-700">
+                  <span className="material-symbols-outlined text-slate-400 text-[32px]">lock</span>
+                </div>
               </div>
             )}
+          </div>
 
-            {/* Action button for Iniciar Limpeza - Only when status is released */}
-            {schedule.status === 'released' && (
-              <button 
-                onClick={() => {
-                  if (!canTransition.allowed) {
-                    toast.error(canTransition.reason);
-                    return;
-                  }
-                  if (!hasPropertyChecklist && !isCheckingChecklist) {
-                    setShowNoChecklistModal(true);
-                    return;
-                  }
-                  if (hasImportantInfo && !hasAcknowledged) {
-                    setShowAttentionModal(true);
-                    return;
-                  }
-                  handleStatusChange('cleaning');
-                }}
-                disabled={isAckSubmitting || isCheckingChecklist || isCheckingAccess || !canTransition.allowed}
-                className={cn(
-                  "flex w-full items-center justify-center gap-2 rounded-xl py-4 font-bold text-white shadow-[0_4px_20px_-2px_rgba(51,153,153,0.3)] transition-all active:scale-[0.98]",
-                  !canTransition.allowed
-                    ? "bg-slate-400 hover:bg-slate-500 cursor-not-allowed"
-                    : "bg-primary hover:bg-[#267373]"
-                )}
-              >
-                {(isCheckingChecklist || isCheckingAccess) ? (
-                  <>
-                    <span className="material-symbols-outlined animate-spin">progress_activity</span>
-                    Verificando...
-                  </>
-                ) : (
-                  <>
-                    <span className="material-symbols-outlined filled">play_circle</span>
-                    Iniciar Limpeza
-                  </>
-                )}
-              </button>
-            )}
-
-            {/* Disabled Iniciar Limpeza button for waiting status */}
-            {schedule.status === 'waiting' && (
-              <button 
-                disabled
-                className="flex w-full items-center justify-center gap-2 rounded-xl py-4 font-bold text-slate-400 bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 cursor-not-allowed"
-              >
-                <span className="material-symbols-outlined">play_circle</span>
-                Iniciar Limpeza
-              </button>
-            )}
-
-            {/* Liberar para Limpeza Button - Only for waiting status and admin/manager */}
-            {schedule.status === 'waiting' && (isAdmin || isManager) && (
-              <button 
-                onClick={() => handleStatusChange('released')}
-                className="flex w-full items-center justify-center gap-2 rounded-xl py-4 font-bold text-white bg-primary hover:bg-[#267373] shadow-[0_4px_20px_-2px_rgba(51,153,153,0.3)] transition-all active:scale-[0.98] mt-4"
-              >
-                <span className="material-symbols-outlined filled">check_circle</span>
-                Liberar para Limpeza
-              </button>
-            )}
-          </section>
+          {/* Liberar para Limpeza Button - Only for waiting status and admin/manager */}
+          {schedule.status === 'waiting' && (isAdmin || isManager) && (
+            <button 
+              onClick={() => handleStatusChange('released')}
+              className="flex w-full items-center justify-center gap-2 rounded-xl py-4 font-bold text-white bg-primary hover:bg-[#267373] shadow-[0_4px_20px_-2px_rgba(51,153,153,0.3)] transition-all active:scale-[0.98]"
+            >
+              <span className="material-symbols-outlined filled">check_circle</span>
+              Liberar para Limpeza
+            </button>
+          )}
 
           {/* Action Buttons - Ver Endereço e Ver Senha */}
           <div className="grid grid-cols-2 gap-3">
@@ -797,47 +810,32 @@ export function ScheduleDetail({ schedule, onClose, onUpdateSchedule }: Schedule
               Ver Senha da Porta
             </button>
           </div>
-          {/* === BLOCKED CONTENT WHEN WAITING === */}
-          {schedule.status === 'waiting' ? (
-            /* Blocked View for Waiting Status */
-            <section className="rounded-2xl bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 p-6 flex flex-col items-center justify-center gap-4 text-center">
-              <div className="bg-amber-100 dark:bg-amber-900/30 rounded-full p-4">
-                <span className="material-symbols-outlined text-amber-500 text-[40px]">lock</span>
+
+          {/* === Content with opacity-40 when waiting === */}
+          <div className={cn(
+            "space-y-4",
+            schedule.status === 'waiting' && "opacity-40 select-none pointer-events-none"
+          )}>
+            {/* Progress Section */}
+            <section className="flex flex-col gap-3">
+              <div className="flex items-center justify-between">
+                <h3 className="text-sm font-bold uppercase tracking-widest text-slate-500">Progresso do Checklist</h3>
+                <span className="text-xs font-bold text-slate-400">{completedTasks}/{totalTasks} Concluídos</span>
               </div>
-              <div className="flex flex-col gap-2">
-                <h3 className="text-lg font-bold text-slate-700 dark:text-slate-200">Checklist Bloqueado</h3>
-                <p className="text-sm text-slate-500 dark:text-slate-400 max-w-xs">
-                  O checklist e demais funções estarão disponíveis após a liberação da limpeza pelo gestor.
-                </p>
-              </div>
-              <div className="flex items-center gap-2 text-xs text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-900/20 rounded-full px-4 py-2 font-medium">
-                <span className="material-symbols-outlined text-[16px]">schedule</span>
-                Aguardando checkout do hóspede
+              <div className="h-2 w-full rounded-full bg-slate-200 dark:bg-slate-800 overflow-hidden">
+                <div 
+                  className="h-full rounded-full bg-primary transition-all duration-500" 
+                  style={{ width: `${totalTasks > 0 ? (completedTasks / totalTasks) * 100 : 0}%` }}
+                />
               </div>
             </section>
-          ) : (
-            /* Active Content - Progress, Checklist, Maintenance, Observations */
-            <>
-              {/* Progress Section */}
-              <section className="flex flex-col gap-3">
-                <div className="flex items-center justify-between">
-                  <h3 className="text-base font-bold text-slate-900 dark:text-white">Progresso do Checklist</h3>
-                  <span className="text-xs font-bold text-primary">{completedTasks}/{totalTasks} Concluídos</span>
-                </div>
-                <div className="h-2 w-full rounded-full bg-slate-100 dark:bg-slate-700 overflow-hidden">
-                  <div 
-                    className="h-full rounded-full bg-primary transition-all duration-500" 
-                    style={{ width: `${totalTasks > 0 ? (completedTasks / totalTasks) * 100 : 0}%` }}
-                  />
-                </div>
-              </section>
 
-          {/* Checklist Section */}
-          <section className="flex flex-col gap-4">
-            <div className="flex items-center gap-2 mb-1">
-              <span className="material-symbols-outlined text-primary text-[20px]">check_circle</span>
-              <h3 className="text-sm font-bold uppercase tracking-wide text-slate-900 dark:text-white">Checklist de Limpeza</h3>
-            </div>
+            {/* Checklist Section */}
+            <section className="flex flex-col gap-4 pt-2">
+              <div className="flex items-center gap-2">
+                <span className="material-symbols-outlined text-slate-400 text-[20px]">check_circle</span>
+                <h3 className="text-xs font-bold uppercase tracking-widest text-slate-500">Checklist de Limpeza</h3>
+              </div>
 
             {Object.entries(groupedChecklist).map(([category, items]) => {
               const completedInCategory = items.filter(item => item.completed).length;
@@ -991,31 +989,27 @@ export function ScheduleDetail({ schedule, onClose, onUpdateSchedule }: Schedule
                 </div>
               );
             })}
-          </section>
+            </section>
 
-          {/* Maintenance Section - Uses localIssues (Rule 41.1, 44.1) */}
-          <section className="flex flex-col gap-3 mt-2">
-            <div className="flex items-center gap-2">
-              <span className="material-symbols-outlined text-primary text-[20px]">build</span>
-              <h3 className="text-sm font-bold uppercase tracking-wide text-slate-900 dark:text-white">Manutenção</h3>
+            {/* Maintenance Section - Uses localIssues (Rule 41.1, 44.1) */}
+            <section className="flex flex-col gap-3">
+              <div className="flex items-center gap-2">
+                <span className="material-symbols-outlined text-slate-400 text-[20px]">build</span>
+                <h3 className="text-xs font-bold uppercase tracking-widest text-slate-500">Manutenção</h3>
+              </div>
+              
               {localIssues.length > 0 && (
-                <span className="text-xs font-bold text-orange-500">({localIssues.length})</span>
-              )}
-            </div>
-            
-            {localIssues.length > 0 && (
-              <div className="flex flex-col gap-3">
-                {localIssues.map(issue => (
-                  <div key={issue.id} className="rounded-xl border border-orange-200 bg-orange-50 p-3 dark:border-orange-900/50 dark:bg-orange-900/10">
-                    <div className="flex items-start gap-3">
-                      <span className="material-symbols-outlined text-orange-500 mt-0.5 text-[20px]">warning</span>
+                <div className="flex flex-col gap-3">
+                  {localIssues.map(issue => (
+                    <div key={issue.id} className="rounded-xl border border-amber-100 dark:border-amber-900/30 bg-amber-50 dark:bg-amber-900/10 p-4 flex items-start gap-3">
+                      <span className="material-symbols-outlined text-amber-500 text-[20px]">warning</span>
                       <div className="flex flex-col flex-1">
-                        <p className="text-sm font-bold text-slate-900 dark:text-white">{issue.description}</p>
-                        <span className="text-[10px] text-[#8A8B88] dark:text-slate-400">
+                        <h4 className="text-sm font-bold text-slate-700 dark:text-slate-300">{issue.description}</h4>
+                        <p className="text-[10px] text-slate-400 mt-0.5">
                           Reportado em {format(issue.reportedAt, "dd/MM - HH:mm")}
-                        </span>
+                        </p>
                       </div>
-                      {schedule.status !== 'completed' && (
+                      {schedule.status !== 'completed' && schedule.status !== 'waiting' && (
                         <button
                           onClick={() => setDeleteIssueConfirm({ open: true, issueId: issue.id })}
                           className="flex items-center justify-center rounded-full p-1.5 text-red-400 hover:bg-red-100 hover:text-red-600 transition-colors dark:hover:bg-red-900/30"
@@ -1025,74 +1019,46 @@ export function ScheduleDetail({ schedule, onClose, onUpdateSchedule }: Schedule
                         </button>
                       )}
                     </div>
-                  </div>
-                ))}
-              </div>
-            )}
+                  ))}
+                </div>
+              )}
 
-            <button
-              onClick={() => setShowIssueForm(true)}
-              className="mt-1 flex w-full items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white py-3 font-bold text-slate-700 shadow-sm transition-colors hover:bg-slate-50 dark:border-slate-700 dark:bg-[#2d3138] dark:text-white dark:hover:bg-slate-700"
-            >
-              <span className="material-symbols-outlined text-[20px]">report_problem</span>
-              Reportar Avaria
-            </button>
-          </section>
-
-          {/* Cleaner Observations Section - Rule 41.2, 44.2 */}
-          {schedule.status === 'cleaning' && (
-            <section className="flex flex-col gap-3 mt-2">
-              <div className="flex items-center gap-2">
-                <span className="material-symbols-outlined text-primary text-[20px]">edit_note</span>
-                <h3 className="text-sm font-bold uppercase tracking-wide text-slate-900 dark:text-white">Observações da Limpeza</h3>
-              </div>
-              <p className="text-xs text-slate-500 dark:text-slate-400">
-                Adicione observações que serão visíveis para o gestor após a limpeza.
-              </p>
-              <div className="relative">
-                <textarea 
-                  value={cleanerObservations}
-                  onChange={(e) => setCleanerObservations(e.target.value)}
-                  className="w-full rounded-xl border-slate-200 bg-slate-50 p-4 pb-10 text-sm focus:border-primary focus:ring-primary dark:border-slate-700 dark:bg-slate-800 dark:text-white" 
-                  placeholder="Ex: Porta do banheiro com dificuldade para fechar..." 
-                  rows={3}
-                />
-                <span className="material-symbols-outlined absolute bottom-3 right-3 text-slate-400 text-[18px]">edit</span>
-              </div>
-              <div className="flex items-center gap-2 text-xs text-slate-400">
-                <span className="material-symbols-outlined text-[14px]">save</span>
-                <span>Salvo automaticamente</span>
-              </div>
-            </section>
-          )}
-
-          {/* Admin/Manager Observations Section */}
-          {(isAdmin || isManager) && (
-            <section className="flex flex-col gap-3 mt-2">
-              <div className="flex items-center gap-2">
-                <span className="material-symbols-outlined text-primary text-[20px]">chat_bubble</span>
-                <h3 className="text-sm font-bold uppercase tracking-wide text-slate-900 dark:text-white">Notas do Gestor</h3>
-              </div>
-              <div className="relative">
-                <textarea 
-                  value={notes}
-                  onChange={(e) => setNotes(e.target.value)}
-                  className="w-full rounded-xl border-slate-200 bg-slate-50 p-4 pb-10 text-sm focus:border-primary focus:ring-primary dark:border-slate-700 dark:bg-slate-800 dark:text-white" 
-                  placeholder="Notas internas do gestor..." 
-                  rows={3}
-                />
-                <span className="material-symbols-outlined absolute bottom-3 right-3 text-slate-400 text-[18px]">edit</span>
-              </div>
-              <button 
-                onClick={handleSaveNotes}
-                className="w-full rounded-lg bg-slate-200 py-2.5 text-xs font-bold text-slate-600 transition-colors hover:bg-slate-300 dark:bg-slate-700 dark:text-slate-300 dark:hover:bg-slate-600"
+              <button
+                onClick={() => setShowIssueForm(true)}
+                disabled={schedule.status === 'waiting'}
+                className="flex w-full items-center justify-center gap-2 rounded-xl border border-slate-200 dark:border-slate-800 py-3 font-bold text-slate-400 disabled:cursor-not-allowed"
               >
-                Salvar Notas
+                <span className="material-symbols-outlined text-[20px]">report_problem</span>
+                Reportar Avaria
               </button>
             </section>
-          )}
-            </>
-          )}
+
+            {/* Observations Section - Visible in all states */}
+            <section className="flex flex-col gap-3">
+              <div className="flex items-center gap-2">
+                <span className="material-symbols-outlined text-slate-400 text-[20px]">chat_bubble</span>
+                <h3 className="text-xs font-bold uppercase tracking-widest text-slate-500">Observações</h3>
+              </div>
+              <div className="bg-white dark:bg-[#2d3138] border border-slate-200 dark:border-slate-800 rounded-xl p-4 min-h-[96px]">
+                {schedule.status === 'waiting' ? (
+                  <span className="text-sm text-slate-300 dark:text-slate-600 italic">
+                    Adicione observações sobre este agendamento...
+                  </span>
+                ) : schedule.status === 'cleaning' ? (
+                  <textarea 
+                    value={cleanerObservations}
+                    onChange={(e) => setCleanerObservations(e.target.value)}
+                    className="w-full h-full min-h-[72px] bg-transparent text-sm text-slate-600 dark:text-slate-300 placeholder:text-slate-300 dark:placeholder:text-slate-600 placeholder:italic resize-none focus:outline-none" 
+                    placeholder="Adicione observações sobre este agendamento..."
+                  />
+                ) : (
+                  <span className="text-sm text-slate-600 dark:text-slate-300">
+                    {cleanerObservations || notes || 'Sem observações'}
+                  </span>
+                )}
+              </div>
+            </section>
+          </div>
 
           {/* History Section */}
           <section className="flex flex-col gap-3 mt-2">
@@ -1157,7 +1123,26 @@ export function ScheduleDetail({ schedule, onClose, onUpdateSchedule }: Schedule
         </main>
 
         {/* Footer Button */}
-        <div className="fixed bottom-0 left-0 right-0 z-50 bg-stone-50/95 dark:bg-[#22252a]/95 backdrop-blur-md border-t border-slate-200/50 dark:border-slate-700/50 p-4">
+        <div className="fixed bottom-0 left-0 right-0 z-50 bg-stone-50/90 dark:bg-[#22252a]/90 backdrop-blur-xl border-t border-slate-200 dark:border-slate-800 p-4">
+          {/* Waiting status - disabled button */}
+          {schedule.status === 'waiting' && (
+            <button 
+              disabled
+              className="w-full bg-primary/40 text-white/50 py-4 rounded-xl font-bold text-lg shadow-lg shadow-primary/20 cursor-not-allowed"
+            >
+              Finalizar Limpeza
+            </button>
+          )}
+
+          {/* Released status - no button shown */}
+          {schedule.status === 'released' && (
+            <div className="flex items-center justify-center gap-2 text-slate-400 py-2">
+              <span className="material-symbols-outlined">hourglass_empty</span>
+              <span className="font-medium text-sm">Inicie a limpeza para continuar</span>
+            </div>
+          )}
+
+          {/* Cleaning status - Finalizar button */}
           {schedule.status === 'cleaning' && (() => {
             const categoriesMissingPhotos = getCategoriesMissingPhotos();
             const isBlocked = categoriesMissingPhotos.length > 0;
@@ -1174,7 +1159,7 @@ export function ScheduleDetail({ schedule, onClose, onUpdateSchedule }: Schedule
                   onClick={() => handleStatusChange('completed')}
                   disabled={isBlocked || isCommitting}
                   className={cn(
-                    "w-full rounded-xl py-4 text-base font-bold text-white shadow-[0_4px_20px_-2px_rgba(51,153,153,0.3)] transition-all active:scale-[0.98]",
+                    "w-full rounded-xl py-4 text-base font-bold text-white shadow-lg shadow-primary/20 transition-all active:scale-[0.98]",
                     (isBlocked || isCommitting)
                       ? "bg-slate-400 cursor-not-allowed" 
                       : "bg-primary hover:bg-[#267373]"
@@ -1192,6 +1177,8 @@ export function ScheduleDetail({ schedule, onClose, onUpdateSchedule }: Schedule
               </div>
             );
           })()}
+
+          {/* Completed status - success message */}
           {schedule.status === 'completed' && (
             <div className="flex items-center justify-center gap-2 text-primary py-2">
               <span className="material-symbols-outlined">check_circle</span>
