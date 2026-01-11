@@ -25,10 +25,11 @@ const vibrate = (pattern: number | number[] = 50) => {
 };
 
 export function MobileDashboard({ schedules, onScheduleClick, onStartCleaning, onRefresh }: MobileDashboardProps) {
-  const [selectedDate, setSelectedDate] = useState(new Date());
+  // Always initialize with the current date from the device
+  const [selectedDate, setSelectedDate] = useState(() => startOfDay(new Date()));
   const [activeTab, setActiveTab] = useState<'inicio' | 'agenda' | 'msgs' | 'menu'>('inicio');
   const [viewMode, setViewMode] = useState<'dia' | 'calendario'>('dia');
-  const [currentMonth, setCurrentMonth] = useState(new Date());
+  const [currentMonth, setCurrentMonth] = useState(() => startOfMonth(new Date()));
   const [isSyncing, setIsSyncing] = useState(false);
   const [lastSyncTime, setLastSyncTime] = useState<Date | null>(null);
   
