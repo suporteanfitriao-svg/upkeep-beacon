@@ -68,12 +68,13 @@ export function useCleanerPayments(teamMemberId: string | null) {
       rates.forEach(r => rateMap.set(r.property_id, parseFloat(String(r.rate_value))));
       const propertyIds = Array.from(rateMap.keys());
 
-      // Fetch completed schedules (received payments)
+      // Fetch completed schedules assigned to this team member (received payments)
       const { data: completedSchedules, error: completedError } = await supabase
         .from('schedules')
         .select('property_id, status, end_at')
         .eq('responsible_team_member_id', teamMemberId)
         .eq('status', 'completed')
+        .eq('is_active', true)
         .in('property_id', propertyIds)
         .gte('end_at', dateRange.start.toISOString())
         .lte('end_at', dateRange.end.toISOString());
@@ -82,11 +83,11 @@ export function useCleanerPayments(teamMemberId: string | null) {
         console.error('Error fetching completed schedules:', completedError);
       }
 
-      // Fetch ALL pending/in-progress schedules for properties with rates configured
-      // This calculates the estimated provision for all pending tasks
+      // Fetch ALL pending schedules for properties where this team member has required rates
+      // This calculates the estimated provision based on property binding
       const { data: futureSchedules, error: futureError } = await supabase
         .from('schedules')
-        .select('property_id, status, check_out_time, responsible_team_member_id')
+        .select('property_id, status, check_out_time')
         .in('status', ['waiting', 'released', 'cleaning'])
         .in('property_id', propertyIds)
         .eq('is_active', true);
