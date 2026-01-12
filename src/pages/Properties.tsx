@@ -15,6 +15,7 @@ import { ptBR } from 'date-fns/locale';
 import { ChecklistManager } from '@/components/properties/ChecklistManager';
 import { PasswordModeConfig } from '@/components/properties/PasswordModeConfig';
 import { AdvancedRulesConfig } from '@/components/properties/AdvancedRulesConfig';
+import { CleaningRatesManager } from '@/components/properties/CleaningRatesManager';
 import { cn } from '@/lib/utils';
 import { useImageCompression } from '@/hooks/useImageCompression';
 
@@ -838,26 +839,32 @@ export default function Properties() {
                         <Tabs defaultValue="ical" className="w-full">
                           <TabsList className={cn(
                             "grid w-full mb-4 bg-muted/50 rounded-xl p-1",
-                            canManage ? 'grid-cols-4' : 'grid-cols-2'
+                            canManage ? 'grid-cols-5' : 'grid-cols-2'
                           )}>
                             <TabsTrigger value="ical" className="rounded-lg text-xs data-[state=active]:bg-card data-[state=active]:shadow-sm">
                               <span className="material-symbols-outlined text-[14px] mr-1">link</span>
-                              Anúncios ({propertySources.length})
+                              <span className="hidden sm:inline">Anúncios</span> ({propertySources.length})
                             </TabsTrigger>
                             <TabsTrigger value="checklist" className="rounded-lg text-xs data-[state=active]:bg-card data-[state=active]:shadow-sm">
                               <span className="material-symbols-outlined text-[14px] mr-1">checklist</span>
-                              Checklists ({propertyChecklistCount})
+                              <span className="hidden sm:inline">Checklists</span> ({propertyChecklistCount})
                             </TabsTrigger>
                             {canManage && (
                               <TabsTrigger value="password" className="rounded-lg text-xs data-[state=active]:bg-card data-[state=active]:shadow-sm">
                                 <span className="material-symbols-outlined text-[14px] mr-1">key</span>
-                                Senha
+                                <span className="hidden sm:inline">Senha</span>
                               </TabsTrigger>
                             )}
                             {canManage && (
                               <TabsTrigger value="rules" className="rounded-lg text-xs data-[state=active]:bg-card data-[state=active]:shadow-sm">
                                 <span className="material-symbols-outlined text-[14px] mr-1">tune</span>
-                                Regras
+                                <span className="hidden sm:inline">Regras</span>
+                              </TabsTrigger>
+                            )}
+                            {canManage && (
+                              <TabsTrigger value="rates" className="rounded-lg text-xs data-[state=active]:bg-card data-[state=active]:shadow-sm">
+                                <span className="material-symbols-outlined text-[14px] mr-1">payments</span>
+                                <span className="hidden sm:inline">Taxas</span>
                               </TabsTrigger>
                             )}
                           </TabsList>
@@ -1011,6 +1018,12 @@ export default function Properties() {
                                 propertyId={property.id} 
                                 propertyName={property.name} 
                               />
+                            </TabsContent>
+                          )}
+
+                          {canManage && (
+                            <TabsContent value="rates" className="mt-0">
+                              <CleaningRatesManager propertyId={property.id} />
                             </TabsContent>
                           )}
                         </Tabs>
