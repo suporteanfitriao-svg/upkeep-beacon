@@ -173,8 +173,8 @@ export function IssueReportModal({ onClose, onSubmit, checklist, isSubmitting = 
   };
 
   return (
-    <div className="fixed inset-0 z-[60] bg-stone-50 dark:bg-[#22252a] font-display text-slate-800 dark:text-slate-100 antialiased">
-      <div className="relative flex min-h-screen w-full flex-col overflow-x-hidden pb-24">
+    <div className="fixed inset-0 z-[60] bg-stone-50 dark:bg-[#22252a] font-display text-slate-800 dark:text-slate-100 antialiased overflow-y-auto">
+      <div className="relative flex min-h-full w-full flex-col overflow-x-hidden pb-28">
         {/* Header */}
         <header className="sticky top-0 z-20 flex items-center bg-stone-50/90 dark:bg-[#22252a]/90 px-4 py-4 backdrop-blur-md border-b border-slate-100 dark:border-slate-800">
           <button 
@@ -382,7 +382,7 @@ export function IssueReportModal({ onClose, onSubmit, checklist, isSubmitting = 
 
         {/* Step 3: Description, Photo & Severity */}
         {step === 3 && (
-          <main className="flex flex-col gap-6 p-6">
+          <main className="flex flex-col gap-5 p-5 pb-32">
             {/* Summary */}
             <div className="flex items-center gap-3 px-1">
               <div className="h-10 w-10 rounded-xl bg-primary/10 flex items-center justify-center text-primary">

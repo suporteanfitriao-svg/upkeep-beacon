@@ -858,40 +858,61 @@ export function ScheduleDetail({ schedule, onClose, onUpdateSchedule }: Schedule
               </div>
 
             {Object.entries(groupedChecklist).map(([category, items]) => {
-              const completedInCategory = items.filter(item => item.completed).length;
               const totalInCategory = items.length;
               const isExpanded = expandedCategories[category] ?? false;
-              const allCompleted = items.every(item => item.completed);
-              const hasDX = categoryHasDX(category);
+              // Count OK (yes) and DX (no) items separately
+              const okCount = items.filter(item => checklistItemStates[item.id] === 'yes').length;
+              const dxCount = items.filter(item => checklistItemStates[item.id] === 'no').length;
+              const selectedCount = okCount + dxCount;
+              const allSelected = selectedCount === totalInCategory;
+              const hasDX = dxCount > 0;
               const hasPhotosInCategory = categoryPhotosData[category] && categoryPhotosData[category].length > 0;
-              const needsPhoto = requirePhotoPerCategory && allCompleted && !hasPhotosInCategory;
+              const needsPhoto = requirePhotoPerCategory && allSelected && !hasPhotosInCategory;
               const photoCount = categoryPhotosData[category]?.length || 0;
 
               return (
                 <div key={category} className={cn(
                   "overflow-hidden rounded-xl border bg-white dark:bg-[#2d3138]",
-                  allCompleted ? "border-green-300 dark:border-green-700" : "border-slate-200 dark:border-slate-700"
+                  allSelected 
+                    ? hasDX 
+                      ? "border-amber-300 dark:border-amber-700" 
+                      : "border-green-300 dark:border-green-700" 
+                    : "border-slate-200 dark:border-slate-700"
                 )}>
                   <details open={isExpanded} className="group">
                     <summary 
                       onClick={(e) => { e.preventDefault(); toggleCategory(category); }}
                       className={cn(
                         "flex cursor-pointer items-center justify-between p-4 font-medium",
-                        allCompleted ? "bg-green-50 dark:bg-green-900/20" : "bg-slate-50 dark:bg-slate-800/50"
+                        allSelected 
+                          ? hasDX 
+                            ? "bg-amber-50 dark:bg-amber-900/20" 
+                            : "bg-green-50 dark:bg-green-900/20" 
+                          : "bg-slate-50 dark:bg-slate-800/50"
                       )}
                     >
                       <div className="flex items-center gap-3">
                         <div className={cn(
                           "h-4 w-4 rounded-full border-2 flex items-center justify-center",
-                          allCompleted ? "bg-green-500 border-green-500" : "border-slate-300 dark:border-slate-500"
+                          allSelected 
+                            ? hasDX 
+                              ? "bg-amber-500 border-amber-500" 
+                              : "bg-green-500 border-green-500" 
+                            : "border-slate-300 dark:border-slate-500"
                         )}>
-                          {allCompleted && (
-                            <span className="material-symbols-outlined text-white text-[12px]">check</span>
+                          {allSelected && (
+                            <span className="material-symbols-outlined text-white text-[12px]">
+                              {hasDX ? 'warning' : 'check'}
+                            </span>
                           )}
                         </div>
                         <span className={cn(
                           "font-bold",
-                          allCompleted ? "text-green-700 dark:text-green-300" : "text-slate-900 dark:text-white"
+                          allSelected 
+                            ? hasDX 
+                              ? "text-amber-700 dark:text-amber-300" 
+                              : "text-green-700 dark:text-green-300" 
+                            : "text-slate-900 dark:text-white"
                         )}>{category}</span>
                         {needsPhoto && (
                           <div className="flex items-center gap-1 text-amber-500" title="Foto do ambiente obrigatória para concluir">
@@ -901,8 +922,30 @@ export function ScheduleDetail({ schedule, onClose, onUpdateSchedule }: Schedule
                         )}
                       </div>
                       <div className="flex items-center gap-2.5">
-                        {/* Mark category complete button - only when cleaning */}
-                        {schedule.status === 'cleaning' && !allCompleted && !hasDX && (
+                        {/* Progress indicator: OK / DX counts */}
+                        {!isExpanded && (
+                          <div className="flex items-center gap-1.5">
+                            {okCount > 0 && (
+                              <span className="flex items-center gap-0.5 text-[10px] font-bold text-green-600 dark:text-green-400 bg-green-100 dark:bg-green-900/30 px-1.5 py-0.5 rounded-full">
+                                <span className="material-symbols-outlined text-[12px]">check</span>
+                                {okCount}
+                              </span>
+                            )}
+                            {dxCount > 0 && (
+                              <span className="flex items-center gap-0.5 text-[10px] font-bold text-red-600 dark:text-red-400 bg-red-100 dark:bg-red-900/30 px-1.5 py-0.5 rounded-full">
+                                <span className="material-symbols-outlined text-[12px]">close</span>
+                                {dxCount}
+                              </span>
+                            )}
+                            {selectedCount < totalInCategory && (
+                              <span className="text-xs font-semibold text-slate-400">
+                                {selectedCount}/{totalInCategory}
+                              </span>
+                            )}
+                          </div>
+                        )}
+                        {/* Mark category complete button - only when cleaning and no DX */}
+                        {schedule.status === 'cleaning' && !allSelected && !hasDX && (
                           <button 
                             onClick={(e) => {
                               e.stopPropagation();
@@ -915,21 +958,21 @@ export function ScheduleDetail({ schedule, onClose, onUpdateSchedule }: Schedule
                             <span className="material-symbols-outlined text-[20px]">check_circle</span>
                           </button>
                         )}
-                        {/* Photo button - only enabled when all items completed */}
+                        {/* Photo button - only enabled when all items selected */}
                         <button 
                           onClick={(e) => {
                             e.stopPropagation();
                             setPhotoUploadModal({ open: true, category });
                           }}
-                          disabled={!allCompleted}
+                          disabled={!allSelected}
                           aria-label="Adicionar Foto" 
                           className={cn(
                             "relative rounded-full p-1 transition-colors",
-                            allCompleted 
+                            allSelected 
                               ? "text-primary hover:text-[#267373] hover:bg-primary/10" 
                               : "text-slate-300 cursor-not-allowed dark:text-slate-600"
                           )}
-                          title={allCompleted ? "Adicionar foto do ambiente" : "Complete todos os itens para adicionar foto"}
+                          title={allSelected ? "Adicionar foto do ambiente" : "Selecione todos os itens para adicionar foto"}
                         >
                           <span className="material-symbols-outlined text-[20px]">photo_camera</span>
                           {photoCount > 0 && (
@@ -939,9 +982,6 @@ export function ScheduleDetail({ schedule, onClose, onUpdateSchedule }: Schedule
                           )}
                         </button>
                         <div className="h-4 w-px bg-slate-200 dark:bg-slate-600 mx-1" />
-                        {!isExpanded && (
-                          <span className="text-xs font-semibold text-[#8A8B88]">{completedInCategory}/{totalInCategory}</span>
-                        )}
                         <span className={cn(
                           "material-symbols-outlined text-slate-400 transition",
                           isExpanded && "rotate-180"
