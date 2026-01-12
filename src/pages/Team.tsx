@@ -17,6 +17,7 @@ import { SidebarProvider } from '@/components/ui/sidebar';
 import { AppSidebar } from '@/components/dashboard/AppSidebar';
 import { DashboardHeader } from '@/components/dashboard/DashboardHeader';
 import { useUserRole } from '@/hooks/useUserRole';
+import { useCepLookup } from '@/hooks/useCepLookup';
 import { Navigate } from 'react-router-dom';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
@@ -61,6 +62,7 @@ const roleColors: Record<string, string> = {
 
 export default function Team() {
   const { isAdmin, role, loading: roleLoading } = useUserRole();
+  const { fetching: fetchingCep, handleCepChange } = useCepLookup();
   const [members, setMembers] = useState<TeamMember[]>([]);
   const [properties, setProperties] = useState<Property[]>([]);
   const [loading, setLoading] = useState(true);
@@ -548,12 +550,18 @@ export default function Team() {
                       <div className="grid grid-cols-3 gap-4">
                         <div className="space-y-2">
                           <Label htmlFor="address_cep">CEP</Label>
-                          <Input
-                            id="address_cep"
-                            value={formData.address_cep}
-                            onChange={(e) => setFormData({ ...formData, address_cep: formatCEP(e.target.value) })}
-                            placeholder="00000-000"
-                          />
+                          <div className="relative">
+                            <Input
+                              id="address_cep"
+                              value={formData.address_cep}
+                              onChange={(e) => handleCepChange(e.target.value, setFormData)}
+                              placeholder="00000-000"
+                              maxLength={9}
+                            />
+                            {fetchingCep && (
+                              <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 animate-spin text-muted-foreground" />
+                            )}
+                          </div>
                         </div>
                         <div className="space-y-2 col-span-2">
                           <Label htmlFor="address_street">Rua</Label>
