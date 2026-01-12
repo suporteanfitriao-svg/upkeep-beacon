@@ -649,7 +649,7 @@ export function ScheduleDetail({ schedule, onClose, onUpdateSchedule }: Schedule
               </div>
             </div>
             <div className="rounded-xl bg-white dark:bg-[#2d3138] p-4 border border-slate-200 dark:border-slate-700 shadow-sm flex flex-col items-center justify-center gap-1">
-              <span className="text-[10px] font-bold uppercase text-[#8A8B88] dark:text-slate-400 tracking-wide">Próximo Hóspede</span>
+              <span className="text-[10px] font-bold uppercase text-[#8A8B88] dark:text-slate-400 tracking-wide">Hora Máxima para Liberar</span>
               <div className="flex items-center gap-1.5 text-slate-900 dark:text-white">
                 <span className="material-symbols-outlined text-[18px] text-primary">login</span>
                 <span className="text-lg font-bold">{format(schedule.checkIn, "HH:mm")}</span>
