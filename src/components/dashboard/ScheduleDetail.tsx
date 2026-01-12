@@ -642,10 +642,10 @@ export function ScheduleDetail({ schedule, onClose, onUpdateSchedule }: Schedule
           {/* Time Cards */}
           <div className={cn("grid grid-cols-2 gap-3", schedule.status === 'waiting' && "opacity-60")}>
             <div className="rounded-xl bg-white dark:bg-[#2d3138] p-4 border border-slate-200 dark:border-slate-700 shadow-sm flex flex-col items-center justify-center gap-1">
-              <span className="text-[10px] font-bold uppercase text-[#8A8B88] dark:text-slate-400 tracking-wide">Hora Atual</span>
+              <span className="text-[10px] font-bold uppercase text-[#8A8B88] dark:text-slate-400 tracking-wide">Previsão de Liberação</span>
               <div className="flex items-center gap-1.5 text-slate-900 dark:text-white">
                 <span className="material-symbols-outlined text-[18px] text-primary">schedule</span>
-                <span className="text-lg font-bold">{currentTime}</span>
+                <span className="text-lg font-bold">{format(schedule.checkOut, "HH:mm")}</span>
               </div>
             </div>
             <div className="rounded-xl bg-white dark:bg-[#2d3138] p-4 border border-slate-200 dark:border-slate-700 shadow-sm flex flex-col items-center justify-center gap-1">
