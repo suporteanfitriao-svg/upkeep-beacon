@@ -51,6 +51,41 @@ export function useCleaningRates(propertyId?: string) {
     setLoading(false);
   }, [propertyId]);
 
+  // Auto-assign pending schedules to team member when rate is required
+  const autoAssignSchedules = useCallback(async (propertyId: string, teamMemberId: string, teamMemberName: string) => {
+    // Fetch pending schedules without responsible or with this responsible
+    const { data: schedules, error } = await supabase
+      .from('schedules')
+      .select('id, responsible_team_member_id')
+      .eq('property_id', propertyId)
+      .in('status', ['waiting', 'released'])
+      .eq('is_active', true);
+
+    if (error) {
+      console.error('Error fetching schedules for auto-assign:', error);
+      return;
+    }
+
+    // Only assign schedules that don't have a responsible yet
+    const schedulesToAssign = (schedules || []).filter(s => !s.responsible_team_member_id);
+    
+    if (schedulesToAssign.length > 0) {
+      const { error: updateError } = await supabase
+        .from('schedules')
+        .update({ 
+          responsible_team_member_id: teamMemberId,
+          cleaner_name: teamMemberName
+        })
+        .in('id', schedulesToAssign.map(s => s.id));
+
+      if (updateError) {
+        console.error('Error auto-assigning schedules:', updateError);
+      } else {
+        console.log(`Auto-assigned ${schedulesToAssign.length} schedules to ${teamMemberName}`);
+      }
+    }
+  }, []);
+
   const createRate = useCallback(async (data: {
     property_id: string;
     team_member_id: string;
@@ -87,10 +122,23 @@ export function useCleaningRates(propertyId?: string) {
       action: 'create'
     });
 
+    // Auto-assign schedules if rate is required
+    if (data.is_required) {
+      const { data: teamMember } = await supabase
+        .from('team_members')
+        .select('name')
+        .eq('id', data.team_member_id)
+        .single();
+      
+      if (teamMember) {
+        await autoAssignSchedules(data.property_id, data.team_member_id, teamMember.name);
+      }
+    }
+
     toast.success('Taxa criada com sucesso');
     await fetchRates();
     return true;
-  }, [fetchRates]);
+  }, [fetchRates, autoAssignSchedules]);
 
   const updateRate = useCallback(async (
     rateId: string,
@@ -130,10 +178,16 @@ export function useCleaningRates(propertyId?: string) {
       action: 'update'
     });
 
+    // Auto-assign schedules if rate became required
+    if (newData.is_required && !previousData.is_required) {
+      const teamMemberName = rate.team_member?.name || 'Profissional';
+      await autoAssignSchedules(rate.property_id, rate.team_member_id, teamMemberName);
+    }
+
     toast.success('Taxa atualizada com sucesso');
     await fetchRates();
     return true;
-  }, [rates, fetchRates]);
+  }, [rates, fetchRates, autoAssignSchedules]);
 
   const deleteRate = useCallback(async (rateId: string) => {
     const { data: user } = await supabase.auth.getUser();
