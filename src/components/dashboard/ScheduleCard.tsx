@@ -10,6 +10,7 @@ import {
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
+import { useStayStatus } from '@/hooks/useStayStatus';
 
 interface ScheduleCardProps {
   schedule: Schedule;
@@ -49,6 +50,7 @@ const buttonConfig: Record<ScheduleStatus, { label: string; icon: React.ReactNod
 export function ScheduleCard({ schedule, onClick }: ScheduleCardProps) {
   const statusStyle = statusConfig[schedule.status];
   const buttonStyle = buttonConfig[schedule.status];
+  const stayStatus = useStayStatus(schedule);
   const completedTasks = schedule.checklist.filter(item => item.completed).length;
   const totalTasks = schedule.checklist.length;
   const progressPercent = totalTasks > 0 ? (completedTasks / totalTasks) * 100 : 0;
@@ -60,13 +62,6 @@ export function ScheduleCard({ schedule, onClick }: ScheduleCardProps) {
     }
     if (schedule.status === 'completed') {
       return 'Limpeza finalizada';
-    }
-    // Check if checkout is happening now (within 2 hours)
-    const now = new Date();
-    const checkOut = new Date(schedule.checkOut);
-    const diffHours = (checkOut.getTime() - now.getTime()) / (1000 * 60 * 60);
-    if (diffHours <= 2 && diffHours >= -1) {
-      return 'Liberação em andamento';
     }
     return `${schedule.cleanerName !== 'Não atribuído' ? schedule.cleanerName : ''}`;
   };
@@ -95,6 +90,23 @@ export function ScheduleCard({ schedule, onClick }: ScheduleCardProps) {
               <Wrench className="w-4 h-4 text-status-progress" />
             )}
           </div>
+
+          {/* Stay Status Indicator - Only for waiting status */}
+          {stayStatus && (
+            <div className={cn(
+              'inline-flex items-center gap-1.5 px-2 py-1 rounded-lg text-[10px] font-bold uppercase tracking-wide mb-2 w-fit',
+              stayStatus.bgClass,
+              stayStatus.colorClass
+            )}>
+              {stayStatus.type === 'stay_ending' && (
+                <span className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse" />
+              )}
+              {stayStatus.type === 'near_release' && (
+                <Clock className="w-3 h-3" />
+              )}
+              {stayStatus.label}
+            </div>
+          )}
 
           {/* Property Name */}
           <h3 className="font-bold text-lg text-foreground truncate mb-2">
