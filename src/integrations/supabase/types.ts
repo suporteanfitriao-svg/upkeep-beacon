@@ -53,6 +53,101 @@ export type Database = {
           },
         ]
       }
+      cleaning_rate_audit_logs: {
+        Row: {
+          action: string
+          cleaning_rate_id: string | null
+          created_at: string
+          id: string
+          new_is_required: boolean
+          new_rate_value: number
+          previous_is_required: boolean | null
+          previous_rate_value: number | null
+          property_id: string
+          team_member_id: string
+          user_id: string
+        }
+        Insert: {
+          action: string
+          cleaning_rate_id?: string | null
+          created_at?: string
+          id?: string
+          new_is_required: boolean
+          new_rate_value: number
+          previous_is_required?: boolean | null
+          previous_rate_value?: number | null
+          property_id: string
+          team_member_id: string
+          user_id: string
+        }
+        Update: {
+          action?: string
+          cleaning_rate_id?: string | null
+          created_at?: string
+          id?: string
+          new_is_required?: boolean
+          new_rate_value?: number
+          previous_is_required?: boolean | null
+          previous_rate_value?: number | null
+          property_id?: string
+          team_member_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "cleaning_rate_audit_logs_cleaning_rate_id_fkey"
+            columns: ["cleaning_rate_id"]
+            isOneToOne: false
+            referencedRelation: "cleaning_rates"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      cleaning_rates: {
+        Row: {
+          created_at: string
+          id: string
+          is_required: boolean
+          property_id: string
+          rate_value: number
+          team_member_id: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          is_required?: boolean
+          property_id: string
+          rate_value: number
+          team_member_id: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          is_required?: boolean
+          property_id?: string
+          rate_value?: number
+          team_member_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "cleaning_rates_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: false
+            referencedRelation: "properties"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "cleaning_rates_team_member_id_fkey"
+            columns: ["team_member_id"]
+            isOneToOne: false
+            referencedRelation: "team_members"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       maintenance_issues: {
         Row: {
           assigned_to: string | null

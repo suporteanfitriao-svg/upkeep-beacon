@@ -7,6 +7,9 @@ import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
+import { useTeamMemberId } from '@/hooks/useTeamMemberId';
+import { useCleanerPayments, PaymentPeriod } from '@/hooks/useCleanerPayments';
+import { CleanerPaymentCards } from './CleanerPaymentCards';
 
 interface MobileDashboardProps {
   schedules: Schedule[];
@@ -30,6 +33,8 @@ export function MobileDashboard({ schedules, onScheduleClick, onStartCleaning, o
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const { user } = useAuth();
+  const { teamMemberId } = useTeamMemberId();
+  const [paymentPeriod, setPaymentPeriod] = useState<PaymentPeriod>('today');
   
   // Always initialize with the current date from the device
   const [selectedDate, setSelectedDate] = useState(() => startOfDay(new Date()));
@@ -270,9 +275,9 @@ export function MobileDashboard({ schedules, onScheduleClick, onStartCleaning, o
           {/* Home Header */}
           <header className="sticky top-0 z-20 flex items-center justify-between bg-stone-50/90 dark:bg-[#22252a]/90 px-6 py-4 backdrop-blur-md">
             <div className="flex flex-col">
-              <span className="text-xs font-medium text-muted-foreground">Olá,</span>
+              <span className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Bem-vindo(a)</span>
               <h1 className="text-xl font-bold text-foreground">
-                {user?.email?.split('@')[0] || 'Usuário'}
+                Dashboard <span className="text-primary">Geral</span>
               </h1>
             </div>
             <div className="flex items-center gap-2">
@@ -299,46 +304,119 @@ export function MobileDashboard({ schedules, onScheduleClick, onStartCleaning, o
           </header>
 
           <main className="flex-1 px-6 py-4">
-            {/* Today Summary */}
-            <div className="mb-6">
-              <p className="text-sm text-muted-foreground mb-1">{format(new Date(), "EEEE, d 'de' MMMM", { locale: ptBR })}</p>
-              <h2 className="text-2xl font-bold text-foreground">Resumo do Dia</h2>
-            </div>
-
-            {/* Stats Cards */}
-            <div className="grid grid-cols-2 gap-3 mb-6">
-              <div className="p-4 rounded-2xl bg-amber-50 dark:bg-amber-900/20 border border-amber-100 dark:border-amber-800/30">
-                <div className="flex items-center gap-2 mb-2">
-                  <AlertCircle className="w-5 h-5 text-amber-600" />
-                  <span className="text-xs font-medium text-amber-700 dark:text-amber-400">Pendentes</span>
-                </div>
-                <p className="text-3xl font-bold text-amber-900 dark:text-amber-300">{pendingSchedules.length}</p>
-              </div>
-              <div className="p-4 rounded-2xl bg-blue-50 dark:bg-blue-900/20 border border-blue-100 dark:border-blue-800/30">
-                <div className="flex items-center gap-2 mb-2">
-                  <Play className="w-5 h-5 text-blue-600" />
-                  <span className="text-xs font-medium text-blue-700 dark:text-blue-400">Em Andamento</span>
-                </div>
-                <p className="text-3xl font-bold text-blue-900 dark:text-blue-300">{inProgressSchedules.length}</p>
-              </div>
-              <div className="p-4 rounded-2xl bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-100 dark:border-emerald-800/30">
-                <div className="flex items-center gap-2 mb-2">
-                  <Check className="w-5 h-5 text-emerald-600" />
-                  <span className="text-xs font-medium text-emerald-700 dark:text-emerald-400">Concluídos</span>
-                </div>
-                <p className="text-3xl font-bold text-emerald-900 dark:text-emerald-300">{completedSchedules.length}</p>
-              </div>
-              <button 
-                onClick={() => navigate('/propriedades')}
-                className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/50 border border-slate-100 dark:border-slate-700 text-left transition-all hover:bg-slate-100 dark:hover:bg-slate-800"
+            {/* Period Filter Tabs */}
+            <div className="flex items-center gap-2 mb-4">
+              <button
+                onClick={() => setPaymentPeriod('today')}
+                className={cn(
+                  "px-4 py-2 rounded-full text-sm font-semibold transition-all",
+                  paymentPeriod === 'today'
+                    ? "bg-primary text-white shadow-md"
+                    : "bg-white dark:bg-slate-800 text-muted-foreground border border-slate-200 dark:border-slate-700"
+                )}
               >
-                <div className="flex items-center gap-2 mb-2">
-                  <Building2 className="w-5 h-5 text-slate-600" />
-                  <span className="text-xs font-medium text-slate-600 dark:text-slate-400">Imóveis</span>
-                </div>
-                <p className="text-sm font-semibold text-slate-900 dark:text-white">Ver todos</p>
+                Hoje
+              </button>
+              <button
+                onClick={() => setPaymentPeriod('week')}
+                className={cn(
+                  "px-4 py-2 rounded-full text-sm font-semibold transition-all",
+                  paymentPeriod === 'week'
+                    ? "bg-primary text-white shadow-md"
+                    : "bg-white dark:bg-slate-800 text-muted-foreground border border-slate-200 dark:border-slate-700"
+                )}
+              >
+                Semana
+              </button>
+              <button
+                onClick={() => setPaymentPeriod('month')}
+                className={cn(
+                  "px-4 py-2 rounded-full text-sm font-semibold transition-all",
+                  paymentPeriod === 'month'
+                    ? "bg-primary text-white shadow-md"
+                    : "bg-white dark:bg-slate-800 text-muted-foreground border border-slate-200 dark:border-slate-700"
+                )}
+              >
+                Mês
               </button>
             </div>
+
+            {/* Today Summary */}
+            <div className="flex items-center justify-between mb-4">
+              <div>
+                <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Resumo de Atividades</p>
+              </div>
+              {onRefresh && (
+                <button
+                  onClick={() => handleRefresh(false)}
+                  disabled={isSyncing}
+                  className="flex items-center gap-1 text-xs font-semibold text-primary"
+                >
+                  <RefreshCw className={cn("w-3.5 h-3.5", isSyncing && "animate-spin")} />
+                  Atualizar
+                </button>
+              )}
+            </div>
+
+            {/* Payment Cards - Only shows if cleaner has required rates */}
+            <CleanerPaymentCards teamMemberId={teamMemberId} period={paymentPeriod} />
+
+            {/* Tasks Card - Today's Tasks */}
+            <div className="rounded-2xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 p-4 mb-3 shadow-sm">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="h-12 w-12 rounded-xl bg-primary/10 flex items-center justify-center">
+                    <Calendar className="w-6 h-6 text-primary" />
+                  </div>
+                  <div>
+                    <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Tarefas de Hoje</p>
+                    <p className="text-3xl font-bold text-foreground">
+                      {String(selectedDaySchedules.length).padStart(2, '0')}
+                    </p>
+                  </div>
+                </div>
+                {pendingSchedules.length > 0 && (
+                  <span className="px-3 py-1 rounded-full bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400 text-xs font-bold">
+                    Pendente
+                  </span>
+                )}
+              </div>
+            </div>
+
+            {/* Stats Cards Row */}
+            <div className="grid grid-cols-2 gap-3 mb-6">
+              <div className="p-4 rounded-2xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 shadow-sm">
+                <div className="h-10 w-10 rounded-xl bg-emerald-100 dark:bg-emerald-900/30 flex items-center justify-center mb-2">
+                  <Check className="w-5 h-5 text-emerald-600" />
+                </div>
+                <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-1">Tarefas do Mês</p>
+                <p className="text-2xl font-bold text-foreground">{completedSchedules.length}</p>
+              </div>
+              <div className="p-4 rounded-2xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 shadow-sm">
+                <div className="h-10 w-10 rounded-xl bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center mb-2">
+                  <Play className="w-5 h-5 text-blue-600" />
+                </div>
+                <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-1">Tarefas Futuras</p>
+                <p className="text-2xl font-bold text-foreground">{pendingSchedules.length + inProgressSchedules.length}</p>
+              </div>
+            </div>
+
+            {/* Properties Responsibility Card */}
+            <button
+              onClick={() => navigate('/propriedades')}
+              className="w-full rounded-2xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 p-4 mb-6 shadow-sm text-left transition-all hover:shadow-md active:scale-[0.99]"
+            >
+              <div className="flex items-center gap-4">
+                <div className="h-12 w-12 rounded-xl bg-slate-100 dark:bg-slate-700 flex items-center justify-center">
+                  <Building2 className="w-6 h-6 text-slate-600 dark:text-slate-400" />
+                </div>
+                <div className="flex-1">
+                  <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Responsabilidade</p>
+                  <p className="text-lg font-bold text-foreground">Ver Propriedades</p>
+                </div>
+                <ChevronRight className="w-5 h-5 text-muted-foreground" />
+              </div>
+            </button>
 
             {/* Next Task */}
             {nextCheckout && (
