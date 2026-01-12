@@ -1,6 +1,7 @@
-import { Home, Users, HelpCircle, ClipboardCheck, LogOut, Building2, CalendarDays, Wrench, Building } from 'lucide-react';
+import { Home, Users, ClipboardCheck, LogOut, Building2, Wrench, Building } from 'lucide-react';
 import { NavLink } from '@/components/NavLink';
 import { useAuth } from '@/hooks/useAuth';
+import { useUserRole } from '@/hooks/useUserRole';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 import {
@@ -17,20 +18,31 @@ import {
 } from '@/components/ui/sidebar';
 import logo from '@/assets/logo.png';
 
-const menuItems = [
+interface MenuItem {
+  title: string;
+  url: string;
+  icon: React.ComponentType<{ className?: string }>;
+  adminOnly?: boolean;
+}
+
+const allMenuItems: MenuItem[] = [
   { title: 'Inicio', url: '/', icon: Home },
-  { title: 'Propriedades', url: '/propriedades', icon: Building2 },
-  { title: 'Inspeção', url: '/inspecoes', icon: ClipboardCheck },
-  { title: 'Propriedade', url: '/propriedade', icon: Building },
-  { title: 'Equipe', url: '/equipe', icon: Users },
-  { title: 'Manutenção', url: '/manutencao', icon: Wrench },
+  { title: 'Propriedades', url: '/propriedades', icon: Building2, adminOnly: true },
+  { title: 'Inspeção', url: '/inspecoes', icon: ClipboardCheck, adminOnly: true },
+  { title: 'Propriedade', url: '/propriedade', icon: Building, adminOnly: true },
+  { title: 'Equipe', url: '/equipe', icon: Users, adminOnly: true },
+  { title: 'Manutenção', url: '/manutencao', icon: Wrench, adminOnly: true },
 ];
 
 export function AppSidebar() {
   const { state } = useSidebar();
   const collapsed = state === 'collapsed';
-  const { signOut, user } = useAuth();
+  const { signOut } = useAuth();
+  const { isCleaner } = useUserRole();
   const navigate = useNavigate();
+
+  // Filter menu items based on role
+  const menuItems = allMenuItems.filter(item => !item.adminOnly || !isCleaner);
 
   const handleSignOut = async () => {
     await signOut();
