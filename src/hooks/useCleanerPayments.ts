@@ -10,10 +10,8 @@ interface PaymentSummary {
   hasRequiredRates: boolean;
 }
 
-export function useCleanerPayments(teamMemberId: string | null) {
+export function useCleanerPayments(teamMemberId: string | null, period: PaymentPeriod = 'today') {
   const [loading, setLoading] = useState(true);
-  const [period, setPeriod] = useState<PaymentPeriod>('today');
-  const [selectedMonth, setSelectedMonth] = useState<Date>(new Date());
   const [summary, setSummary] = useState<PaymentSummary>({
     received: 0,
     future: 0,
@@ -33,9 +31,9 @@ export function useCleanerPayments(teamMemberId: string | null) {
       case 'week':
         return { start: startOfWeek(now, { weekStartsOn: 0 }), end: endOfWeek(now, { weekStartsOn: 0 }) };
       case 'month':
-        return { start: startOfMonth(selectedMonth), end: endOfMonth(selectedMonth) };
+        return { start: startOfMonth(now), end: endOfMonth(now) };
     }
-  }, [period, selectedMonth]);
+  }, [period]);
 
   const fetchPayments = useCallback(async () => {
     if (!teamMemberId) {
@@ -131,10 +129,6 @@ export function useCleanerPayments(teamMemberId: string | null) {
 
   return {
     loading,
-    period,
-    setPeriod,
-    selectedMonth,
-    setSelectedMonth,
     summary,
     refetch: fetchPayments
   };

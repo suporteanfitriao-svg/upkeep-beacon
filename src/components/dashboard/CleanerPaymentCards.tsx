@@ -1,18 +1,14 @@
-import { Banknote, Wallet, Calendar, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Banknote, Wallet } from 'lucide-react';
 import { useCleanerPayments, PaymentPeriod } from '@/hooks/useCleanerPayments';
-import { cn } from '@/lib/utils';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Button } from '@/components/ui/button';
-import { format, subMonths, addMonths } from 'date-fns';
-import { ptBR } from 'date-fns/locale';
 
 interface CleanerPaymentCardsProps {
   teamMemberId: string | null;
   period: PaymentPeriod;
 }
 
-export function CleanerPaymentCards({ teamMemberId }: CleanerPaymentCardsProps) {
-  const { loading, summary, period, setPeriod, selectedMonth, setSelectedMonth } = useCleanerPayments(teamMemberId);
+export function CleanerPaymentCards({ teamMemberId, period }: CleanerPaymentCardsProps) {
+  const { loading, summary } = useCleanerPayments(teamMemberId, period);
 
   // Don't show anything if no required rates exist
   if (!loading && !summary.hasRequiredRates) {
@@ -26,21 +22,9 @@ export function CleanerPaymentCards({ teamMemberId }: CleanerPaymentCardsProps) 
     }).format(value);
   };
 
-  const handlePreviousMonth = () => {
-    setSelectedMonth(subMonths(selectedMonth, 1));
-  };
-
-  const handleNextMonth = () => {
-    const nextMonth = addMonths(selectedMonth, 1);
-    if (nextMonth <= new Date()) {
-      setSelectedMonth(nextMonth);
-    }
-  };
-
   if (loading) {
     return (
-      <div className="space-y-3 mb-6">
-        <Skeleton className="h-10 rounded-lg" />
+      <div className="grid grid-cols-1 gap-3 mb-6">
         <Skeleton className="h-24 rounded-2xl" />
         <Skeleton className="h-20 rounded-2xl" />
       </div>
@@ -49,59 +33,6 @@ export function CleanerPaymentCards({ teamMemberId }: CleanerPaymentCardsProps) 
 
   return (
     <div className="space-y-3 mb-6">
-      {/* Period Filter */}
-      <div className="flex items-center gap-2">
-        <Button
-          variant={period === 'today' ? 'default' : 'outline'}
-          size="sm"
-          onClick={() => setPeriod('today')}
-          className="text-xs"
-        >
-          Hoje
-        </Button>
-        <Button
-          variant={period === 'week' ? 'default' : 'outline'}
-          size="sm"
-          onClick={() => setPeriod('week')}
-          className="text-xs"
-        >
-          Semana
-        </Button>
-        <Button
-          variant={period === 'month' ? 'default' : 'outline'}
-          size="sm"
-          onClick={() => setPeriod('month')}
-          className="text-xs"
-        >
-          Mês
-        </Button>
-        
-        {period === 'month' && (
-          <div className="flex items-center gap-1 ml-auto">
-            <Button
-              variant="ghost"
-              size="icon"
-              className="h-7 w-7"
-              onClick={handlePreviousMonth}
-            >
-              <ChevronLeft className="h-4 w-4" />
-            </Button>
-            <span className="text-xs font-medium min-w-[80px] text-center capitalize">
-              {format(selectedMonth, 'MMM yyyy', { locale: ptBR })}
-            </span>
-            <Button
-              variant="ghost"
-              size="icon"
-              className="h-7 w-7"
-              onClick={handleNextMonth}
-              disabled={addMonths(selectedMonth, 1) > new Date()}
-            >
-              <ChevronRight className="h-4 w-4" />
-            </Button>
-          </div>
-        )}
-      </div>
-
       {/* Received Payments - Highlighted Card */}
       <div className="rounded-2xl bg-primary p-5 text-white shadow-lg">
         <div className="flex items-center justify-between">
