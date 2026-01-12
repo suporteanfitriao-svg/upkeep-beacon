@@ -697,6 +697,7 @@ export function AdminScheduleRow({ schedule, onClick, onScheduleUpdated }: Admin
           propertyName={localSchedule.propertyName}
           scheduleId={localSchedule.id}
           scheduleDate={localSchedule.checkOut.toISOString()}
+          scheduleStatus={localSchedule.status}
           passwordFromIcal={localSchedule.doorPassword}
           accessPassword={localSchedule.accessPassword}
           teamMemberId={teamMemberId}

@@ -1269,6 +1269,7 @@ export function ScheduleDetail({ schedule, onClose, onUpdateSchedule }: Schedule
           propertyName={schedule.propertyName}
           scheduleId={schedule.id}
           scheduleDate={schedule.checkOut.toISOString()}
+          scheduleStatus={schedule.status}
           passwordFromIcal={schedule.doorPassword}
           accessPassword={schedule.accessPassword}
           teamMemberId={teamMemberId}

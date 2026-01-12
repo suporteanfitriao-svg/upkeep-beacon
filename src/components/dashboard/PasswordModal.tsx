@@ -11,6 +11,7 @@ interface PasswordModalProps {
   propertyName: string;
   scheduleId: string;
   scheduleDate: string; // Date reference for the cleaning (YYYY-MM-DD or ISO string)
+  scheduleStatus?: string; // Current status of the schedule
   passwordFromIcal?: string;
   accessPassword?: string;
   teamMemberId: string | null;
@@ -39,6 +40,7 @@ export function PasswordModal({
   propertyName, 
   scheduleId,
   scheduleDate,
+  scheduleStatus,
   passwordFromIcal,
   accessPassword,
   teamMemberId,
@@ -56,10 +58,12 @@ export function PasswordModal({
   const [isSaving, setIsSaving] = useState(false);
   const [hasLoggedView, setHasLoggedView] = useState(false);
 
-  // Check if cleaner can view password (temporal rule - Rule 10-12)
-  // Password can only be viewed by cleaner from 00:01 of checkout day
+  // Check if cleaner can view password based on:
+  // 1. Checkout day (from 00:01) OR
+  // 2. Schedule is released/cleaning/completed
+  // Whichever occurs first
   const isCheckoutDay = isScheduleDay(scheduleDate);
-
+  const isReleasedForCleaning = scheduleStatus === 'released' || scheduleStatus === 'cleaning' || scheduleStatus === 'completed';
   // Fetch property password mode
   useEffect(() => {
     const fetchPasswordMode = async () => {
@@ -86,9 +90,10 @@ export function PasswordModal({
   const displayPassword = passwordMode === 'ical' ? passwordFromIcal : accessPassword;
   const hasPassword = Boolean(displayPassword && displayPassword.trim());
 
-  // Rule 10-12: Temporal visibility applies to ALL passwords (both iCal and manual)
-  // Cleaners can only view password from 00:01 of checkout day
-  const isBlockedByTemporalRule = role === 'cleaner' && !isCheckoutDay;
+  // Rule: Temporal visibility applies to ALL passwords (both iCal and manual)
+  // Cleaners can view password if: checkout day (from 00:01) OR schedule is released/cleaning/completed
+  const canCleanerViewByRule = isCheckoutDay || isReleasedForCleaning;
+  const isBlockedByTemporalRule = role === 'cleaner' && !canCleanerViewByRule;
 
   // Log view action when password is displayed (only once per modal open) - Rule 13
   useEffect(() => {
@@ -103,15 +108,15 @@ export function PasswordModal({
     }
   }, [isLoading, hasPassword, teamMemberId, scheduleId, propertyId, logAction, hasLoggedView, isBlockedByTemporalRule]);
 
-  // Check if cleaner can view password (Rule 10-12)
+  // Check if cleaner can view password
   const canView = () => {
-    // Admin and manager can always view (no temporal restriction - Rule 12)
+    // Admin and manager can always view (no temporal restriction)
     if (canManage) return true;
     
-    // Cleaner: check temporal rule (Rule 10-11)
+    // Cleaner: check if released OR checkout day
     if (role === 'cleaner') {
-      // Blocked before checkout day (applies to ALL passwords)
-      if (!isCheckoutDay) {
+      // Blocked if not checkout day AND not released
+      if (!canCleanerViewByRule) {
         return false;
       }
       // Must have password
@@ -168,16 +173,16 @@ export function PasswordModal({
       );
     }
 
-    // Temporal restriction message for cleaner (before checkout day - Rule 10-11)
+    // Temporal restriction message for cleaner (before checkout day AND not released)
     if (isBlockedByTemporalRule) {
       return (
         <div className="mt-6 mb-4 flex w-full flex-col items-center justify-center rounded-xl bg-blue-50 border border-blue-200 py-5 dark:bg-blue-900/20 dark:border-blue-800">
           <span className="material-symbols-outlined text-3xl text-blue-600 dark:text-blue-400 mb-2">schedule</span>
           <span className="text-sm font-medium text-blue-700 dark:text-blue-300">
-            Senha disponível apenas no dia do checkout
+            Senha disponível no dia do checkout ou após liberação
           </span>
           <span className="text-xs text-blue-600 dark:text-blue-400 mt-1 text-center px-4">
-            Por segurança, a senha será liberada automaticamente às 00:01 do dia agendado
+            Por segurança, a senha será liberada às 00:01 do dia agendado ou quando a limpeza for liberada
           </span>
         </div>
       );
