@@ -1,5 +1,5 @@
 import { useState, useMemo, useEffect, useCallback, useRef } from 'react';
-import { format, isSameDay, addDays, startOfWeek, getWeek, isAfter, startOfDay, isToday as checkIsToday, startOfMonth, endOfMonth, eachDayOfInterval, addMonths, subMonths, getDay, formatDistanceToNow } from 'date-fns';
+import { format, isSameDay, addDays, startOfWeek, endOfWeek, getWeek, isAfter, startOfDay, isToday as checkIsToday, startOfMonth, endOfMonth, eachDayOfInterval, addMonths, subMonths, getDay, formatDistanceToNow, isWithinInterval } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { Calendar, Play, Clock, Check, ChevronRight, LayoutGrid, MessageSquare, Menu, RefreshCw, Home, Building2, AlertCircle, Users } from 'lucide-react';
 import { Schedule } from '@/types/scheduling';
@@ -229,6 +229,81 @@ export function MobileDashboard({ schedules, onScheduleClick, onStartCleaning, o
     ).length;
   }, [schedules]);
 
+  // Count tomorrow's pending tasks for badge
+  const tomorrowTasksCount = useMemo(() => {
+    const tomorrow = addDays(new Date(), 1);
+    return schedules.filter(s => 
+      isSameDay(s.checkOut, tomorrow) && s.status !== 'completed'
+    ).length;
+  }, [schedules]);
+
+  // Calculate period-based stats
+  const periodStats = useMemo(() => {
+    const now = new Date();
+    let dateRange: { start: Date; end: Date };
+    
+    switch (paymentPeriod) {
+      case 'today':
+        dateRange = { start: startOfDay(now), end: endOfDay(now) };
+        break;
+      case 'tomorrow':
+        const tomorrow = addDays(now, 1);
+        dateRange = { start: startOfDay(tomorrow), end: endOfDay(tomorrow) };
+        break;
+      case 'week':
+        dateRange = { start: startOfWeek(now, { weekStartsOn: 0 }), end: endOfWeek(now, { weekStartsOn: 0 }) };
+        break;
+      case 'month':
+        dateRange = { start: startOfMonth(now), end: endOfMonth(now) };
+        break;
+    }
+
+    const periodSchedules = schedules.filter(s => 
+      isWithinInterval(s.checkOut, { start: dateRange.start, end: dateRange.end })
+    );
+
+    const completed = periodSchedules.filter(s => s.status === 'completed');
+    const pending = periodSchedules.filter(s => s.status !== 'completed');
+    const total = periodSchedules.length;
+    const pendingCount = pending.length;
+
+    return {
+      total,
+      completed: completed.length,
+      pending: pendingCount,
+      periodLabel: paymentPeriod === 'today' ? 'Hoje' : 
+                   paymentPeriod === 'tomorrow' ? 'Amanhã' :
+                   paymentPeriod === 'week' ? 'Semana' : 'Mês'
+    };
+  }, [schedules, paymentPeriod]);
+
+  // Calculate completed tasks in the current month
+  const monthCompletedCount = useMemo(() => {
+    const now = new Date();
+    const monthStart = startOfMonth(now);
+    const monthEnd = endOfMonth(now);
+    return schedules.filter(s => 
+      s.status === 'completed' &&
+      isWithinInterval(s.checkOut, { start: monthStart, end: monthEnd })
+    ).length;
+  }, [schedules]);
+
+  // Calculate future pending tasks (after today)
+  const futurePendingCount = useMemo(() => {
+    const today = startOfDay(new Date());
+    return schedules.filter(s => 
+      s.status !== 'completed' &&
+      isAfter(s.checkOut, today)
+    ).length;
+  }, [schedules]);
+
+  // Helper function for period end of day
+  const endOfDay = (date: Date) => {
+    const end = new Date(date);
+    end.setHours(23, 59, 59, 999);
+    return end;
+  };
+
   const handlePrevMonth = () => setCurrentMonth(prev => subMonths(prev, 1));
   const handleNextMonth = () => setCurrentMonth(prev => addMonths(prev, 1));
 
@@ -305,22 +380,43 @@ export function MobileDashboard({ schedules, onScheduleClick, onStartCleaning, o
 
           <main className="flex-1 px-6 py-4">
             {/* Period Filter Tabs */}
-            <div className="flex items-center gap-2 mb-4">
+            <div className="flex items-center gap-2 mb-4 overflow-x-auto">
               <button
                 onClick={() => setPaymentPeriod('today')}
                 className={cn(
-                  "px-4 py-2 rounded-full text-sm font-semibold transition-all",
+                  "relative px-4 py-2 rounded-full text-sm font-semibold transition-all whitespace-nowrap",
                   paymentPeriod === 'today'
                     ? "bg-primary text-white shadow-md"
                     : "bg-white dark:bg-slate-800 text-muted-foreground border border-slate-200 dark:border-slate-700"
                 )}
               >
                 Hoje
+                {todayTasksCount > 0 && paymentPeriod !== 'today' && (
+                  <span className="absolute -top-1 -right-1 h-5 w-5 rounded-full bg-red-500 text-white text-xs font-bold flex items-center justify-center">
+                    {todayTasksCount}
+                  </span>
+                )}
+              </button>
+              <button
+                onClick={() => setPaymentPeriod('tomorrow')}
+                className={cn(
+                  "relative px-4 py-2 rounded-full text-sm font-semibold transition-all whitespace-nowrap",
+                  paymentPeriod === 'tomorrow'
+                    ? "bg-primary text-white shadow-md"
+                    : "bg-white dark:bg-slate-800 text-muted-foreground border border-slate-200 dark:border-slate-700"
+                )}
+              >
+                Amanhã
+                {tomorrowTasksCount > 0 && paymentPeriod !== 'tomorrow' && (
+                  <span className="absolute -top-1 -right-1 h-5 w-5 rounded-full bg-red-500 text-white text-xs font-bold flex items-center justify-center">
+                    {tomorrowTasksCount}
+                  </span>
+                )}
               </button>
               <button
                 onClick={() => setPaymentPeriod('week')}
                 className={cn(
-                  "px-4 py-2 rounded-full text-sm font-semibold transition-all",
+                  "px-4 py-2 rounded-full text-sm font-semibold transition-all whitespace-nowrap",
                   paymentPeriod === 'week'
                     ? "bg-primary text-white shadow-md"
                     : "bg-white dark:bg-slate-800 text-muted-foreground border border-slate-200 dark:border-slate-700"
@@ -331,7 +427,7 @@ export function MobileDashboard({ schedules, onScheduleClick, onStartCleaning, o
               <button
                 onClick={() => setPaymentPeriod('month')}
                 className={cn(
-                  "px-4 py-2 rounded-full text-sm font-semibold transition-all",
+                  "px-4 py-2 rounded-full text-sm font-semibold transition-all whitespace-nowrap",
                   paymentPeriod === 'month'
                     ? "bg-primary text-white shadow-md"
                     : "bg-white dark:bg-slate-800 text-muted-foreground border border-slate-200 dark:border-slate-700"
@@ -361,7 +457,7 @@ export function MobileDashboard({ schedules, onScheduleClick, onStartCleaning, o
             {/* Payment Cards - Only shows if cleaner has required rates */}
             <CleanerPaymentCards teamMemberId={teamMemberId} period={paymentPeriod} />
 
-            {/* Tasks Card - Today's Tasks */}
+            {/* Tasks Card - Period Tasks */}
             <div className="rounded-2xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 p-4 mb-3 shadow-sm">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
@@ -369,15 +465,15 @@ export function MobileDashboard({ schedules, onScheduleClick, onStartCleaning, o
                     <Calendar className="w-6 h-6 text-primary" />
                   </div>
                   <div>
-                    <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Tarefas de Hoje</p>
+                    <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Tarefas - {periodStats.periodLabel}</p>
                     <p className="text-3xl font-bold text-foreground">
-                      {String(selectedDaySchedules.length).padStart(2, '0')}
+                      {String(periodStats.total).padStart(2, '0')}
                     </p>
                   </div>
                 </div>
-                {pendingSchedules.length > 0 && (
+                {periodStats.pending > 0 && (
                   <span className="px-3 py-1 rounded-full bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400 text-xs font-bold">
-                    Pendente
+                    {periodStats.pending} Pendente{periodStats.pending > 1 ? 's' : ''}
                   </span>
                 )}
               </div>
@@ -389,15 +485,15 @@ export function MobileDashboard({ schedules, onScheduleClick, onStartCleaning, o
                 <div className="h-10 w-10 rounded-xl bg-emerald-100 dark:bg-emerald-900/30 flex items-center justify-center mb-2">
                   <Check className="w-5 h-5 text-emerald-600" />
                 </div>
-                <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-1">Tarefas do Mês</p>
-                <p className="text-2xl font-bold text-foreground">{completedSchedules.length}</p>
+                <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-1">Finalizadas no Mês</p>
+                <p className="text-2xl font-bold text-foreground">{monthCompletedCount}</p>
               </div>
               <div className="p-4 rounded-2xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 shadow-sm">
                 <div className="h-10 w-10 rounded-xl bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center mb-2">
                   <Play className="w-5 h-5 text-blue-600" />
                 </div>
-                <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-1">Tarefas Futuras</p>
-                <p className="text-2xl font-bold text-foreground">{pendingSchedules.length + inProgressSchedules.length}</p>
+                <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-1">Futuras Pendentes</p>
+                <p className="text-2xl font-bold text-foreground">{futurePendingCount}</p>
               </div>
             </div>
 
