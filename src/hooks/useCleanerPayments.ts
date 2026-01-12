@@ -82,15 +82,14 @@ export function useCleanerPayments(teamMemberId: string | null) {
         console.error('Error fetching completed schedules:', completedError);
       }
 
-      // Fetch pending/in-progress schedules (future payments)
+      // Fetch pending/in-progress schedules (future payments) - without date filter for provision estimate
       const { data: futureSchedules, error: futureError } = await supabase
         .from('schedules')
         .select('property_id, status, check_out_time')
         .eq('responsible_team_member_id', teamMemberId)
         .in('status', ['waiting', 'released', 'cleaning'])
         .in('property_id', propertyIds)
-        .gte('check_out_time', dateRange.start.toISOString())
-        .lte('check_out_time', dateRange.end.toISOString());
+        .eq('is_active', true);
 
       if (futureError) {
         console.error('Error fetching future schedules:', futureError);
@@ -103,7 +102,7 @@ export function useCleanerPayments(teamMemberId: string | null) {
         if (rate) received += rate;
       });
 
-      // Calculate future amount
+      // Calculate future amount - sum ALL pending tasks for provision estimate
       let future = 0;
       (futureSchedules || []).forEach(s => {
         const rate = rateMap.get(s.property_id);
