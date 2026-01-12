@@ -532,7 +532,7 @@ export function MobileDashboard({ schedules, onScheduleClick, onStartCleaning, o
                       <h3 className="text-base font-bold text-foreground mb-1">{nextCheckout.propertyName}</h3>
                       <div className="flex items-center gap-1 text-muted-foreground">
                         <Clock className="w-4 h-4" />
-                        <p className="text-sm font-medium">Checkout: {formatTime(nextCheckout.checkOut)}</p>
+                        <p className="text-sm font-medium">Liberado a partir de {formatTime(nextCheckout.checkOut)}</p>
                       </div>
                       <span className={cn(
                         "mt-2 inline-flex self-start rounded-full px-2.5 py-0.5 text-xs font-bold",
@@ -841,9 +841,9 @@ export function MobileDashboard({ schedules, onScheduleClick, onStartCleaning, o
                       <div className="flex items-center gap-1.5 text-[#8A8B88] dark:text-slate-400">
                         <span className="material-symbols-outlined text-[16px]">schedule</span>
                         <span className="text-xs font-bold">
-                          {formatTime(schedule.checkOut)} 
+                          Liberado {formatTime(schedule.checkOut)} 
                           <span className="font-normal opacity-70">
-                            - {schedule.status === 'completed' ? 'Finalizado' : schedule.status === 'cleaning' ? 'Limpeza' : 'Checkout'}
+                            - {schedule.status === 'completed' ? 'Finalizado' : schedule.status === 'cleaning' ? 'Em limpeza' : 'Pendente'}
                           </span>
                         </span>
                       </div>
