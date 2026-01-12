@@ -448,9 +448,6 @@ export function MobileDashboard({ schedules, onScheduleClick, onStartCleaning, o
               )}
             </div>
 
-            {/* Payment Cards - Only shows if cleaner has required rates */}
-            <CleanerPaymentCards teamMemberId={teamMemberId} period={paymentPeriod} />
-
             {/* Tasks Card - Period Tasks */}
             <div className="rounded-2xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 p-4 mb-3 shadow-sm">
               <div className="flex items-center justify-between">
@@ -459,7 +456,7 @@ export function MobileDashboard({ schedules, onScheduleClick, onStartCleaning, o
                     <Calendar className="w-6 h-6 text-primary" />
                   </div>
                   <div>
-                    <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Tarefas - {periodStats.periodLabel}</p>
+                    <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Tarefas de {periodStats.periodLabel}</p>
                     <p className="text-3xl font-bold text-foreground">
                       {String(periodStats.total).padStart(2, '0')}
                     </p>
@@ -467,29 +464,32 @@ export function MobileDashboard({ schedules, onScheduleClick, onStartCleaning, o
                 </div>
                 {periodStats.pending > 0 && (
                   <span className="px-3 py-1 rounded-full bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400 text-xs font-bold">
-                    {periodStats.pending} Pendente{periodStats.pending > 1 ? 's' : ''}
+                    Pendente
                   </span>
                 )}
               </div>
             </div>
 
             {/* Stats Cards Row */}
-            <div className="grid grid-cols-2 gap-3 mb-6">
+            <div className="grid grid-cols-2 gap-3 mb-3">
               <div className="p-4 rounded-2xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 shadow-sm">
                 <div className="h-10 w-10 rounded-xl bg-emerald-100 dark:bg-emerald-900/30 flex items-center justify-center mb-2">
                   <Check className="w-5 h-5 text-emerald-600" />
                 </div>
-                <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-1">Finalizadas no Mês</p>
+                <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-1">Tarefas do Mês</p>
                 <p className="text-2xl font-bold text-foreground">{monthCompletedCount}</p>
               </div>
               <div className="p-4 rounded-2xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 shadow-sm">
                 <div className="h-10 w-10 rounded-xl bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center mb-2">
                   <Play className="w-5 h-5 text-blue-600" />
                 </div>
-                <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-1">Futuras Pendentes</p>
+                <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-1">Tarefas Futuras</p>
                 <p className="text-2xl font-bold text-foreground">{futurePendingCount}</p>
               </div>
             </div>
+
+            {/* Payment Cards - Only shows if cleaner has required rates */}
+            <CleanerPaymentCards teamMemberId={teamMemberId} period={paymentPeriod} />
 
             {/* Properties Responsibility Card */}
             <button
