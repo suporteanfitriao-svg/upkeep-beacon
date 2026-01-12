@@ -66,9 +66,9 @@ export function ScheduleCard({ schedule, onClick }: ScheduleCardProps) {
     const checkOut = new Date(schedule.checkOut);
     const diffHours = (checkOut.getTime() - now.getTime()) / (1000 * 60 * 60);
     if (diffHours <= 2 && diffHours >= -1) {
-      return 'Checkout acontecendo';
+      return 'Liberação em andamento';
     }
-    return `Check-in às ${format(schedule.checkIn, "HH:mm", { locale: ptBR })}`;
+    return `${schedule.cleanerName !== 'Não atribuído' ? schedule.cleanerName : ''}`;
   };
 
   return (
@@ -101,10 +101,10 @@ export function ScheduleCard({ schedule, onClick }: ScheduleCardProps) {
             {schedule.propertyName}
           </h3>
 
-          {/* Checkout Time */}
+          {/* Liberado a partir de */}
           <div className="flex items-center gap-2 text-sm text-muted-foreground mb-4">
             <Clock className="w-4 h-4" />
-            <span className="uppercase text-xs font-medium">Checkout</span>
+            <span className="uppercase text-xs font-medium">Liberado a partir de</span>
             <span className="font-semibold text-foreground">
               {format(schedule.checkOut, "HH:mm", { locale: ptBR })}
             </span>
