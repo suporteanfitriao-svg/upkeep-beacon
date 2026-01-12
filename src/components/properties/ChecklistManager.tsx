@@ -73,6 +73,9 @@ export function ChecklistManager({ propertyId, propertyName, allChecklists, onCh
   const [checklistItems, setChecklistItems] = useState<ChecklistItem[]>([]);
   const [newItemTitle, setNewItemTitle] = useState('');
   const [newItemCategory, setNewItemCategory] = useState('Geral');
+  const [customCategoryName, setCustomCategoryName] = useState('');
+  const [showCustomCategoryInput, setShowCustomCategoryInput] = useState(false);
+  const [customCategories, setCustomCategories] = useState<string[]>([]);
   const [migrateFromId, setMigrateFromId] = useState<string>('');
   
   // 46.5: Confirmation state
@@ -93,6 +96,17 @@ export function ChecklistManager({ propertyId, propertyName, allChecklists, onCh
     // Filter only active checklists for this property
     const propertyChecklists = allChecklists.filter(c => c.property_id === propertyId && c.is_active !== false);
     setChecklists(propertyChecklists);
+    
+    // Extract custom categories from existing checklists for this property
+    const existingCategories = new Set<string>();
+    propertyChecklists.forEach(checklist => {
+      checklist.items.forEach(item => {
+        if (!CATEGORY_OPTIONS.includes(item.category) && item.category !== 'Outro') {
+          existingCategories.add(item.category);
+        }
+      });
+    });
+    setCustomCategories(Array.from(existingCategories));
   }, [allChecklists, propertyId]);
 
   // 46.1: Check if property already has an active checklist
@@ -103,6 +117,9 @@ export function ChecklistManager({ propertyId, propertyName, allChecklists, onCh
     setChecklistName('Checklist Padrão');
     setChecklistItems(useDefault ? [...DEFAULT_CHECKLIST_TEMPLATE] : []);
     setMigrateFromId('');
+    setShowCustomCategoryInput(false);
+    setCustomCategoryName('');
+    setNewItemCategory('Geral');
     setDialogOpen(true);
   };
 
@@ -111,6 +128,23 @@ export function ChecklistManager({ propertyId, propertyName, allChecklists, onCh
     setChecklistName(checklist.name);
     setChecklistItems([...checklist.items]);
     setMigrateFromId('');
+    setShowCustomCategoryInput(false);
+    setCustomCategoryName('');
+    setNewItemCategory('Geral');
+    
+    // Extract custom categories from this checklist's items
+    const checklistCustomCategories = new Set<string>();
+    checklist.items.forEach(item => {
+      if (!CATEGORY_OPTIONS.includes(item.category) && item.category !== 'Outro') {
+        checklistCustomCategories.add(item.category);
+      }
+    });
+    // Merge with existing custom categories
+    setCustomCategories(prev => {
+      const merged = new Set([...prev, ...checklistCustomCategories]);
+      return Array.from(merged);
+    });
+    
     setDialogOpen(true);
   };
 
@@ -128,13 +162,34 @@ export function ChecklistManager({ propertyId, propertyName, allChecklists, onCh
 
   const handleAddItem = () => {
     if (!newItemTitle.trim()) return;
+    
+    // Determine the category to use
+    let categoryToUse = newItemCategory;
+    if (showCustomCategoryInput) {
+      if (!customCategoryName.trim()) {
+        toast.error('Digite o nome da categoria');
+        return;
+      }
+      categoryToUse = customCategoryName.trim();
+      // Add to custom categories list if not already there
+      if (!customCategories.includes(categoryToUse)) {
+        setCustomCategories(prev => [...prev, categoryToUse]);
+      }
+    }
+    
     const newItem: ChecklistItem = {
       id: `item-${Date.now()}`,
       title: newItemTitle.trim(),
-      category: newItemCategory
+      category: categoryToUse
     };
     setChecklistItems([...checklistItems, newItem]);
     setNewItemTitle('');
+    // Reset custom category input after adding
+    if (showCustomCategoryInput) {
+      setShowCustomCategoryInput(false);
+      setCustomCategoryName('');
+      setNewItemCategory('Geral');
+    }
   };
 
   const handleRemoveItem = (itemId: string) => {
@@ -346,27 +401,72 @@ export function ChecklistManager({ propertyId, propertyName, allChecklists, onCh
               {/* Add new item */}
               <div className="space-y-2">
                 <Label>Adicionar Item</Label>
-                <div className="flex gap-2">
-                  <Select value={newItemCategory} onValueChange={setNewItemCategory}>
-                    <SelectTrigger className="w-32">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {CATEGORY_OPTIONS.map(cat => (
-                        <SelectItem key={cat} value={cat}>{cat}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  <Input
-                    value={newItemTitle}
-                    onChange={(e) => setNewItemTitle(e.target.value)}
-                    placeholder="Descrição do item"
-                    className="flex-1"
-                    onKeyDown={(e) => e.key === 'Enter' && handleAddItem()}
-                  />
-                  <Button variant="secondary" size="icon" onClick={handleAddItem}>
-                    <Plus className="h-4 w-4" />
-                  </Button>
+                <div className="flex flex-col gap-2">
+                  <div className="flex gap-2">
+                    <Select 
+                      value={showCustomCategoryInput ? 'Outro' : newItemCategory} 
+                      onValueChange={(value) => {
+                        if (value === 'Outro') {
+                          setShowCustomCategoryInput(true);
+                          setNewItemCategory(value);
+                        } else {
+                          setShowCustomCategoryInput(false);
+                          setNewItemCategory(value);
+                          setCustomCategoryName('');
+                        }
+                      }}
+                    >
+                      <SelectTrigger className="w-40">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {/* Default categories */}
+                        {CATEGORY_OPTIONS.filter(cat => cat !== 'Outro').map(cat => (
+                          <SelectItem key={cat} value={cat}>{cat}</SelectItem>
+                        ))}
+                        {/* Custom categories for this property */}
+                        {customCategories.length > 0 && (
+                          <>
+                            <div className="px-2 py-1.5 text-xs font-semibold text-muted-foreground border-t mt-1 pt-1">
+                              Categorias Personalizadas
+                            </div>
+                            {customCategories.map(cat => (
+                              <SelectItem key={cat} value={cat}>{cat}</SelectItem>
+                            ))}
+                          </>
+                        )}
+                        {/* "Outro" option to create new */}
+                        <SelectItem value="Outro" className="text-primary font-medium border-t mt-1 pt-1">
+                          + Criar nova categoria
+                        </SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <Input
+                      value={newItemTitle}
+                      onChange={(e) => setNewItemTitle(e.target.value)}
+                      placeholder="Descrição do item"
+                      className="flex-1"
+                      onKeyDown={(e) => e.key === 'Enter' && handleAddItem()}
+                    />
+                    <Button variant="secondary" size="icon" onClick={handleAddItem}>
+                      <Plus className="h-4 w-4" />
+                    </Button>
+                  </div>
+                  
+                  {/* Custom category name input */}
+                  {showCustomCategoryInput && (
+                    <div className="flex gap-2 items-center pl-0.5">
+                      <span className="text-xs text-muted-foreground">Nome da categoria:</span>
+                      <Input
+                        value={customCategoryName}
+                        onChange={(e) => setCustomCategoryName(e.target.value)}
+                        placeholder="Ex: Área Gourmet, Piscina..."
+                        className="flex-1 h-8 text-sm"
+                        onKeyDown={(e) => e.key === 'Enter' && handleAddItem()}
+                        autoFocus
+                      />
+                    </div>
+                  )}
                 </div>
               </div>
 
