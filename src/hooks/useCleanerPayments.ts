@@ -1,8 +1,8 @@
 import { useState, useCallback, useEffect, useMemo } from 'react';
 import { supabase } from '@/integrations/supabase/client';
-import { startOfDay, endOfDay, startOfWeek, endOfWeek, startOfMonth, endOfMonth } from 'date-fns';
+import { startOfDay, endOfDay, startOfWeek, endOfWeek, startOfMonth, endOfMonth, addDays } from 'date-fns';
 
-export type PaymentPeriod = 'today' | 'week' | 'month';
+export type PaymentPeriod = 'today' | 'tomorrow' | 'week' | 'month';
 
 interface PaymentSummary {
   received: number;
@@ -24,6 +24,9 @@ export function useCleanerPayments(teamMemberId: string | null) {
     switch (period) {
       case 'today':
         return { start: startOfDay(now), end: endOfDay(now) };
+      case 'tomorrow':
+        const tomorrow = addDays(now, 1);
+        return { start: startOfDay(tomorrow), end: endOfDay(tomorrow) };
       case 'week':
         return { start: startOfWeek(now, { weekStartsOn: 0 }), end: endOfWeek(now, { weekStartsOn: 0 }) };
       case 'month':
