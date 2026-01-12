@@ -1,10 +1,12 @@
 import { useState, useMemo, useEffect, useCallback, useRef } from 'react';
 import { format, isSameDay, addDays, startOfWeek, getWeek, isAfter, startOfDay, isToday as checkIsToday, startOfMonth, endOfMonth, eachDayOfInterval, addMonths, subMonths, getDay, formatDistanceToNow } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { Calendar, Play, Clock, Check, ChevronRight, LayoutGrid, MessageSquare, Menu, RefreshCw } from 'lucide-react';
+import { Calendar, Play, Clock, Check, ChevronRight, LayoutGrid, MessageSquare, Menu, RefreshCw, Home, Building2, AlertCircle, Users } from 'lucide-react';
 import { Schedule } from '@/types/scheduling';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
+import { useNavigate, useSearchParams } from 'react-router-dom';
+import { useAuth } from '@/hooks/useAuth';
 
 interface MobileDashboardProps {
   schedules: Schedule[];
@@ -25,9 +27,17 @@ const vibrate = (pattern: number | number[] = 50) => {
 };
 
 export function MobileDashboard({ schedules, onScheduleClick, onStartCleaning, onRefresh }: MobileDashboardProps) {
+  const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const { user } = useAuth();
+  
   // Always initialize with the current date from the device
   const [selectedDate, setSelectedDate] = useState(() => startOfDay(new Date()));
-  const [activeTab, setActiveTab] = useState<'inicio' | 'agenda' | 'msgs' | 'menu'>('inicio');
+  const [activeTab, setActiveTab] = useState<'inicio' | 'agenda' | 'msgs' | 'menu'>(() => {
+    const tabParam = searchParams.get('tab');
+    if (tabParam === 'agenda') return 'agenda';
+    return 'inicio';
+  });
   const [viewMode, setViewMode] = useState<'dia' | 'calendario'>('dia');
   const [currentMonth, setCurrentMonth] = useState(() => startOfMonth(new Date()));
   const [isSyncing, setIsSyncing] = useState(false);
@@ -254,140 +264,297 @@ export function MobileDashboard({ schedules, onScheduleClick, onStartCleaning, o
         </div>
       </div>
 
-      {/* Header */}
-      <header 
-        className="sticky top-0 z-20 flex items-center justify-between bg-stone-50/90 dark:bg-[#22252a]/90 px-6 py-4 backdrop-blur-md transition-all"
-        style={{ transform: pullDistance > 0 ? `translateY(${pullDistance * 0.3}px)` : undefined }}
-      >
-        {viewMode === 'calendario' ? (
-          <>
-            <button className="flex items-center justify-center rounded-full p-1 transition-colors hover:bg-slate-200 dark:hover:bg-slate-700">
-              <span className="material-symbols-outlined text-[#8A8B88] dark:text-slate-400">arrow_back</span>
-            </button>
+      {/* INÍCIO (HOME) TAB */}
+      {activeTab === 'inicio' && (
+        <>
+          {/* Home Header */}
+          <header className="sticky top-0 z-20 flex items-center justify-between bg-stone-50/90 dark:bg-[#22252a]/90 px-6 py-4 backdrop-blur-md">
+            <div className="flex flex-col">
+              <span className="text-xs font-medium text-muted-foreground">Olá,</span>
+              <h1 className="text-xl font-bold text-foreground">
+                {user?.email?.split('@')[0] || 'Usuário'}
+              </h1>
+            </div>
             <div className="flex items-center gap-2">
-              <button 
-                onClick={handlePrevMonth}
-                className="flex items-center justify-center rounded-full w-8 h-8 hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-500 transition-colors"
-              >
-                <span className="material-symbols-outlined text-[20px]">chevron_left</span>
-              </button>
-              <div className="flex flex-col items-center">
-                <h2 className="text-lg font-extrabold leading-none tracking-tight text-slate-900 dark:text-white">
-                  <span className="capitalize">{monthName}</span> <span className="text-primary">{yearNumber}</span>
-                </h2>
-              </div>
-              <button 
-                onClick={handleNextMonth}
-                className="flex items-center justify-center rounded-full w-8 h-8 hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-500 transition-colors"
-              >
-                <span className="material-symbols-outlined text-[20px]">chevron_right</span>
-              </button>
-            </div>
-          </>
-        ) : (
-          <>
-            <button 
-              onClick={() => setSelectedDate(prev => addDays(prev, -7))}
-              className="flex items-center justify-center rounded-full p-2 transition-colors hover:bg-muted"
-            >
-              <span className="material-symbols-outlined text-muted-foreground text-[20px]">chevron_left</span>
-            </button>
-            <div className="flex items-center gap-3">
-              <button className="flex items-center justify-center rounded-full p-1 transition-colors hover:bg-muted">
-                <Calendar className="w-6 h-6 text-muted-foreground" />
-              </button>
-              <div className="flex flex-col">
-                <h2 className="text-xl font-extrabold leading-none tracking-tight text-foreground">
-                  <span className="capitalize">{monthName}</span> <span className="text-primary">{yearNumber}</span>
-                </h2>
-                <div className="flex items-center gap-2">
-                  <span className="text-xs font-medium text-muted-foreground">Semana {weekNumber}</span>
-                  {lastSyncText && (
-                    <span className="text-[10px] text-muted-foreground/70">• Sync {lastSyncText}</span>
-                  )}
-                </div>
-              </div>
-            </div>
-            <button 
-              onClick={() => setSelectedDate(prev => addDays(prev, 7))}
-              className="flex items-center justify-center rounded-full p-2 transition-colors hover:bg-muted"
-            >
-              <span className="material-symbols-outlined text-muted-foreground text-[20px]">chevron_right</span>
-            </button>
-          </>
-        )}
-        <div className="flex items-center gap-2">
-          {/* Sync Button */}
-          {onRefresh && (
-            <button 
-              onClick={() => handleRefresh(false)}
-              disabled={isSyncing}
-              className="relative flex h-10 w-10 items-center justify-center rounded-full transition-colors hover:bg-muted disabled:opacity-50"
-            >
-              <RefreshCw className={cn("w-5 h-5 text-muted-foreground", isSyncing && "animate-spin")} />
-              {lastSyncTime && !isSyncing && (
-                <span className="absolute -bottom-0.5 -right-0.5 h-2.5 w-2.5 rounded-full bg-primary border-2 border-stone-50 dark:border-[#22252a]" />
+              {onRefresh && (
+                <button 
+                  onClick={() => handleRefresh(false)}
+                  disabled={isSyncing}
+                  className="relative flex h-10 w-10 items-center justify-center rounded-full transition-colors hover:bg-muted disabled:opacity-50"
+                >
+                  <RefreshCw className={cn("w-5 h-5 text-muted-foreground", isSyncing && "animate-spin")} />
+                </button>
               )}
-            </button>
-          )}
-          <button className="relative flex h-10 w-10 overflow-hidden rounded-full border-2 border-white shadow-sm dark:border-slate-600">
-            <img 
-              alt="Profile" 
-              className="h-full w-full object-cover" 
-              src="https://lh3.googleusercontent.com/aida-public/AB6AXuCp65lGt4lxJFFm-TGO-aIzx2sbcbs3rx9y7l4YFYJ3H4XYtGxLsjG-HTXQ1vYcnIvJibtUKZFMVCRYmEHabCfeC1YblSD4Mh_Naf4Pshd0mXFz0I3iBc07YtELAj5xOZO9NIkMVQycxZHlzhXHFnf95lrmJuG6cQVXr7ifsokiBBbLd9F5hh7uHa765-m2naizne6TJbvT_CeV1dmJCmyrDm42szalavocy6zqBJNWiMam9g3DWEKmAn7eJxQHww-n9ndHlQjpCEUl"
-            />
-          </button>
-        </div>
-      </header>
+              <button 
+                onClick={() => navigate('/minha-conta')}
+                className="relative flex h-10 w-10 overflow-hidden rounded-full border-2 border-white shadow-sm dark:border-slate-600"
+              >
+                <div className="h-full w-full bg-primary/10 flex items-center justify-center">
+                  <span className="text-primary font-bold text-sm">
+                    {user?.email?.substring(0, 2).toUpperCase() || 'U'}
+                  </span>
+                </div>
+              </button>
+            </div>
+          </header>
 
-      {/* View Toggle + Today Button */}
-      <div className="px-6 pt-2 flex items-center gap-2">
-        <div className="relative flex h-10 flex-1 items-center rounded-xl bg-slate-100 dark:bg-slate-800 p-1">
-          <button 
-            onClick={() => setViewMode('dia')}
-            className={cn(
-              "flex h-full flex-1 items-center justify-center rounded-lg text-xs font-bold transition-all",
-              viewMode === 'dia' 
-                ? "bg-white dark:bg-[#2d3138] text-slate-900 dark:text-white shadow-sm" 
-                : "text-[#8A8B88] hover:text-slate-900 dark:hover:text-white"
+          <main className="flex-1 px-6 py-4">
+            {/* Today Summary */}
+            <div className="mb-6">
+              <p className="text-sm text-muted-foreground mb-1">{format(new Date(), "EEEE, d 'de' MMMM", { locale: ptBR })}</p>
+              <h2 className="text-2xl font-bold text-foreground">Resumo do Dia</h2>
+            </div>
+
+            {/* Stats Cards */}
+            <div className="grid grid-cols-2 gap-3 mb-6">
+              <div className="p-4 rounded-2xl bg-amber-50 dark:bg-amber-900/20 border border-amber-100 dark:border-amber-800/30">
+                <div className="flex items-center gap-2 mb-2">
+                  <AlertCircle className="w-5 h-5 text-amber-600" />
+                  <span className="text-xs font-medium text-amber-700 dark:text-amber-400">Pendentes</span>
+                </div>
+                <p className="text-3xl font-bold text-amber-900 dark:text-amber-300">{pendingSchedules.length}</p>
+              </div>
+              <div className="p-4 rounded-2xl bg-blue-50 dark:bg-blue-900/20 border border-blue-100 dark:border-blue-800/30">
+                <div className="flex items-center gap-2 mb-2">
+                  <Play className="w-5 h-5 text-blue-600" />
+                  <span className="text-xs font-medium text-blue-700 dark:text-blue-400">Em Andamento</span>
+                </div>
+                <p className="text-3xl font-bold text-blue-900 dark:text-blue-300">{inProgressSchedules.length}</p>
+              </div>
+              <div className="p-4 rounded-2xl bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-100 dark:border-emerald-800/30">
+                <div className="flex items-center gap-2 mb-2">
+                  <Check className="w-5 h-5 text-emerald-600" />
+                  <span className="text-xs font-medium text-emerald-700 dark:text-emerald-400">Concluídos</span>
+                </div>
+                <p className="text-3xl font-bold text-emerald-900 dark:text-emerald-300">{completedSchedules.length}</p>
+              </div>
+              <button 
+                onClick={() => navigate('/propriedades')}
+                className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/50 border border-slate-100 dark:border-slate-700 text-left transition-all hover:bg-slate-100 dark:hover:bg-slate-800"
+              >
+                <div className="flex items-center gap-2 mb-2">
+                  <Building2 className="w-5 h-5 text-slate-600" />
+                  <span className="text-xs font-medium text-slate-600 dark:text-slate-400">Imóveis</span>
+                </div>
+                <p className="text-sm font-semibold text-slate-900 dark:text-white">Ver todos</p>
+              </button>
+            </div>
+
+            {/* Next Task */}
+            {nextCheckout && (
+              <div className="mb-6">
+                <h3 className="text-sm font-semibold text-muted-foreground mb-3">Próxima Tarefa</h3>
+                <button
+                  onClick={() => onScheduleClick(nextCheckout)}
+                  className="w-full overflow-hidden rounded-2xl bg-white dark:bg-[#2d3138] shadow-soft border border-slate-100 dark:border-slate-700 text-left transition-transform active:scale-[0.98]"
+                >
+                  <div className="flex flex-row p-4 gap-4">
+                    {nextCheckout.propertyImageUrl ? (
+                      <img 
+                        src={nextCheckout.propertyImageUrl}
+                        alt={nextCheckout.propertyName}
+                        className="w-20 h-20 shrink-0 rounded-xl object-cover"
+                      />
+                    ) : (
+                      <div className="w-20 h-20 shrink-0 rounded-xl bg-slate-100 dark:bg-slate-800 flex items-center justify-center">
+                        <Building2 className="w-8 h-8 text-slate-400" />
+                      </div>
+                    )}
+                    <div className="flex-1 flex flex-col justify-center">
+                      <h3 className="text-base font-bold text-foreground mb-1">{nextCheckout.propertyName}</h3>
+                      <div className="flex items-center gap-1 text-muted-foreground">
+                        <Clock className="w-4 h-4" />
+                        <p className="text-sm font-medium">Checkout: {formatTime(nextCheckout.checkOut)}</p>
+                      </div>
+                      <span className={cn(
+                        "mt-2 inline-flex self-start rounded-full px-2.5 py-0.5 text-xs font-bold",
+                        nextCheckout.status === 'waiting' && "bg-slate-100 dark:bg-slate-800 text-slate-600",
+                        nextCheckout.status === 'released' && "bg-amber-100 dark:bg-amber-900/30 text-amber-700",
+                        nextCheckout.status === 'cleaning' && "bg-blue-100 dark:bg-blue-900/30 text-blue-700"
+                      )}>
+                        {nextCheckout.status === 'waiting' ? 'Aguardando' : 
+                         nextCheckout.status === 'released' ? 'Liberado' : 'Em limpeza'}
+                      </span>
+                    </div>
+                    <ChevronRight className="w-5 h-5 text-muted-foreground self-center" />
+                  </div>
+                </button>
+              </div>
             )}
+
+            {/* Quick Actions */}
+            <div className="mb-6">
+              <h3 className="text-sm font-semibold text-muted-foreground mb-3">Ações Rápidas</h3>
+              <div className="grid grid-cols-3 gap-3">
+                <button
+                  onClick={() => setActiveTab('agenda')}
+                  className="flex flex-col items-center gap-2 p-4 rounded-2xl bg-white dark:bg-slate-800 border border-slate-100 dark:border-slate-700 transition-all hover:shadow-md active:scale-95"
+                >
+                  <Calendar className="w-6 h-6 text-primary" />
+                  <span className="text-xs font-medium text-foreground">Agenda</span>
+                </button>
+                <button
+                  onClick={() => navigate('/mensagens')}
+                  className="flex flex-col items-center gap-2 p-4 rounded-2xl bg-white dark:bg-slate-800 border border-slate-100 dark:border-slate-700 transition-all hover:shadow-md active:scale-95"
+                >
+                  <MessageSquare className="w-6 h-6 text-primary" />
+                  <span className="text-xs font-medium text-foreground">Mensagens</span>
+                </button>
+                <button
+                  onClick={() => navigate('/equipe')}
+                  className="flex flex-col items-center gap-2 p-4 rounded-2xl bg-white dark:bg-slate-800 border border-slate-100 dark:border-slate-700 transition-all hover:shadow-md active:scale-95"
+                >
+                  <Users className="w-6 h-6 text-primary" />
+                  <span className="text-xs font-medium text-foreground">Equipe</span>
+                </button>
+              </div>
+            </div>
+          </main>
+        </>
+      )}
+
+      {/* AGENDA TAB */}
+      {activeTab === 'agenda' && (
+        <>
+          {/* Agenda Header */}
+          <header 
+            className="sticky top-0 z-20 flex items-center justify-between bg-stone-50/90 dark:bg-[#22252a]/90 px-6 py-4 backdrop-blur-md transition-all"
+            style={{ transform: pullDistance > 0 ? `translateY(${pullDistance * 0.3}px)` : undefined }}
           >
-            Dia
-          </button>
-          <button 
-            onClick={() => setViewMode('calendario')}
-            className={cn(
-              "flex h-full flex-1 items-center justify-center rounded-lg text-xs font-bold transition-all",
-              viewMode === 'calendario' 
-                ? "bg-white dark:bg-[#2d3138] text-slate-900 dark:text-white shadow-sm" 
-                : "text-[#8A8B88] hover:text-slate-900 dark:hover:text-white"
+            {viewMode === 'calendario' ? (
+              <>
+                <button 
+                  onClick={() => setViewMode('dia')}
+                  className="flex items-center justify-center rounded-full p-1 transition-colors hover:bg-slate-200 dark:hover:bg-slate-700"
+                >
+                  <span className="material-symbols-outlined text-[#8A8B88] dark:text-slate-400">arrow_back</span>
+                </button>
+                <div className="flex items-center gap-2">
+                  <button 
+                    onClick={handlePrevMonth}
+                    className="flex items-center justify-center rounded-full w-8 h-8 hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-500 transition-colors"
+                  >
+                    <span className="material-symbols-outlined text-[20px]">chevron_left</span>
+                  </button>
+                  <div className="flex flex-col items-center">
+                    <h2 className="text-lg font-extrabold leading-none tracking-tight text-slate-900 dark:text-white">
+                      <span className="capitalize">{monthName}</span> <span className="text-primary">{yearNumber}</span>
+                    </h2>
+                  </div>
+                  <button 
+                    onClick={handleNextMonth}
+                    className="flex items-center justify-center rounded-full w-8 h-8 hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-500 transition-colors"
+                  >
+                    <span className="material-symbols-outlined text-[20px]">chevron_right</span>
+                  </button>
+                </div>
+              </>
+            ) : (
+              <>
+                <button 
+                  onClick={() => setSelectedDate(prev => addDays(prev, -7))}
+                  className="flex items-center justify-center rounded-full p-2 transition-colors hover:bg-muted"
+                >
+                  <span className="material-symbols-outlined text-muted-foreground text-[20px]">chevron_left</span>
+                </button>
+                <div className="flex items-center gap-3">
+                  <button className="flex items-center justify-center rounded-full p-1 transition-colors hover:bg-muted">
+                    <Calendar className="w-6 h-6 text-muted-foreground" />
+                  </button>
+                  <div className="flex flex-col">
+                    <h2 className="text-xl font-extrabold leading-none tracking-tight text-foreground">
+                      <span className="capitalize">{monthName}</span> <span className="text-primary">{yearNumber}</span>
+                    </h2>
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs font-medium text-muted-foreground">Semana {weekNumber}</span>
+                      {lastSyncText && (
+                        <span className="text-[10px] text-muted-foreground/70">• Sync {lastSyncText}</span>
+                      )}
+                    </div>
+                  </div>
+                </div>
+                <button 
+                  onClick={() => setSelectedDate(prev => addDays(prev, 7))}
+                  className="flex items-center justify-center rounded-full p-2 transition-colors hover:bg-muted"
+                >
+                  <span className="material-symbols-outlined text-muted-foreground text-[20px]">chevron_right</span>
+                </button>
+              </>
             )}
-          >
-            Calendário
-          </button>
-        </div>
-        
-        {/* Today Button - only shows when not on today */}
-        {!isSelectedToday && (
-          <button
-            onClick={() => {
-              const today = new Date();
-              setSelectedDate(startOfDay(today));
-              setCurrentMonth(startOfMonth(today));
-              vibrate(30);
-            }}
-            className="relative flex h-10 items-center gap-1.5 px-3 rounded-xl bg-primary text-white text-xs font-bold shadow-sm hover:bg-primary/90 transition-all active:scale-95"
-          >
-            <Calendar className="w-3.5 h-3.5" />
-            Hoje
-            {todayTasksCount > 0 && (
-              <span className="absolute -top-1.5 -right-1.5 flex h-5 min-w-5 items-center justify-center rounded-full bg-amber-500 text-[10px] font-bold text-white px-1 shadow-md border-2 border-stone-50 dark:border-[#22252a]">
-                {todayTasksCount > 9 ? '9+' : todayTasksCount}
-              </span>
+            <div className="flex items-center gap-2">
+              {onRefresh && (
+                <button 
+                  onClick={() => handleRefresh(false)}
+                  disabled={isSyncing}
+                  className="relative flex h-10 w-10 items-center justify-center rounded-full transition-colors hover:bg-muted disabled:opacity-50"
+                >
+                  <RefreshCw className={cn("w-5 h-5 text-muted-foreground", isSyncing && "animate-spin")} />
+                  {lastSyncTime && !isSyncing && (
+                    <span className="absolute -bottom-0.5 -right-0.5 h-2.5 w-2.5 rounded-full bg-primary border-2 border-stone-50 dark:border-[#22252a]" />
+                  )}
+                </button>
+              )}
+              <button 
+                onClick={() => navigate('/minha-conta')}
+                className="relative flex h-10 w-10 overflow-hidden rounded-full border-2 border-white shadow-sm dark:border-slate-600"
+              >
+                <div className="h-full w-full bg-primary/10 flex items-center justify-center">
+                  <span className="text-primary font-bold text-sm">
+                    {user?.email?.substring(0, 2).toUpperCase() || 'U'}
+                  </span>
+                </div>
+              </button>
+            </div>
+          </header>
+
+          {/* View Toggle + Today Button */}
+          <div className="px-6 pt-2 flex items-center gap-2">
+            <div className="relative flex h-10 flex-1 items-center rounded-xl bg-slate-100 dark:bg-slate-800 p-1">
+              <button 
+                onClick={() => setViewMode('dia')}
+                className={cn(
+                  "flex h-full flex-1 items-center justify-center rounded-lg text-xs font-bold transition-all",
+                  viewMode === 'dia' 
+                    ? "bg-white dark:bg-[#2d3138] text-slate-900 dark:text-white shadow-sm" 
+                    : "text-[#8A8B88] hover:text-slate-900 dark:hover:text-white"
+                )}
+              >
+                Dia
+              </button>
+              <button 
+                onClick={() => setViewMode('calendario')}
+                className={cn(
+                  "flex h-full flex-1 items-center justify-center rounded-lg text-xs font-bold transition-all",
+                  viewMode === 'calendario' 
+                    ? "bg-white dark:bg-[#2d3138] text-slate-900 dark:text-white shadow-sm" 
+                    : "text-[#8A8B88] hover:text-slate-900 dark:hover:text-white"
+                )}
+              >
+                Calendário
+              </button>
+            </div>
+            
+            {/* Today Button - only shows when not on today */}
+            {!isSelectedToday && (
+              <button
+                onClick={() => {
+                  const today = new Date();
+                  setSelectedDate(startOfDay(today));
+                  setCurrentMonth(startOfMonth(today));
+                  vibrate(30);
+                }}
+                className="relative flex h-10 items-center gap-1.5 px-3 rounded-xl bg-primary text-white text-xs font-bold shadow-sm hover:bg-primary/90 transition-all active:scale-95"
+              >
+                <Calendar className="w-3.5 h-3.5" />
+                Hoje
+                {todayTasksCount > 0 && (
+                  <span className="absolute -top-1.5 -right-1.5 flex h-5 min-w-5 items-center justify-center rounded-full bg-amber-500 text-[10px] font-bold text-white px-1 shadow-md border-2 border-stone-50 dark:border-[#22252a]">
+                    {todayTasksCount > 9 ? '9+' : todayTasksCount}
+                  </span>
+                )}
+              </button>
             )}
-          </button>
-        )}
-      </div>
+          </div>
 
       {viewMode === 'calendario' ? (
         // Calendar Monthly View
@@ -815,6 +982,8 @@ export function MobileDashboard({ schedules, onScheduleClick, onStartCleaning, o
           </main>
         </>
       )}
+        </>
+      )}
 
       {/* Bottom Navigation */}
       <nav className="fixed bottom-0 left-0 right-0 z-50">
@@ -830,7 +999,7 @@ export function MobileDashboard({ schedules, onScheduleClick, onStartCleaning, o
             <span className={cn(
               "material-symbols-outlined text-[28px] transition-transform group-active:scale-90",
               activeTab === 'inicio' && "filled"
-            )}>dashboard</span>
+            )}>home</span>
             <span className={cn("text-[10px]", activeTab === 'inicio' ? "font-bold" : "font-medium")}>Início</span>
           </button>
           <button 
@@ -844,27 +1013,21 @@ export function MobileDashboard({ schedules, onScheduleClick, onStartCleaning, o
             <span className={cn("text-[10px]", activeTab === 'agenda' ? "font-bold" : "font-medium")}>Agenda</span>
           </button>
           <button 
-            onClick={() => setActiveTab('msgs')}
-            className={cn(
-              "group flex flex-col items-center justify-center gap-1 p-2 transition-colors",
-              activeTab === 'msgs' ? "text-primary" : "text-[#8A8B88] hover:text-primary"
-            )}
+            onClick={() => navigate('/mensagens')}
+            className="group flex flex-col items-center justify-center gap-1 p-2 transition-colors text-[#8A8B88] hover:text-primary"
           >
             <div className="relative">
               <span className="material-symbols-outlined text-[28px] transition-transform group-active:scale-90">chat_bubble</span>
               <span className="absolute -right-0.5 -top-0.5 h-2.5 w-2.5 rounded-full bg-red-500 border-2 border-stone-50 dark:border-[#22252a]" />
             </div>
-            <span className={cn("text-[10px]", activeTab === 'msgs' ? "font-bold" : "font-medium")}>Msgs</span>
+            <span className="text-[10px] font-medium">Msgs</span>
           </button>
           <button 
-            onClick={() => setActiveTab('menu')}
-            className={cn(
-              "group flex flex-col items-center justify-center gap-1 p-2 transition-colors",
-              activeTab === 'menu' ? "text-primary" : "text-[#8A8B88] hover:text-primary"
-            )}
+            onClick={() => navigate('/minha-conta')}
+            className="group flex flex-col items-center justify-center gap-1 p-2 transition-colors text-[#8A8B88] hover:text-primary"
           >
             <span className="material-symbols-outlined text-[28px] transition-transform group-active:scale-90">menu</span>
-            <span className={cn("text-[10px]", activeTab === 'menu' ? "font-bold" : "font-medium")}>Menu</span>
+            <span className="text-[10px] font-medium">Menu</span>
           </button>
         </div>
       </nav>

@@ -13,6 +13,7 @@ import Inspections from "./pages/Inspections";
 import Help from "./pages/Help";
 import Manutencao from "./pages/Manutencao";
 import Profile from "./pages/Profile";
+import Messages from "./pages/Messages";
 import Landing from "./pages/Landing";
 import NotFound from "./pages/NotFound";
 
@@ -81,6 +82,14 @@ const App = () => (
               element={
                 <ProtectedRoute>
                   <Profile />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/mensagens"
+              element={
+                <ProtectedRoute>
+                  <Messages />
                 </ProtectedRoute>
               }
             />
