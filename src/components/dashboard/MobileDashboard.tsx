@@ -10,6 +10,29 @@ import { useAuth } from '@/hooks/useAuth';
 import { useTeamMemberId } from '@/hooks/useTeamMemberId';
 import { useCleanerPayments, PaymentPeriod } from '@/hooks/useCleanerPayments';
 import { CleanerPaymentCards } from './CleanerPaymentCards';
+import { useStayStatus, StayStatusInfo } from '@/hooks/useStayStatus';
+
+// Component to render the footer of pending cards with stay status
+function PendingCardFooter({ schedule }: { schedule: Schedule }) {
+  const stayStatus = useStayStatus(schedule);
+  
+  return (
+    <div className="border-t border-slate-100 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/50 px-4 py-2 flex justify-between items-center">
+      <div className="flex -space-x-2">
+        <span className="flex h-6 w-6 items-center justify-center rounded-full bg-primary/20 text-primary text-[10px] font-bold ring-2 ring-white dark:ring-[#2d3138]">
+          {schedule.cleanerName?.split(' ').map(n => n[0]).join('').slice(0, 2) || 'N'}
+        </span>
+      </div>
+      {stayStatus ? (
+        <span className={cn("text-xs font-medium", stayStatus.colorClass)}>
+          {stayStatus.label}
+        </span>
+      ) : (
+        <span className="text-xs font-medium text-[#8A8B88]">Aguardando liberação</span>
+      )}
+    </div>
+  );
+}
 
 interface MobileDashboardProps {
   schedules: Schedule[];
@@ -944,8 +967,8 @@ export function MobileDashboard({ schedules, onScheduleClick, onStartCleaning, o
                           <span className="text-xs font-bold uppercase tracking-wider text-primary">Pendente</span>
                         </div>
                         <h3 className="text-lg font-bold text-slate-900 dark:text-white leading-tight mb-2">{schedule.propertyName}</h3>
-                        <div className="flex flex-col">
-                          <span className="text-[10px] font-bold uppercase tracking-wider text-[#8A8B88] mb-0.5">Checkout</span>
+                      <div className="flex flex-col">
+                          <span className="text-[10px] font-bold uppercase tracking-wider text-[#8A8B88] mb-0.5">Liberado a partir de</span>
                           <div className="flex items-center gap-1 text-[#8A8B88]">
                             <Clock className="w-4 h-4" />
                             <p className="text-sm font-bold">{formatTime(schedule.checkOut)}</p>
@@ -977,15 +1000,7 @@ export function MobileDashboard({ schedules, onScheduleClick, onStartCleaning, o
                       </div>
                     )}
                   </div>
-                  <div className="border-t border-slate-100 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/50 px-4 py-2 flex justify-between items-center">
-                    <div className="flex -space-x-2">
-                      <span className="flex h-6 w-6 items-center justify-center rounded-full bg-primary/20 text-primary text-[10px] font-bold ring-2 ring-white dark:ring-[#2d3138]">
-                        {schedule.cleanerName?.split(' ').map(n => n[0]).join('').slice(0, 2) || 'N'}
-                      </span>
-                      <span className="flex h-6 w-6 items-center justify-center rounded-full bg-orange-200 text-orange-700 text-[10px] font-bold ring-2 ring-white dark:ring-[#2d3138]">JP</span>
-                    </div>
-                    <span className="text-xs font-medium text-[#8A8B88]">Checkout acontecendo</span>
-                  </div>
+                  <PendingCardFooter schedule={schedule} />
                 </div>
               ))}
 
@@ -1003,8 +1018,8 @@ export function MobileDashboard({ schedules, onScheduleClick, onStartCleaning, o
                           <span className="text-xs font-bold uppercase tracking-wider text-[#E0C051]">Em Limpeza</span>
                         </div>
                         <h3 className="text-lg font-bold text-slate-900 dark:text-white leading-tight mb-2">{schedule.propertyName}</h3>
-                        <div className="flex flex-col">
-                          <span className="text-[10px] font-bold uppercase tracking-wider text-[#8A8B88] mb-0.5">Checkout</span>
+                      <div className="flex flex-col">
+                          <span className="text-[10px] font-bold uppercase tracking-wider text-[#8A8B88] mb-0.5">Liberado a partir de</span>
                           <div className="flex items-center gap-1 text-[#8A8B88]">
                             <Clock className="w-4 h-4" />
                             <p className="text-sm font-bold">{formatTime(schedule.checkOut)}</p>
@@ -1042,7 +1057,7 @@ export function MobileDashboard({ schedules, onScheduleClick, onStartCleaning, o
                         {schedule.cleanerName?.split(' ').map(n => n[0]).join('').slice(0, 2) || 'N'}
                       </span>
                     </div>
-                    <span className="text-xs font-medium text-[#8A8B88]">Limpeza em andamento</span>
+                    <span className="text-xs font-medium text-[#E0C051]">Limpeza em andamento</span>
                   </div>
                 </div>
               ))}
@@ -1069,7 +1084,7 @@ export function MobileDashboard({ schedules, onScheduleClick, onStartCleaning, o
                         <div className="flex flex-col">
                           <p className="text-sm font-bold text-slate-900 dark:text-white line-through decoration-[#8A8B88]/30">{schedule.propertyName}</p>
                           <div className="mt-1 flex flex-col">
-                            <span className="text-[10px] font-bold uppercase tracking-wider text-[#8A8B88]">Checkout</span>
+                            <span className="text-[10px] font-bold uppercase tracking-wider text-[#8A8B88]">Liberado</span>
                             <p className="text-xs font-bold text-[#8A8B88]">{formatTime(schedule.checkOut)}</p>
                           </div>
                         </div>
@@ -1104,7 +1119,7 @@ export function MobileDashboard({ schedules, onScheduleClick, onStartCleaning, o
                         <div className="flex-1 flex flex-col justify-center">
                           <h3 className="text-base font-bold text-slate-900 dark:text-white leading-tight mb-1">{schedule.propertyName}</h3>
                           <div className="mt-1 flex flex-col">
-                            <span className="text-[10px] font-bold uppercase tracking-wider text-[#8A8B88] mb-0.5">Checkout</span>
+                            <span className="text-[10px] font-bold uppercase tracking-wider text-[#8A8B88] mb-0.5">Liberado a partir de</span>
                             <div className="flex items-center gap-1 text-[#8A8B88]">
                               <Clock className="w-4 h-4" />
                               <p className="text-sm font-bold">{formatTime(schedule.checkOut)}</p>
