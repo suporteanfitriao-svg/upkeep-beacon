@@ -21,6 +21,9 @@ interface ScheduleRow {
   property_id: string | null;
   property_name: string;
   property_address: string | null;
+  guest_name: string | null;
+  listing_name: string | null;
+  number_of_guests: number | null;
   check_in_time: string;
   check_out_time: string;
   status: string | null;
@@ -30,12 +33,10 @@ interface ScheduleRow {
   cleaner_avatar: string | null;
   estimated_duration: number | null;
   checklists: Json | null;
+  checklist_state: Json | null; // Added: frozen checklist state
   maintenance_issues: Json | null;
   notes: string | null;
-  guest_name: string | null;
-  listing_name: string | null;
-  number_of_guests: number | null;
-  // New fields
+  cleaner_observations: string | null;
   start_at: string | null;
   end_at: string | null;
   responsible_team_member_id: string | null;
@@ -242,7 +243,8 @@ const mapRowToSchedule = (row: ScheduleRow): Schedule => {
     cleanerName: row.cleaner_name || 'Não atribuído',
     cleanerAvatar: row.cleaner_avatar || undefined,
     estimatedDuration: row.estimated_duration || 120,
-    checklist: parseChecklist(row.checklists),
+    // Rule 46.2: Prioritize checklist_state (frozen state) over checklists (template)
+    checklist: parseChecklist(row.checklist_state || row.checklists),
     photos: [],
     maintenanceIssues: parseMaintenanceIssues(row.maintenance_issues),
     notes: row.notes || '',
@@ -343,6 +345,8 @@ export function useSchedules() {
                 };
               });
               updatePayload.checklist_loaded_at = now;
+              // Rule 46.2: Save frozen state to checklist_state
+              updatePayload.checklist_state = checklistToUse as unknown as Json;
               console.log('Linked property checklist to schedule:', checklistToUse.length, 'items');
             }
           }
@@ -354,8 +358,12 @@ export function useSchedules() {
         updatePayload.end_at = now;
       }
 
-      // Update checklist
+      // Update checklist - save to both checklists and checklist_state
       updatePayload.checklists = checklistToUse as unknown as Json;
+      // Rule 46.2: Always update checklist_state when checklist changes during cleaning
+      if (updatedSchedule.status === 'cleaning' || updatedSchedule.status === 'completed') {
+        updatePayload.checklist_state = checklistToUse as unknown as Json;
+      }
 
       // Build history event if status changed
       if (previousStatus && previousStatus !== updatedSchedule.status) {
