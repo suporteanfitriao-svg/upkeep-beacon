@@ -69,6 +69,7 @@ const parseChecklist = (checklists: Json | null): ChecklistItem[] => {
       title: String(typedItem?.title || ''),
       completed: Boolean(typedItem?.completed),
       category: String(typedItem?.category || 'Geral'),
+      status: (typedItem?.status as 'pending' | 'ok' | 'not_ok') || 'pending',
     };
   });
 };
@@ -338,6 +339,7 @@ export function useSchedules() {
                   title: String(typedItem?.title || typedItem?.name || ''),
                   completed: false,
                   category: String(typedItem?.category || 'Geral'),
+                  status: 'pending' as const,
                 };
               });
               updatePayload.checklist_loaded_at = now;
