@@ -65,6 +65,34 @@ export function PropertyTeamManager({ propertyId, propertyName }: PropertyTeamMa
     
     try {
       if (isCurrentlyAssigned) {
+        // Check if cleaner has ongoing or completed cleanings for this property
+        const { data: activeSchedules, error: checkError } = await supabase
+          .from('schedules')
+          .select('id, status')
+          .eq('property_id', propertyId)
+          .eq('responsible_team_member_id', cleanerId)
+          .in('status', ['em_limpeza', 'finalizado']);
+
+        if (checkError) throw checkError;
+
+        if (activeSchedules && activeSchedules.length > 0) {
+          const hasOngoing = activeSchedules.some(s => s.status === 'em_limpeza');
+          const hasCompleted = activeSchedules.some(s => s.status === 'finalizado');
+          
+          let message = 'Não é possível remover este responsável. ';
+          if (hasOngoing && hasCompleted) {
+            message += 'Existem limpezas em andamento e finalizadas atribuídas a ele.';
+          } else if (hasOngoing) {
+            message += 'Existe uma limpeza em andamento atribuída a ele.';
+          } else {
+            message += 'Existem limpezas finalizadas atribuídas a ele.';
+          }
+          
+          toast.error(message);
+          setSaving(null);
+          return;
+        }
+
         // Remove assignment
         const { error } = await supabase
           .from('team_member_properties')
