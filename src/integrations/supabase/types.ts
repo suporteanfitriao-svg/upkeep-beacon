@@ -351,6 +351,8 @@ export type Database = {
         Row: {
           address: string | null
           airbnb_ical_url: string | null
+          auto_release_before_checkout_enabled: boolean
+          auto_release_before_checkout_minutes: number | null
           auto_release_on_checkout: boolean
           created_at: string
           default_check_in_time: string | null
@@ -360,12 +362,15 @@ export type Database = {
           image_url: string | null
           name: string
           password_mode: Database["public"]["Enums"]["property_password_mode"]
+          require_photo_for_issues: boolean
           require_photo_per_category: boolean
           updated_at: string
         }
         Insert: {
           address?: string | null
           airbnb_ical_url?: string | null
+          auto_release_before_checkout_enabled?: boolean
+          auto_release_before_checkout_minutes?: number | null
           auto_release_on_checkout?: boolean
           created_at?: string
           default_check_in_time?: string | null
@@ -375,12 +380,15 @@ export type Database = {
           image_url?: string | null
           name: string
           password_mode?: Database["public"]["Enums"]["property_password_mode"]
+          require_photo_for_issues?: boolean
           require_photo_per_category?: boolean
           updated_at?: string
         }
         Update: {
           address?: string | null
           airbnb_ical_url?: string | null
+          auto_release_before_checkout_enabled?: boolean
+          auto_release_before_checkout_minutes?: number | null
           auto_release_on_checkout?: boolean
           created_at?: string
           default_check_in_time?: string | null
@@ -390,6 +398,7 @@ export type Database = {
           image_url?: string | null
           name?: string
           password_mode?: Database["public"]["Enums"]["property_password_mode"]
+          require_photo_for_issues?: boolean
           require_photo_per_category?: boolean
           updated_at?: string
         }

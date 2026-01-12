@@ -142,16 +142,20 @@ export function ScheduleDetail({ schedule, onClose, onUpdateSchedule }: Schedule
     }
   }, [checklist, checklistItemStates, cleanerObservations, localIssues, categoryPhotosData, schedule.status, teamMemberId, saveCache]);
 
-  // Fetch property rules (require_photo_per_category)
+  // State for require_photo_for_issues
+  const [requirePhotoForIssues, setRequirePhotoForIssues] = useState(false);
+
+  // Fetch property rules (require_photo_per_category, require_photo_for_issues)
   useEffect(() => {
     const fetchPropertyRules = async () => {
       const { data } = await supabase
         .from('properties')
-        .select('require_photo_per_category')
+        .select('require_photo_per_category, require_photo_for_issues')
         .eq('id', schedule.propertyId)
         .maybeSingle();
       if (data) {
         setRequirePhotoPerCategory(data.require_photo_per_category ?? false);
+        setRequirePhotoForIssues(data.require_photo_for_issues ?? false);
       }
     };
     fetchPropertyRules();
@@ -1282,6 +1286,7 @@ export function ScheduleDetail({ schedule, onClose, onUpdateSchedule }: Schedule
           onSubmit={handleIssueSubmit}
           checklist={checklist}
           isSubmitting={isCompressing}
+          requirePhoto={requirePhotoForIssues}
         />
       )}
 

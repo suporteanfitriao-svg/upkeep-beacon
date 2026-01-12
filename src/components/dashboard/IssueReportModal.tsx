@@ -15,6 +15,7 @@ interface IssueReportModalProps {
   }) => Promise<void>;
   checklist: ChecklistItem[];
   isSubmitting?: boolean;
+  requirePhoto?: boolean;
 }
 
 // Fallback sections if no checklist is provided
@@ -54,7 +55,7 @@ const SEVERITY_OPTIONS = [
   { value: 'high', label: 'Alta', description: 'Urgente, requer ação imediata', color: 'bg-red-500' },
 ] as const;
 
-export function IssueReportModal({ onClose, onSubmit, checklist, isSubmitting = false }: IssueReportModalProps) {
+export function IssueReportModal({ onClose, onSubmit, checklist, isSubmitting = false, requirePhoto = false }: IssueReportModalProps) {
   const [step, setStep] = useState<1 | 2 | 3>(1);
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const [selectedItem, setSelectedItem] = useState<string>('');
@@ -155,6 +156,12 @@ export function IssueReportModal({ onClose, onSubmit, checklist, isSubmitting = 
 
     if (!selectedCategory || !selectedItem) {
       toast.error('Selecione o cômodo e item');
+      return;
+    }
+
+    // Validate photo requirement
+    if (requirePhoto && !photoFile) {
+      toast.error('Foto obrigatória para registrar a avaria');
       return;
     }
 
@@ -443,8 +450,11 @@ export function IssueReportModal({ onClose, onSubmit, checklist, isSubmitting = 
                 <label className="flex items-center gap-2 text-sm font-bold text-slate-700 dark:text-slate-300">
                   <span className="material-symbols-outlined text-primary text-[18px]">photo_camera</span>
                   Foto da Avaria
+                  {requirePhoto && (
+                    <span className="text-[10px] font-semibold text-orange-500 bg-orange-100 dark:bg-orange-900/30 px-2 py-0.5 rounded-full">Obrigatório</span>
+                  )}
                 </label>
-                <span className="text-xs font-medium text-primary bg-primary/10 px-2 py-1 rounded-full">Recomendado</span>
+                {!requirePhoto && <span className="text-xs font-medium text-primary bg-primary/10 px-2 py-1 rounded-full">Recomendado</span>}
               </div>
 
               {!photoPreview ? (
@@ -503,7 +513,7 @@ export function IssueReportModal({ onClose, onSubmit, checklist, isSubmitting = 
           ) : (
             <button 
               onClick={handleSubmit}
-              disabled={isSubmitting || !description.trim()}
+              disabled={isSubmitting || !description.trim() || (requirePhoto && !photoFile)}
               className="w-full bg-primary hover:bg-[#267373] text-white font-bold text-lg py-4 rounded-xl shadow-lg shadow-primary/25 flex items-center justify-center gap-2 transition-all active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {isSubmitting ? (
