@@ -340,7 +340,7 @@ export function MobileDashboard({ schedules, onScheduleClick, onStartCleaning, o
 
       {/* INÍCIO (HOME) TAB */}
       {activeTab === 'inicio' && (
-        <>
+        <div className="animate-fade-in">
           {/* Home Header */}
           <header className="sticky top-0 z-20 flex items-center justify-between bg-stone-50/90 dark:bg-[#22252a]/90 px-6 py-4 backdrop-blur-md">
             <div className="flex flex-col">
@@ -578,12 +578,12 @@ export function MobileDashboard({ schedules, onScheduleClick, onStartCleaning, o
               </div>
             </div>
           </main>
-        </>
+        </div>
       )}
 
       {/* AGENDA TAB */}
       {activeTab === 'agenda' && (
-        <>
+        <div className="animate-fade-in">
           {/* Agenda Header */}
           <header 
             className="sticky top-0 z-20 flex items-center justify-between bg-stone-50/90 dark:bg-[#22252a]/90 px-6 py-4 backdrop-blur-md transition-all"
@@ -724,9 +724,9 @@ export function MobileDashboard({ schedules, onScheduleClick, onStartCleaning, o
             )}
           </div>
 
-      {viewMode === 'calendario' ? (
-        // Calendar Monthly View
-        <main className="flex flex-col w-full px-4 mt-4">
+          {viewMode === 'calendario' ? (
+            // Calendar Monthly View
+            <main className="flex flex-col w-full px-4 mt-4">
           {/* Weekday headers */}
           <div className="grid grid-cols-7 mb-3">
             {dayNames.map((day) => (
@@ -868,10 +868,10 @@ export function MobileDashboard({ schedules, onScheduleClick, onStartCleaning, o
               )}
             </div>
           </section>
-        </main>
-      ) : (
-        // Day View (original implementation)
-        <>
+            </main>
+          ) : (
+            // Day View (original implementation)
+            <>
           {/* Week Calendar Strip */}
           <section className="mt-4 w-full">
             <div className="flex w-full snap-x gap-3 overflow-x-auto px-6 py-4 hide-scrollbar">
@@ -1148,9 +1148,9 @@ export function MobileDashboard({ schedules, onScheduleClick, onStartCleaning, o
               </>
             )}
           </main>
-        </>
-      )}
-        </>
+            </>
+          )}
+        </div>
       )}
 
       {/* Bottom Navigation */}
