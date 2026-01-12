@@ -7,7 +7,8 @@ import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { User, MapPin, Shield, Camera, Check, Smartphone, Pencil, X } from 'lucide-react';
+import { User, MapPin, Shield, Camera, Check, Smartphone, Pencil, X, Loader2 } from 'lucide-react';
+import { formatCEP } from '@/lib/formatters';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -56,6 +57,7 @@ export default function Profile() {
   const [editingPersonal, setEditingPersonal] = useState(false);
   const [editingAddress, setEditingAddress] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [fetchingCep, setFetchingCep] = useState(false);
   
   // Form states
   const [formData, setFormData] = useState({
@@ -218,6 +220,40 @@ export default function Profile() {
       address_state: teamMember?.address_state || '',
     }));
     setEditingAddress(false);
+  };
+
+  const handleCepChange = async (value: string) => {
+    const formattedCep = formatCEP(value);
+    setFormData(prev => ({ ...prev, address_cep: formattedCep }));
+
+    // Only fetch when we have a complete CEP (8 digits)
+    const cleanCep = formattedCep.replace(/\D/g, '');
+    if (cleanCep.length === 8) {
+      setFetchingCep(true);
+      try {
+        const response = await fetch(`https://viacep.com.br/ws/${cleanCep}/json/`);
+        const data = await response.json();
+
+        if (data.erro) {
+          toast.error('CEP não encontrado');
+          return;
+        }
+
+        setFormData(prev => ({
+          ...prev,
+          address_street: data.logradouro || prev.address_street,
+          address_district: data.bairro || prev.address_district,
+          address_city: data.localidade || prev.address_city,
+          address_state: data.uf || prev.address_state,
+        }));
+        toast.success('Endereço preenchido automaticamente');
+      } catch (error) {
+        console.error('Error fetching CEP:', error);
+        toast.error('Erro ao buscar CEP');
+      } finally {
+        setFetchingCep(false);
+      }
+    }
   };
 
   const maskCPF = (cpf: string) => {
@@ -451,13 +487,19 @@ export default function Profile() {
                       <Label className="text-xs font-bold text-muted-foreground uppercase tracking-wider">
                         CEP <span className="normal-case font-normal">(Opcional)</span>
                       </Label>
-                      <Input 
-                        value={formData.address_cep}
-                        onChange={(e) => setFormData({ ...formData, address_cep: e.target.value })}
-                        readOnly={!editingAddress}
-                        className={editingAddress ? '' : 'bg-muted/50 border-none'}
-                        placeholder="00000-000"
-                      />
+                      <div className="relative">
+                        <Input 
+                          value={formData.address_cep}
+                          onChange={(e) => handleCepChange(e.target.value)}
+                          readOnly={!editingAddress}
+                          className={editingAddress ? 'pr-10' : 'bg-muted/50 border-none'}
+                          placeholder="00000-000"
+                          maxLength={9}
+                        />
+                        {fetchingCep && (
+                          <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 animate-spin text-muted-foreground" />
+                        )}
+                      </div>
                     </div>
                     <div className="space-y-2 md:col-span-2">
                       <Label className="text-xs font-bold text-muted-foreground uppercase tracking-wider">
