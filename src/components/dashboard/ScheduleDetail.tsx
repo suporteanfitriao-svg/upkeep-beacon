@@ -379,18 +379,29 @@ export function ScheduleDetail({ schedule, onClose, onUpdateSchedule }: Schedule
     
     categories.forEach(category => {
       const categoryItems = checklist.filter(item => item.category === category);
-      const allCompleted = categoryItems.every(item => item.completed);
+      // Category is complete when ALL items have a selection (OK or DX)
+      const allSelected = categoryItems.every(item => {
+        const state = checklistItemStates[item.id];
+        return state === 'yes' || state === 'no';
+      });
       
       // If category is complete but has no photo
       const hasPhoto = categoryPhotosData[category] && categoryPhotosData[category].length > 0;
-      if (allCompleted && !hasPhoto) {
+      if (allSelected && !hasPhoto) {
         missingPhotos.push(category);
       }
     });
     
     return missingPhotos;
-  }, [requirePhotoPerCategory, checklist, categoryPhotosData]);
+  }, [requirePhotoPerCategory, checklist, checklistItemStates, categoryPhotosData]);
 
+
+  // Check if item has a selection (OK or DX) - Rule 15.7.2/15.7.3
+  const isItemSelected = useCallback((item: ChecklistItem) => {
+    const state = checklistItemStates[item.id];
+    // Item is "selected" if it has OK (yes) or DX (no) - never both, never empty to finalize
+    return state === 'yes' || state === 'no';
+  }, [checklistItemStates]);
 
   const getPendingCategoriesDetails = () => {
     const categories = Object.keys(groupedChecklist);
@@ -398,8 +409,9 @@ export function ScheduleDetail({ schedule, onClose, onUpdateSchedule }: Schedule
     
     categories.forEach(category => {
       const items = groupedChecklist[category];
-      const completedCount = items.filter(item => item.completed).length;
-      const pendingCount = items.length - completedCount;
+      // Count items that have ANY selection (OK or DX) - Rule 15.8.1
+      const selectedCount = items.filter(item => isItemSelected(item)).length;
+      const pendingCount = items.length - selectedCount;
       if (pendingCount > 0) {
         pending.push({
           name: category,
