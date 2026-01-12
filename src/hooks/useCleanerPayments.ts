@@ -1,6 +1,6 @@
 import { useState, useCallback, useEffect, useMemo } from 'react';
 import { supabase } from '@/integrations/supabase/client';
-import { startOfDay, endOfDay, startOfWeek, endOfWeek, startOfMonth, endOfMonth } from 'date-fns';
+import { startOfDay, endOfDay, startOfWeek, endOfWeek, startOfMonth, endOfMonth, addDays } from 'date-fns';
 
 export type PaymentPeriod = 'today' | 'tomorrow' | 'week' | 'month';
 
@@ -24,12 +24,12 @@ export function useCleanerPayments(teamMemberId: string | null, period: PaymentP
       case 'today':
         return { start: startOfDay(now), end: endOfDay(now) };
       case 'tomorrow': {
-        const tomorrow = new Date(now);
-        tomorrow.setDate(tomorrow.getDate() + 1);
+        const tomorrow = addDays(now, 1);
         return { start: startOfDay(tomorrow), end: endOfDay(tomorrow) };
       }
       case 'week':
-        return { start: startOfWeek(now, { weekStartsOn: 0 }), end: endOfWeek(now, { weekStartsOn: 0 }) };
+        // Segunda a Domingo (weekStartsOn: 1 = Monday)
+        return { start: startOfWeek(now, { weekStartsOn: 1 }), end: endOfWeek(now, { weekStartsOn: 1 }) };
       case 'month':
         return { start: startOfMonth(now), end: endOfMonth(now) };
     }
@@ -84,14 +84,15 @@ export function useCleanerPayments(teamMemberId: string | null, period: PaymentP
         console.error('Error fetching completed schedules:', completedError);
       }
 
-      // Fetch ALL pending schedules for properties where this team member has required rates
-      // This calculates the estimated provision based on property binding
+      // Fetch pending schedules within the same date range for future payments
       const { data: futureSchedules, error: futureError } = await supabase
         .from('schedules')
         .select('property_id, status, check_out_time')
         .in('status', ['waiting', 'released', 'cleaning'])
         .in('property_id', propertyIds)
-        .eq('is_active', true);
+        .eq('is_active', true)
+        .gte('check_out_time', dateRange.start.toISOString())
+        .lte('check_out_time', dateRange.end.toISOString());
 
       if (futureError) {
         console.error('Error fetching future schedules:', futureError);
@@ -104,7 +105,7 @@ export function useCleanerPayments(teamMemberId: string | null, period: PaymentP
         if (rate) received += rate;
       });
 
-      // Calculate future amount - sum ALL pending tasks for provision estimate
+      // Calculate future amount - pending tasks within the period
       let future = 0;
       (futureSchedules || []).forEach(s => {
         const rate = rateMap.get(s.property_id);
