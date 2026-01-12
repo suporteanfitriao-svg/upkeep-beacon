@@ -16,6 +16,7 @@ import { ChecklistManager } from '@/components/properties/ChecklistManager';
 import { PasswordModeConfig } from '@/components/properties/PasswordModeConfig';
 import { AdvancedRulesConfig } from '@/components/properties/AdvancedRulesConfig';
 import { CleaningRatesManager } from '@/components/properties/CleaningRatesManager';
+import { PropertyTeamManager } from '@/components/properties/PropertyTeamManager';
 import { cn } from '@/lib/utils';
 import { useImageCompression } from '@/hooks/useImageCompression';
 
@@ -847,7 +848,7 @@ export default function Properties() {
                         <Tabs defaultValue="ical" className="w-full">
                           <TabsList className={cn(
                             "grid w-full mb-4 bg-muted/50 rounded-xl p-1",
-                            canManage ? 'grid-cols-5' : 'grid-cols-2'
+                            canManage ? 'grid-cols-6' : 'grid-cols-2'
                           )}>
                             <TabsTrigger value="ical" className="rounded-lg text-xs data-[state=active]:bg-card data-[state=active]:shadow-sm">
                               <span className="material-symbols-outlined text-[14px] mr-1">link</span>
@@ -857,6 +858,12 @@ export default function Properties() {
                               <span className="material-symbols-outlined text-[14px] mr-1">checklist</span>
                               <span className="hidden sm:inline">Checklists</span> ({propertyChecklistCount})
                             </TabsTrigger>
+                            {canManage && (
+                              <TabsTrigger value="team" className="rounded-lg text-xs data-[state=active]:bg-card data-[state=active]:shadow-sm">
+                                <span className="material-symbols-outlined text-[14px] mr-1">group</span>
+                                <span className="hidden sm:inline">Equipe</span>
+                              </TabsTrigger>
+                            )}
                             {canManage && (
                               <TabsTrigger value="password" className="rounded-lg text-xs data-[state=active]:bg-card data-[state=active]:shadow-sm">
                                 <span className="material-symbols-outlined text-[14px] mr-1">key</span>
@@ -1010,6 +1017,15 @@ export default function Properties() {
                               </p>
                             )}
                           </TabsContent>
+
+                          {canManage && (
+                            <TabsContent value="team" className="mt-0">
+                              <PropertyTeamManager 
+                                propertyId={property.id} 
+                                propertyName={property.name} 
+                              />
+                            </TabsContent>
+                          )}
 
                           {canManage && (
                             <TabsContent value="password" className="mt-0">
