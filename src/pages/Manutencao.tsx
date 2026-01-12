@@ -15,7 +15,9 @@ import {
   ChevronUp,
   X,
   MessageSquare,
-  FileText
+  FileText,
+  Play,
+  Plus
 } from 'lucide-react';
 import { SidebarProvider } from '@/components/ui/sidebar';
 import { AppSidebar } from '@/components/dashboard/AppSidebar';
@@ -30,7 +32,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '
 import { Label } from '@/components/ui/label';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { useMaintenanceIssues, MaintenanceIssue } from '@/hooks/useMaintenanceIssues';
+import { useMaintenanceIssues, MaintenanceIssue, ProgressNote } from '@/hooks/useMaintenanceIssues';
 import { useCompletedSchedules } from '@/hooks/useCompletedSchedules';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
@@ -84,11 +86,15 @@ function IssueCard({
   issue, 
   onResolve, 
   onAssign,
+  onStart,
+  onAddNote,
   teamMembers
 }: { 
   issue: MaintenanceIssue; 
   onResolve: (issue: MaintenanceIssue) => void;
   onAssign: (issue: MaintenanceIssue) => void;
+  onStart: (issue: MaintenanceIssue) => void;
+  onAddNote: (issue: MaintenanceIssue) => void;
   teamMembers: { id: string; name: string }[];
 }) {
   const [expanded, setExpanded] = useState(false);
@@ -170,6 +176,33 @@ function IssueCard({
               </div>
             )}
 
+            {/* Started at info */}
+            {issue.started_at && issue.status === 'in_progress' && (
+              <div className="bg-blue-500/10 rounded-lg p-3 border border-blue-500/20">
+                <p className="text-sm font-medium text-blue-600 mb-1">Em Andamento</p>
+                <p className="text-xs text-muted-foreground">
+                  Iniciado em: {format(new Date(issue.started_at), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}
+                </p>
+              </div>
+            )}
+
+            {/* Progress Notes */}
+            {issue.progress_notes && issue.progress_notes.length > 0 && (
+              <div className="space-y-2">
+                <p className="text-sm font-medium">Observações</p>
+                <div className="space-y-2 max-h-40 overflow-y-auto">
+                  {issue.progress_notes.map((note, idx) => (
+                    <div key={idx} className="bg-muted/50 rounded-lg p-2 text-sm">
+                      <p>{note.note}</p>
+                      <p className="text-xs text-muted-foreground mt-1">
+                        {note.created_by_name} - {format(new Date(note.created_at), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}
+                      </p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
             {issue.status === 'resolved' && (
               <div className="bg-green-500/10 rounded-lg p-3 border border-green-500/20">
                 <p className="text-sm font-medium text-green-600 mb-1">Resolvida</p>
@@ -184,7 +217,21 @@ function IssueCard({
             )}
 
             {issue.status !== 'resolved' && (
-              <div className="flex gap-2">
+              <div className="flex flex-wrap gap-2">
+                {issue.status === 'open' && (
+                  <Button 
+                    variant="outline" 
+                    size="sm"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onStart(issue);
+                    }}
+                    className="text-blue-600 border-blue-500/30 hover:bg-blue-500/10"
+                  >
+                    <Play className="w-4 h-4 mr-1" />
+                    Iniciar Andamento
+                  </Button>
+                )}
                 <Button 
                   variant="outline" 
                   size="sm"
@@ -196,6 +243,19 @@ function IssueCard({
                   <User className="w-4 h-4 mr-1" />
                   {issue.assigned_to ? 'Alterar Responsável' : 'Atribuir Responsável'}
                 </Button>
+                {issue.status === 'in_progress' && (
+                  <Button 
+                    variant="outline" 
+                    size="sm"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onAddNote(issue);
+                    }}
+                  >
+                    <Plus className="w-4 h-4 mr-1" />
+                    Adicionar Observação
+                  </Button>
+                )}
                 <Button 
                   size="sm"
                   onClick={(e) => {
@@ -217,14 +277,16 @@ function IssueCard({
 }
 
 export default function Manutencao() {
-  const { issues, isLoading, stats, resolveIssue, assignIssue } = useMaintenanceIssues();
+  const { issues, isLoading, stats, resolveIssue, assignIssue, addProgressNote, startIssue } = useMaintenanceIssues();
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [severityFilter, setSeverityFilter] = useState<string>('all');
   const [resolveDialogOpen, setResolveDialogOpen] = useState(false);
   const [assignDialogOpen, setAssignDialogOpen] = useState(false);
+  const [noteDialogOpen, setNoteDialogOpen] = useState(false);
   const [selectedIssue, setSelectedIssue] = useState<MaintenanceIssue | null>(null);
   const [resolutionNotes, setResolutionNotes] = useState('');
+  const [progressNote, setProgressNote] = useState('');
   const [selectedTeamMember, setSelectedTeamMember] = useState<string>('');
   const [activeTab, setActiveTab] = useState('avarias');
 
@@ -290,6 +352,16 @@ export default function Manutencao() {
     setAssignDialogOpen(true);
   };
 
+  const handleStart = (issue: MaintenanceIssue) => {
+    startIssue({ id: issue.id });
+  };
+
+  const handleAddNote = (issue: MaintenanceIssue) => {
+    setSelectedIssue(issue);
+    setProgressNote('');
+    setNoteDialogOpen(true);
+  };
+
   const confirmResolve = async () => {
     if (!selectedIssue) return;
     
@@ -323,6 +395,28 @@ export default function Manutencao() {
     
     setAssignDialogOpen(false);
     setSelectedIssue(null);
+  };
+
+  const confirmAddNote = async () => {
+    if (!selectedIssue || !progressNote.trim()) return;
+    
+    const { data: { user } } = await supabase.auth.getUser();
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('name')
+      .eq('id', user?.id)
+      .single();
+
+    addProgressNote({
+      id: selectedIssue.id,
+      note: progressNote,
+      created_by_name: profile?.name || 'Usuário',
+      currentNotes: selectedIssue.progress_notes || [],
+    });
+    
+    setNoteDialogOpen(false);
+    setSelectedIssue(null);
+    setProgressNote('');
   };
 
   // Show schedule detail read-only modal
@@ -459,6 +553,8 @@ export default function Manutencao() {
                       issue={issue}
                       onResolve={handleResolve}
                       onAssign={handleAssign}
+                      onStart={handleStart}
+                      onAddNote={handleAddNote}
                       teamMembers={teamMembers}
                     />
                   ))
@@ -592,6 +688,56 @@ export default function Manutencao() {
             <Button onClick={confirmAssign} disabled={!selectedTeamMember}>
               <User className="w-4 h-4 mr-1" />
               Confirmar Atribuição
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Add Note Dialog */}
+      <Dialog open={noteDialogOpen} onOpenChange={setNoteDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Adicionar Observação</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="bg-muted/50 rounded-lg p-3">
+              <p className="text-sm font-medium">{selectedIssue?.property_name}</p>
+              <p className="text-xs text-muted-foreground">{selectedIssue?.category}</p>
+              <p className="text-sm mt-1">{selectedIssue?.description}</p>
+            </div>
+            {selectedIssue?.progress_notes && selectedIssue.progress_notes.length > 0 && (
+              <div className="space-y-2">
+                <Label>Observações anteriores</Label>
+                <div className="space-y-2 max-h-32 overflow-y-auto">
+                  {selectedIssue.progress_notes.map((note, idx) => (
+                    <div key={idx} className="bg-muted/30 rounded p-2 text-sm">
+                      <p>{note.note}</p>
+                      <p className="text-xs text-muted-foreground mt-1">
+                        {note.created_by_name} - {format(new Date(note.created_at), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}
+                      </p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+            <div className="space-y-2">
+              <Label htmlFor="progress-note">Nova Observação</Label>
+              <Textarea
+                id="progress-note"
+                placeholder="Descreva o andamento ou atualizações sobre esta avaria..."
+                value={progressNote}
+                onChange={(e) => setProgressNote(e.target.value)}
+                rows={3}
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setNoteDialogOpen(false)}>
+              Cancelar
+            </Button>
+            <Button onClick={confirmAddNote} disabled={!progressNote.trim()}>
+              <Plus className="w-4 h-4 mr-1" />
+              Adicionar Observação
             </Button>
           </DialogFooter>
         </DialogContent>
