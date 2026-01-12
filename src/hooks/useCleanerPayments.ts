@@ -82,11 +82,11 @@ export function useCleanerPayments(teamMemberId: string | null) {
         console.error('Error fetching completed schedules:', completedError);
       }
 
-      // Fetch pending/in-progress schedules (future payments) - without date filter for provision estimate
+      // Fetch ALL pending/in-progress schedules for properties with rates configured
+      // This calculates the estimated provision for all pending tasks
       const { data: futureSchedules, error: futureError } = await supabase
         .from('schedules')
-        .select('property_id, status, check_out_time')
-        .eq('responsible_team_member_id', teamMemberId)
+        .select('property_id, status, check_out_time, responsible_team_member_id')
         .in('status', ['waiting', 'released', 'cleaning'])
         .in('property_id', propertyIds)
         .eq('is_active', true);
