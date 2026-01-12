@@ -19,7 +19,7 @@ interface MobileDashboardProps {
 }
 
 const dayNames = ['DOM', 'SEG', 'TER', 'QUA', 'QUI', 'SEX', 'SÁB'];
-const AUTO_SYNC_INTERVAL = 60000; // 1 minute
+const AUTO_SYNC_INTERVAL = 300000; // 5 minutes
 const PULL_THRESHOLD = 80; // pixels to trigger refresh
 
 // Vibrate helper function
