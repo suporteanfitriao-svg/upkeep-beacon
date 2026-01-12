@@ -581,20 +581,20 @@ export default function Profile() {
         </main>
 
         {/* Mobile Bottom Navigation */}
-        <nav className="md:hidden fixed bottom-0 left-0 right-0 bg-card border-t border-border z-50 px-6 py-3 flex justify-around items-center text-xs font-medium text-muted-foreground">
+        <nav className="md:hidden fixed bottom-0 left-0 right-0 bg-card/80 backdrop-blur-lg border-t border-border z-50 px-6 py-3 flex justify-around items-center text-xs font-medium text-muted-foreground">
           <a href="/" className="flex flex-col items-center gap-1 hover:text-primary transition-colors">
             <span className="material-symbols-outlined text-xl">home</span>
             <span>Início</span>
           </a>
-          <a href="/propriedades" className="flex flex-col items-center gap-1 hover:text-primary transition-colors">
-            <span className="material-symbols-outlined text-xl">apartment</span>
-            <span>Imóveis</span>
+          <a href="/?tab=agenda" className="flex flex-col items-center gap-1 hover:text-primary transition-colors">
+            <span className="material-symbols-outlined text-xl">calendar_today</span>
+            <span>Agenda</span>
+          </a>
+          <a href="/mensagens" className="flex flex-col items-center gap-1 hover:text-primary transition-colors">
+            <span className="material-symbols-outlined text-xl">chat_bubble</span>
+            <span>Msgs</span>
           </a>
           <a href="/minha-conta" className="flex flex-col items-center gap-1 text-primary">
-            <span className="material-symbols-outlined text-xl">person</span>
-            <span>Conta</span>
-          </a>
-          <a href="/ajuda" className="flex flex-col items-center gap-1 hover:text-primary transition-colors">
             <span className="material-symbols-outlined text-xl">menu</span>
             <span>Menu</span>
           </a>
