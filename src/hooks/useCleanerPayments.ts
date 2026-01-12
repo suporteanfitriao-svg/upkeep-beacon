@@ -1,6 +1,6 @@
 import { useState, useCallback, useEffect, useMemo } from 'react';
 import { supabase } from '@/integrations/supabase/client';
-import { startOfDay, endOfDay, startOfWeek, endOfWeek, startOfMonth, endOfMonth, addDays } from 'date-fns';
+import { startOfDay, endOfDay, startOfWeek, endOfWeek, startOfMonth, endOfMonth } from 'date-fns';
 
 export type PaymentPeriod = 'today' | 'tomorrow' | 'week' | 'month';
 
@@ -13,6 +13,7 @@ interface PaymentSummary {
 export function useCleanerPayments(teamMemberId: string | null) {
   const [loading, setLoading] = useState(true);
   const [period, setPeriod] = useState<PaymentPeriod>('today');
+  const [selectedMonth, setSelectedMonth] = useState<Date>(new Date());
   const [summary, setSummary] = useState<PaymentSummary>({
     received: 0,
     future: 0,
@@ -24,15 +25,17 @@ export function useCleanerPayments(teamMemberId: string | null) {
     switch (period) {
       case 'today':
         return { start: startOfDay(now), end: endOfDay(now) };
-      case 'tomorrow':
-        const tomorrow = addDays(now, 1);
+      case 'tomorrow': {
+        const tomorrow = new Date(now);
+        tomorrow.setDate(tomorrow.getDate() + 1);
         return { start: startOfDay(tomorrow), end: endOfDay(tomorrow) };
+      }
       case 'week':
         return { start: startOfWeek(now, { weekStartsOn: 0 }), end: endOfWeek(now, { weekStartsOn: 0 }) };
       case 'month':
-        return { start: startOfMonth(now), end: endOfMonth(now) };
+        return { start: startOfMonth(selectedMonth), end: endOfMonth(selectedMonth) };
     }
-  }, [period]);
+  }, [period, selectedMonth]);
 
   const fetchPayments = useCallback(async () => {
     if (!teamMemberId) {
@@ -68,7 +71,7 @@ export function useCleanerPayments(teamMemberId: string | null) {
       rates.forEach(r => rateMap.set(r.property_id, parseFloat(String(r.rate_value))));
       const propertyIds = Array.from(rateMap.keys());
 
-      // Fetch completed schedules assigned to this team member (received payments)
+      // Fetch completed schedules assigned to this team member (received payments) within date range
       const { data: completedSchedules, error: completedError } = await supabase
         .from('schedules')
         .select('property_id, status, end_at')
@@ -130,6 +133,8 @@ export function useCleanerPayments(teamMemberId: string | null) {
     loading,
     period,
     setPeriod,
+    selectedMonth,
+    setSelectedMonth,
     summary,
     refetch: fetchPayments
   };
