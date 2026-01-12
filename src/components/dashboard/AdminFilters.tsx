@@ -8,17 +8,20 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { Calendar } from '@/components/ui/calendar';
 import { supabase } from '@/integrations/supabase/client';
 import { cn } from '@/lib/utils';
+import type { DateRange } from 'react-day-picker';
 
-export type DateFilter = 'today' | 'tomorrow' | 'custom' | 'all';
+export type DateFilter = 'today' | 'tomorrow' | 'custom' | 'range' | 'all';
 
 interface AdminFiltersProps {
   dateFilter: DateFilter;
   customDate: Date | undefined;
+  dateRange?: DateRange;
   searchQuery: string;
   statusFilter: string;
   responsibleFilter: string;
   onDateFilterChange: (filter: DateFilter) => void;
   onCustomDateChange: (date: Date | undefined) => void;
+  onDateRangeChange?: (range: DateRange | undefined) => void;
   onSearchChange: (query: string) => void;
   onStatusFilterChange: (status: string) => void;
   onResponsibleFilterChange: (responsible: string) => void;
@@ -35,11 +38,13 @@ const statusOptions = [
 export function AdminFilters({
   dateFilter,
   customDate,
+  dateRange,
   searchQuery,
   statusFilter,
   responsibleFilter,
   onDateFilterChange,
   onCustomDateChange,
+  onDateRangeChange,
   onSearchChange,
   onStatusFilterChange,
   onResponsibleFilterChange,
@@ -64,18 +69,30 @@ export function AdminFilters({
     fetchResponsibles();
   }, []);
 
-  const handleDateSelect = (date: Date | undefined) => {
-    onCustomDateChange(date);
-    if (date) {
-      onDateFilterChange('custom');
+  const handleDateSelect = (range: DateRange | undefined) => {
+    if (range?.from && range?.to) {
+      // Range selected (multiple days)
+      onDateRangeChange?.(range);
+      onDateFilterChange('range');
+      setCalendarOpen(false);
+    } else if (range?.from && !range?.to) {
+      // Single day clicked - keep calendar open for second click or use as single day
+      onDateRangeChange?.(range);
     }
-    setCalendarOpen(false);
+  };
+
+  const handleSingleDayConfirm = () => {
+    if (dateRange?.from && !dateRange?.to) {
+      // Use single day as both start and end
+      onDateRangeChange?.({ from: dateRange.from, to: dateRange.from });
+      onDateFilterChange('range');
+      setCalendarOpen(false);
+    }
   };
 
   // Navigate to previous day
   const handlePrevDay = () => {
     if (dateFilter === 'today') {
-      // Go to yesterday (custom date)
       const yesterday = subDays(new Date(), 1);
       onCustomDateChange(yesterday);
       onDateFilterChange('custom');
@@ -84,6 +101,11 @@ export function AdminFilters({
     } else if (dateFilter === 'custom' && customDate) {
       const prevDay = subDays(customDate, 1);
       onCustomDateChange(prevDay);
+    } else if (dateFilter === 'range' && dateRange?.from) {
+      // Move entire range back by 1 day
+      const newFrom = subDays(dateRange.from, 1);
+      const newTo = dateRange.to ? subDays(dateRange.to, 1) : newFrom;
+      onDateRangeChange?.({ from: newFrom, to: newTo });
     }
   };
 
@@ -92,13 +114,17 @@ export function AdminFilters({
     if (dateFilter === 'today') {
       onDateFilterChange('tomorrow');
     } else if (dateFilter === 'tomorrow') {
-      // Go to day after tomorrow (custom date)
       const dayAfter = addDays(new Date(), 2);
       onCustomDateChange(dayAfter);
       onDateFilterChange('custom');
     } else if (dateFilter === 'custom' && customDate) {
       const nextDay = addDays(customDate, 1);
       onCustomDateChange(nextDay);
+    } else if (dateFilter === 'range' && dateRange?.from) {
+      // Move entire range forward by 1 day
+      const newFrom = addDays(dateRange.from, 1);
+      const newTo = dateRange.to ? addDays(dateRange.to, 1) : newFrom;
+      onDateRangeChange?.({ from: newFrom, to: newTo });
     }
   };
 
@@ -108,6 +134,12 @@ export function AdminFilters({
     if (dateFilter === 'tomorrow') return 'Amanhã';
     if (dateFilter === 'custom' && customDate) {
       return format(customDate, "dd 'de' MMM", { locale: ptBR });
+    }
+    if (dateFilter === 'range' && dateRange?.from) {
+      if (dateRange.to && dateRange.from.getTime() !== dateRange.to.getTime()) {
+        return `${format(dateRange.from, "dd/MM", { locale: ptBR })} - ${format(dateRange.to, "dd/MM", { locale: ptBR })}`;
+      }
+      return format(dateRange.from, "dd/MM", { locale: ptBR });
     }
     return 'Data';
   };
@@ -129,7 +161,10 @@ export function AdminFilters({
           </button>
 
           <button
-            onClick={() => onDateFilterChange('today')}
+            onClick={() => {
+              onDateFilterChange('today');
+              onDateRangeChange?.(undefined);
+            }}
             className={cn(
               'px-4 py-1.5 text-sm font-medium rounded-lg transition-colors',
               dateFilter === 'today' 
@@ -140,7 +175,10 @@ export function AdminFilters({
             Hoje
           </button>
           <button
-            onClick={() => onDateFilterChange('tomorrow')}
+            onClick={() => {
+              onDateFilterChange('tomorrow');
+              onDateRangeChange?.(undefined);
+            }}
             className={cn(
               'px-4 py-1.5 text-sm font-medium transition-colors',
               dateFilter === 'tomorrow' 
@@ -151,10 +189,19 @@ export function AdminFilters({
             Amanhã
           </button>
           
-          {/* Custom date indicator */}
+          {/* Custom date or range indicator */}
           {dateFilter === 'custom' && customDate && (
             <span className="px-3 py-1.5 text-sm font-medium bg-primary text-primary-foreground rounded-lg">
               {format(customDate, "dd/MM", { locale: ptBR })}
+            </span>
+          )}
+          
+          {dateFilter === 'range' && dateRange?.from && (
+            <span className="px-3 py-1.5 text-sm font-medium bg-primary text-primary-foreground rounded-lg">
+              {dateRange.to && dateRange.from.getTime() !== dateRange.to.getTime()
+                ? `${format(dateRange.from, "dd/MM", { locale: ptBR })} - ${format(dateRange.to, "dd/MM", { locale: ptBR })}`
+                : format(dateRange.from, "dd/MM", { locale: ptBR })
+              }
             </span>
           )}
           
@@ -164,23 +211,63 @@ export function AdminFilters({
               <button
                 className={cn(
                   'px-3 py-1.5 transition-colors',
-                  dateFilter === 'custom' 
+                  (dateFilter === 'custom' || dateFilter === 'range')
                     ? 'text-primary' 
                     : 'text-muted-foreground hover:text-primary'
                 )}
+                title="Selecionar período"
               >
                 <CalendarIcon className="w-4 h-4" />
               </button>
             </PopoverTrigger>
             <PopoverContent className="w-auto p-0 bg-popover border shadow-lg z-50" align="end">
+              <div className="p-3 border-b">
+                <p className="text-sm text-muted-foreground">
+                  Selecione uma data ou um período
+                </p>
+              </div>
               <Calendar
-                mode="single"
-                selected={customDate}
+                mode="range"
+                selected={dateRange}
                 onSelect={handleDateSelect}
                 locale={ptBR}
                 initialFocus
+                numberOfMonths={1}
                 className="pointer-events-auto"
               />
+              {dateRange?.from && !dateRange?.to && (
+                <div className="p-3 border-t flex justify-end gap-2">
+                  <Button 
+                    size="sm" 
+                    variant="outline"
+                    onClick={() => {
+                      onDateRangeChange?.(undefined);
+                    }}
+                  >
+                    Limpar
+                  </Button>
+                  <Button 
+                    size="sm"
+                    onClick={handleSingleDayConfirm}
+                  >
+                    Usar dia único
+                  </Button>
+                </div>
+              )}
+              {dateRange?.from && dateRange?.to && (
+                <div className="p-3 border-t flex justify-end">
+                  <Button 
+                    size="sm" 
+                    variant="outline"
+                    onClick={() => {
+                      onDateRangeChange?.(undefined);
+                      onDateFilterChange('today');
+                    }}
+                  >
+                    Limpar filtro
+                  </Button>
+                </div>
+              )}
             </PopoverContent>
           </Popover>
 

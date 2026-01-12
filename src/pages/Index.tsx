@@ -1,7 +1,8 @@
 import { useState, useMemo, useCallback, useEffect, createContext, useContext, useRef } from 'react';
 import { Loader2, CalendarX } from 'lucide-react';
 import { toast } from 'sonner';
-import { isToday, isTomorrow, isSameDay } from 'date-fns';
+import { isToday, isTomorrow, isSameDay, isWithinInterval, startOfDay, endOfDay } from 'date-fns';
+import type { DateRange } from 'react-day-picker';
 
 import { SidebarProvider } from '@/components/ui/sidebar';
 import { AdminSidebar } from '@/components/dashboard/AdminSidebar';
@@ -123,6 +124,7 @@ const Index = () => {
   // Filters
   const [dateFilter, setDateFilter] = useState<DateFilter>('today');
   const [customDate, setCustomDate] = useState<Date | undefined>(undefined);
+  const [dateRange, setDateRange] = useState<DateRange | undefined>(undefined);
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
   const [responsibleFilter, setResponsibleFilter] = useState('all');
@@ -157,6 +159,14 @@ const Index = () => {
       if (dateFilter === 'today' && !isToday(checkOutDate)) return false;
       if (dateFilter === 'tomorrow' && !isTomorrow(checkOutDate)) return false;
       if (dateFilter === 'custom' && customDate && !isSameDay(checkOutDate, customDate)) return false;
+      if (dateFilter === 'range' && dateRange?.from) {
+        const rangeEnd = dateRange.to || dateRange.from;
+        const isInRange = isWithinInterval(checkOutDate, { 
+          start: startOfDay(dateRange.from), 
+          end: endOfDay(rangeEnd) 
+        });
+        if (!isInRange) return false;
+      }
 
       // Search filter
       if (searchQuery) {
@@ -176,7 +186,7 @@ const Index = () => {
       // Sort by checkout time
       return a.checkOut.getTime() - b.checkOut.getTime();
     });
-  }, [schedules, activeStatusFilter, statusFilter, responsibleFilter, dateFilter, customDate, searchQuery]);
+  }, [schedules, activeStatusFilter, statusFilter, responsibleFilter, dateFilter, customDate, dateRange, searchQuery]);
 
   // Filtered stats for current date filter
   const filteredStats = useMemo(() => {
@@ -185,10 +195,17 @@ const Index = () => {
       if (dateFilter === 'today') return isToday(checkOutDate);
       if (dateFilter === 'tomorrow') return isTomorrow(checkOutDate);
       if (dateFilter === 'custom' && customDate) return isSameDay(checkOutDate, customDate);
+      if (dateFilter === 'range' && dateRange?.from) {
+        const rangeEnd = dateRange.to || dateRange.from;
+        return isWithinInterval(checkOutDate, { 
+          start: startOfDay(dateRange.from), 
+          end: endOfDay(rangeEnd) 
+        });
+      }
       return true;
     });
     return calculateStats(dateFiltered);
-  }, [schedules, dateFilter, customDate]);
+  }, [schedules, dateFilter, customDate, dateRange]);
 
   // Sync function with all rules implemented
   const startSync = useCallback(async (): Promise<{ synced: number } | null> => {
@@ -557,11 +574,13 @@ const Index = () => {
             <AdminFilters
               dateFilter={dateFilter}
               customDate={customDate}
+              dateRange={dateRange}
               searchQuery={searchQuery}
               statusFilter={statusFilter}
               responsibleFilter={responsibleFilter}
               onDateFilterChange={setDateFilter}
               onCustomDateChange={setCustomDate}
+              onDateRangeChange={setDateRange}
               onSearchChange={setSearchQuery}
               onStatusFilterChange={setStatusFilter}
               onResponsibleFilterChange={setResponsibleFilter}
