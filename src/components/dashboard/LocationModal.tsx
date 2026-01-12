@@ -1,3 +1,4 @@
+import { useState, useEffect } from 'react';
 import { toast } from 'sonner';
 
 interface LocationModalProps {
@@ -6,14 +7,60 @@ interface LocationModalProps {
   onClose: () => void;
 }
 
+interface Coordinates {
+  lat: number;
+  lng: number;
+}
+
 export function LocationModal({ propertyName, address, onClose }: LocationModalProps) {
-  // Parse address to get coordinates (for demo, using fixed coordinates)
-  // In production, you would use a geocoding service
+  const [coordinates, setCoordinates] = useState<Coordinates | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  // Geocode address using Nominatim (OpenStreetMap)
+  useEffect(() => {
+    const geocodeAddress = async () => {
+      if (!address) {
+        setLoading(false);
+        return;
+      }
+
+      try {
+        const encodedAddress = encodeURIComponent(address);
+        const response = await fetch(
+          `https://nominatim.openstreetmap.org/search?format=json&q=${encodedAddress}&limit=1`,
+          {
+            headers: {
+              'Accept-Language': 'pt-BR',
+            },
+          }
+        );
+        const data = await response.json();
+
+        if (data && data.length > 0) {
+          setCoordinates({
+            lat: parseFloat(data[0].lat),
+            lng: parseFloat(data[0].lon),
+          });
+        }
+      } catch (error) {
+        console.error('Error geocoding address:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    geocodeAddress();
+  }, [address]);
+
   const getMapUrl = () => {
-    // Encode address for OSM embed
-    const encodedAddress = encodeURIComponent(address || 'Rio de Janeiro');
-    // Default to Rio de Janeiro area for demo
-    return `https://www.openstreetmap.org/export/embed.html?bbox=-43.1900%2C-22.9720%2C-43.1780%2C-22.9600&layer=mapnik&marker=-22.9647%2C-43.1815`;
+    if (coordinates) {
+      // Create bounding box around the coordinates (small area for zoom)
+      const delta = 0.005;
+      const bbox = `${coordinates.lng - delta}%2C${coordinates.lat - delta}%2C${coordinates.lng + delta}%2C${coordinates.lat + delta}`;
+      return `https://www.openstreetmap.org/export/embed.html?bbox=${bbox}&layer=mapnik&marker=${coordinates.lat}%2C${coordinates.lng}`;
+    }
+    // Fallback to Brazil view
+    return `https://www.openstreetmap.org/export/embed.html?bbox=-70%2C-35%2C-30%2C5&layer=mapnik`;
   };
 
   const handleCopyAddress = () => {
@@ -22,9 +69,14 @@ export function LocationModal({ propertyName, address, onClose }: LocationModalP
   };
 
   const handleOpenRoute = () => {
-    const encodedAddress = encodeURIComponent(address || '');
-    // Open Google Maps with directions
-    window.open(`https://www.google.com/maps/dir/?api=1&destination=${encodedAddress}`, '_blank');
+    if (coordinates) {
+      // Use coordinates for more accurate routing
+      window.open(`https://www.google.com/maps/dir/?api=1&destination=${coordinates.lat},${coordinates.lng}`, '_blank');
+    } else {
+      // Fallback to address
+      const encodedAddress = encodeURIComponent(address || '');
+      window.open(`https://www.google.com/maps/dir/?api=1&destination=${encodedAddress}`, '_blank');
+    }
   };
 
   // Split address into street and city
@@ -51,31 +103,42 @@ export function LocationModal({ propertyName, address, onClose }: LocationModalP
 
         {/* Map */}
         <main className="relative flex-1 w-full h-full bg-slate-200 dark:bg-slate-800 z-0">
-          <iframe 
-            className="w-full h-full object-cover dark:invert dark:grayscale dark:hue-rotate-180 dark:brightness-[0.8] dark:contrast-[1.2] transition-all duration-500" 
-            frameBorder="0" 
-            scrolling="no" 
-            src={getMapUrl()}
-            style={{ border: 0 }}
-          />
+          {loading ? (
+            <div className="flex items-center justify-center w-full h-full">
+              <div className="flex flex-col items-center gap-3">
+                <div className="w-10 h-10 border-4 border-primary border-t-transparent rounded-full animate-spin" />
+                <span className="text-sm text-slate-500 dark:text-slate-400">Carregando mapa...</span>
+              </div>
+            </div>
+          ) : (
+            <iframe 
+              className="w-full h-full object-cover dark:invert dark:grayscale dark:hue-rotate-180 dark:brightness-[0.8] dark:contrast-[1.2] transition-all duration-500" 
+              frameBorder="0" 
+              scrolling="no" 
+              src={getMapUrl()}
+              style={{ border: 0 }}
+            />
+          )}
           
           {/* Gradient overlay */}
           <div className="absolute top-0 left-0 right-0 h-24 bg-gradient-to-b from-white/20 to-transparent pointer-events-none z-10" />
           
-          {/* Location marker overlay */}
-          <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-full -mt-4 z-20 flex flex-col items-center group cursor-pointer">
-            <div className="mb-2 opacity-0 transform translate-y-2 transition-all duration-300 group-hover:opacity-100 group-hover:translate-y-0">
-              <div className="bg-slate-900 text-white text-[10px] font-bold px-2 py-1 rounded shadow-lg">
-                Propriedade
+          {/* Location marker overlay - only show when coordinates are loaded */}
+          {coordinates && !loading && (
+            <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-full -mt-4 z-20 flex flex-col items-center group cursor-pointer">
+              <div className="mb-2 opacity-0 transform translate-y-2 transition-all duration-300 group-hover:opacity-100 group-hover:translate-y-0">
+                <div className="bg-slate-900 text-white text-[10px] font-bold px-2 py-1 rounded shadow-lg">
+                  Propriedade
+                </div>
+                <div className="w-2 h-2 bg-slate-900 transform rotate-45 mx-auto -mt-1" />
               </div>
-              <div className="w-2 h-2 bg-slate-900 transform rotate-45 mx-auto -mt-1" />
+              <div className="relative">
+                <span className="material-symbols-outlined filled text-primary text-5xl drop-shadow-lg filter">location_on</span>
+                <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-full h-full bg-primary/30 rounded-full animate-ping -z-10" />
+                <div className="absolute bottom-1 left-1/2 -translate-x-1/2 w-3 h-1 bg-black/30 rounded-full blur-[2px]" />
+              </div>
             </div>
-            <div className="relative">
-              <span className="material-symbols-outlined filled text-primary text-5xl drop-shadow-lg filter">location_on</span>
-              <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-full h-full bg-primary/30 rounded-full animate-ping -z-10" />
-              <div className="absolute bottom-1 left-1/2 -translate-x-1/2 w-3 h-1 bg-black/30 rounded-full blur-[2px]" />
-            </div>
-          </div>
+          )}
 
           {/* Address Card */}
           <div className="absolute bottom-28 left-4 right-4 z-20">
