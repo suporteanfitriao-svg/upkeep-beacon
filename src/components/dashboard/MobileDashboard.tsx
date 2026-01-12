@@ -1,5 +1,5 @@
 import { useState, useMemo, useEffect, useCallback, useRef } from 'react';
-import { format, isSameDay, addDays, startOfWeek, endOfWeek, getWeek, isAfter, startOfDay, isToday as checkIsToday, startOfMonth, endOfMonth, eachDayOfInterval, addMonths, subMonths, getDay, formatDistanceToNow, isWithinInterval } from 'date-fns';
+import { format, isSameDay, addDays, startOfWeek, endOfWeek, getWeek, isAfter, startOfDay, endOfDay, isToday as checkIsToday, startOfMonth, endOfMonth, eachDayOfInterval, addMonths, subMonths, getDay, formatDistanceToNow, isWithinInterval } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { Calendar, Play, Clock, Check, ChevronRight, LayoutGrid, MessageSquare, Menu, RefreshCw, Home, Building2, AlertCircle, Users } from 'lucide-react';
 import { Schedule } from '@/types/scheduling';
@@ -297,12 +297,6 @@ export function MobileDashboard({ schedules, onScheduleClick, onStartCleaning, o
     ).length;
   }, [schedules]);
 
-  // Helper function for period end of day
-  const endOfDay = (date: Date) => {
-    const end = new Date(date);
-    end.setHours(23, 59, 59, 999);
-    return end;
-  };
 
   const handlePrevMonth = () => setCurrentMonth(prev => subMonths(prev, 1));
   const handleNextMonth = () => setCurrentMonth(prev => addMonths(prev, 1));
