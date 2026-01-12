@@ -550,33 +550,6 @@ export function MobileDashboard({ schedules, onScheduleClick, onStartCleaning, o
               </div>
             )}
 
-            {/* Quick Actions */}
-            <div className="mb-6">
-              <h3 className="text-sm font-semibold text-muted-foreground mb-3">Ações Rápidas</h3>
-              <div className="grid grid-cols-3 gap-3">
-                <button
-                  onClick={() => setActiveTab('agenda')}
-                  className="flex flex-col items-center gap-2 p-4 rounded-2xl bg-white dark:bg-slate-800 border border-slate-100 dark:border-slate-700 transition-all hover:shadow-md active:scale-95"
-                >
-                  <Calendar className="w-6 h-6 text-primary" />
-                  <span className="text-xs font-medium text-foreground">Agenda</span>
-                </button>
-                <button
-                  onClick={() => navigate('/mensagens')}
-                  className="flex flex-col items-center gap-2 p-4 rounded-2xl bg-white dark:bg-slate-800 border border-slate-100 dark:border-slate-700 transition-all hover:shadow-md active:scale-95"
-                >
-                  <MessageSquare className="w-6 h-6 text-primary" />
-                  <span className="text-xs font-medium text-foreground">Mensagens</span>
-                </button>
-                <button
-                  onClick={() => navigate('/equipe')}
-                  className="flex flex-col items-center gap-2 p-4 rounded-2xl bg-white dark:bg-slate-800 border border-slate-100 dark:border-slate-700 transition-all hover:shadow-md active:scale-95"
-                >
-                  <Users className="w-6 h-6 text-primary" />
-                  <span className="text-xs font-medium text-foreground">Equipe</span>
-                </button>
-              </div>
-            </div>
           </main>
         </div>
       )}
