@@ -158,6 +158,7 @@ export type Database = {
           id: string
           item_label: string | null
           photo_url: string | null
+          progress_notes: Json | null
           property_id: string
           property_name: string
           reported_by: string | null
@@ -168,6 +169,7 @@ export type Database = {
           resolved_by_name: string | null
           schedule_id: string | null
           severity: string
+          started_at: string | null
           status: string
           updated_at: string
         }
@@ -180,6 +182,7 @@ export type Database = {
           id?: string
           item_label?: string | null
           photo_url?: string | null
+          progress_notes?: Json | null
           property_id: string
           property_name: string
           reported_by?: string | null
@@ -190,6 +193,7 @@ export type Database = {
           resolved_by_name?: string | null
           schedule_id?: string | null
           severity?: string
+          started_at?: string | null
           status?: string
           updated_at?: string
         }
@@ -202,6 +206,7 @@ export type Database = {
           id?: string
           item_label?: string | null
           photo_url?: string | null
+          progress_notes?: Json | null
           property_id?: string
           property_name?: string
           reported_by?: string | null
@@ -212,6 +217,7 @@ export type Database = {
           resolved_by_name?: string | null
           schedule_id?: string | null
           severity?: string
+          started_at?: string | null
           status?: string
           updated_at?: string
         }
