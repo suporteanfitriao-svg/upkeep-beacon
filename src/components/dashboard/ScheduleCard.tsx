@@ -6,7 +6,8 @@ import {
   AlertTriangle, 
   CheckCircle2, 
   Wrench,
-  Eye
+  Eye,
+  Loader2
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
@@ -15,6 +16,7 @@ import { useStayStatus } from '@/hooks/useStayStatus';
 interface ScheduleCardProps {
   schedule: Schedule;
   onClick: () => void;
+  isLoading?: boolean;
 }
 
 const statusConfig: Record<ScheduleStatus, { label: string; dotClass: string; textClass: string }> = {
@@ -47,7 +49,7 @@ const buttonConfig: Record<ScheduleStatus, { label: string; icon: React.ReactNod
   completed: { label: 'Ver Detalhes', icon: <Eye className="w-4 h-4" /> },
 };
 
-export function ScheduleCard({ schedule, onClick }: ScheduleCardProps) {
+export function ScheduleCard({ schedule, onClick, isLoading = false }: ScheduleCardProps) {
   const statusStyle = statusConfig[schedule.status];
   const buttonStyle = buttonConfig[schedule.status];
   const stayStatus = useStayStatus(schedule);
@@ -126,18 +128,24 @@ export function ScheduleCard({ schedule, onClick }: ScheduleCardProps) {
           <button
             onClick={(e) => {
               e.stopPropagation();
-              onClick();
+              if (!isLoading) onClick();
             }}
+            disabled={isLoading}
             className={cn(
               'flex items-center justify-center gap-2 w-full rounded-xl py-2.5 px-4',
               'text-sm font-bold transition-all active:scale-[0.98]',
+              'disabled:opacity-50 disabled:cursor-not-allowed',
               schedule.status === 'completed' 
                 ? 'bg-muted text-foreground hover:bg-muted/80'
                 : 'bg-primary text-primary-foreground hover:bg-primary/90'
             )}
           >
-            {buttonStyle.icon}
-            {buttonStyle.label}
+            {isLoading ? (
+              <Loader2 className="w-4 h-4 animate-spin" />
+            ) : (
+              buttonStyle.icon
+            )}
+            {isLoading ? 'Carregando...' : buttonStyle.label}
           </button>
 
           {/* Context Info */}

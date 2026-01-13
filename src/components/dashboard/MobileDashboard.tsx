@@ -1,7 +1,7 @@
 import { useState, useMemo, useEffect, useCallback, useRef } from 'react';
 import { format, isSameDay, addDays, startOfWeek, endOfWeek, getWeek, isAfter, startOfDay, endOfDay, isToday as checkIsToday, startOfMonth, endOfMonth, eachDayOfInterval, addMonths, subMonths, getDay, formatDistanceToNow, isWithinInterval } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { Calendar, Play, Clock, Check, ChevronRight, LayoutGrid, MessageSquare, Menu, RefreshCw, Home, Building2, AlertCircle, Users } from 'lucide-react';
+import { Calendar, Play, Clock, Check, ChevronRight, LayoutGrid, MessageSquare, Menu, RefreshCw, Home, Building2, AlertCircle, Users, Loader2 } from 'lucide-react';
 import { Schedule } from '@/types/scheduling';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
@@ -39,6 +39,7 @@ interface MobileDashboardProps {
   onScheduleClick: (schedule: Schedule) => void;
   onStartCleaning: (scheduleId: string) => void;
   onRefresh?: () => Promise<{ synced: number } | null>;
+  loadingScheduleId?: string | null;
 }
 
 const dayNames = ['DOM', 'SEG', 'TER', 'QUA', 'QUI', 'SEX', 'SÁB'];
@@ -52,7 +53,7 @@ const vibrate = (pattern: number | number[] = 50) => {
   }
 };
 
-export function MobileDashboard({ schedules, onScheduleClick, onStartCleaning, onRefresh }: MobileDashboardProps) {
+export function MobileDashboard({ schedules, onScheduleClick, onStartCleaning, onRefresh, loadingScheduleId }: MobileDashboardProps) {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const { user } = useAuth();
@@ -978,12 +979,17 @@ export function MobileDashboard({ schedules, onScheduleClick, onStartCleaning, o
                       <button 
                         onClick={(e) => {
                           e.stopPropagation();
-                          onScheduleClick(schedule);
+                          if (!loadingScheduleId) onScheduleClick(schedule);
                         }}
-                        className="mt-4 flex w-fit items-center gap-2 rounded-lg bg-primary px-4 py-2.5 text-sm font-bold text-white transition-colors hover:bg-[#267373] active:bg-[#267373]"
+                        disabled={loadingScheduleId === schedule.id}
+                        className="mt-4 flex w-fit items-center gap-2 rounded-lg bg-primary px-4 py-2.5 text-sm font-bold text-white transition-colors hover:bg-[#267373] active:bg-[#267373] disabled:opacity-50 disabled:cursor-not-allowed"
                       >
-                        <Play className="w-5 h-5" />
-                        Iniciar Limpeza
+                        {loadingScheduleId === schedule.id ? (
+                          <Loader2 className="w-5 h-5 animate-spin" />
+                        ) : (
+                          <Play className="w-5 h-5" />
+                        )}
+                        {loadingScheduleId === schedule.id ? 'Carregando...' : 'Iniciar Limpeza'}
                       </button>
                     </div>
                     {schedule.propertyImageUrl ? (
@@ -1029,12 +1035,17 @@ export function MobileDashboard({ schedules, onScheduleClick, onStartCleaning, o
                       <button 
                         onClick={(e) => {
                           e.stopPropagation();
-                          onScheduleClick(schedule);
+                          if (!loadingScheduleId) onScheduleClick(schedule);
                         }}
-                        className="mt-4 flex w-fit items-center gap-2 rounded-lg bg-[#E0C051] px-4 py-2.5 text-sm font-bold text-white transition-colors hover:bg-[#c9a844] active:bg-[#c9a844]"
+                        disabled={loadingScheduleId === schedule.id}
+                        className="mt-4 flex w-fit items-center gap-2 rounded-lg bg-[#E0C051] px-4 py-2.5 text-sm font-bold text-white transition-colors hover:bg-[#c9a844] active:bg-[#c9a844] disabled:opacity-50 disabled:cursor-not-allowed"
                       >
-                        <Play className="w-5 h-5" />
-                        Continuar Limpeza
+                        {loadingScheduleId === schedule.id ? (
+                          <Loader2 className="w-5 h-5 animate-spin" />
+                        ) : (
+                          <Play className="w-5 h-5" />
+                        )}
+                        {loadingScheduleId === schedule.id ? 'Carregando...' : 'Continuar Limpeza'}
                       </button>
                     </div>
                     {schedule.propertyImageUrl ? (

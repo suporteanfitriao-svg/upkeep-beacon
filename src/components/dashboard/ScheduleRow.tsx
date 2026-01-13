@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { Schedule, ScheduleStatus } from '@/types/scheduling';
 import { cn } from '@/lib/utils';
 import { 
@@ -8,12 +9,12 @@ import {
   ChevronUp,
   Info,
   Pencil,
-  Check
+  Check,
+  Loader2
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { Badge } from '@/components/ui/badge';
-import { useState } from 'react';
 import {
   Tooltip,
   TooltipContent,
@@ -33,6 +34,7 @@ interface ScheduleRowProps {
   onClick: () => void;
   onUpdateTimes?: (scheduleId: string, checkInTime: string, checkOutTime: string) => void;
   onReleaseSchedule?: (scheduleId: string) => void;
+  isReleasing?: boolean;
 }
 
 const statusConfig: Record<ScheduleStatus, { label: string; className: string }> = {
@@ -66,7 +68,7 @@ const maintenanceIcons = {
   in_progress: <Wrench className="w-4 h-4 text-status-progress" />,
 };
 
-export function ScheduleRow({ schedule, onClick, onUpdateTimes, onReleaseSchedule }: ScheduleRowProps) {
+export function ScheduleRow({ schedule, onClick, onUpdateTimes, onReleaseSchedule, isReleasing = false }: ScheduleRowProps) {
   const [isExpanded, setIsExpanded] = useState(false);
   const [isEditingTimes, setIsEditingTimes] = useState(false);
   const [editCheckInTime, setEditCheckInTime] = useState(format(schedule.checkIn, "HH:mm"));
@@ -93,7 +95,7 @@ export function ScheduleRow({ schedule, onClick, onUpdateTimes, onReleaseSchedul
 
   const handleRelease = (e: React.MouseEvent) => {
     e.stopPropagation();
-    if (onReleaseSchedule) {
+    if (onReleaseSchedule && !isReleasing) {
       onReleaseSchedule(schedule.id);
     }
   };
@@ -230,13 +232,18 @@ export function ScheduleRow({ schedule, onClick, onUpdateTimes, onReleaseSchedul
                 <TooltipTrigger asChild>
                   <button
                     onClick={handleRelease}
-                    className="p-1.5 rounded-md bg-status-released text-white hover:bg-status-released/90 transition-colors"
+                    disabled={isReleasing}
+                    className="p-1.5 rounded-md bg-status-released text-white hover:bg-status-released/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                   >
-                    <Check className="w-4 h-4" />
+                    {isReleasing ? (
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                    ) : (
+                      <Check className="w-4 h-4" />
+                    )}
                   </button>
                 </TooltipTrigger>
                 <TooltipContent>
-                  <p>Liberar para Limpeza</p>
+                  <p>{isReleasing ? 'Liberando...' : 'Liberar para Limpeza'}</p>
                 </TooltipContent>
               </Tooltip>
             </TooltipProvider>
@@ -346,9 +353,14 @@ export function ScheduleRow({ schedule, onClick, onUpdateTimes, onReleaseSchedul
           {schedule.status === 'waiting' && onReleaseSchedule && (
             <button
               onClick={handleRelease}
-              className="p-1.5 rounded-md bg-status-released text-white hover:bg-status-released/90 transition-colors"
+              disabled={isReleasing}
+              className="p-1.5 rounded-md bg-status-released text-white hover:bg-status-released/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              <Check className="w-4 h-4" />
+              {isReleasing ? (
+                <Loader2 className="w-4 h-4 animate-spin" />
+              ) : (
+                <Check className="w-4 h-4" />
+              )}
             </button>
           )}
           <Badge className={cn('text-xs px-2 py-0.5 border', statusStyle.className)}>
