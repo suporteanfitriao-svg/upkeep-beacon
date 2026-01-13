@@ -13,6 +13,13 @@ interface TeamMember {
   has_all_properties: boolean;
 }
 
+interface CleanerScheduleCounts {
+  [cleanerId: string]: {
+    cleaning: number;
+    completed: number;
+  };
+}
+
 interface PropertyTeamManagerProps {
   propertyId: string;
   propertyName: string;
@@ -21,9 +28,9 @@ interface PropertyTeamManagerProps {
 export function PropertyTeamManager({ propertyId, propertyName }: PropertyTeamManagerProps) {
   const [cleaners, setCleaners] = useState<TeamMember[]>([]);
   const [assignedCleanerIds, setAssignedCleanerIds] = useState<Set<string>>(new Set());
+  const [scheduleCounts, setScheduleCounts] = useState<CleanerScheduleCounts>({});
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState<string | null>(null);
-
   useEffect(() => {
     fetchCleanersAndAssignments();
   }, [propertyId]);
@@ -50,8 +57,33 @@ export function PropertyTeamManager({ propertyId, propertyName }: PropertyTeamMa
 
       if (assignmentsError) throw assignmentsError;
 
+      // Fetch active schedule counts for each cleaner in this property
+      const { data: schedulesData, error: schedulesError } = await supabase
+        .from('schedules')
+        .select('responsible_team_member_id, status')
+        .eq('property_id', propertyId)
+        .in('status', ['cleaning', 'completed'])
+        .not('responsible_team_member_id', 'is', null);
+
+      if (schedulesError) throw schedulesError;
+
+      // Build counts per cleaner
+      const counts: CleanerScheduleCounts = {};
+      schedulesData?.forEach(schedule => {
+        const memberId = schedule.responsible_team_member_id!;
+        if (!counts[memberId]) {
+          counts[memberId] = { cleaning: 0, completed: 0 };
+        }
+        if (schedule.status === 'cleaning') {
+          counts[memberId].cleaning++;
+        } else if (schedule.status === 'completed') {
+          counts[memberId].completed++;
+        }
+      });
+
       setCleaners(cleanersData || []);
       setAssignedCleanerIds(new Set(assignmentsData?.map(a => a.team_member_id) || []));
+      setScheduleCounts(counts);
     } catch (error) {
       console.error('Error fetching cleaners:', error);
       toast.error('Erro ao carregar responsáveis');
@@ -172,7 +204,8 @@ export function PropertyTeamManager({ propertyId, propertyName }: PropertyTeamMa
           const isAssigned = assignedCleanerIds.has(cleaner.id);
           const hasAllAccess = cleaner.has_all_properties;
           const isSaving = saving === cleaner.id;
-
+          const counts = scheduleCounts[cleaner.id];
+          const hasActiveSchedules = counts && (counts.cleaning > 0 || counts.completed > 0);
           return (
             <div
               key={cleaner.id}
@@ -189,12 +222,27 @@ export function PropertyTeamManager({ propertyId, propertyName }: PropertyTeamMa
                 <div className="flex h-9 w-9 items-center justify-center rounded-full bg-primary/10 text-primary text-sm font-bold">
                   {cleaner.name.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase()}
                 </div>
-                <div>
+                <div className="flex-1 min-w-0">
                   <p className="text-sm font-medium text-foreground">{cleaner.name}</p>
                   <p className="text-xs text-muted-foreground">{cleaner.email}</p>
+                  {hasActiveSchedules && (
+                    <div className="flex items-center gap-2 mt-1">
+                      {counts.cleaning > 0 && (
+                        <span className="inline-flex items-center gap-1 rounded-full bg-amber-500/10 px-2 py-0.5 text-[10px] font-medium text-amber-600">
+                          <span className="material-symbols-outlined text-[10px]">cleaning_services</span>
+                          {counts.cleaning} em andamento
+                        </span>
+                      )}
+                      {counts.completed > 0 && (
+                        <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/10 px-2 py-0.5 text-[10px] font-medium text-emerald-600">
+                          <span className="material-symbols-outlined text-[10px]">check_circle</span>
+                          {counts.completed} finalizada{counts.completed > 1 ? 's' : ''}
+                        </span>
+                      )}
+                    </div>
+                  )}
                 </div>
               </div>
-
               <div className="flex items-center gap-2">
                 {hasAllAccess ? (
                   <span className="inline-flex items-center gap-1 rounded-full bg-primary/10 px-2.5 py-1 text-xs font-medium text-primary">
