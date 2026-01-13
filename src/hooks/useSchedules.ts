@@ -367,11 +367,28 @@ export function useSchedules() {
 
       // Build history event if status changed
       if (previousStatus && previousStatus !== updatedSchedule.status) {
+        // Fetch team member name for history logging
+        let teamMemberName: string | null = null;
+        let teamMemberRole: string | null = null;
+        
+        if (teamMemberId && teamMemberId !== 'system') {
+          const { data: memberData } = await supabase
+            .from('team_members')
+            .select('name, role')
+            .eq('id', teamMemberId)
+            .single();
+          
+          if (memberData) {
+            teamMemberName = memberData.name;
+            teamMemberRole = memberData.role;
+          }
+        }
+
         const newHistoryEvent = {
           timestamp: now,
           team_member_id: teamMemberId || 'system',
-          team_member_name: null,
-          role: null,
+          team_member_name: teamMemberName,
+          role: teamMemberRole,
           action: 'status_changed',
           from_status: previousStatus,
           to_status: updatedSchedule.status,

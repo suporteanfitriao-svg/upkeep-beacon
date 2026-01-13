@@ -71,13 +71,13 @@ export function PropertyTeamManager({ propertyId, propertyName }: PropertyTeamMa
           .select('id, status')
           .eq('property_id', propertyId)
           .eq('responsible_team_member_id', cleanerId)
-          .in('status', ['em_limpeza', 'finalizado']);
+          .in('status', ['cleaning', 'completed']);
 
         if (checkError) throw checkError;
 
         if (activeSchedules && activeSchedules.length > 0) {
-          const hasOngoing = activeSchedules.some(s => s.status === 'em_limpeza');
-          const hasCompleted = activeSchedules.some(s => s.status === 'finalizado');
+          const hasOngoing = activeSchedules.some(s => s.status === 'cleaning');
+          const hasCompleted = activeSchedules.some(s => s.status === 'completed');
           
           let message = 'Não é possível remover este responsável. ';
           if (hasOngoing && hasCompleted) {
