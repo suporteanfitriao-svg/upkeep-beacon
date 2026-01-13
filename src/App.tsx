@@ -16,6 +16,7 @@ import Profile from "./pages/Profile";
 import Messages from "./pages/Messages";
 import Landing from "./pages/Landing";
 import NotFound from "./pages/NotFound";
+import SuperAdmin from "./pages/SuperAdmin";
 
 const queryClient = new QueryClient();
 
@@ -90,6 +91,14 @@ const App = () => (
               element={
                 <ProtectedRoute>
                   <Messages />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/super-admin"
+              element={
+                <ProtectedRoute>
+                  <SuperAdmin />
                 </ProtectedRoute>
               }
             />
