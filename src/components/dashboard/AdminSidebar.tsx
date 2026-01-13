@@ -9,6 +9,7 @@ import {
   LogOut,
   UserCog,
   Wrench,
+  Crown,
 } from 'lucide-react';
 import { NavLink } from '@/components/NavLink';
 import { useAuth } from '@/hooks/useAuth';
@@ -35,6 +36,7 @@ const menuItems = [
   { title: 'Equipe', url: '/equipe', icon: Users },
   { title: 'Manutenção', url: '/manutencao', icon: Wrench },
   { title: 'Minha Conta', url: '/minha-conta', icon: UserCog },
+  { title: 'Super Admin', url: '/super-admin', icon: Crown },
 ];
 
 export function AdminSidebar() {
