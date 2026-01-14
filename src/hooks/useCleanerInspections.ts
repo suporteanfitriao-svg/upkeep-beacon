@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useTeamMemberId } from './useTeamMemberId';
+import { useUserRole } from './useUserRole';
 
 interface ChecklistItem {
   id: string;
@@ -26,11 +27,20 @@ export interface CleanerInspection {
 
 export function useCleanerInspections() {
   const { teamMemberId } = useTeamMemberId();
+  const { role, loading: roleLoading } = useUserRole();
   const [inspections, setInspections] = useState<CleanerInspection[]>([]);
   const [loading, setLoading] = useState(true);
 
+  const isAdminOrManager = role === 'admin' || role === 'manager';
+
   const fetchInspections = useCallback(async () => {
-    if (!teamMemberId) {
+    // Wait for role to be loaded
+    if (roleLoading) {
+      return;
+    }
+
+    // For cleaners, require teamMemberId
+    if (!isAdminOrManager && !teamMemberId) {
       setInspections([]);
       setLoading(false);
       return;
@@ -38,12 +48,19 @@ export function useCleanerInspections() {
 
     try {
       setLoading(true);
-      const { data, error } = await supabase
+      
+      let query = supabase
         .from('inspections')
         .select('*')
-        .eq('assigned_to', teamMemberId)
         .in('status', ['scheduled', 'in_progress'])
         .order('scheduled_date', { ascending: true });
+
+      // Cleaners only see their assigned inspections
+      if (!isAdminOrManager && teamMemberId) {
+        query = query.eq('assigned_to', teamMemberId);
+      }
+
+      const { data, error } = await query;
 
       if (error) throw error;
 
@@ -60,7 +77,7 @@ export function useCleanerInspections() {
     } finally {
       setLoading(false);
     }
-  }, [teamMemberId]);
+  }, [teamMemberId, isAdminOrManager, roleLoading]);
 
   useEffect(() => {
     fetchInspections();
