@@ -510,19 +510,46 @@ export function MobileDashboard({ schedules, onScheduleClick, onStartCleaning, o
               )}
             </div>
 
-            {/* Tasks Card - Period Tasks - Clickable only for today */}
+            {/* Tasks Card - Period Tasks - Always Clickable */}
             <button
               onClick={() => {
+                setActiveTab('agenda');
+                // Navigate to appropriate date based on period
                 if (paymentPeriod === 'today') {
-                  setActiveTab('agenda');
                   setSelectedDate(startOfDay(new Date()));
+                } else if (paymentPeriod === 'tomorrow') {
+                  setSelectedDate(startOfDay(addDays(new Date(), 1)));
+                } else if (paymentPeriod === 'week') {
+                  // Navigate to first day of the week with pending tasks, or today
+                  const weekStart = startOfWeek(new Date(), { weekStartsOn: 0 });
+                  const weekEnd = endOfWeek(new Date(), { weekStartsOn: 0 });
+                  const firstPendingInWeek = schedules.find(s => {
+                    const scheduleDate = startOfDay(new Date(s.checkOut));
+                    return isWithinInterval(scheduleDate, { start: weekStart, end: weekEnd }) && 
+                           ['waiting', 'released', 'cleaning'].includes(s.status);
+                  });
+                  if (firstPendingInWeek) {
+                    setSelectedDate(startOfDay(new Date(firstPendingInWeek.checkOut)));
+                  } else {
+                    setSelectedDate(startOfDay(new Date()));
+                  }
+                } else if (paymentPeriod === 'month') {
+                  // Navigate to first day of the month with pending tasks, or today
+                  const monthStart = startOfMonth(new Date());
+                  const monthEnd = endOfMonth(new Date());
+                  const firstPendingInMonth = schedules.find(s => {
+                    const scheduleDate = startOfDay(new Date(s.checkOut));
+                    return isWithinInterval(scheduleDate, { start: monthStart, end: monthEnd }) && 
+                           ['waiting', 'released', 'cleaning'].includes(s.status);
+                  });
+                  if (firstPendingInMonth) {
+                    setSelectedDate(startOfDay(new Date(firstPendingInMonth.checkOut)));
+                  } else {
+                    setSelectedDate(startOfDay(new Date()));
+                  }
                 }
               }}
-              disabled={paymentPeriod !== 'today'}
-              className={cn(
-                "w-full rounded-2xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 p-4 mb-3 shadow-sm text-left transition-all",
-                paymentPeriod === 'today' && "hover:shadow-md active:scale-[0.99] cursor-pointer"
-              )}
+              className="w-full rounded-2xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 p-4 mb-3 shadow-sm text-left transition-all hover:shadow-md active:scale-[0.99] cursor-pointer"
             >
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
