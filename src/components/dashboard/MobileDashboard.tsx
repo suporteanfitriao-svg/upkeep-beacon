@@ -2,6 +2,7 @@ import { useState, useMemo, useEffect, useCallback, useRef } from 'react';
 import { format, isSameDay, addDays, startOfWeek, endOfWeek, getWeek, isAfter, startOfDay, endOfDay, isToday as checkIsToday, startOfMonth, endOfMonth, eachDayOfInterval, addMonths, subMonths, getDay, formatDistanceToNow, isWithinInterval, parseISO } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { Calendar, Play, Clock, Check, ChevronRight, LayoutGrid, MessageSquare, Menu, RefreshCw, Home, Building2, AlertCircle, Users, Loader2, ClipboardCheck, CheckCircle2 } from 'lucide-react';
+import { Badge } from '@/components/ui/badge';
 import { Schedule } from '@/types/scheduling';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
@@ -615,8 +616,11 @@ export function MobileDashboard({ schedules, onScheduleClick, onStartCleaning, o
                                 isInProgress && "text-yellow-600"
                               )} />
                             </div>
-                            <div className="flex-1 min-w-0">
+                          <div className="flex-1 min-w-0">
                               <div className="flex items-center gap-2 mb-1">
+                                <Badge variant="outline" className="bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300 border-purple-300 dark:border-purple-700 text-[10px] font-bold uppercase tracking-wide">
+                                  Inspeção
+                                </Badge>
                                 <span className={cn(
                                   "rounded-full px-2 py-0.5 text-xs font-bold",
                                   isScheduled && "bg-blue-100 dark:bg-blue-900/30 text-blue-700",
