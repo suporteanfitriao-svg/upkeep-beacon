@@ -14,16 +14,36 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { 
   Package, Plus, Trash2, Loader2, Edit2, FolderOpen, 
   ChevronRight, Search, Box, Hash, Building2, Copy, ArrowRight, ListChecks, Sparkles,
-  Camera, X, Image as ImageIcon, Clock, Images, FileText, History
+  Camera, X, Image as ImageIcon, Clock, Images, FileText, History, GripVertical
 } from 'lucide-react';
 import { InventoryPhotoGallery } from '@/components/inventory/InventoryPhotoGallery';
 import { InventoryPDFReport } from '@/components/inventory/InventoryPDFReport';
 import { InventoryItemHistory } from '@/components/inventory/InventoryItemHistory';
+import { InventoryTemplateEditor } from '@/components/inventory/InventoryTemplateEditor';
+import { SortableCategory } from '@/components/inventory/SortableCategory';
+import { SortableItem, SortableItemMobile } from '@/components/inventory/SortableItem';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { useInventoryPhotoUpload } from '@/hooks/useInventoryPhotoUpload';
 import { useInventoryItemHistory } from '@/hooks/useInventoryItemHistory';
+import { useIsMobile } from '@/hooks/use-mobile';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
+import {
+  DndContext,
+  closestCenter,
+  KeyboardSensor,
+  PointerSensor,
+  TouchSensor,
+  useSensor,
+  useSensors,
+  DragEndEvent,
+} from '@dnd-kit/core';
+import {
+  arrayMove,
+  SortableContext,
+  sortableKeyboardCoordinates,
+  verticalListSortingStrategy,
+} from '@dnd-kit/sortable';
 
 // Default global inventory template
 const DEFAULT_INVENTORY_TEMPLATE = [
@@ -202,6 +222,7 @@ const Inventory = () => {
 
   // Default template dialog
   const [templateDialogOpen, setTemplateDialogOpen] = useState(false);
+  const [templateEditorOpen, setTemplateEditorOpen] = useState(false);
   const [templateTargetPropertyId, setTemplateTargetPropertyId] = useState<string>('');
   
   // Photo gallery dialog
@@ -216,6 +237,26 @@ const Inventory = () => {
   const [historyItemId, setHistoryItemId] = useState<string | null>(null);
   const [historyItemName, setHistoryItemName] = useState('');
 
+  // Mobile detection
+  const isMobile = useIsMobile();
+
+  // DnD sensors for touch and pointer
+  const sensors = useSensors(
+    useSensor(PointerSensor, {
+      activationConstraint: {
+        distance: 8,
+      },
+    }),
+    useSensor(TouchSensor, {
+      activationConstraint: {
+        delay: 200,
+        tolerance: 5,
+      },
+    }),
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates,
+    })
+  );
   useEffect(() => {
     fetchProperties();
   }, []);
@@ -760,6 +801,84 @@ const Inventory = () => {
     return property?.name || 'Desconhecida';
   };
 
+  // Handle category drag end
+  const handleCategoryDragEnd = async (event: DragEndEvent) => {
+    const { active, over } = event;
+    if (!over || active.id === over.id) return;
+
+    const oldIndex = categories.findIndex(c => c.id === active.id);
+    const newIndex = categories.findIndex(c => c.id === over.id);
+
+    if (oldIndex !== newIndex) {
+      const newCategories = arrayMove(categories, oldIndex, newIndex);
+      setCategories(newCategories);
+
+      // Update sort_order in database
+      try {
+        const updates = newCategories.map((cat, idx) => ({
+          id: cat.id,
+          sort_order: idx,
+        }));
+
+        for (const update of updates) {
+          await supabase
+            .from('inventory_categories')
+            .update({ sort_order: update.sort_order })
+            .eq('id', update.id);
+        }
+      } catch (error) {
+        console.error('Error updating category order:', error);
+        toast.error('Erro ao reordenar categorias');
+        fetchInventory(); // Revert on error
+      }
+    }
+  };
+
+  // Handle item drag end
+  const handleItemDragEnd = async (event: DragEndEvent) => {
+    const { active, over } = event;
+    if (!over || active.id === over.id || !selectedCategory) return;
+
+    const oldIndex = selectedCategory.items.findIndex(i => i.id === active.id);
+    const newIndex = selectedCategory.items.findIndex(i => i.id === over.id);
+
+    if (oldIndex !== newIndex) {
+      const newItems = arrayMove(selectedCategory.items, oldIndex, newIndex);
+      
+      // Update local state
+      setCategories(prev => prev.map(cat =>
+        cat.id === selectedCategory.id ? { ...cat, items: newItems } : cat
+      ));
+      setSelectedCategory({ ...selectedCategory, items: newItems });
+
+      // Update sort_order in database
+      try {
+        const updates = newItems.map((item, idx) => ({
+          id: item.id,
+          sort_order: idx,
+        }));
+
+        for (const update of updates) {
+          await supabase
+            .from('inventory_items')
+            .update({ sort_order: update.sort_order })
+            .eq('id', update.id);
+        }
+      } catch (error) {
+        console.error('Error updating item order:', error);
+        toast.error('Erro ao reordenar itens');
+        fetchInventory(); // Revert on error
+      }
+    }
+  };
+
+  // Handle opening history dialog
+  const handleOpenHistory = (itemId: string, itemName: string) => {
+    setHistoryItemId(itemId);
+    setHistoryItemName(itemName);
+    setHistoryOpen(true);
+  };
+
   // Filter items based on search
   const filteredItems = selectedCategory?.items.filter(item =>
     item.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -792,16 +911,16 @@ const Inventory = () => {
                 <Package className="h-6 w-6" />
                 Inventário
               </h1>
-              <p className="text-muted-foreground mt-1">
+              <p className="text-muted-foreground mt-1 hidden sm:block">
                 Gerencie espaços, itens e quantidades do seu inventário
               </p>
             </div>
-            <div className="flex items-center gap-3">
+            <div className="flex flex-wrap items-center gap-2 sm:gap-3">
               <div className="flex items-center gap-2">
-                <Building2 className="h-4 w-4 text-muted-foreground" />
+                <Building2 className="h-4 w-4 text-muted-foreground hidden sm:block" />
                 <Select value={selectedPropertyId} onValueChange={setSelectedPropertyId}>
-                  <SelectTrigger className="w-[200px]">
-                    <SelectValue placeholder="Filtrar por propriedade" />
+                  <SelectTrigger className="w-[160px] sm:w-[200px]">
+                    <SelectValue placeholder="Filtrar" />
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="all">Todas as propriedades</SelectItem>
@@ -815,40 +934,44 @@ const Inventory = () => {
               </div>
               <Button 
                 variant="outline" 
+                size={isMobile ? "icon" : "default"}
                 onClick={() => setGalleryOpen(true)}
                 disabled={categories.length === 0}
               >
-                <Images className="h-4 w-4 mr-2" />
-                Galeria
+                <Images className="h-4 w-4 sm:mr-2" />
+                <span className="hidden sm:inline">Galeria</span>
               </Button>
               <Button 
                 variant="outline" 
+                size={isMobile ? "icon" : "default"}
                 onClick={() => setPdfReportOpen(true)}
                 disabled={categories.length === 0}
               >
-                <FileText className="h-4 w-4 mr-2" />
-                PDF
+                <FileText className="h-4 w-4 sm:mr-2" />
+                <span className="hidden sm:inline">PDF</span>
               </Button>
               <Button 
                 variant="outline" 
-                onClick={() => setTemplateDialogOpen(true)}
+                size={isMobile ? "icon" : "default"}
+                onClick={() => setTemplateEditorOpen(true)}
                 disabled={properties.length === 0}
                 className="text-primary border-primary/30 hover:bg-primary/10"
               >
-                <Sparkles className="h-4 w-4 mr-2" />
-                Lista Padrão
+                <Sparkles className="h-4 w-4 sm:mr-2" />
+                <span className="hidden sm:inline">Lista Padrão</span>
               </Button>
               <Button 
-                variant="outline" 
+                variant="outline"
+                size={isMobile ? "icon" : "default"} 
                 onClick={() => setCopyDialogOpen(true)}
                 disabled={properties.length < 2}
               >
-                <Copy className="h-4 w-4 mr-2" />
-                Copiar Inventário
+                <Copy className="h-4 w-4 sm:mr-2" />
+                <span className="hidden sm:inline">Copiar</span>
               </Button>
-              <Button onClick={() => handleOpenCategoryDialog()}>
-                <Plus className="h-4 w-4 mr-2" />
-                Nova Categoria
+              <Button onClick={() => handleOpenCategoryDialog()} size={isMobile ? "icon" : "default"}>
+                <Plus className="h-4 w-4 sm:mr-2" />
+                <span className="hidden sm:inline">Nova Categoria</span>
               </Button>
             </div>
           </div>
@@ -866,58 +989,41 @@ const Inventory = () => {
                 </CardDescription>
               </CardHeader>
               <CardContent className="p-0">
-                <div className="divide-y divide-border max-h-[500px] overflow-y-auto">
-                  {categories.length === 0 ? (
-                    <div className="p-4 text-center text-sm text-muted-foreground">
-                      {selectedPropertyId !== 'all' 
-                        ? 'Nenhuma categoria nesta propriedade'
-                        : 'Nenhuma categoria criada'
-                      }
+                <DndContext
+                  sensors={sensors}
+                  collisionDetection={closestCenter}
+                  onDragEnd={handleCategoryDragEnd}
+                >
+                  <SortableContext
+                    items={categories.map(c => c.id)}
+                    strategy={verticalListSortingStrategy}
+                  >
+                    <div className="divide-y divide-border max-h-[500px] overflow-y-auto">
+                      {categories.length === 0 ? (
+                        <div className="p-4 text-center text-sm text-muted-foreground">
+                          {selectedPropertyId !== 'all' 
+                            ? 'Nenhuma categoria nesta propriedade'
+                            : 'Nenhuma categoria criada'
+                          }
+                        </div>
+                      ) : (
+                        categories.map(category => (
+                          <SortableCategory
+                            key={category.id}
+                            id={category.id}
+                            name={category.name}
+                            propertyName={getPropertyName(category.property_id)}
+                            itemCount={category.items.length}
+                            isSelected={selectedCategory?.id === category.id}
+                            onSelect={() => setSelectedCategory(category)}
+                            onEdit={() => handleOpenCategoryDialog(category)}
+                            onDelete={() => handleDeleteCategory(category.id)}
+                          />
+                        ))
+                      )}
                     </div>
-                  ) : (
-                    categories.map(category => (
-                      <div
-                        key={category.id}
-                        className={`flex items-center justify-between p-3 cursor-pointer hover:bg-muted/50 transition-colors ${
-                          selectedCategory?.id === category.id ? 'bg-primary/5 border-l-2 border-primary' : ''
-                        }`}
-                        onClick={() => setSelectedCategory(category)}
-                      >
-                        <div className="flex-1 min-w-0">
-                          <p className="font-medium text-sm truncate">{category.name}</p>
-                          <p className="text-xs text-muted-foreground truncate">
-                            {getPropertyName(category.property_id)} • {category.items.length} itens
-                          </p>
-                        </div>
-                        <div className="flex items-center gap-1">
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-7 w-7"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleOpenCategoryDialog(category);
-                            }}
-                          >
-                            <Edit2 className="h-3 w-3" />
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-7 w-7 text-destructive hover:bg-destructive/10"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleDeleteCategory(category.id);
-                            }}
-                          >
-                            <Trash2 className="h-3 w-3" />
-                          </Button>
-                          <ChevronRight className="h-4 w-4 text-muted-foreground" />
-                        </div>
-                      </div>
-                    ))
-                  )}
-                </div>
+                  </SortableContext>
+                </DndContext>
               </CardContent>
             </Card>
 
@@ -983,80 +1089,68 @@ const Inventory = () => {
                     </Button>
                   </div>
                 ) : (
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead className="w-[60px]">Foto</TableHead>
-                        <TableHead>Item</TableHead>
-                        <TableHead className="w-[80px] text-center">
-                          <div className="flex items-center justify-center gap-1">
-                            <Hash className="h-3 w-3" />
-                            Qtd
-                          </div>
-                        </TableHead>
-                        <TableHead className="w-[80px]">Unidade</TableHead>
-                        <TableHead>Detalhes</TableHead>
-                        <TableHead className="w-[80px]">Ações</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {filteredItems.map(item => (
-                        <TableRow key={item.id}>
-                          <TableCell>
-                            {item.photo_url ? (
-                              <div className="relative group">
-                                <img 
-                                  src={item.photo_url} 
-                                  alt={item.name}
-                                  className="h-10 w-10 rounded object-cover border cursor-pointer hover:opacity-80 transition-opacity"
-                                  onClick={() => window.open(item.photo_url, '_blank')}
-                                />
-                                {item.photo_taken_at && (
-                                  <div className="absolute -bottom-1 -right-1 bg-primary text-primary-foreground rounded-full p-0.5" title={format(new Date(item.photo_taken_at), "dd/MM/yyyy HH:mm:ss", { locale: ptBR })}>
-                                    <Clock className="h-2.5 w-2.5" />
-                                  </div>
-                                )}
-                              </div>
-                            ) : (
-                              <div className="h-10 w-10 rounded border border-dashed flex items-center justify-center text-muted-foreground">
-                                <ImageIcon className="h-4 w-4" />
-                              </div>
-                            )}
-                          </TableCell>
-                          <TableCell className="font-medium">{item.name}</TableCell>
-                          <TableCell className="text-center">
-                            <Badge variant="secondary">{item.quantity}</Badge>
-                          </TableCell>
-                          <TableCell className="text-muted-foreground">
-                            {item.unit || '-'}
-                          </TableCell>
-                          <TableCell className="text-muted-foreground text-sm max-w-[150px] truncate">
-                            {item.details || '-'}
-                          </TableCell>
-                          <TableCell>
-                            <div className="flex items-center gap-1">
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                className="h-7 w-7"
-                                onClick={() => handleOpenItemDialog(item)}
-                              >
-                                <Edit2 className="h-3 w-3" />
-                              </Button>
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                className="h-7 w-7 text-destructive hover:bg-destructive/10"
-                                onClick={() => handleDeleteItem(item.id)}
-                              >
-                                <Trash2 className="h-3 w-3" />
-                              </Button>
-                            </div>
-                          </TableCell>
-                        </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
+                  <DndContext
+                    sensors={sensors}
+                    collisionDetection={closestCenter}
+                    onDragEnd={handleItemDragEnd}
+                  >
+                    <SortableContext
+                      items={filteredItems.map(i => i.id)}
+                      strategy={verticalListSortingStrategy}
+                    >
+                      {isMobile ? (
+                        // Mobile: Cards with drag handles
+                        <div className="space-y-2">
+                          {filteredItems.map(item => (
+                            <SortableItemMobile
+                              key={item.id}
+                              id={item.id}
+                              name={item.name}
+                              quantity={item.quantity}
+                              unit={item.unit}
+                              details={item.details}
+                              photoUrl={item.photo_url}
+                              photoTakenAt={item.photo_taken_at}
+                              onEdit={() => handleOpenItemDialog(item)}
+                              onDelete={() => handleDeleteItem(item.id)}
+                              onPhotoClick={() => item.photo_url && window.open(item.photo_url, '_blank')}
+                              onHistoryClick={() => handleOpenHistory(item.id, item.name)}
+                            />
+                          ))}
+                        </div>
+                      ) : (
+                        // Desktop: Table with drag handles
+                        <Table>
+                          <TableHeader>
+                            <TableRow>
+                              <TableHead className="w-10"></TableHead>
+                              <TableHead>Item</TableHead>
+                              <TableHead className="w-[100px] text-center">Qtd</TableHead>
+                              <TableHead className="w-[100px]">Ações</TableHead>
+                            </TableRow>
+                          </TableHeader>
+                          <TableBody>
+                            {filteredItems.map(item => (
+                              <SortableItem
+                                key={item.id}
+                                id={item.id}
+                                name={item.name}
+                                quantity={item.quantity}
+                                unit={item.unit}
+                                details={item.details}
+                                photoUrl={item.photo_url}
+                                photoTakenAt={item.photo_taken_at}
+                                onEdit={() => handleOpenItemDialog(item)}
+                                onDelete={() => handleDeleteItem(item.id)}
+                                onPhotoClick={() => item.photo_url && window.open(item.photo_url, '_blank')}
+                                onHistoryClick={() => handleOpenHistory(item.id, item.name)}
+                              />
+                            ))}
+                          </TableBody>
+                        </Table>
+                      )}
+                    </SortableContext>
+                  </DndContext>
                 )}
               </CardContent>
             </Card>
@@ -1467,6 +1561,15 @@ const Inventory = () => {
         onOpenChange={setHistoryOpen}
         itemId={historyItemId}
         itemName={historyItemName}
+      />
+
+      {/* Template Editor */}
+      <InventoryTemplateEditor
+        open={templateEditorOpen}
+        onOpenChange={setTemplateEditorOpen}
+        properties={properties}
+        defaultTemplate={DEFAULT_INVENTORY_TEMPLATE}
+        onSuccess={fetchInventory}
       />
     </SidebarProvider>
   );
