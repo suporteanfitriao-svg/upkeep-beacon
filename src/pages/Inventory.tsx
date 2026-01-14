@@ -13,9 +13,13 @@ import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { 
   Package, Plus, Trash2, Loader2, Edit2, FolderOpen, 
-  ChevronRight, Search, Box, Hash, Building2, Copy, ArrowRight, ListChecks, Sparkles
+  ChevronRight, Search, Box, Hash, Building2, Copy, ArrowRight, ListChecks, Sparkles,
+  Camera, X, Image as ImageIcon, Clock
 } from 'lucide-react';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
+import { useInventoryPhotoUpload } from '@/hooks/useInventoryPhotoUpload';
+import { format } from 'date-fns';
+import { ptBR } from 'date-fns/locale';
 
 // Default global inventory template
 const DEFAULT_INVENTORY_TEMPLATE = [
@@ -149,6 +153,8 @@ interface InventoryItem {
   category_id: string;
   sort_order: number;
   is_active: boolean;
+  photo_url?: string;
+  photo_taken_at?: string;
 }
 
 const Inventory = () => {
@@ -172,9 +178,16 @@ const Inventory = () => {
     name: '', 
     quantity: 1, 
     unit: 'unidade', 
-    details: '' 
+    details: '',
+    photo_url: '',
+    photo_taken_at: ''
   });
   const [savingItem, setSavingItem] = useState(false);
+  const [pendingPhotoFile, setPendingPhotoFile] = useState<File | null>(null);
+  const [photoPreview, setPhotoPreview] = useState<string>('');
+
+  // Photo upload hook
+  const { compressAndUploadWithTimestamp, deletePhoto, isUploading } = useInventoryPhotoUpload();
 
   // Copy inventory dialog
   const [copyDialogOpen, setCopyDialogOpen] = useState(false);
@@ -374,13 +387,37 @@ const Inventory = () => {
         name: item.name, 
         quantity: item.quantity || 1, 
         unit: item.unit || 'unidade', 
-        details: item.details || '' 
+        details: item.details || '',
+        photo_url: item.photo_url || '',
+        photo_taken_at: item.photo_taken_at || ''
       });
+      setPhotoPreview(item.photo_url || '');
     } else {
       setEditingItem(null);
-      setItemForm({ name: '', quantity: 1, unit: 'unidade', details: '' });
+      setItemForm({ name: '', quantity: 1, unit: 'unidade', details: '', photo_url: '', photo_taken_at: '' });
+      setPhotoPreview('');
     }
+    setPendingPhotoFile(null);
     setItemDialogOpen(true);
+  };
+
+  const handlePhotoSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      setPendingPhotoFile(file);
+      // Create preview
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        setPhotoPreview(event.target?.result as string);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const handleRemovePhoto = () => {
+    setPendingPhotoFile(null);
+    setPhotoPreview('');
+    setItemForm(prev => ({ ...prev, photo_url: '', photo_taken_at: '' }));
   };
 
   const handleSaveItem = async () => {
@@ -396,6 +433,28 @@ const Inventory = () => {
 
     setSavingItem(true);
     try {
+      let photoUrl = itemForm.photo_url;
+      let photoTakenAt = itemForm.photo_taken_at;
+
+      // If there's a new photo to upload
+      if (pendingPhotoFile) {
+        // Delete old photo if exists
+        if (editingItem?.photo_url) {
+          await deletePhoto(editingItem.photo_url);
+        }
+
+        // Upload new photo with timestamp
+        const itemId = editingItem?.id || 'new-' + Date.now();
+        const result = await compressAndUploadWithTimestamp(pendingPhotoFile, itemId);
+        photoUrl = result.url;
+        photoTakenAt = result.takenAt.toISOString();
+      } else if (!photoPreview && editingItem?.photo_url) {
+        // Photo was removed
+        await deletePhoto(editingItem.photo_url);
+        photoUrl = '';
+        photoTakenAt = '';
+      }
+
       if (editingItem) {
         const { error } = await supabase
           .from('inventory_items')
@@ -404,6 +463,8 @@ const Inventory = () => {
             quantity: itemForm.quantity,
             unit: itemForm.unit.trim() || null,
             details: itemForm.details.trim() || null,
+            photo_url: photoUrl || null,
+            photo_taken_at: photoTakenAt || null,
           })
           .eq('id', editingItem.id);
 
@@ -418,6 +479,8 @@ const Inventory = () => {
             quantity: itemForm.quantity,
             unit: itemForm.unit.trim() || null,
             details: itemForm.details.trim() || null,
+            photo_url: photoUrl || null,
+            photo_taken_at: photoTakenAt || null,
             sort_order: selectedCategory.items.length,
           });
 
@@ -426,6 +489,8 @@ const Inventory = () => {
       }
 
       setItemDialogOpen(false);
+      setPendingPhotoFile(null);
+      setPhotoPreview('');
       fetchInventory();
     } catch (error) {
       console.error('Error saving item:', error);
@@ -860,14 +925,15 @@ const Inventory = () => {
                   <Table>
                     <TableHeader>
                       <TableRow>
+                        <TableHead className="w-[60px]">Foto</TableHead>
                         <TableHead>Item</TableHead>
-                        <TableHead className="w-[100px] text-center">
+                        <TableHead className="w-[80px] text-center">
                           <div className="flex items-center justify-center gap-1">
                             <Hash className="h-3 w-3" />
                             Qtd
                           </div>
                         </TableHead>
-                        <TableHead className="w-[100px]">Unidade</TableHead>
+                        <TableHead className="w-[80px]">Unidade</TableHead>
                         <TableHead>Detalhes</TableHead>
                         <TableHead className="w-[80px]">Ações</TableHead>
                       </TableRow>
@@ -875,6 +941,27 @@ const Inventory = () => {
                     <TableBody>
                       {filteredItems.map(item => (
                         <TableRow key={item.id}>
+                          <TableCell>
+                            {item.photo_url ? (
+                              <div className="relative group">
+                                <img 
+                                  src={item.photo_url} 
+                                  alt={item.name}
+                                  className="h-10 w-10 rounded object-cover border cursor-pointer hover:opacity-80 transition-opacity"
+                                  onClick={() => window.open(item.photo_url, '_blank')}
+                                />
+                                {item.photo_taken_at && (
+                                  <div className="absolute -bottom-1 -right-1 bg-primary text-primary-foreground rounded-full p-0.5" title={format(new Date(item.photo_taken_at), "dd/MM/yyyy HH:mm:ss", { locale: ptBR })}>
+                                    <Clock className="h-2.5 w-2.5" />
+                                  </div>
+                                )}
+                              </div>
+                            ) : (
+                              <div className="h-10 w-10 rounded border border-dashed flex items-center justify-center text-muted-foreground">
+                                <ImageIcon className="h-4 w-4" />
+                              </div>
+                            )}
+                          </TableCell>
                           <TableCell className="font-medium">{item.name}</TableCell>
                           <TableCell className="text-center">
                             <Badge variant="secondary">{item.quantity}</Badge>
@@ -882,7 +969,7 @@ const Inventory = () => {
                           <TableCell className="text-muted-foreground">
                             {item.unit || '-'}
                           </TableCell>
-                          <TableCell className="text-muted-foreground text-sm max-w-[200px] truncate">
+                          <TableCell className="text-muted-foreground text-sm max-w-[150px] truncate">
                             {item.details || '-'}
                           </TableCell>
                           <TableCell>
@@ -1033,19 +1120,68 @@ const Inventory = () => {
                 placeholder="Marca, cor, tamanho, observações..."
                 value={itemForm.details}
                 onChange={(e) => setItemForm(prev => ({ ...prev, details: e.target.value }))}
-                rows={3}
+                rows={2}
               />
+            </div>
+
+            {/* Photo upload section */}
+            <div className="space-y-2">
+              <Label>Foto (opcional)</Label>
+              <p className="text-xs text-muted-foreground">
+                A foto será compactada e receberá carimbo de data/hora automaticamente.
+              </p>
+              
+              {photoPreview ? (
+                <div className="relative inline-block">
+                  <img 
+                    src={photoPreview} 
+                    alt="Preview" 
+                    className="h-32 w-32 rounded-lg object-cover border"
+                  />
+                  <Button
+                    variant="destructive"
+                    size="icon"
+                    className="absolute -top-2 -right-2 h-6 w-6 rounded-full"
+                    onClick={handleRemovePhoto}
+                    type="button"
+                  >
+                    <X className="h-3 w-3" />
+                  </Button>
+                  {pendingPhotoFile && (
+                    <div className="absolute bottom-1 left-1 bg-amber-500 text-white text-[10px] px-1.5 py-0.5 rounded font-medium">
+                      Nova
+                    </div>
+                  )}
+                  {itemForm.photo_taken_at && !pendingPhotoFile && (
+                    <div className="mt-1 flex items-center gap-1 text-xs text-muted-foreground">
+                      <Clock className="h-3 w-3" />
+                      {format(new Date(itemForm.photo_taken_at), "dd/MM/yyyy HH:mm", { locale: ptBR })}
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <label className="flex flex-col items-center justify-center h-32 w-32 border-2 border-dashed rounded-lg cursor-pointer hover:bg-muted/50 transition-colors">
+                  <Camera className="h-8 w-8 text-muted-foreground mb-1" />
+                  <span className="text-xs text-muted-foreground">Adicionar foto</span>
+                  <input
+                    type="file"
+                    accept="image/jpeg,image/jpg,image/png,image/webp"
+                    onChange={handlePhotoSelect}
+                    className="hidden"
+                  />
+                </label>
+              )}
             </div>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setItemDialogOpen(false)}>
+            <Button variant="outline" onClick={() => setItemDialogOpen(false)} disabled={isUploading}>
               Cancelar
             </Button>
-            <Button onClick={handleSaveItem} disabled={savingItem}>
-              {savingItem ? (
+            <Button onClick={handleSaveItem} disabled={savingItem || isUploading}>
+              {savingItem || isUploading ? (
                 <>
                   <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                  Salvando...
+                  {isUploading ? 'Enviando foto...' : 'Salvando...'}
                 </>
               ) : (
                 'Salvar'
