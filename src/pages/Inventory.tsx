@@ -10,17 +10,24 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { 
   Package, Plus, Trash2, Loader2, Edit2, FolderOpen, 
-  ChevronRight, Search, Box, Hash
+  ChevronRight, Search, Box, Hash, Building2
 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
+
+interface Property {
+  id: string;
+  name: string;
+}
 
 interface InventoryCategory {
   id: string;
   name: string;
   description?: string;
+  property_id?: string;
   sort_order: number;
   is_active: boolean;
   items: InventoryItem[];
@@ -38,6 +45,8 @@ interface InventoryItem {
 }
 
 const Inventory = () => {
+  const [properties, setProperties] = useState<Property[]>([]);
+  const [selectedPropertyId, setSelectedPropertyId] = useState<string>('all');
   const [categories, setCategories] = useState<InventoryCategory[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedCategory, setSelectedCategory] = useState<InventoryCategory | null>(null);
@@ -46,7 +55,7 @@ const Inventory = () => {
   // Category dialog
   const [categoryDialogOpen, setCategoryDialogOpen] = useState(false);
   const [editingCategory, setEditingCategory] = useState<InventoryCategory | null>(null);
-  const [categoryForm, setCategoryForm] = useState({ name: '', description: '' });
+  const [categoryForm, setCategoryForm] = useState({ name: '', description: '', property_id: '' });
   const [savingCategory, setSavingCategory] = useState(false);
   
   // Item dialog
@@ -61,35 +70,74 @@ const Inventory = () => {
   const [savingItem, setSavingItem] = useState(false);
 
   useEffect(() => {
-    fetchInventory();
+    fetchProperties();
   }, []);
+
+  useEffect(() => {
+    fetchInventory();
+  }, [selectedPropertyId]);
+
+  const fetchProperties = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('properties')
+        .select('id, name')
+        .order('name');
+
+      if (error) throw error;
+      setProperties(data || []);
+    } catch (error) {
+      console.error('Error fetching properties:', error);
+    }
+  };
 
   const fetchInventory = async () => {
     try {
-      const { data: categoriesData, error: categoriesError } = await supabase
+      setLoading(true);
+      
+      let categoriesQuery = supabase
         .from('inventory_categories')
         .select('*')
         .order('sort_order');
 
+      // Filter by property if one is selected
+      if (selectedPropertyId !== 'all') {
+        categoriesQuery = categoriesQuery.eq('property_id', selectedPropertyId);
+      }
+
+      const { data: categoriesData, error: categoriesError } = await categoriesQuery;
+
       if (categoriesError) throw categoriesError;
 
-      const { data: itemsData, error: itemsError } = await supabase
-        .from('inventory_items')
-        .select('*')
-        .order('sort_order');
+      const categoryIds = (categoriesData || []).map(c => c.id);
+      
+      let itemsData: any[] = [];
+      if (categoryIds.length > 0) {
+        const { data, error: itemsError } = await supabase
+          .from('inventory_items')
+          .select('*')
+          .in('category_id', categoryIds)
+          .order('sort_order');
 
-      if (itemsError) throw itemsError;
+        if (itemsError) throw itemsError;
+        itemsData = data || [];
+      }
 
       const mappedCategories: InventoryCategory[] = (categoriesData || []).map(cat => ({
         ...cat,
-        items: (itemsData || []).filter(item => item.category_id === cat.id),
+        items: itemsData.filter(item => item.category_id === cat.id),
       }));
 
       setCategories(mappedCategories);
       
-      // Auto-select first category if none selected
-      if (mappedCategories.length > 0 && !selectedCategory) {
-        setSelectedCategory(mappedCategories[0]);
+      // Auto-select first category if none selected or current not in list
+      if (mappedCategories.length > 0) {
+        const currentStillExists = selectedCategory && mappedCategories.some(c => c.id === selectedCategory.id);
+        if (!currentStillExists) {
+          setSelectedCategory(mappedCategories[0]);
+        }
+      } else {
+        setSelectedCategory(null);
       }
     } catch (error) {
       console.error('Error fetching inventory:', error);
@@ -103,10 +151,18 @@ const Inventory = () => {
   const handleOpenCategoryDialog = (category?: InventoryCategory) => {
     if (category) {
       setEditingCategory(category);
-      setCategoryForm({ name: category.name, description: category.description || '' });
+      setCategoryForm({ 
+        name: category.name, 
+        description: category.description || '',
+        property_id: category.property_id || ''
+      });
     } else {
       setEditingCategory(null);
-      setCategoryForm({ name: '', description: '' });
+      setCategoryForm({ 
+        name: '', 
+        description: '',
+        property_id: selectedPropertyId !== 'all' ? selectedPropertyId : ''
+      });
     }
     setCategoryDialogOpen(true);
   };
@@ -114,6 +170,11 @@ const Inventory = () => {
   const handleSaveCategory = async () => {
     if (!categoryForm.name.trim()) {
       toast.error('Nome da categoria é obrigatório');
+      return;
+    }
+
+    if (!categoryForm.property_id) {
+      toast.error('Selecione uma propriedade');
       return;
     }
 
@@ -131,6 +192,7 @@ const Inventory = () => {
           .update({
             name: categoryForm.name.trim(),
             description: categoryForm.description.trim() || null,
+            property_id: categoryForm.property_id,
           })
           .eq('id', editingCategory.id);
 
@@ -143,6 +205,7 @@ const Inventory = () => {
             user_id: user.id,
             name: categoryForm.name.trim(),
             description: categoryForm.description.trim() || null,
+            property_id: categoryForm.property_id,
             sort_order: categories.length,
           });
 
@@ -272,13 +335,20 @@ const Inventory = () => {
     }
   };
 
+  // Get property name helper
+  const getPropertyName = (propertyId?: string) => {
+    if (!propertyId) return 'Sem propriedade';
+    const property = properties.find(p => p.id === propertyId);
+    return property?.name || 'Desconhecida';
+  };
+
   // Filter items based on search
   const filteredItems = selectedCategory?.items.filter(item =>
     item.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
     item.details?.toLowerCase().includes(searchTerm.toLowerCase())
   ) || [];
 
-  if (loading) {
+  if (loading && categories.length === 0) {
     return (
       <SidebarProvider>
         <AppSidebar />
@@ -298,7 +368,7 @@ const Inventory = () => {
       <SidebarInset>
         <DashboardHeader />
         <main className="flex-1 p-6">
-          <div className="flex items-center justify-between mb-6">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
             <div>
               <h1 className="text-2xl font-bold text-foreground flex items-center gap-2">
                 <Package className="h-6 w-6" />
@@ -308,10 +378,28 @@ const Inventory = () => {
                 Gerencie espaços, itens e quantidades do seu inventário
               </p>
             </div>
-            <Button onClick={() => handleOpenCategoryDialog()}>
-              <Plus className="h-4 w-4 mr-2" />
-              Nova Categoria
-            </Button>
+            <div className="flex items-center gap-3">
+              <div className="flex items-center gap-2">
+                <Building2 className="h-4 w-4 text-muted-foreground" />
+                <Select value={selectedPropertyId} onValueChange={setSelectedPropertyId}>
+                  <SelectTrigger className="w-[200px]">
+                    <SelectValue placeholder="Filtrar por propriedade" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">Todas as propriedades</SelectItem>
+                    {properties.map(property => (
+                      <SelectItem key={property.id} value={property.id}>
+                        {property.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <Button onClick={() => handleOpenCategoryDialog()}>
+                <Plus className="h-4 w-4 mr-2" />
+                Nova Categoria
+              </Button>
+            </div>
           </div>
 
           <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
@@ -327,10 +415,13 @@ const Inventory = () => {
                 </CardDescription>
               </CardHeader>
               <CardContent className="p-0">
-                <div className="divide-y divide-border">
+                <div className="divide-y divide-border max-h-[500px] overflow-y-auto">
                   {categories.length === 0 ? (
                     <div className="p-4 text-center text-sm text-muted-foreground">
-                      Nenhuma categoria criada
+                      {selectedPropertyId !== 'all' 
+                        ? 'Nenhuma categoria nesta propriedade'
+                        : 'Nenhuma categoria criada'
+                      }
                     </div>
                   ) : (
                     categories.map(category => (
@@ -343,8 +434,8 @@ const Inventory = () => {
                       >
                         <div className="flex-1 min-w-0">
                           <p className="font-medium text-sm truncate">{category.name}</p>
-                          <p className="text-xs text-muted-foreground">
-                            {category.items.length} itens
+                          <p className="text-xs text-muted-foreground truncate">
+                            {getPropertyName(category.property_id)} • {category.items.length} itens
                           </p>
                         </div>
                         <div className="flex items-center gap-1">
@@ -388,9 +479,17 @@ const Inventory = () => {
                       <Box className="h-5 w-5" />
                       {selectedCategory ? selectedCategory.name : 'Selecione uma categoria'}
                     </CardTitle>
-                    {selectedCategory?.description && (
-                      <CardDescription className="mt-1">
-                        {selectedCategory.description}
+                    {selectedCategory && (
+                      <CardDescription className="mt-1 flex items-center gap-2">
+                        <Badge variant="outline" className="text-xs">
+                          <Building2 className="h-3 w-3 mr-1" />
+                          {getPropertyName(selectedCategory.property_id)}
+                        </Badge>
+                        {selectedCategory.description && (
+                          <span className="text-muted-foreground">
+                            {selectedCategory.description}
+                          </span>
+                        )}
                       </CardDescription>
                     )}
                   </div>
@@ -504,6 +603,24 @@ const Inventory = () => {
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label htmlFor="cat-property">Propriedade *</Label>
+              <Select 
+                value={categoryForm.property_id} 
+                onValueChange={(value) => setCategoryForm(prev => ({ ...prev, property_id: value }))}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Selecione a propriedade" />
+                </SelectTrigger>
+                <SelectContent>
+                  {properties.map(property => (
+                    <SelectItem key={property.id} value={property.id}>
+                      {property.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
             <div className="space-y-2">
               <Label htmlFor="cat-name">Nome da Categoria *</Label>
               <Input

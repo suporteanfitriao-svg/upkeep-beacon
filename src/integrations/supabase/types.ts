@@ -221,6 +221,7 @@ export type Database = {
           id: string
           is_active: boolean
           name: string
+          property_id: string | null
           sort_order: number
           updated_at: string
           user_id: string
@@ -231,6 +232,7 @@ export type Database = {
           id?: string
           is_active?: boolean
           name: string
+          property_id?: string | null
           sort_order?: number
           updated_at?: string
           user_id: string
@@ -241,11 +243,20 @@ export type Database = {
           id?: string
           is_active?: boolean
           name?: string
+          property_id?: string | null
           sort_order?: number
           updated_at?: string
           user_id?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "inventory_categories_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: false
+            referencedRelation: "properties"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       inventory_items: {
         Row: {
