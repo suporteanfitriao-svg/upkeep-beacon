@@ -425,6 +425,9 @@ export function PropertiesSection() {
                 <TableHead className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider text-center">
                   Status
                 </TableHead>
+                <TableHead className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider text-center">
+                  iCal
+                </TableHead>
                 <TableHead className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider">
                   Última Sinc.
                 </TableHead>
@@ -439,7 +442,7 @@ export function PropertiesSection() {
             <TableBody>
               {loading ? (
                 <TableRow>
-                  <TableCell colSpan={7} className="text-center py-8">
+                  <TableCell colSpan={8} className="text-center py-8">
                     <div className="flex items-center justify-center gap-2">
                       <RefreshCw className="h-4 w-4 animate-spin" />
                       Carregando...
@@ -448,7 +451,7 @@ export function PropertiesSection() {
                 </TableRow>
               ) : paginatedProperties.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
+                  <TableCell colSpan={8} className="text-center py-8 text-muted-foreground">
                     Nenhuma propriedade encontrada
                   </TableCell>
                 </TableRow>
@@ -510,6 +513,19 @@ export function PropertiesSection() {
                         {status === 'inactive' && (
                           <span className="px-2.5 py-1 rounded-full text-[10px] font-bold bg-muted text-muted-foreground uppercase tracking-tight">
                             Inativa
+                          </span>
+                        )}
+                      </TableCell>
+
+                      {/* iCal Status */}
+                      <TableCell className="py-4 text-center">
+                        {property.airbnb_ical_url ? (
+                          <span className="px-2.5 py-1 rounded-full text-[10px] font-bold bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400 uppercase tracking-tight">
+                            Sim
+                          </span>
+                        ) : (
+                          <span className="px-2.5 py-1 rounded-full text-[10px] font-bold bg-muted text-muted-foreground uppercase tracking-tight">
+                            Não
                           </span>
                         )}
                       </TableCell>
