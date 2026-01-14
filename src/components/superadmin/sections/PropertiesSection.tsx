@@ -92,6 +92,16 @@ export function PropertiesSection() {
 
       if (error) throw error;
 
+      // Fetch iCal sources for sync status
+      const { data: icalSources } = await supabase
+        .from('property_ical_sources')
+        .select('property_id, last_sync_at, last_error');
+
+      // Create a map for quick lookup
+      const icalMap = new Map(
+        (icalSources || []).map(s => [s.property_id, s])
+      );
+
       // Fetch additional counts for each property
       const propertiesWithCounts = await Promise.all(
         (data || []).map(async (property) => {
@@ -106,18 +116,23 @@ export function PropertiesSection() {
               .eq('property_id', property.id),
           ]);
 
-          // Simulate sync status based on ical_url
-          const hasIcal = !!property.airbnb_ical_url;
-          const syncStatus = hasIcal 
-            ? (Math.random() > 0.2 ? 'success' : 'error') 
-            : 'pending';
+          // Get real sync data from property_ical_sources
+          const icalSource = icalMap.get(property.id);
+          let syncStatus: 'success' | 'error' | 'pending' = 'pending';
+          
+          if (icalSource) {
+            syncStatus = icalSource.last_error ? 'error' : 'success';
+          } else if (!property.airbnb_ical_url) {
+            syncStatus = 'pending';
+          }
 
           return {
             ...property,
             schedulesCount: schedulesRes.count || 0,
             checklistsCount: checklistsRes.count || 0,
-            lastSyncStatus: syncStatus as 'success' | 'error' | 'pending',
-            lastSyncAt: hasIcal ? new Date(Date.now() - Math.random() * 86400000 * 3).toISOString() : undefined,
+            lastSyncStatus: syncStatus,
+            lastSyncAt: icalSource?.last_sync_at || undefined,
+            lastSyncError: icalSource?.last_error || undefined,
           };
         })
       );
