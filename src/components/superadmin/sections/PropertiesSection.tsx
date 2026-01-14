@@ -13,7 +13,12 @@ import {
   Ban,
   CheckCircle,
   Filter,
-  AlertTriangle
+  AlertTriangle,
+  Eye,
+  Edit,
+  Calendar,
+  Link as LinkIcon,
+  Home
 } from 'lucide-react';
 import {
   Table,
@@ -40,6 +45,16 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
+import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 
@@ -56,6 +71,8 @@ interface Property {
   lastSyncStatus?: 'success' | 'error' | 'pending';
   lastSyncAt?: string;
   lastSyncError?: string | null;
+  hasIcalSource?: boolean;
+  icalSourceUrl?: string | null;
 }
 
 // Mock data for owner/manager - in a real app this would come from a relation
@@ -78,8 +95,13 @@ export function PropertiesSection() {
   const [currentPage, setCurrentPage] = useState(1);
   const [suspendDialogOpen, setSuspendDialogOpen] = useState(false);
   const [activateDialogOpen, setActivateDialogOpen] = useState(false);
+  const [detailsDialogOpen, setDetailsDialogOpen] = useState(false);
   const [propertyToSuspend, setPropertyToSuspend] = useState<Property | null>(null);
   const [propertyToActivate, setPropertyToActivate] = useState<Property | null>(null);
+  const [propertyToView, setPropertyToView] = useState<Property | null>(null);
+  const [isEditing, setIsEditing] = useState(false);
+  const [editForm, setEditForm] = useState({ name: '', address: '', icalUrl: '' });
+  const [saving, setSaving] = useState(false);
 
   useEffect(() => {
     fetchProperties();
@@ -98,7 +120,7 @@ export function PropertiesSection() {
       // Fetch iCal sources for sync status
       const { data: icalSources } = await supabase
         .from('property_ical_sources')
-        .select('property_id, last_sync_at, last_error');
+        .select('property_id, ical_url, last_sync_at, last_error');
 
       // Create a map for quick lookup
       const icalMap = new Map(
@@ -123,9 +145,12 @@ export function PropertiesSection() {
           const icalSource = icalMap.get(property.id);
           let syncStatus: 'success' | 'error' | 'pending' = 'pending';
           
+          // Check if has iCal from either source
+          const hasIcal = !!icalSource?.ical_url || !!property.airbnb_ical_url;
+          
           if (icalSource) {
             syncStatus = icalSource.last_error ? 'error' : 'success';
-          } else if (!property.airbnb_ical_url) {
+          } else if (!hasIcal) {
             syncStatus = 'pending';
           }
 
@@ -136,6 +161,8 @@ export function PropertiesSection() {
             lastSyncStatus: syncStatus,
             lastSyncAt: icalSource?.last_sync_at || undefined,
             lastSyncError: icalSource?.last_error || undefined,
+            hasIcalSource: hasIcal,
+            icalSourceUrl: icalSource?.ical_url || property.airbnb_ical_url || null,
           };
         })
       );
@@ -275,6 +302,58 @@ export function PropertiesSection() {
     await updatePropertyStatus(propertyToActivate, true);
     setActivateDialogOpen(false);
     setPropertyToActivate(null);
+  };
+
+  const handleViewDetails = (property: Property) => {
+    setPropertyToView(property);
+    setEditForm({
+      name: property.name,
+      address: property.address || '',
+      icalUrl: property.icalSourceUrl || property.airbnb_ical_url || '',
+    });
+    setIsEditing(false);
+    setDetailsDialogOpen(true);
+  };
+
+  const handleSaveProperty = async () => {
+    if (!propertyToView) return;
+    
+    setSaving(true);
+    try {
+      const { error } = await supabase
+        .from('properties')
+        .update({
+          name: editForm.name,
+          address: editForm.address || null,
+          airbnb_ical_url: editForm.icalUrl || null,
+        })
+        .eq('id', propertyToView.id);
+
+      if (error) throw error;
+
+      // Update local state
+      setProperties(prev => prev.map(p => 
+        p.id === propertyToView.id 
+          ? { 
+              ...p, 
+              name: editForm.name, 
+              address: editForm.address || null,
+              airbnb_ical_url: editForm.icalUrl || null,
+              hasIcalSource: !!editForm.icalUrl || p.hasIcalSource,
+            } 
+          : p
+      ));
+
+      toast.success('Propriedade atualizada com sucesso!');
+      setIsEditing(false);
+      setDetailsDialogOpen(false);
+      setPropertyToView(null);
+    } catch (error) {
+      console.error('Error updating property:', error);
+      toast.error('Erro ao atualizar propriedade');
+    } finally {
+      setSaving(false);
+    }
   };
 
   const clearFilters = () => {
@@ -519,7 +598,7 @@ export function PropertiesSection() {
 
                       {/* iCal Status */}
                       <TableCell className="py-4 text-center">
-                        {property.airbnb_ical_url ? (
+                        {property.hasIcalSource ? (
                           <span className="px-2.5 py-1 rounded-full text-[10px] font-bold bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400 uppercase tracking-tight">
                             Sim
                           </span>
@@ -557,6 +636,15 @@ export function PropertiesSection() {
                       {/* Actions */}
                       <TableCell className="py-4 text-right">
                         <div className="flex items-center justify-end gap-2">
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8 bg-muted hover:bg-muted/80 text-muted-foreground hover:text-primary"
+                            title="Ver detalhes"
+                            onClick={() => handleViewDetails(property)}
+                          >
+                            <Eye className="h-4 w-4" />
+                          </Button>
                           <Button
                             variant="ghost"
                             size="icon"
@@ -730,6 +818,167 @@ export function PropertiesSection() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Property Details Modal */}
+      <Dialog open={detailsDialogOpen} onOpenChange={(open) => {
+        setDetailsDialogOpen(open);
+        if (!open) {
+          setIsEditing(false);
+          setPropertyToView(null);
+        }
+      }}>
+        <DialogContent className="sm:max-w-lg">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Home className="h-5 w-5 text-primary" />
+              {isEditing ? 'Editar Propriedade' : 'Detalhes da Propriedade'}
+            </DialogTitle>
+            <DialogDescription>
+              {isEditing ? 'Altere as informações da propriedade.' : 'Informações detalhadas da propriedade.'}
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4 py-4">
+            {/* Name */}
+            <div className="space-y-2">
+              <Label htmlFor="prop-name" className="text-xs font-medium text-muted-foreground">
+                Nome da Propriedade
+              </Label>
+              {isEditing ? (
+                <Input
+                  id="prop-name"
+                  value={editForm.name}
+                  onChange={(e) => setEditForm(prev => ({ ...prev, name: e.target.value }))}
+                  placeholder="Nome da propriedade"
+                />
+              ) : (
+                <p className="text-sm font-semibold text-foreground">{propertyToView?.name}</p>
+              )}
+            </div>
+
+            {/* Address */}
+            <div className="space-y-2">
+              <Label htmlFor="prop-address" className="text-xs font-medium text-muted-foreground flex items-center gap-1">
+                <MapPin className="h-3 w-3" />
+                Endereço
+              </Label>
+              {isEditing ? (
+                <Textarea
+                  id="prop-address"
+                  value={editForm.address}
+                  onChange={(e) => setEditForm(prev => ({ ...prev, address: e.target.value }))}
+                  placeholder="Endereço completo"
+                  rows={2}
+                />
+              ) : (
+                <p className="text-sm text-foreground">{propertyToView?.address || 'Não informado'}</p>
+              )}
+            </div>
+
+            {/* iCal URL */}
+            <div className="space-y-2">
+              <Label htmlFor="prop-ical" className="text-xs font-medium text-muted-foreground flex items-center gap-1">
+                <LinkIcon className="h-3 w-3" />
+                URL do iCal
+              </Label>
+              {isEditing ? (
+                <Input
+                  id="prop-ical"
+                  value={editForm.icalUrl}
+                  onChange={(e) => setEditForm(prev => ({ ...prev, icalUrl: e.target.value }))}
+                  placeholder="https://..."
+                />
+              ) : (
+                <div className="flex items-center gap-2">
+                  {propertyToView?.hasIcalSource ? (
+                    <>
+                      <CheckCircle className="h-4 w-4 text-green-500" />
+                      <span className="text-sm text-green-600 dark:text-green-400">Configurado</span>
+                    </>
+                  ) : (
+                    <>
+                      <AlertTriangle className="h-4 w-4 text-amber-500" />
+                      <span className="text-sm text-amber-600 dark:text-amber-400">Não configurado</span>
+                    </>
+                  )}
+                </div>
+              )}
+            </div>
+
+            {/* Status */}
+            <div className="space-y-2">
+              <Label className="text-xs font-medium text-muted-foreground">Status</Label>
+              <div className="flex items-center gap-2">
+                {propertyToView?.is_active ? (
+                  <span className="px-2.5 py-1 rounded-full text-[10px] font-bold bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400 uppercase tracking-tight">
+                    Ativa
+                  </span>
+                ) : (
+                  <span className="px-2.5 py-1 rounded-full text-[10px] font-bold bg-muted text-muted-foreground uppercase tracking-tight">
+                    Inativa
+                  </span>
+                )}
+              </div>
+            </div>
+
+            {/* Last Sync */}
+            <div className="space-y-2">
+              <Label className="text-xs font-medium text-muted-foreground flex items-center gap-1">
+                <Calendar className="h-3 w-3" />
+                Última Sincronização
+              </Label>
+              <p className="text-sm text-foreground">
+                {propertyToView?.lastSyncAt 
+                  ? new Date(propertyToView.lastSyncAt).toLocaleString('pt-BR')
+                  : 'Nunca sincronizado'}
+              </p>
+            </div>
+
+            {/* Stats */}
+            <div className="grid grid-cols-2 gap-4 pt-2 border-t border-border">
+              <div className="text-center p-3 bg-muted/30 rounded-lg">
+                <p className="text-2xl font-bold text-foreground">{propertyToView?.schedulesCount || 0}</p>
+                <p className="text-[10px] text-muted-foreground uppercase">Agendas</p>
+              </div>
+              <div className="text-center p-3 bg-muted/30 rounded-lg">
+                <p className="text-2xl font-bold text-foreground">{propertyToView?.checklistsCount || 0}</p>
+                <p className="text-[10px] text-muted-foreground uppercase">Checklists</p>
+              </div>
+            </div>
+          </div>
+
+          <DialogFooter className="gap-2">
+            {isEditing ? (
+              <>
+                <Button
+                  variant="outline"
+                  onClick={() => setIsEditing(false)}
+                >
+                  Cancelar
+                </Button>
+                <Button
+                  onClick={handleSaveProperty}
+                  disabled={saving || !editForm.name}
+                >
+                  {saving ? (
+                    <>
+                      <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
+                      Salvando...
+                    </>
+                  ) : (
+                    'Salvar Alterações'
+                  )}
+                </Button>
+              </>
+            ) : (
+              <Button onClick={() => setIsEditing(true)} className="w-full">
+                <Edit className="h-4 w-4 mr-2" />
+                Editar Propriedade
+              </Button>
+            )}
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
