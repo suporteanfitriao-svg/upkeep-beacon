@@ -421,88 +421,88 @@ const Inspections = () => {
       <AppSidebar />
       <SidebarInset>
         <DashboardHeader />
-        <main className="flex-1 p-6">
-          {/* Header */}
+        <main className="flex-1 p-4 sm:p-6">
+          {/* Header - Mobile optimized */}
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
             <div>
-              <h1 className="text-2xl font-bold text-foreground flex items-center gap-2">
-                <ClipboardCheck className="h-6 w-6" />
+              <h1 className="text-xl sm:text-2xl font-bold text-foreground flex items-center gap-2">
+                <ClipboardCheck className="h-5 w-5 sm:h-6 sm:w-6" />
                 Inspeções
               </h1>
-              <p className="text-muted-foreground mt-1">
+              <p className="text-sm text-muted-foreground mt-1 hidden sm:block">
                 Agende e gerencie inspeções das suas propriedades
               </p>
             </div>
-            <Button onClick={() => handleOpenDialog()}>
-              <Plus className="h-4 w-4 mr-2" />
+            <Button onClick={() => handleOpenDialog()} className="h-11 px-4 text-base touch-manipulation">
+              <Plus className="h-5 w-5 mr-2" />
               Nova Inspeção
             </Button>
           </div>
 
-          {/* Stats Cards */}
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
-            <Card>
-              <CardContent className="p-4">
-                <div className="flex items-center gap-3">
-                  <div className="p-2 bg-primary/10 rounded-lg">
-                    <ClipboardCheck className="h-5 w-5 text-primary" />
+          {/* Stats Cards - Mobile optimized with smaller touch-friendly layout */}
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4 mb-6">
+            <Card className="touch-manipulation">
+              <CardContent className="p-3 sm:p-4">
+                <div className="flex items-center gap-2 sm:gap-3">
+                  <div className="p-2 bg-primary/10 rounded-lg shrink-0">
+                    <ClipboardCheck className="h-4 w-4 sm:h-5 sm:w-5 text-primary" />
                   </div>
                   <div>
-                    <p className="text-2xl font-bold">{stats.total}</p>
-                    <p className="text-xs text-muted-foreground">Total</p>
+                    <p className="text-xl sm:text-2xl font-bold">{stats.total}</p>
+                    <p className="text-[10px] sm:text-xs text-muted-foreground">Total</p>
                   </div>
                 </div>
               </CardContent>
             </Card>
-            <Card>
-              <CardContent className="p-4">
-                <div className="flex items-center gap-3">
-                  <div className="p-2 bg-blue-100 rounded-lg">
-                    <Calendar className="h-5 w-5 text-blue-600" />
+            <Card className="touch-manipulation">
+              <CardContent className="p-3 sm:p-4">
+                <div className="flex items-center gap-2 sm:gap-3">
+                  <div className="p-2 bg-blue-100 rounded-lg shrink-0">
+                    <Calendar className="h-4 w-4 sm:h-5 sm:w-5 text-blue-600" />
                   </div>
                   <div>
-                    <p className="text-2xl font-bold">{stats.scheduled}</p>
-                    <p className="text-xs text-muted-foreground">Agendadas</p>
+                    <p className="text-xl sm:text-2xl font-bold">{stats.scheduled}</p>
+                    <p className="text-[10px] sm:text-xs text-muted-foreground">Agendadas</p>
                   </div>
                 </div>
               </CardContent>
             </Card>
-            <Card>
-              <CardContent className="p-4">
-                <div className="flex items-center gap-3">
-                  <div className="p-2 bg-yellow-100 rounded-lg">
-                    <Play className="h-5 w-5 text-yellow-600" />
+            <Card className="touch-manipulation">
+              <CardContent className="p-3 sm:p-4">
+                <div className="flex items-center gap-2 sm:gap-3">
+                  <div className="p-2 bg-yellow-100 rounded-lg shrink-0">
+                    <Play className="h-4 w-4 sm:h-5 sm:w-5 text-yellow-600" />
                   </div>
                   <div>
-                    <p className="text-2xl font-bold">{stats.in_progress}</p>
-                    <p className="text-xs text-muted-foreground">Em Andamento</p>
+                    <p className="text-xl sm:text-2xl font-bold">{stats.in_progress}</p>
+                    <p className="text-[10px] sm:text-xs text-muted-foreground">Andamento</p>
                   </div>
                 </div>
               </CardContent>
             </Card>
-            <Card>
-              <CardContent className="p-4">
-                <div className="flex items-center gap-3">
-                  <div className="p-2 bg-green-100 rounded-lg">
-                    <CheckCircle2 className="h-5 w-5 text-green-600" />
+            <Card className="touch-manipulation">
+              <CardContent className="p-3 sm:p-4">
+                <div className="flex items-center gap-2 sm:gap-3">
+                  <div className="p-2 bg-green-100 rounded-lg shrink-0">
+                    <CheckCircle2 className="h-4 w-4 sm:h-5 sm:w-5 text-green-600" />
                   </div>
                   <div>
-                    <p className="text-2xl font-bold">{stats.completed}</p>
-                    <p className="text-xs text-muted-foreground">Finalizadas</p>
+                    <p className="text-xl sm:text-2xl font-bold">{stats.completed}</p>
+                    <p className="text-[10px] sm:text-xs text-muted-foreground">Finalizadas</p>
                   </div>
                 </div>
               </CardContent>
             </Card>
           </div>
 
-          {/* Tabs and Content */}
+          {/* Tabs and Content - Mobile optimized */}
           <Tabs value={activeTab} onValueChange={setActiveTab}>
-            <TabsList className="mb-4">
-              <TabsTrigger value="all">Todas</TabsTrigger>
-              <TabsTrigger value="today">Hoje</TabsTrigger>
-              <TabsTrigger value="scheduled">Agendadas</TabsTrigger>
-              <TabsTrigger value="in_progress">Em Andamento</TabsTrigger>
-              <TabsTrigger value="completed">Finalizadas</TabsTrigger>
+            <TabsList className="mb-4 w-full flex overflow-x-auto no-scrollbar touch-manipulation">
+              <TabsTrigger value="all" className="flex-1 min-w-fit px-3">Todas</TabsTrigger>
+              <TabsTrigger value="today" className="flex-1 min-w-fit px-3">Hoje</TabsTrigger>
+              <TabsTrigger value="scheduled" className="flex-1 min-w-fit px-3">Agendadas</TabsTrigger>
+              <TabsTrigger value="in_progress" className="flex-1 min-w-fit px-3">Andamento</TabsTrigger>
+              <TabsTrigger value="completed" className="flex-1 min-w-fit px-3">Finalizadas</TabsTrigger>
             </TabsList>
 
             <TabsContent value={activeTab}>
@@ -518,7 +518,7 @@ const Inspections = () => {
                   </CardContent>
                 </Card>
               ) : (
-                <div className="grid gap-4">
+                <div className="grid gap-3 sm:gap-4">
                   {filteredInspections.map(inspection => {
                     const StatusIcon = statusConfig[inspection.status].icon;
                     const completedItems = inspection.checklist_state.filter(i => i.checked).length;
@@ -527,60 +527,50 @@ const Inspections = () => {
                     return (
                       <Card 
                         key={inspection.id} 
-                        className="hover:shadow-md transition-shadow cursor-pointer"
+                        className="active:shadow-md transition-shadow cursor-pointer touch-manipulation"
                         onClick={() => handleOpenDetail(inspection)}
                       >
-                        <CardContent className="p-4">
-                          <div className="flex items-start justify-between gap-4">
-                            <div className="flex-1">
-                              <div className="flex items-center gap-2 mb-2">
-                                <Badge variant="outline" className={statusConfig[inspection.status].color}>
+                        <CardContent className="p-3 sm:p-4">
+                          <div className="flex items-start justify-between gap-3">
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-center gap-2 mb-2 flex-wrap">
+                                <Badge variant="outline" className={`${statusConfig[inspection.status].color} text-xs`}>
                                   <StatusIcon className="h-3 w-3 mr-1" />
                                   {statusConfig[inspection.status].label}
                                 </Badge>
                                 {totalItems > 0 && (
                                   <Badge variant="secondary" className="text-xs">
-                                    {completedItems}/{totalItems} itens
+                                    {completedItems}/{totalItems}
                                   </Badge>
                                 )}
                               </div>
                               
-                              <h3 className="font-semibold text-lg">{inspection.title}</h3>
+                              <h3 className="font-semibold text-base sm:text-lg truncate">{inspection.title}</h3>
                               
-                              <div className="flex flex-wrap gap-x-4 gap-y-1 mt-2 text-sm text-muted-foreground">
+                              <div className="flex flex-wrap gap-x-3 gap-y-1 mt-2 text-xs sm:text-sm text-muted-foreground">
                                 <span className="flex items-center gap-1">
-                                  <Building2 className="h-4 w-4" />
-                                  {inspection.property_name}
+                                  <Building2 className="h-3.5 w-3.5" />
+                                  <span className="truncate max-w-[100px] sm:max-w-none">{inspection.property_name}</span>
                                 </span>
                                 <span className="flex items-center gap-1">
-                                  <Calendar className="h-4 w-4" />
-                                  {format(parseISO(inspection.scheduled_date), "dd/MM/yyyy", { locale: ptBR })}
+                                  <Calendar className="h-3.5 w-3.5" />
+                                  {format(parseISO(inspection.scheduled_date), "dd/MM", { locale: ptBR })}
                                 </span>
                                 {inspection.scheduled_time && (
                                   <span className="flex items-center gap-1">
-                                    <Clock className="h-4 w-4" />
+                                    <Clock className="h-3.5 w-3.5" />
                                     {inspection.scheduled_time.slice(0, 5)}
                                   </span>
                                 )}
-                                {inspection.assigned_to_name && (
-                                  <span className="flex items-center gap-1">
-                                    <User className="h-4 w-4" />
-                                    {inspection.assigned_to_name}
-                                  </span>
-                                )}
                               </div>
-                              
-                              {inspection.description && (
-                                <p className="text-sm text-muted-foreground mt-2 line-clamp-2">
-                                  {inspection.description}
-                                </p>
-                              )}
                             </div>
                             
-                            <div className="flex items-center gap-2">
+                            {/* Actions - Hidden on mobile, shown on larger screens */}
+                            <div className="hidden sm:flex items-center gap-1">
                               <Button
                                 variant="ghost"
                                 size="icon"
+                                className="h-9 w-9"
                                 onClick={(e) => {
                                   e.stopPropagation();
                                   handleOpenDialog(inspection);
@@ -591,7 +581,7 @@ const Inspections = () => {
                               <Button
                                 variant="ghost"
                                 size="icon"
-                                className="text-destructive hover:bg-destructive/10"
+                                className="h-9 w-9 text-destructive hover:bg-destructive/10"
                                 onClick={(e) => {
                                   e.stopPropagation();
                                   handleDelete(inspection.id);
@@ -599,8 +589,8 @@ const Inspections = () => {
                               >
                                 <Trash2 className="h-4 w-4" />
                               </Button>
-                              <ChevronRight className="h-5 w-5 text-muted-foreground" />
                             </div>
+                            <ChevronRight className="h-5 w-5 text-muted-foreground shrink-0 sm:ml-2" />
                           </div>
                         </CardContent>
                       </Card>
@@ -750,9 +740,9 @@ const Inspections = () => {
         </DialogContent>
       </Dialog>
 
-      {/* Detail Dialog */}
+      {/* Detail Dialog - Mobile optimized */}
       <Dialog open={detailDialogOpen} onOpenChange={setDetailDialogOpen}>
-        <DialogContent className="max-w-2xl">
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
           {selectedInspection && (
             <>
               <DialogHeader>
@@ -800,15 +790,15 @@ const Inspections = () => {
                   </div>
                 )}
 
-                {/* Status Actions */}
+                {/* Status Actions - Mobile optimized with larger touch targets */}
                 <div className="flex gap-2 flex-wrap">
                   {selectedInspection.status === 'scheduled' && (
                     <Button 
                       onClick={() => handleStatusChange('in_progress')}
                       disabled={updatingStatus}
-                      className="bg-yellow-600 hover:bg-yellow-700"
+                      className="bg-yellow-600 hover:bg-yellow-700 h-12 px-6 text-base font-semibold flex-1 sm:flex-none touch-manipulation"
                     >
-                      {updatingStatus ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Play className="h-4 w-4 mr-2" />}
+                      {updatingStatus ? <Loader2 className="h-5 w-5 mr-2 animate-spin" /> : <Play className="h-5 w-5 mr-2" />}
                       Iniciar Inspeção
                     </Button>
                   )}
@@ -816,9 +806,9 @@ const Inspections = () => {
                     <Button 
                       onClick={() => handleStatusChange('completed')}
                       disabled={updatingStatus}
-                      className="bg-green-600 hover:bg-green-700"
+                      className="bg-green-600 hover:bg-green-700 h-12 px-6 text-base font-semibold flex-1 sm:flex-none touch-manipulation"
                     >
-                      {updatingStatus ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <CheckCircle2 className="h-4 w-4 mr-2" />}
+                      {updatingStatus ? <Loader2 className="h-5 w-5 mr-2 animate-spin" /> : <CheckCircle2 className="h-5 w-5 mr-2" />}
                       Finalizar Inspeção
                     </Button>
                   )}
@@ -827,13 +817,14 @@ const Inspections = () => {
                       variant="outline"
                       onClick={() => handleStatusChange('scheduled')}
                       disabled={updatingStatus}
+                      className="h-12 px-4 touch-manipulation"
                     >
                       Voltar para Agendado
                     </Button>
                   )}
                 </div>
 
-                {/* Checklist */}
+                {/* Checklist - Mobile optimized */}
                 {selectedInspection.checklist_state.length > 0 && (
                   <div>
                     <div className="flex items-center justify-between mb-3">
@@ -845,31 +836,32 @@ const Inspections = () => {
                             size="sm"
                             onClick={handleResetChecklist}
                             disabled={updatingStatus}
-                            className="text-orange-600 hover:text-orange-700 hover:bg-orange-50"
+                            className="text-orange-600 hover:text-orange-700 hover:bg-orange-50 h-9 px-3"
                           >
-                            <RotateCcw className="h-3 w-3 mr-1" />
+                            <RotateCcw className="h-4 w-4 mr-1" />
                             Resetar
                           </Button>
                         )}
-                        <Badge variant="secondary">
+                        <Badge variant="secondary" className="text-sm px-2 py-1">
                           {selectedInspection.checklist_state.filter(i => i.checked).length}/
                           {selectedInspection.checklist_state.length}
                         </Badge>
                       </div>
                     </div>
-                    <ScrollArea className="h-[200px] rounded-lg border p-3">
-                      <div className="space-y-2">
+                    <ScrollArea className="h-[280px] sm:h-[200px] rounded-xl border">
+                      <div className="divide-y divide-border">
                         {selectedInspection.checklist_state.map(item => (
                           <div 
                             key={item.id} 
-                            className="flex items-center gap-3 p-2 rounded-lg hover:bg-muted/50 cursor-pointer"
+                            className="flex items-center gap-4 p-4 active:bg-muted/70 cursor-pointer touch-manipulation transition-colors"
                             onClick={() => handleChecklistItemToggle(item.id)}
                           >
                             <Checkbox 
                               checked={item.checked}
                               onCheckedChange={() => handleChecklistItemToggle(item.id)}
+                              className="h-6 w-6 rounded-md border-2"
                             />
-                            <span className={item.checked ? 'line-through text-muted-foreground' : ''}>
+                            <span className={`text-base flex-1 ${item.checked ? 'line-through text-muted-foreground' : 'font-medium'}`}>
                               {item.label}
                             </span>
                           </div>

@@ -1017,9 +1017,10 @@ export function ScheduleDetail({ schedule, onClose, onUpdateSchedule }: Schedule
                             const itemState = checklistItemStates[item.id] || (item.completed ? 'yes' : null);
                             
                             return (
-                              <div key={item.id} className="flex items-center px-4 py-3 gap-3 hover:bg-slate-50 dark:hover:bg-slate-800/30 transition-colors">
-                                <div className="flex items-center gap-2 shrink-0">
-                                  <label className="relative cursor-pointer">
+                              <div key={item.id} className="flex items-center px-4 py-4 gap-4 active:bg-slate-50 dark:active:bg-slate-800/30 transition-colors touch-manipulation">
+                                <div className="flex items-center gap-3 shrink-0">
+                                  {/* DX (No) button - larger touch target */}
+                                  <label className="relative cursor-pointer touch-manipulation">
                                     <input 
                                       type="radio" 
                                       name={`item-${item.id}`} 
@@ -1028,11 +1029,12 @@ export function ScheduleDetail({ schedule, onClose, onUpdateSchedule }: Schedule
                                       onChange={() => handleChecklistItemChange(item.id, 'no', category)}
                                       className="peer sr-only" 
                                     />
-                                    <div className="flex h-7 w-7 items-center justify-center rounded-full bg-slate-100/50 text-slate-300 transition-all hover:bg-red-50 hover:text-red-300 peer-checked:bg-red-500 peer-checked:text-white peer-checked:shadow-md peer-checked:scale-110 dark:bg-slate-700/50 dark:text-slate-500 dark:hover:bg-red-900/20 dark:hover:text-red-400 dark:peer-checked:bg-red-500">
-                                      <span className="material-symbols-outlined text-[16px] font-bold">close</span>
+                                    <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-slate-100/50 text-slate-300 transition-all active:scale-95 peer-checked:bg-red-500 peer-checked:text-white peer-checked:shadow-md dark:bg-slate-700/50 dark:text-slate-500 dark:peer-checked:bg-red-500">
+                                      <span className="material-symbols-outlined text-[20px] font-bold">close</span>
                                     </div>
                                   </label>
-                                  <label className="relative cursor-pointer">
+                                  {/* OK (Yes) button - larger touch target */}
+                                  <label className="relative cursor-pointer touch-manipulation">
                                     <input 
                                       type="radio" 
                                       name={`item-${item.id}`} 
@@ -1041,12 +1043,12 @@ export function ScheduleDetail({ schedule, onClose, onUpdateSchedule }: Schedule
                                       onChange={() => handleChecklistItemChange(item.id, 'yes', category)}
                                       className="peer sr-only" 
                                     />
-                                    <div className="flex h-7 w-7 items-center justify-center rounded-full bg-slate-100/50 text-slate-300 transition-all hover:bg-green-50 hover:text-green-300 peer-checked:bg-green-500 peer-checked:text-white peer-checked:shadow-md peer-checked:scale-110 dark:bg-slate-700/50 dark:text-slate-500 dark:hover:bg-green-900/20 dark:hover:text-green-400 dark:peer-checked:bg-green-500">
-                                      <span className="material-symbols-outlined text-[16px] font-bold">check</span>
+                                    <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-slate-100/50 text-slate-300 transition-all active:scale-95 peer-checked:bg-green-500 peer-checked:text-white peer-checked:shadow-md dark:bg-slate-700/50 dark:text-slate-500 dark:peer-checked:bg-green-500">
+                                      <span className="material-symbols-outlined text-[20px] font-bold">check</span>
                                     </div>
                                   </label>
                                 </div>
-                                <span className="text-sm font-medium text-slate-700 dark:text-slate-300">{item.title}</span>
+                                <span className="text-base font-medium text-slate-700 dark:text-slate-300 leading-tight">{item.title}</span>
                               </div>
                             );
                           })}
@@ -1057,9 +1059,9 @@ export function ScheduleDetail({ schedule, onClose, onUpdateSchedule }: Schedule
                           <div className="p-3 border-t border-slate-100 dark:border-slate-700/50 bg-slate-50/50 dark:bg-slate-800/30">
                             <button
                               onClick={() => handleSaveCategory(category)}
-                              className="w-full flex items-center justify-center gap-2 rounded-lg bg-primary py-2 text-sm font-bold text-white shadow-sm transition-all hover:bg-primary/90 active:scale-[0.98]"
+                              className="w-full flex items-center justify-center gap-2 rounded-xl bg-primary py-3 text-base font-bold text-white shadow-sm transition-all hover:bg-primary/90 active:scale-[0.98] touch-manipulation"
                             >
-                              <span className="material-symbols-outlined text-[18px]">save</span>
+                              <span className="material-symbols-outlined text-[20px]">save</span>
                               Salvar Categoria
                             </button>
                           </div>

@@ -2,7 +2,10 @@
 <html lang="pt-BR">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="format-detection" content="telephone=no" />
     <title>CleanOps - Dashboard de Limpeza e Manutenção</title>
     <meta name="description" content="Dashboard operacional para gestão de limpeza e manutenção de imóveis de temporada. Controle agendamentos, checklists e manutenção em tempo real." />
     <meta name="author" content="CleanOps" />
@@ -17,6 +20,26 @@
     <meta name="twitter:card" content="summary_large_image" />
     <meta name="twitter:site" content="@CleanOps" />
     <meta name="twitter:image" content="https://lovable.dev/opengraph-image-p98pqg.png" />
+    
+    <style>
+      /* Prevent zoom on double tap and pinch */
+      * {
+        touch-action: manipulation;
+      }
+      
+      /* Prevent text selection zoom on iOS */
+      input, textarea, select {
+        font-size: 16px !important;
+      }
+      
+      /* Safe area insets for notched devices */
+      body {
+        padding-top: env(safe-area-inset-top);
+        padding-bottom: env(safe-area-inset-bottom);
+        padding-left: env(safe-area-inset-left);
+        padding-right: env(safe-area-inset-right);
+      }
+    </style>
   </head>
 
   <body>
