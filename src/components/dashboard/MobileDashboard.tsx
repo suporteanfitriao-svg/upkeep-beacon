@@ -536,8 +536,8 @@ export function MobileDashboard({ schedules, onScheduleClick, onStartCleaning, o
                 <div className="h-10 w-10 rounded-xl bg-emerald-100 dark:bg-emerald-900/30 flex items-center justify-center mb-2">
                   <Check className="w-5 h-5 text-emerald-600" />
                 </div>
-                <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-1">Tarefas do Mês</p>
-                <p className="text-2xl font-bold text-foreground">{monthCompletedCount}</p>
+                <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-1">Concluídas {periodStats.periodLabel}</p>
+                <p className="text-2xl font-bold text-foreground">{periodStats.completed}</p>
               </div>
               <div className="p-4 rounded-2xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 shadow-sm">
                 <div className="h-10 w-10 rounded-xl bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center mb-2">
