@@ -360,6 +360,7 @@ export type Database = {
           global_access_password: string | null
           id: string
           image_url: string | null
+          is_active: boolean
           name: string
           password_mode: Database["public"]["Enums"]["property_password_mode"]
           require_photo_for_issues: boolean
@@ -378,6 +379,7 @@ export type Database = {
           global_access_password?: string | null
           id?: string
           image_url?: string | null
+          is_active?: boolean
           name: string
           password_mode?: Database["public"]["Enums"]["property_password_mode"]
           require_photo_for_issues?: boolean
@@ -396,6 +398,7 @@ export type Database = {
           global_access_password?: string | null
           id?: string
           image_url?: string | null
+          is_active?: boolean
           name?: string
           password_mode?: Database["public"]["Enums"]["property_password_mode"]
           require_photo_for_issues?: boolean

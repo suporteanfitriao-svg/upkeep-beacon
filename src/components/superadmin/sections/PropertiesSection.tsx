@@ -50,11 +50,12 @@ interface Property {
   airbnb_ical_url: string | null;
   created_at: string;
   updated_at: string;
+  is_active: boolean;
   schedulesCount?: number;
   checklistsCount?: number;
   lastSyncStatus?: 'success' | 'error' | 'pending';
   lastSyncAt?: string;
-  isActive?: boolean;
+  lastSyncError?: string | null;
 }
 
 // Mock data for owner/manager - in a real app this would come from a relation
@@ -156,12 +157,11 @@ export function PropertiesSection() {
   };
 
   const getPropertyStatus = (property: Property): 'active' | 'trial' | 'inactive' => {
-    if (property.isActive === false) return 'inactive';
-    if (!property.airbnb_ical_url) return 'inactive';
-    if (property.lastSyncStatus === 'error') return 'inactive';
-    // Use a deterministic "random" based on property id
-    const hash = property.id.charCodeAt(0) + property.id.charCodeAt(property.id.length - 1);
-    return hash % 3 === 0 ? 'trial' : 'active';
+    // Use real is_active from database
+    if (!property.is_active) return 'inactive';
+    // If has sync error, show as trial (needs attention)
+    if (property.lastSyncStatus === 'error') return 'trial';
+    return 'active';
   };
 
   // Apply all filters
@@ -225,14 +225,11 @@ export function PropertiesSection() {
     }
   };
 
-  const handleSuspendClick = (property: Property) => {
+  const handleSuspendClick = async (property: Property) => {
     const currentStatus = getPropertyStatus(property);
     if (currentStatus === 'inactive') {
       // Ativar diretamente sem confirmação
-      setProperties(prev => prev.map(p => 
-        p.id === property.id ? { ...p, isActive: true } : p
-      ));
-      toast.success(`Propriedade "${property.name}" ativada com sucesso!`);
+      await updatePropertyStatus(property, true);
     } else {
       // Mostrar modal de confirmação para suspender
       setPropertyToSuspend(property);
@@ -240,14 +237,31 @@ export function PropertiesSection() {
     }
   };
 
-  const confirmSuspend = () => {
+  const updatePropertyStatus = async (property: Property, newStatus: boolean) => {
+    try {
+      const { error } = await supabase
+        .from('properties')
+        .update({ is_active: newStatus })
+        .eq('id', property.id);
+
+      if (error) throw error;
+
+      // Update local state
+      setProperties(prev => prev.map(p => 
+        p.id === property.id ? { ...p, is_active: newStatus } : p
+      ));
+
+      toast.success(`Propriedade "${property.name}" ${newStatus ? 'ativada' : 'suspensa'} com sucesso!`);
+    } catch (error) {
+      console.error('Error updating property status:', error);
+      toast.error(`Erro ao ${newStatus ? 'ativar' : 'suspender'} propriedade`);
+    }
+  };
+
+  const confirmSuspend = async () => {
     if (!propertyToSuspend) return;
     
-    setProperties(prev => prev.map(p => 
-      p.id === propertyToSuspend.id ? { ...p, isActive: false } : p
-    ));
-    
-    toast.success(`Propriedade "${propertyToSuspend.name}" suspensa com sucesso!`);
+    await updatePropertyStatus(propertyToSuspend, false);
     setSuspendDialogOpen(false);
     setPropertyToSuspend(null);
   };
