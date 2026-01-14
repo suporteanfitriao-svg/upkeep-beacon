@@ -216,13 +216,15 @@ export function MobileDashboard({ schedules, onScheduleClick, onStartCleaning, o
       .sort((a, b) => a.checkOut.getTime() - b.checkOut.getTime());
   }, [schedules, selectedDate]);
 
-  // Count tasks with indicators for each day
+  // Count tasks with indicators for each day (schedules + inspections)
   const dayIndicators = useMemo(() => {
-    const indicators: Record<string, { pending: number; completed: number; gold: number }> = {};
+    const indicators: Record<string, { pending: number; completed: number; gold: number; inspections: number }> = {};
+    
+    // Add schedule indicators
     schedules.forEach(s => {
       const dateKey = format(s.checkOut, 'yyyy-MM-dd');
       if (!indicators[dateKey]) {
-        indicators[dateKey] = { pending: 0, completed: 0, gold: 0 };
+        indicators[dateKey] = { pending: 0, completed: 0, gold: 0, inspections: 0 };
       }
       if (s.status === 'completed') {
         indicators[dateKey].completed++;
@@ -232,8 +234,20 @@ export function MobileDashboard({ schedules, onScheduleClick, onStartCleaning, o
         indicators[dateKey].gold++;
       }
     });
+    
+    // Add inspection indicators
+    inspections.forEach(i => {
+      const dateKey = i.scheduled_date;
+      if (!indicators[dateKey]) {
+        indicators[dateKey] = { pending: 0, completed: 0, gold: 0, inspections: 0 };
+      }
+      if (i.status === 'scheduled' || i.status === 'in_progress') {
+        indicators[dateKey].inspections++;
+      }
+    });
+    
     return indicators;
-  }, [schedules]);
+  }, [schedules, inspections]);
 
   // Separate schedules by status
   const pendingSchedules = selectedDaySchedules.filter(s => s.status === 'waiting' || s.status === 'released');
@@ -776,8 +790,8 @@ export function MobileDashboard({ schedules, onScheduleClick, onStartCleaning, o
               const dateKey = format(day, 'yyyy-MM-dd');
               const isSelected = isSameDay(day, selectedDate);
               const isCurrentMonth = day.getMonth() === currentMonth.getMonth();
-              const indicators = dayIndicators[dateKey] || { pending: 0, completed: 0, gold: 0 };
-              const totalTasks = indicators.pending + indicators.completed + indicators.gold;
+              const indicators = dayIndicators[dateKey] || { pending: 0, completed: 0, gold: 0, inspections: 0 };
+              const totalTasks = indicators.pending + indicators.completed + indicators.gold + indicators.inspections;
 
               if (!isCurrentMonth) {
                 return (
@@ -818,6 +832,9 @@ export function MobileDashboard({ schedules, onScheduleClick, onStartCleaning, o
                           {Array.from({ length: Math.min(indicators.gold, 2) }).map((_, i) => (
                             <div key={`g-${i}`} className="h-1.5 w-1.5 rounded-full bg-[#E0C051] border border-white/20" />
                           ))}
+                          {Array.from({ length: Math.min(indicators.inspections, 2) }).map((_, i) => (
+                            <div key={`i-${i}`} className="h-1.5 w-1.5 rounded-full bg-purple-300 border border-white/20" />
+                          ))}
                         </>
                       ) : (
                         <>
@@ -829,6 +846,9 @@ export function MobileDashboard({ schedules, onScheduleClick, onStartCleaning, o
                           ))}
                           {Array.from({ length: Math.min(indicators.gold, 2) }).map((_, i) => (
                             <div key={`g-${i}`} className="h-1.5 w-1.5 rounded-full bg-[#E0C051]" />
+                          ))}
+                          {Array.from({ length: Math.min(indicators.inspections, 2) }).map((_, i) => (
+                            <div key={`i-${i}`} className="h-1.5 w-1.5 rounded-full bg-purple-500" />
                           ))}
                         </>
                       )}
@@ -912,8 +932,8 @@ export function MobileDashboard({ schedules, onScheduleClick, onStartCleaning, o
               {weekDays.map((day, index) => {
                 const dateKey = format(day, 'yyyy-MM-dd');
                 const isSelected = isSameDay(day, selectedDate);
-                const indicators = dayIndicators[dateKey] || { pending: 0, completed: 0, gold: 0 };
-                const totalTasks = indicators.pending + indicators.completed + indicators.gold;
+                const indicators = dayIndicators[dateKey] || { pending: 0, completed: 0, gold: 0, inspections: 0 };
+                const totalTasks = indicators.pending + indicators.completed + indicators.gold + indicators.inspections;
                 const isPast = day < startOfDay(new Date()) && !isSameDay(day, new Date());
 
                 return (
@@ -947,12 +967,14 @@ export function MobileDashboard({ schedules, onScheduleClick, onStartCleaning, o
                           {indicators.pending > 0 && <div className="h-1.5 w-1.5 rounded-full bg-white" />}
                           {indicators.completed > 0 && <div className="h-1.5 w-1.5 rounded-full bg-white/50" />}
                           {indicators.gold > 0 && <div className="h-1.5 w-1.5 rounded-full bg-[#E0C051]" />}
+                          {indicators.inspections > 0 && <div className="h-1.5 w-1.5 rounded-full bg-purple-300" />}
                         </>
                       ) : (
                         <>
                           {indicators.pending > 0 && <div className="h-1.5 w-1.5 rounded-full bg-primary" />}
                           {indicators.completed > 0 && <div className="h-1.5 w-1.5 rounded-full bg-primary/50" />}
                           {indicators.gold > 0 && <div className="h-1.5 w-1.5 rounded-full bg-[#E0C051]" />}
+                          {indicators.inspections > 0 && <div className="h-1.5 w-1.5 rounded-full bg-purple-500" />}
                         </>
                       )}
                       {totalTasks === 0 && <div className="h-1.5 w-1.5" />}
