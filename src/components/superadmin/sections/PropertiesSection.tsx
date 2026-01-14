@@ -18,6 +18,7 @@ import {
   Edit,
   Calendar,
   Link as LinkIcon,
+  Clock,
   Home
 } from 'lucide-react';
 import {
@@ -102,6 +103,15 @@ export function PropertiesSection() {
   const [isEditing, setIsEditing] = useState(false);
   const [editForm, setEditForm] = useState({ name: '', address: '', icalUrl: '' });
   const [saving, setSaving] = useState(false);
+  const [propertyHistory, setPropertyHistory] = useState<Array<{
+    id: string;
+    config_key: string;
+    previous_value: string | null;
+    new_value: string;
+    created_at: string;
+    role: string;
+  }>>([]);
+  const [loadingHistory, setLoadingHistory] = useState(false);
 
   useEffect(() => {
     fetchProperties();
@@ -304,7 +314,7 @@ export function PropertiesSection() {
     setPropertyToActivate(null);
   };
 
-  const handleViewDetails = (property: Property) => {
+  const handleViewDetails = async (property: Property) => {
     setPropertyToView(property);
     setEditForm({
       name: property.name,
@@ -312,7 +322,27 @@ export function PropertiesSection() {
       icalUrl: property.icalSourceUrl || property.airbnb_ical_url || '',
     });
     setIsEditing(false);
+    setPropertyHistory([]);
     setDetailsDialogOpen(true);
+    
+    // Fetch history
+    setLoadingHistory(true);
+    try {
+      const { data, error } = await supabase
+        .from('property_config_audit_logs')
+        .select('id, config_key, previous_value, new_value, created_at, role')
+        .eq('property_id', property.id)
+        .order('created_at', { ascending: false })
+        .limit(20);
+      
+      if (!error && data) {
+        setPropertyHistory(data);
+      }
+    } catch (error) {
+      console.error('Error fetching property history:', error);
+    } finally {
+      setLoadingHistory(false);
+    }
   };
 
   const handleSaveProperty = async () => {
@@ -945,6 +975,58 @@ export function PropertiesSection() {
                 <p className="text-[10px] text-muted-foreground uppercase">Checklists</p>
               </div>
             </div>
+
+            {/* History Section */}
+            {!isEditing && (
+              <div className="space-y-3 pt-4 border-t border-border">
+                <Label className="text-xs font-medium text-muted-foreground flex items-center gap-1">
+                  <Clock className="h-3 w-3" />
+                  Histórico de Alterações
+                </Label>
+                
+                {loadingHistory ? (
+                  <div className="flex items-center justify-center py-4">
+                    <RefreshCw className="h-4 w-4 animate-spin text-muted-foreground" />
+                  </div>
+                ) : propertyHistory.length === 0 ? (
+                  <p className="text-xs text-muted-foreground text-center py-4">
+                    Nenhuma alteração registrada
+                  </p>
+                ) : (
+                  <div className="max-h-48 overflow-y-auto space-y-2">
+                    {propertyHistory.map((log) => (
+                      <div 
+                        key={log.id} 
+                        className="p-3 bg-muted/30 rounded-lg text-xs space-y-1"
+                      >
+                        <div className="flex items-center justify-between">
+                          <span className="font-semibold text-foreground capitalize">
+                            {log.config_key.replace(/_/g, ' ')}
+                          </span>
+                          <span className="text-[10px] text-muted-foreground">
+                            {new Date(log.created_at).toLocaleString('pt-BR', {
+                              day: '2-digit',
+                              month: '2-digit',
+                              year: '2-digit',
+                              hour: '2-digit',
+                              minute: '2-digit'
+                            })}
+                          </span>
+                        </div>
+                        <div className="flex items-center gap-2 text-muted-foreground">
+                          <span className="line-through">{log.previous_value || 'vazio'}</span>
+                          <span>→</span>
+                          <span className="text-foreground font-medium">{log.new_value}</span>
+                        </div>
+                        <div className="text-[10px] text-muted-foreground">
+                          Por: <span className="capitalize">{log.role}</span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
           </div>
 
           <DialogFooter className="gap-2">
