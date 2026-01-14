@@ -28,6 +28,7 @@ interface Property {
   default_check_out_time: string | null;
   image_url: string | null;
   property_code: string | null;
+  require_checklist: boolean;
   created_at: string;
 }
 
@@ -97,7 +98,7 @@ export default function Properties() {
     setIsLoading(true);
     const { data, error } = await supabase
       .from('properties')
-      .select('id, name, address, default_check_in_time, default_check_out_time, image_url, property_code, created_at')
+      .select('id, name, address, default_check_in_time, default_check_out_time, image_url, property_code, require_checklist, created_at')
       .order('name', { ascending: true });
 
     if (error) {
@@ -789,12 +790,18 @@ export default function Properties() {
                               <span className="material-symbols-outlined text-primary text-[22px]">home</span>
                             </div>
                           )}
-                          <div className="min-w-0">
-                            <div className="flex items-center gap-2">
+                            <div className="min-w-0">
+                            <div className="flex items-center gap-2 flex-wrap">
                               <h3 className="font-bold text-foreground truncate">{property.name}</h3>
                               {property.property_code && (
                                 <span className="text-[10px] font-mono font-bold text-primary bg-primary/10 px-1.5 py-0.5 rounded">
                                   {property.property_code}
+                                </span>
+                              )}
+                              {!property.require_checklist && (
+                                <span className="text-[10px] font-medium text-amber-600 bg-amber-100 dark:bg-amber-900/30 dark:text-amber-400 px-1.5 py-0.5 rounded flex items-center gap-1">
+                                  <span className="material-symbols-outlined text-[12px]">checklist_rtl</span>
+                                  Sem checklist
                                 </span>
                               )}
                             </div>

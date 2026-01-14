@@ -17,6 +17,7 @@ interface Property {
   name: string;
   address: string;
   property_code: string | null;
+  require_checklist: boolean;
 }
 
 export function PropertiesStep({ onNext, onBack }: PropertiesStepProps) {
@@ -33,7 +34,7 @@ export function PropertiesStep({ onNext, onBack }: PropertiesStepProps) {
     try {
       const { data, error } = await supabase
         .from('properties')
-        .select('id, name, address, property_code')
+        .select('id, name, address, property_code, require_checklist')
         .order('name');
 
       if (error) throw error;
@@ -166,11 +167,16 @@ export function PropertiesStep({ onNext, onBack }: PropertiesStepProps) {
                         <Building2 className="h-4 w-4 text-primary" />
                       </div>
                       <div>
-                        <div className="flex items-center gap-2">
+                        <div className="flex items-center gap-2 flex-wrap">
                           <p className="text-sm font-medium">{property.name}</p>
                           {property.property_code && (
                             <span className="text-[9px] font-mono font-bold text-primary bg-primary/10 px-1.5 py-0.5 rounded">
                               {property.property_code}
+                            </span>
+                          )}
+                          {!property.require_checklist && (
+                            <span className="text-[9px] font-medium text-amber-600 bg-amber-100 dark:bg-amber-900/30 dark:text-amber-400 px-1.5 py-0.5 rounded flex items-center gap-0.5">
+                              Sem checklist
                             </span>
                           )}
                         </div>
