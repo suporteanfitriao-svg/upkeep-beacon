@@ -306,15 +306,34 @@ serve(async (req) => {
               number_of_guests: 1
             };
 
-            // Only set times for NEW schedules (preserve manual edits)
+            // For NEW schedules: set all times and status
+            // For EXISTING schedules in 'waiting' status: update times if reservation dates changed
+            // For schedules in other statuses (released, cleaning, completed): preserve times
             if (!existingSchedule) {
+              // New schedule - set everything
               scheduleData.check_in_time = checkInDate.toISOString();
               scheduleData.check_out_time = checkOutDate.toISOString();
               scheduleData.status = 'waiting';
               scheduleData.priority = priority;
-            } else if (shouldUpdatePriority) {
+            } else if (existingSchedule.status === 'waiting') {
+              // Existing schedule in waiting status - update times if reservation dates changed
+              // This handles cases where the reservation was modified in Airbnb
+              const existingCheckIn = new Date(existingSchedule.check_in_time);
+              const existingCheckOut = new Date(existingSchedule.check_out_time);
+              
+              // Check if dates are different (comparing only the date portion)
+              const checkInChanged = existingCheckIn.toISOString().slice(0, 10) !== checkInDate.toISOString().slice(0, 10);
+              const checkOutChanged = existingCheckOut.toISOString().slice(0, 10) !== checkOutDate.toISOString().slice(0, 10);
+              
+              if (checkInChanged || checkOutChanged) {
+                console.log(`Updating schedule times for reservation ${reservation.id}: check_in changed=${checkInChanged}, check_out changed=${checkOutChanged}`);
+                scheduleData.check_in_time = checkInDate.toISOString();
+                scheduleData.check_out_time = checkOutDate.toISOString();
+              }
+              
               scheduleData.priority = priority;
             }
+            // For released/cleaning/completed: don't update times (preserve manual changes)
 
             const { error: scheduleError } = await supabase
               .from('schedules')
