@@ -16,7 +16,7 @@ import Profile from "./pages/Profile";
 import Messages from "./pages/Messages";
 import Landing from "./pages/Landing";
 import NotFound from "./pages/NotFound";
-import SuperAdmin from "./pages/SuperAdmin";
+import Onboarding from "./pages/Onboarding";
 
 const queryClient = new QueryClient();
 
@@ -95,10 +95,10 @@ const App = () => (
               }
             />
             <Route
-              path="/super-admin"
+              path="/onboarding"
               element={
                 <ProtectedRoute>
-                  <SuperAdmin />
+                  <Onboarding />
                 </ProtectedRoute>
               }
             />

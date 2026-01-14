@@ -36,7 +36,7 @@ const menuItems = [
   { title: 'Equipe', url: '/equipe', icon: Users },
   { title: 'Manutenção', url: '/manutencao', icon: Wrench },
   { title: 'Minha Conta', url: '/minha-conta', icon: UserCog },
-  { title: 'Super Admin', url: '/super-admin', icon: Crown },
+  { title: 'Onboarding', url: '/onboarding', icon: Crown },
 ];
 
 export function AdminSidebar() {

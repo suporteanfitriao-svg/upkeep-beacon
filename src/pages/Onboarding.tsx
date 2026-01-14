@@ -1,14 +1,14 @@
 import { useState } from 'react';
-import { OnboardingSidebar } from '@/components/superadmin/OnboardingSidebar';
-import { WelcomeStep } from '@/components/superadmin/steps/WelcomeStep';
-import { SyncStep } from '@/components/superadmin/steps/SyncStep';
-import { ConfigStep } from '@/components/superadmin/steps/ConfigStep';
-import { PropertiesStep } from '@/components/superadmin/steps/PropertiesStep';
-import { TeamStep } from '@/components/superadmin/steps/TeamStep';
-import { InventoryStep } from '@/components/superadmin/steps/InventoryStep';
-import { ChecklistsStep } from '@/components/superadmin/steps/ChecklistsStep';
-import { HouseRulesStep } from '@/components/superadmin/steps/HouseRulesStep';
-import { ReviewStep } from '@/components/superadmin/steps/ReviewStep';
+import { OnboardingSidebar } from '@/components/onboarding/OnboardingSidebar';
+import { WelcomeStep } from '@/components/onboarding/steps/WelcomeStep';
+import { SyncStep } from '@/components/onboarding/steps/SyncStep';
+import { ConfigStep } from '@/components/onboarding/steps/ConfigStep';
+import { PropertiesStep } from '@/components/onboarding/steps/PropertiesStep';
+import { TeamStep } from '@/components/onboarding/steps/TeamStep';
+import { InventoryStep } from '@/components/onboarding/steps/InventoryStep';
+import { ChecklistsStep } from '@/components/onboarding/steps/ChecklistsStep';
+import { HouseRulesStep } from '@/components/onboarding/steps/HouseRulesStep';
+import { ReviewStep } from '@/components/onboarding/steps/ReviewStep';
 
 export type OnboardingStep = 
   | 'welcome'
@@ -33,7 +33,7 @@ export const STEPS: { id: OnboardingStep; label: string; number: number }[] = [
   { id: 'review', label: 'Revisão Final', number: 9 },
 ];
 
-export default function SuperAdmin() {
+export default function Onboarding() {
   const [currentStep, setCurrentStep] = useState<OnboardingStep>('welcome');
   const [completedSteps, setCompletedSteps] = useState<Set<OnboardingStep>>(new Set());
 
