@@ -23,7 +23,12 @@ export default function SuperAdmin() {
   const renderSection = () => {
     switch (activeSection) {
       case 'overview':
-        return <OverviewSection viewMode={viewMode} />;
+        return (
+          <OverviewSection 
+            viewMode={viewMode} 
+            onNavigateToSection={(section) => setActiveSection(section as SuperAdminSection)} 
+          />
+        );
       case 'properties':
         return <PropertiesSection />;
       case 'users':
@@ -35,7 +40,12 @@ export default function SuperAdmin() {
       case 'security':
         return <SecuritySection />;
       default:
-        return <OverviewSection viewMode={viewMode} />;
+        return (
+          <OverviewSection 
+            viewMode={viewMode} 
+            onNavigateToSection={(section) => setActiveSection(section as SuperAdminSection)} 
+          />
+        );
     }
   };
 

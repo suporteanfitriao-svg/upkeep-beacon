@@ -30,6 +30,16 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 
@@ -65,6 +75,8 @@ export function PropertiesSection() {
   const [statusFilter, setStatusFilter] = useState('all');
   const [regionFilter, setRegionFilter] = useState('global');
   const [currentPage, setCurrentPage] = useState(1);
+  const [suspendDialogOpen, setSuspendDialogOpen] = useState(false);
+  const [propertyToSuspend, setPropertyToSuspend] = useState<Property | null>(null);
 
   useEffect(() => {
     fetchProperties();
@@ -198,18 +210,31 @@ export function PropertiesSection() {
     }
   };
 
-  const handleToggleStatus = (property: Property) => {
+  const handleSuspendClick = (property: Property) => {
     const currentStatus = getPropertyStatus(property);
-    const newStatus = currentStatus === 'inactive' ? 'ativar' : 'suspender';
+    if (currentStatus === 'inactive') {
+      // Ativar diretamente sem confirmação
+      setProperties(prev => prev.map(p => 
+        p.id === property.id ? { ...p, isActive: true } : p
+      ));
+      toast.success(`Propriedade "${property.name}" ativada com sucesso!`);
+    } else {
+      // Mostrar modal de confirmação para suspender
+      setPropertyToSuspend(property);
+      setSuspendDialogOpen(true);
+    }
+  };
+
+  const confirmSuspend = () => {
+    if (!propertyToSuspend) return;
     
-    // Update local state to toggle status
     setProperties(prev => prev.map(p => 
-      p.id === property.id 
-        ? { ...p, isActive: currentStatus === 'inactive' } 
-        : p
+      p.id === propertyToSuspend.id ? { ...p, isActive: false } : p
     ));
     
-    toast.success(`Propriedade "${property.name}" ${currentStatus === 'inactive' ? 'ativada' : 'suspensa'} com sucesso!`);
+    toast.success(`Propriedade "${propertyToSuspend.name}" suspensa com sucesso!`);
+    setSuspendDialogOpen(false);
+    setPropertyToSuspend(null);
   };
 
   const clearFilters = () => {
@@ -500,7 +525,7 @@ export function PropertiesSection() {
                               size="icon"
                               className="h-8 w-8 bg-green-100 text-green-700 hover:bg-green-200 dark:bg-green-900/30 dark:text-green-400"
                               title="Ativar"
-                              onClick={() => handleToggleStatus(property)}
+                              onClick={() => handleSuspendClick(property)}
                             >
                               <CheckCircle className="h-4 w-4" />
                             </Button>
@@ -510,7 +535,7 @@ export function PropertiesSection() {
                               size="icon"
                               className="h-8 w-8 bg-muted hover:bg-destructive/10 text-muted-foreground hover:text-destructive"
                               title="Suspender"
-                              onClick={() => handleToggleStatus(property)}
+                              onClick={() => handleSuspendClick(property)}
                             >
                               <Ban className="h-4 w-4" />
                             </Button>
@@ -583,6 +608,39 @@ export function PropertiesSection() {
           </div>
         </div>
       </div>
+
+      {/* Suspend Confirmation Modal */}
+      <AlertDialog open={suspendDialogOpen} onOpenChange={setSuspendDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2">
+              <Ban className="h-5 w-5 text-destructive" />
+              Confirmar Suspensão
+            </AlertDialogTitle>
+            <AlertDialogDescription className="space-y-2">
+              <p>
+                Você está prestes a suspender a propriedade{' '}
+                <strong className="text-foreground">"{propertyToSuspend?.name}"</strong>.
+              </p>
+              <p className="text-destructive/80">
+                Esta ação irá desativar temporariamente o acesso a esta propriedade no sistema.
+                Os usuários vinculados não poderão acessar agendas ou checklists enquanto a propriedade estiver suspensa.
+              </p>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => setPropertyToSuspend(null)}>
+              Cancelar
+            </AlertDialogCancel>
+            <AlertDialogAction
+              onClick={confirmSuspend}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              Sim, Suspender
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
