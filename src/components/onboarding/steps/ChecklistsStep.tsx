@@ -1,9 +1,10 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { ClipboardList, ArrowLeft, ArrowRight, Plus, Trash2, GripVertical } from 'lucide-react';
+import { ClipboardList, ArrowLeft, ArrowRight, Plus, Trash2, GripVertical, Loader2 } from 'lucide-react';
+import { supabase } from '@/integrations/supabase/client';
+import { toast } from 'sonner';
 
 interface ChecklistsStepProps {
   onNext: () => void;
@@ -14,25 +15,70 @@ interface ChecklistCategory {
   id: string;
   name: string;
   items: string[];
+  isNew?: boolean;
 }
 
 const defaultCategories: ChecklistCategory[] = [
-  { id: '1', name: 'Quarto', items: ['Trocar roupas de cama', 'Arrumar cama', 'Limpar armários', 'Limpar espelho'] },
-  { id: '2', name: 'Banheiro', items: ['Limpar vaso sanitário', 'Limpar box', 'Trocar toalhas', 'Repor sabonete'] },
-  { id: '3', name: 'Cozinha', items: ['Limpar fogão', 'Limpar geladeira', 'Lavar louças', 'Verificar mantimentos'] },
-  { id: '4', name: 'Sala', items: ['Aspirar sofá', 'Limpar mesa de centro', 'Organizar almofadas'] },
+  { id: '1', name: 'Quarto', items: ['Trocar roupas de cama', 'Arrumar cama', 'Limpar armários', 'Limpar espelho'], isNew: true },
+  { id: '2', name: 'Banheiro', items: ['Limpar vaso sanitário', 'Limpar box', 'Trocar toalhas', 'Repor sabonete'], isNew: true },
+  { id: '3', name: 'Cozinha', items: ['Limpar fogão', 'Limpar geladeira', 'Lavar louças', 'Verificar mantimentos'], isNew: true },
+  { id: '4', name: 'Sala', items: ['Aspirar sofá', 'Limpar mesa de centro', 'Organizar almofadas'], isNew: true },
 ];
 
 export function ChecklistsStep({ onNext, onBack }: ChecklistsStepProps) {
-  const [categories, setCategories] = useState<ChecklistCategory[]>(defaultCategories);
+  const [categories, setCategories] = useState<ChecklistCategory[]>([]);
   const [newCategoryName, setNewCategoryName] = useState('');
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    fetchChecklists();
+  }, []);
+
+  const fetchChecklists = async () => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        setCategories(defaultCategories);
+        setLoading(false);
+        return;
+      }
+
+      const { data, error } = await supabase
+        .from('default_checklists')
+        .select('*')
+        .eq('user_id', user.id)
+        .eq('is_active', true)
+        .order('created_at');
+
+      if (error) throw error;
+
+      if (data && data.length > 0) {
+        // Convert from DB format to component format
+        const mappedCategories: ChecklistCategory[] = data.map(d => ({
+          id: d.id,
+          name: d.name,
+          items: (d.items as { title: string; category: string }[])?.map(i => i.title) || [],
+        }));
+        setCategories(mappedCategories);
+      } else {
+        // Use default categories for new users
+        setCategories(defaultCategories);
+      }
+    } catch (error) {
+      console.error('Error fetching checklists:', error);
+      setCategories(defaultCategories);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const handleAddCategory = () => {
     if (!newCategoryName.trim()) return;
     
     setCategories(prev => [
       ...prev,
-      { id: Date.now().toString(), name: newCategoryName, items: [] }
+      { id: `temp-${Date.now()}`, name: newCategoryName, items: [], isNew: true }
     ]);
     setNewCategoryName('');
   };
@@ -58,6 +104,58 @@ export function ChecklistsStep({ onNext, onBack }: ChecklistsStepProps) {
         : c
     ));
   };
+
+  const handleSaveAndNext = async () => {
+    setSaving(true);
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        toast.error('Usuário não autenticado');
+        return;
+      }
+
+      // Delete existing checklists for this user and insert new ones
+      await supabase
+        .from('default_checklists')
+        .update({ is_active: false })
+        .eq('user_id', user.id);
+
+      // Insert each category as a separate checklist
+      for (const cat of categories) {
+        const items = cat.items.map(item => ({
+          id: crypto.randomUUID(),
+          title: item,
+          category: cat.name,
+        }));
+
+        const { error } = await supabase
+          .from('default_checklists')
+          .insert({
+            user_id: user.id,
+            name: cat.name,
+            items: items,
+          });
+
+        if (error) throw error;
+      }
+
+      toast.success('Checklists salvos com sucesso!');
+      onNext();
+    } catch (error) {
+      console.error('Error saving checklists:', error);
+      toast.error('Erro ao salvar checklists');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="max-w-3xl w-full flex items-center justify-center py-20">
+        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+      </div>
+    );
+  }
 
   return (
     <div className="max-w-3xl w-full">
@@ -139,9 +237,18 @@ export function ChecklistsStep({ onNext, onBack }: ChecklistsStepProps) {
           <ArrowLeft className="h-4 w-4 mr-2" />
           Voltar
         </Button>
-        <Button onClick={onNext}>
-          Próximo
-          <ArrowRight className="h-4 w-4 ml-2" />
+        <Button onClick={handleSaveAndNext} disabled={saving}>
+          {saving ? (
+            <>
+              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+              Salvando...
+            </>
+          ) : (
+            <>
+              Próximo
+              <ArrowRight className="h-4 w-4 ml-2" />
+            </>
+          )}
         </Button>
       </div>
     </div>

@@ -148,6 +148,140 @@ export type Database = {
           },
         ]
       }
+      default_checklists: {
+        Row: {
+          created_at: string
+          id: string
+          is_active: boolean
+          items: Json
+          name: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          items?: Json
+          name?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          items?: Json
+          name?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      house_rules: {
+        Row: {
+          created_at: string
+          description: string | null
+          id: string
+          is_active: boolean
+          priority: string
+          sort_order: number
+          title: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_active?: boolean
+          priority?: string
+          sort_order?: number
+          title: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_active?: boolean
+          priority?: string
+          sort_order?: number
+          title?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      inventory_categories: {
+        Row: {
+          created_at: string
+          id: string
+          is_active: boolean
+          name: string
+          sort_order: number
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          name: string
+          sort_order?: number
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          name?: string
+          sort_order?: number
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      inventory_items: {
+        Row: {
+          category_id: string
+          created_at: string
+          id: string
+          is_active: boolean
+          name: string
+          sort_order: number
+          updated_at: string
+        }
+        Insert: {
+          category_id: string
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          name: string
+          sort_order?: number
+          updated_at?: string
+        }
+        Update: {
+          category_id?: string
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          name?: string
+          sort_order?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "inventory_items_category_id_fkey"
+            columns: ["category_id"]
+            isOneToOne: false
+            referencedRelation: "inventory_categories"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       maintenance_issues: {
         Row: {
           assigned_to: string | null
@@ -244,6 +378,45 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      onboarding_settings: {
+        Row: {
+          auto_release_schedules: boolean
+          created_at: string
+          default_check_in_time: string | null
+          default_check_out_time: string | null
+          enable_notifications: boolean
+          id: string
+          require_photo_for_issues: boolean
+          require_photo_per_category: boolean
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          auto_release_schedules?: boolean
+          created_at?: string
+          default_check_in_time?: string | null
+          default_check_out_time?: string | null
+          enable_notifications?: boolean
+          id?: string
+          require_photo_for_issues?: boolean
+          require_photo_per_category?: boolean
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          auto_release_schedules?: boolean
+          created_at?: string
+          default_check_in_time?: string | null
+          default_check_out_time?: string | null
+          enable_notifications?: boolean
+          id?: string
+          require_photo_for_issues?: boolean
+          require_photo_per_category?: boolean
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
       }
       password_audit_logs: {
         Row: {
