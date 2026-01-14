@@ -217,6 +217,7 @@ export type Database = {
       inventory_categories: {
         Row: {
           created_at: string
+          description: string | null
           id: string
           is_active: boolean
           name: string
@@ -226,6 +227,7 @@ export type Database = {
         }
         Insert: {
           created_at?: string
+          description?: string | null
           id?: string
           is_active?: boolean
           name: string
@@ -235,6 +237,7 @@ export type Database = {
         }
         Update: {
           created_at?: string
+          description?: string | null
           id?: string
           is_active?: boolean
           name?: string
@@ -248,28 +251,37 @@ export type Database = {
         Row: {
           category_id: string
           created_at: string
+          details: string | null
           id: string
           is_active: boolean
           name: string
+          quantity: number
           sort_order: number
+          unit: string | null
           updated_at: string
         }
         Insert: {
           category_id: string
           created_at?: string
+          details?: string | null
           id?: string
           is_active?: boolean
           name: string
+          quantity?: number
           sort_order?: number
+          unit?: string | null
           updated_at?: string
         }
         Update: {
           category_id?: string
           created_at?: string
+          details?: string | null
           id?: string
           is_active?: boolean
           name?: string
+          quantity?: number
           sort_order?: number
+          unit?: string | null
           updated_at?: string
         }
         Relationships: [

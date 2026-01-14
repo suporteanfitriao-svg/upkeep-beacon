@@ -1,4 +1,4 @@
-import { Home, Users, ClipboardCheck, LogOut, Building2, Wrench } from 'lucide-react';
+import { Home, Users, ClipboardCheck, LogOut, Building2, Wrench, Package } from 'lucide-react';
 import { NavLink } from '@/components/NavLink';
 import { useAuth } from '@/hooks/useAuth';
 import { useUserRole } from '@/hooks/useUserRole';
@@ -29,6 +29,7 @@ const allMenuItems: MenuItem[] = [
   { title: 'Inicio', url: '/', icon: Home },
   { title: 'Propriedades', url: '/propriedades', icon: Building2, adminOnly: true },
   { title: 'Inspeção', url: '/inspecoes', icon: ClipboardCheck, adminOnly: true },
+  { title: 'Inventário', url: '/inventario', icon: Package, adminOnly: true },
   { title: 'Equipe', url: '/equipe', icon: Users, adminOnly: true },
   { title: 'Manutenção', url: '/manutencao', icon: Wrench, adminOnly: true },
 ];

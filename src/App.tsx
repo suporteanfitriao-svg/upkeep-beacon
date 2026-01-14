@@ -10,6 +10,7 @@ import Auth from "./pages/Auth";
 import Team from "./pages/Team";
 import Properties from "./pages/Properties";
 import Inspections from "./pages/Inspections";
+import Inventory from "./pages/Inventory";
 import Help from "./pages/Help";
 import Manutencao from "./pages/Manutencao";
 import Profile from "./pages/Profile";
@@ -61,6 +62,14 @@ const App = () => (
               element={
                 <ProtectedRoute>
                   <Inspections />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/inventario"
+              element={
+                <ProtectedRoute>
+                  <Inventory />
                 </ProtectedRoute>
               }
             />
