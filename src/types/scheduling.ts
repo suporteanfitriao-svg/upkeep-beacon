@@ -97,6 +97,7 @@ export interface DashboardStats {
   cleaning: number;
   completed: number;
   maintenanceAlerts: number;
+  delayed: number;
 }
 
 // Status flow validation

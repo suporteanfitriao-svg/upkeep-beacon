@@ -1,5 +1,5 @@
 import { cn } from '@/lib/utils';
-import { Clock, DoorOpen, Sparkles, Flag, AlertTriangle } from 'lucide-react';
+import { Clock, DoorOpen, Sparkles, Flag, AlertTriangle, Timer } from 'lucide-react';
 
 interface AdminStatusCardsProps {
   stats: {
@@ -8,6 +8,7 @@ interface AdminStatusCardsProps {
     cleaning: number;
     completed: number;
     maintenanceAlerts: number;
+    delayed: number;
   };
   onFilterByStatus: (status: string) => void;
   activeFilter: string;
@@ -55,6 +56,16 @@ const statusCards = [
     glowColor: 'bg-indigo-500/10',
   },
   {
+    key: 'delayed',
+    label: 'EM ATRASO',
+    icon: Timer,
+    bgLight: 'bg-[#FFF3E0]',
+    bgDark: 'dark:bg-orange-900/20',
+    textColor: 'text-orange-600 dark:text-orange-400',
+    iconColor: 'text-orange-600/60 dark:text-orange-400/60',
+    glowColor: 'bg-orange-500/10',
+  },
+  {
     key: 'maintenanceAlerts',
     label: 'DANOS / AVARIAS',
     icon: AlertTriangle,
@@ -68,7 +79,7 @@ const statusCards = [
 
 export function AdminStatusCards({ stats, onFilterByStatus, activeFilter }: AdminStatusCardsProps) {
   return (
-    <section className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-6 mb-10">
+    <section className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-6 mb-10">
       {statusCards.map((card) => {
         const count = stats[card.key as keyof typeof stats];
         const isActive = activeFilter === card.key;

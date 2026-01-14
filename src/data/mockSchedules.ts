@@ -181,11 +181,21 @@ export const mockSchedules: Schedule[] = [
 ];
 
 export const calculateStats = (schedules: Schedule[]): DashboardStats => {
+  const now = new Date();
+  
+  const delayed = schedules.filter(s => {
+    if (s.status !== 'released') return false;
+    const checkInTime = s.checkIn;
+    const oneHourFromNow = new Date(now.getTime() + 60 * 60 * 1000);
+    return checkInTime <= oneHourFromNow;
+  }).length;
+
   return {
     waiting: schedules.filter(s => s.status === 'waiting').length,
     released: schedules.filter(s => s.status === 'released').length,
     cleaning: schedules.filter(s => s.status === 'cleaning').length,
     completed: schedules.filter(s => s.status === 'completed').length,
     maintenanceAlerts: schedules.filter(s => s.maintenanceStatus !== 'ok').length,
+    delayed,
   };
 };

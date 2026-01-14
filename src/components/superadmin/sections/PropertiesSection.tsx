@@ -204,9 +204,12 @@ export function PropertiesSection() {
 
   // Apply all filters
   const filteredProperties = properties.filter(p => {
-    // Search filter
-    const matchesSearch = p.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      p.address?.toLowerCase().includes(searchTerm.toLowerCase());
+    // Search filter - includes property_code (PM-XXXXX)
+    const searchLower = searchTerm.toLowerCase();
+    const matchesSearch = 
+      p.name.toLowerCase().includes(searchLower) ||
+      p.address?.toLowerCase().includes(searchLower) ||
+      p.property_code?.toLowerCase().includes(searchLower);
     
     // Plan filter
     const owner = getOwner(properties.indexOf(p));
@@ -448,7 +451,7 @@ export function PropertiesSection() {
           <div className="relative w-full md:w-96">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <Input
-              placeholder="Buscar por nome, proprietário ou endereço..."
+              placeholder="Buscar por nome, código (PM-XXXXX) ou endereço..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               className="pl-10 bg-muted/50 border-border"
