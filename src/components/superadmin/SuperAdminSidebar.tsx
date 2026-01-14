@@ -9,7 +9,8 @@ import {
   CreditCard, 
   Shield,
   LogOut,
-  HelpCircle
+  HelpCircle,
+  ArrowLeft
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
@@ -72,6 +73,13 @@ export function SuperAdminSidebar({ activeSection, onSectionChange }: SuperAdmin
       </nav>
 
       <div className="p-4 mt-auto border-t border-border">
+        <button 
+          onClick={() => navigate('/')}
+          className="flex w-full items-center gap-3 px-4 py-3 rounded-xl bg-primary/10 text-primary hover:bg-primary/20 transition-colors mb-3"
+        >
+          <ArrowLeft className="h-5 w-5" />
+          <span className="font-medium">Voltar ao Dashboard</span>
+        </button>
         <div className="p-4 bg-muted/50 rounded-2xl mb-4">
           <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mb-2">
             Suporte Enterprise
