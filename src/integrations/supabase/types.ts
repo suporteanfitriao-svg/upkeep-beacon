@@ -227,6 +227,7 @@ export type Database = {
           description: string | null
           id: string
           notes: string | null
+          original_checklist_state: Json | null
           property_id: string | null
           property_name: string
           scheduled_date: string
@@ -248,6 +249,7 @@ export type Database = {
           description?: string | null
           id?: string
           notes?: string | null
+          original_checklist_state?: Json | null
           property_id?: string | null
           property_name: string
           scheduled_date: string
@@ -269,6 +271,7 @@ export type Database = {
           description?: string | null
           id?: string
           notes?: string | null
+          original_checklist_state?: Json | null
           property_id?: string | null
           property_name?: string
           scheduled_date?: string
@@ -349,6 +352,44 @@ export type Database = {
             columns: ["property_id"]
             isOneToOne: false
             referencedRelation: "properties"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      inventory_item_history: {
+        Row: {
+          action: string
+          changes: Json | null
+          created_at: string
+          id: string
+          item_id: string
+          user_id: string
+          user_name: string | null
+        }
+        Insert: {
+          action: string
+          changes?: Json | null
+          created_at?: string
+          id?: string
+          item_id: string
+          user_id: string
+          user_name?: string | null
+        }
+        Update: {
+          action?: string
+          changes?: Json | null
+          created_at?: string
+          id?: string
+          item_id?: string
+          user_id?: string
+          user_name?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "inventory_item_history_item_id_fkey"
+            columns: ["item_id"]
+            isOneToOne: false
+            referencedRelation: "inventory_items"
             referencedColumns: ["id"]
           },
         ]

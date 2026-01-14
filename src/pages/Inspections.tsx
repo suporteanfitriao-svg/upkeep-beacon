@@ -16,7 +16,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { 
   ClipboardCheck, Plus, Trash2, Loader2, Edit2, Calendar,
   Building2, User, Clock, Play, CheckCircle2, AlertCircle,
-  ChevronRight, Eye
+  ChevronRight, Eye, RotateCcw
 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
@@ -62,6 +62,7 @@ interface Inspection {
   assigned_to_name?: string;
   checklist_id?: string;
   checklist_state: ChecklistItem[];
+  original_checklist_state?: ChecklistItem[];
   notes?: string;
   completed_at?: string;
   completed_by?: string;
@@ -133,6 +134,9 @@ const Inspections = () => {
         checklist_state: Array.isArray(i.checklist_state) 
           ? (i.checklist_state as unknown as ChecklistItem[]) 
           : [],
+        original_checklist_state: Array.isArray(i.original_checklist_state) 
+          ? (i.original_checklist_state as unknown as ChecklistItem[]) 
+          : undefined,
       })));
     } catch (error) {
       console.error('Error fetching data:', error);
@@ -273,6 +277,11 @@ const Inspections = () => {
     try {
       const updateData: any = { status: newStatus };
       
+      // When starting inspection, save original checklist state
+      if (newStatus === 'in_progress' && selectedInspection.status === 'scheduled') {
+        updateData.original_checklist_state = JSON.parse(JSON.stringify(selectedInspection.checklist_state));
+      }
+      
       if (newStatus === 'completed') {
         const { data: { user } } = await supabase.auth.getUser();
         updateData.completed_at = new Date().toISOString();
@@ -305,6 +314,48 @@ const Inspections = () => {
     } catch (error) {
       console.error('Error updating status:', error);
       toast.error('Erro ao atualizar status');
+    } finally {
+      setUpdatingStatus(false);
+    }
+  };
+
+  const handleResetChecklist = async () => {
+    if (!selectedInspection) return;
+    
+    // Get original state (either saved or reset all to unchecked)
+    const originalState = selectedInspection.original_checklist_state 
+      || selectedInspection.checklist_state.map(item => ({ ...item, checked: false }));
+
+    if (!confirm('Tem certeza que deseja resetar o checklist? Todos os itens marcados serão desmarcados.')) return;
+
+    setUpdatingStatus(true);
+    try {
+      const { error } = await supabase
+        .from('inspections')
+        .update({ 
+          checklist_state: JSON.parse(JSON.stringify(originalState)) as Json,
+          status: 'in_progress', // Reset to in_progress if was completed
+          completed_at: null,
+          completed_by: null,
+          completed_by_name: null,
+        })
+        .eq('id', selectedInspection.id);
+
+      if (error) throw error;
+      
+      toast.success('Checklist resetado!');
+      setSelectedInspection({ 
+        ...selectedInspection, 
+        checklist_state: originalState,
+        status: 'in_progress',
+        completed_at: undefined,
+        completed_by: undefined,
+        completed_by_name: undefined,
+      });
+      fetchData();
+    } catch (error) {
+      console.error('Error resetting checklist:', error);
+      toast.error('Erro ao resetar checklist');
     } finally {
       setUpdatingStatus(false);
     }
@@ -787,10 +838,24 @@ const Inspections = () => {
                   <div>
                     <div className="flex items-center justify-between mb-3">
                       <p className="text-sm font-medium">Checklist</p>
-                      <Badge variant="secondary">
-                        {selectedInspection.checklist_state.filter(i => i.checked).length}/
-                        {selectedInspection.checklist_state.length}
-                      </Badge>
+                      <div className="flex items-center gap-2">
+                        {selectedInspection.checklist_state.some(i => i.checked) && (
+                          <Button 
+                            variant="ghost" 
+                            size="sm"
+                            onClick={handleResetChecklist}
+                            disabled={updatingStatus}
+                            className="text-orange-600 hover:text-orange-700 hover:bg-orange-50"
+                          >
+                            <RotateCcw className="h-3 w-3 mr-1" />
+                            Resetar
+                          </Button>
+                        )}
+                        <Badge variant="secondary">
+                          {selectedInspection.checklist_state.filter(i => i.checked).length}/
+                          {selectedInspection.checklist_state.length}
+                        </Badge>
+                      </div>
                     </div>
                     <ScrollArea className="h-[200px] rounded-lg border p-3">
                       <div className="space-y-2">
