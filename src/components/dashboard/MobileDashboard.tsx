@@ -1292,12 +1292,17 @@ export function MobileDashboard({ schedules, onScheduleClick, onStartCleaning, o
                       className="overflow-hidden rounded-2xl bg-white dark:bg-[#2d3138] shadow-soft transition-all border border-slate-100 dark:border-slate-700 text-left"
                     >
                       <div className="flex flex-row p-4 gap-4">
-                        <div 
-                          className="w-20 shrink-0 rounded-xl bg-slate-100 dark:bg-slate-800 bg-cover bg-center"
-                          style={{ backgroundImage: 'url("https://lh3.googleusercontent.com/aida-public/AB6AXuDJyH8o3WxyRm4SoiaW4QW43i8Xgk-U48CHl9sJlxmgb928H6O_ojBTPufAZfAVrK1R-9KdnhC2BOYyv9gNBVXZz5QFpUkBnYI-hq1NplLAQXtslQy_dvQ83JepoX3TA9_7MT2-40DQwr2vK0Vd1-v8sz-5IxoFsXiUKpLbOk5bN-qi4UmiodI7s8JeQLhs03Xlm6bd0gfamWWVOvDnEz0vQfDekw_9fjfLRjCVcT1ZlfwQ_hWpmLQAl2eYgUNQWrtkINO1NOYD6PJN")' }}
-                          role="img"
-                          aria-label="Interior do loft"
-                        />
+                        {schedule.propertyImageUrl ? (
+                          <img 
+                            src={schedule.propertyImageUrl}
+                            alt={schedule.propertyName}
+                            className="w-20 h-20 shrink-0 rounded-xl object-cover"
+                          />
+                        ) : (
+                          <div className="w-20 h-20 shrink-0 rounded-xl bg-slate-100 dark:bg-slate-800 flex items-center justify-center">
+                            <Building2 className="w-8 h-8 text-slate-400" />
+                          </div>
+                        )}
                         <div className="flex-1 flex flex-col justify-center">
                           <h3 className="text-base font-bold text-slate-900 dark:text-white leading-tight mb-1">{schedule.propertyName}</h3>
                           <div className="mt-1 flex flex-col">
