@@ -635,14 +635,14 @@ const Inspections = () => {
             <div className="space-y-2">
               <Label>Responsável</Label>
               <Select 
-                value={form.assigned_to} 
-                onValueChange={(value) => setForm(prev => ({ ...prev, assigned_to: value }))}
+                value={form.assigned_to || "none"} 
+                onValueChange={(value) => setForm(prev => ({ ...prev, assigned_to: value === "none" ? "" : value }))}
               >
                 <SelectTrigger>
                   <SelectValue placeholder="Selecione o responsável" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">Nenhum</SelectItem>
+                  <SelectItem value="none">Nenhum</SelectItem>
                   {teamMembers.map(m => (
                     <SelectItem key={m.id} value={m.id}>{m.name}</SelectItem>
                   ))}
@@ -654,14 +654,14 @@ const Inspections = () => {
               <div className="space-y-2">
                 <Label>Checklist</Label>
                 <Select 
-                  value={form.checklist_id} 
-                  onValueChange={(value) => setForm(prev => ({ ...prev, checklist_id: value }))}
+                  value={form.checklist_id || "none"} 
+                  onValueChange={(value) => setForm(prev => ({ ...prev, checklist_id: value === "none" ? "" : value }))}
                 >
                   <SelectTrigger>
                     <SelectValue placeholder="Selecione um checklist (opcional)" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="">Nenhum</SelectItem>
+                    <SelectItem value="none">Nenhum</SelectItem>
                     {availableChecklists.map(c => (
                       <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
                     ))}
