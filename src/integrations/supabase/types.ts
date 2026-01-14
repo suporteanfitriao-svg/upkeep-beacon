@@ -361,6 +361,8 @@ export type Database = {
           id: string
           is_active: boolean
           name: string
+          photo_taken_at: string | null
+          photo_url: string | null
           quantity: number
           sort_order: number
           unit: string | null
@@ -373,6 +375,8 @@ export type Database = {
           id?: string
           is_active?: boolean
           name: string
+          photo_taken_at?: string | null
+          photo_url?: string | null
           quantity?: number
           sort_order?: number
           unit?: string | null
@@ -385,6 +389,8 @@ export type Database = {
           id?: string
           is_active?: boolean
           name?: string
+          photo_taken_at?: string | null
+          photo_url?: string | null
           quantity?: number
           sort_order?: number
           unit?: string | null
