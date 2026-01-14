@@ -214,6 +214,101 @@ export type Database = {
         }
         Relationships: []
       }
+      inspections: {
+        Row: {
+          assigned_to: string | null
+          assigned_to_name: string | null
+          checklist_id: string | null
+          checklist_state: Json | null
+          completed_at: string | null
+          completed_by: string | null
+          completed_by_name: string | null
+          created_at: string
+          description: string | null
+          id: string
+          notes: string | null
+          property_id: string | null
+          property_name: string
+          scheduled_date: string
+          scheduled_time: string | null
+          status: string
+          title: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          assigned_to?: string | null
+          assigned_to_name?: string | null
+          checklist_id?: string | null
+          checklist_state?: Json | null
+          completed_at?: string | null
+          completed_by?: string | null
+          completed_by_name?: string | null
+          created_at?: string
+          description?: string | null
+          id?: string
+          notes?: string | null
+          property_id?: string | null
+          property_name: string
+          scheduled_date: string
+          scheduled_time?: string | null
+          status?: string
+          title: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          assigned_to?: string | null
+          assigned_to_name?: string | null
+          checklist_id?: string | null
+          checklist_state?: Json | null
+          completed_at?: string | null
+          completed_by?: string | null
+          completed_by_name?: string | null
+          created_at?: string
+          description?: string | null
+          id?: string
+          notes?: string | null
+          property_id?: string | null
+          property_name?: string
+          scheduled_date?: string
+          scheduled_time?: string | null
+          status?: string
+          title?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "inspections_assigned_to_fkey"
+            columns: ["assigned_to"]
+            isOneToOne: false
+            referencedRelation: "team_members"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "inspections_checklist_id_fkey"
+            columns: ["checklist_id"]
+            isOneToOne: false
+            referencedRelation: "property_checklists"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "inspections_completed_by_fkey"
+            columns: ["completed_by"]
+            isOneToOne: false
+            referencedRelation: "team_members"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "inspections_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: false
+            referencedRelation: "properties"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       inventory_categories: {
         Row: {
           created_at: string
