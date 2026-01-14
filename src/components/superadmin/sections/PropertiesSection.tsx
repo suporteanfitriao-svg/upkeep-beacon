@@ -77,7 +77,9 @@ export function PropertiesSection() {
   const [regionFilter, setRegionFilter] = useState('global');
   const [currentPage, setCurrentPage] = useState(1);
   const [suspendDialogOpen, setSuspendDialogOpen] = useState(false);
+  const [activateDialogOpen, setActivateDialogOpen] = useState(false);
   const [propertyToSuspend, setPropertyToSuspend] = useState<Property | null>(null);
+  const [propertyToActivate, setPropertyToActivate] = useState<Property | null>(null);
 
   useEffect(() => {
     fetchProperties();
@@ -225,11 +227,12 @@ export function PropertiesSection() {
     }
   };
 
-  const handleSuspendClick = async (property: Property) => {
+  const handleSuspendClick = (property: Property) => {
     const currentStatus = getPropertyStatus(property);
     if (currentStatus === 'inactive') {
-      // Ativar diretamente sem confirmação
-      await updatePropertyStatus(property, true);
+      // Mostrar modal de confirmação para ativar
+      setPropertyToActivate(property);
+      setActivateDialogOpen(true);
     } else {
       // Mostrar modal de confirmação para suspender
       setPropertyToSuspend(property);
@@ -264,6 +267,14 @@ export function PropertiesSection() {
     await updatePropertyStatus(propertyToSuspend, false);
     setSuspendDialogOpen(false);
     setPropertyToSuspend(null);
+  };
+
+  const confirmActivate = async () => {
+    if (!propertyToActivate) return;
+    
+    await updatePropertyStatus(propertyToActivate, true);
+    setActivateDialogOpen(false);
+    setPropertyToActivate(null);
   };
 
   const clearFilters = () => {
@@ -666,6 +677,39 @@ export function PropertiesSection() {
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
               Sim, Suspender
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Activate Confirmation Modal */}
+      <AlertDialog open={activateDialogOpen} onOpenChange={setActivateDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2">
+              <CheckCircle className="h-5 w-5 text-green-600" />
+              Confirmar Ativação
+            </AlertDialogTitle>
+            <AlertDialogDescription className="space-y-2">
+              <p>
+                Você está prestes a ativar a propriedade{' '}
+                <strong className="text-foreground">"{propertyToActivate?.name}"</strong>.
+              </p>
+              <p className="text-muted-foreground">
+                Esta ação irá restaurar o acesso a esta propriedade no sistema.
+                Os usuários vinculados poderão acessar agendas e checklists normalmente.
+              </p>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => setPropertyToActivate(null)}>
+              Cancelar
+            </AlertDialogCancel>
+            <AlertDialogAction
+              onClick={confirmActivate}
+              className="bg-green-600 text-white hover:bg-green-700"
+            >
+              Sim, Ativar
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
