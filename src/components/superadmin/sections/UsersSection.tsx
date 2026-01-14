@@ -1,6 +1,8 @@
 import { useEffect, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import { 
   RefreshCw,
   ChevronLeft,
@@ -8,7 +10,9 @@ import {
   KeyRound,
   History,
   UserX,
-  UserCheck
+  UserCheck,
+  Plus,
+  Loader2
 } from 'lucide-react';
 import {
   Table,
@@ -18,12 +22,29 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import { toast } from 'sonner';
 
 interface TeamMember {
   id: string;
   name: string;
   email: string;
   whatsapp: string;
+  cpf: string;
   role: 'admin' | 'manager' | 'cleaner';
   is_active: boolean;
   created_at: string;
@@ -46,6 +67,17 @@ export function UsersSection() {
   const [loading, setLoading] = useState(true);
   const [activeFilter, setActiveFilter] = useState<FilterTab>('all');
   const [currentPage, setCurrentPage] = useState(1);
+  
+  // Create user modal state
+  const [createDialogOpen, setCreateDialogOpen] = useState(false);
+  const [creating, setCreating] = useState(false);
+  const [newUser, setNewUser] = useState({
+    name: '',
+    email: '',
+    cpf: '',
+    whatsapp: '',
+    role: 'cleaner' as 'admin' | 'manager' | 'cleaner',
+  });
 
   useEffect(() => {
     fetchMembers();
@@ -65,6 +97,59 @@ export function UsersSection() {
       console.error('Error fetching members:', error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleCreateUser = async () => {
+    if (!newUser.name.trim() || !newUser.email.trim() || !newUser.cpf.trim() || !newUser.whatsapp.trim()) {
+      toast.error('Preencha todos os campos obrigatórios');
+      return;
+    }
+
+    // Validate email format
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(newUser.email.trim())) {
+      toast.error('E-mail inválido');
+      return;
+    }
+
+    // Check for duplicate email
+    const emailExists = members.some(m => m.email.toLowerCase() === newUser.email.trim().toLowerCase());
+    if (emailExists) {
+      toast.error('Este e-mail já está cadastrado');
+      return;
+    }
+
+    setCreating(true);
+    try {
+      const { data, error } = await supabase
+        .from('team_members')
+        .insert([{
+          name: newUser.name.trim(),
+          email: newUser.email.trim().toLowerCase(),
+          cpf: newUser.cpf.trim(),
+          whatsapp: newUser.whatsapp.trim(),
+          role: newUser.role,
+          is_active: true,
+        }])
+        .select()
+        .single();
+
+      if (error) throw error;
+
+      setMembers(prev => [...prev, data]);
+      setNewUser({ name: '', email: '', cpf: '', whatsapp: '', role: 'cleaner' });
+      setCreateDialogOpen(false);
+      toast.success('Usuário criado com sucesso!');
+    } catch (error: any) {
+      console.error('Error creating user:', error);
+      if (error?.code === '23505') {
+        toast.error('Este e-mail ou CPF já está cadastrado');
+      } else {
+        toast.error('Erro ao criar usuário');
+      }
+    } finally {
+      setCreating(false);
     }
   };
 
@@ -159,24 +244,34 @@ export function UsersSection() {
 
   return (
     <div className="space-y-6">
-      {/* Filter Tabs */}
-      <div className="flex flex-wrap items-center gap-3">
-        {filterTabs.map((tab) => (
-          <button
-            key={tab.key}
-            onClick={() => {
-              setActiveFilter(tab.key);
-              setCurrentPage(1);
-            }}
-            className={`px-4 py-2 rounded-full text-xs font-bold transition-all ${
-              activeFilter === tab.key
-                ? 'bg-primary text-primary-foreground shadow-md'
-                : 'bg-card text-muted-foreground border border-border hover:border-primary hover:text-primary'
-            }`}
-          >
-            {tab.label}
-          </button>
-        ))}
+      {/* Header with Create Button */}
+      <div className="flex flex-wrap items-center justify-between gap-4">
+        <div className="flex flex-wrap items-center gap-3">
+          {filterTabs.map((tab) => (
+            <button
+              key={tab.key}
+              onClick={() => {
+                setActiveFilter(tab.key);
+                setCurrentPage(1);
+              }}
+              className={`px-4 py-2 rounded-full text-xs font-bold transition-all ${
+                activeFilter === tab.key
+                  ? 'bg-primary text-primary-foreground shadow-md'
+                  : 'bg-card text-muted-foreground border border-border hover:border-primary hover:text-primary'
+              }`}
+            >
+              {tab.label}
+            </button>
+          ))}
+        </div>
+        
+        <Button 
+          onClick={() => setCreateDialogOpen(true)}
+          className="gap-2"
+        >
+          <Plus className="h-4 w-4" />
+          Novo Usuário
+        </Button>
       </div>
 
       {/* Users Table */}
@@ -372,6 +467,99 @@ export function UsersSection() {
           </div>
         </div>
       </div>
+
+      {/* Create User Dialog */}
+      <Dialog open={createDialogOpen} onOpenChange={setCreateDialogOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Criar Novo Usuário</DialogTitle>
+            <DialogDescription>
+              Preencha os dados para criar um novo usuário no sistema.
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label htmlFor="new-user-name">Nome Completo *</Label>
+              <Input
+                id="new-user-name"
+                placeholder="Nome do usuário"
+                value={newUser.name}
+                onChange={(e) => setNewUser(prev => ({ ...prev, name: e.target.value }))}
+              />
+            </div>
+            
+            <div className="space-y-2">
+              <Label htmlFor="new-user-email">E-mail *</Label>
+              <Input
+                id="new-user-email"
+                type="email"
+                placeholder="email@exemplo.com"
+                value={newUser.email}
+                onChange={(e) => setNewUser(prev => ({ ...prev, email: e.target.value }))}
+              />
+            </div>
+            
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="new-user-cpf">CPF *</Label>
+                <Input
+                  id="new-user-cpf"
+                  placeholder="000.000.000-00"
+                  value={newUser.cpf}
+                  onChange={(e) => setNewUser(prev => ({ ...prev, cpf: e.target.value }))}
+                />
+              </div>
+              
+              <div className="space-y-2">
+                <Label htmlFor="new-user-whatsapp">WhatsApp *</Label>
+                <Input
+                  id="new-user-whatsapp"
+                  placeholder="(00) 00000-0000"
+                  value={newUser.whatsapp}
+                  onChange={(e) => setNewUser(prev => ({ ...prev, whatsapp: e.target.value }))}
+                />
+              </div>
+            </div>
+            
+            <div className="space-y-2">
+              <Label>Nível de Acesso *</Label>
+              <Select 
+                value={newUser.role} 
+                onValueChange={(value: 'admin' | 'manager' | 'cleaner') => setNewUser(prev => ({ ...prev, role: value }))}
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="admin">Administrador</SelectItem>
+                  <SelectItem value="manager">Gerente</SelectItem>
+                  <SelectItem value="cleaner">Limpeza</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+          
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setCreateDialogOpen(false)}>
+              Cancelar
+            </Button>
+            <Button onClick={handleCreateUser} disabled={creating}>
+              {creating ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  Criando...
+                </>
+              ) : (
+                <>
+                  <Plus className="h-4 w-4 mr-2" />
+                  Criar Usuário
+                </>
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

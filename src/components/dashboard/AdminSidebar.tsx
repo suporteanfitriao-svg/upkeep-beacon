@@ -59,7 +59,7 @@ export function AdminSidebar() {
             <img src={logo} alt="Super Host Lab" className="w-8 h-8 object-contain" />
           </div>
           {!collapsed && (
-            <h1 className="font-bold text-lg tracking-tight text-foreground">AdminPanel</h1>
+            <h1 className="font-bold text-lg tracking-tight text-foreground">Minhas Propriedades</h1>
           )}
         </div>
       </SidebarHeader>
