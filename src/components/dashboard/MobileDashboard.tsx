@@ -601,7 +601,7 @@ export function MobileDashboard({ schedules, onScheduleClick, onStartCleaning, o
                     return (
                       <div
                         key={inspection.id}
-                        className="overflow-hidden rounded-2xl bg-white dark:bg-[#2d3138] shadow-soft border border-slate-100 dark:border-slate-700"
+                        className="overflow-hidden rounded-2xl bg-white dark:bg-[#2d3138] shadow-soft border-2 border-purple-300 dark:border-purple-700"
                       >
                         <div className="p-4">
                           <div className="flex items-start gap-3">
