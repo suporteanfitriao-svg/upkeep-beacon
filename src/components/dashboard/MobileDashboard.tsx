@@ -240,6 +240,18 @@ export function MobileDashboard({ schedules, onScheduleClick, onStartCleaning, o
   const inProgressSchedules = selectedDaySchedules.filter(s => s.status === 'cleaning');
   const completedSchedules = selectedDaySchedules.filter(s => s.status === 'completed');
 
+  // Filter inspections for selected date
+  const selectedDayInspections = useMemo(() => {
+    return inspections.filter(i => {
+      const inspectionDate = parseISO(i.scheduled_date);
+      return isSameDay(inspectionDate, selectedDate);
+    });
+  }, [inspections, selectedDate]);
+
+  // Separate inspections by status
+  const scheduledInspections = selectedDayInspections.filter(i => i.status === 'scheduled');
+  const inProgressInspections = selectedDayInspections.filter(i => i.status === 'in_progress');
+
   // Find next checkout
   const nextCheckout = useMemo(() => {
     return selectedDaySchedules.find(s => 
@@ -598,121 +610,6 @@ export function MobileDashboard({ schedules, onScheduleClick, onStartCleaning, o
               </div>
             )}
 
-            {/* Inspections Section */}
-            {inspections.length > 0 && (
-              <div className="mb-6">
-                <h3 className="text-sm font-semibold text-muted-foreground mb-3 flex items-center gap-2">
-                  <ClipboardCheck className="w-4 h-4" />
-                  Minhas Inspeções
-                </h3>
-                <div className="space-y-3">
-                  {inspections.map(inspection => {
-                    const isScheduled = inspection.status === 'scheduled';
-                    const isInProgress = inspection.status === 'in_progress';
-                    const completedItems = inspection.checklist_state.filter(i => i.checked).length;
-                    const totalItems = inspection.checklist_state.length;
-                    
-                    return (
-                      <div
-                        key={inspection.id}
-                        className="overflow-hidden rounded-2xl bg-white dark:bg-[#2d3138] shadow-soft border-2 border-purple-300 dark:border-purple-700"
-                      >
-                        {/* Card Header with Image - Like schedule cards */}
-                        <div className="flex flex-row p-4 gap-4">
-                          {inspection.property_image_url ? (
-                            <img 
-                              src={inspection.property_image_url}
-                              alt={inspection.property_name}
-                              className="w-20 h-20 shrink-0 rounded-xl object-cover"
-                            />
-                          ) : (
-                            <div className="w-20 h-20 shrink-0 rounded-xl bg-purple-100 dark:bg-purple-900/30 flex items-center justify-center">
-                              <ClipboardCheck className="w-8 h-8 text-purple-500" />
-                            </div>
-                          )}
-                          <div className="flex-1 flex flex-col justify-center min-w-0">
-                            <div className="flex items-center gap-2 mb-1 flex-wrap">
-                              <Badge variant="outline" className="bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300 border-purple-300 dark:border-purple-700 text-[10px] font-bold uppercase tracking-wide">
-                                Inspeção
-                              </Badge>
-                              <span className={cn(
-                                "rounded-full px-2 py-0.5 text-xs font-bold",
-                                isScheduled && "bg-blue-100 dark:bg-blue-900/30 text-blue-700",
-                                isInProgress && "bg-yellow-100 dark:bg-yellow-900/30 text-yellow-700"
-                              )}>
-                                {isScheduled ? 'Agendada' : 'Em Andamento'}
-                              </span>
-                            </div>
-                            <h4 className="font-bold text-foreground truncate">{inspection.property_name}</h4>
-                            <p className="text-sm text-muted-foreground flex items-center gap-1">
-                              <Clock className="w-3.5 h-3.5" />
-                              {format(parseISO(inspection.scheduled_date), "dd/MM", { locale: ptBR })}
-                              {inspection.scheduled_time && ` às ${inspection.scheduled_time.slice(0, 5)}`}
-                            </p>
-                            {totalItems > 0 && (
-                              <p className="text-xs text-muted-foreground mt-1">
-                                Checklist: {completedItems}/{totalItems}
-                              </p>
-                            )}
-                          </div>
-                        </div>
-                        
-                        {/* Footer with Action Button and Status */}
-                        <div className="border-t border-purple-200 dark:border-purple-800 bg-purple-50 dark:bg-purple-900/20 px-4 py-3 flex items-center justify-between">
-                          {isScheduled && (
-                            <button
-                              onClick={async () => {
-                                const success = await updateInspectionStatus(inspection.id, 'in_progress');
-                                if (success) {
-                                  toast.success('Inspeção iniciada!');
-                                } else {
-                                  toast.error('Erro ao iniciar inspeção');
-                                }
-                              }}
-                              className="flex items-center gap-2 px-4 py-2 rounded-xl bg-primary text-white font-semibold text-sm transition-all active:scale-[0.98]"
-                            >
-                              <Play className="w-4 h-4" />
-                              Iniciar Inspeção
-                            </button>
-                          )}
-                          {isInProgress && (
-                            <div className="flex gap-2 w-full">
-                              <button
-                                onClick={() => navigate(`/inspecoes?inspection=${inspection.id}`)}
-                                className="flex-1 flex items-center justify-center gap-2 px-3 py-2 rounded-xl bg-slate-200 dark:bg-slate-700 text-foreground font-semibold text-sm transition-all active:scale-[0.98]"
-                              >
-                                <ClipboardCheck className="w-4 h-4" />
-                                Checklist
-                              </button>
-                              <button
-                                onClick={async () => {
-                                  const success = await updateInspectionStatus(inspection.id, 'completed');
-                                  if (success) {
-                                    toast.success('Inspeção finalizada!');
-                                    refetchInspections();
-                                  } else {
-                                    toast.error('Erro ao finalizar inspeção');
-                                  }
-                                }}
-                                className="flex-1 flex items-center justify-center gap-2 px-3 py-2 rounded-xl bg-green-500 text-white font-semibold text-sm transition-all active:scale-[0.98]"
-                              >
-                                <CheckCircle2 className="w-4 h-4" />
-                                Finalizar
-                              </button>
-                            </div>
-                          )}
-                          {isScheduled && (
-                            <span className="text-xs font-medium text-purple-600 dark:text-purple-400">
-                              {inspection.title}
-                            </span>
-                          )}
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-            )}
 
           </main>
         </div>
@@ -1073,12 +970,12 @@ export function MobileDashboard({ schedules, onScheduleClick, onStartCleaning, o
               <h2 className="text-[26px] font-bold leading-tight text-slate-900 dark:text-white tracking-tight">
                 {isSelectedToday ? 'Hoje' : format(selectedDate, "d 'de' MMMM", { locale: ptBR })}
               </h2>
-              <span className="text-sm font-semibold text-primary">{selectedDaySchedules.length} Tarefas</span>
+              <span className="text-sm font-semibold text-primary">{selectedDaySchedules.length + selectedDayInspections.length} Tarefas</span>
             </div>
 
             <div className="px-6 flex flex-col gap-4">
-              {/* Empty state when no schedules for today */}
-              {selectedDaySchedules.length === 0 && (
+              {/* Empty state when no schedules or inspections for today */}
+              {selectedDaySchedules.length === 0 && selectedDayInspections.length === 0 && (
                 <div className="py-8 flex flex-col items-center text-center">
                   <div className="w-16 h-16 bg-slate-100 dark:bg-slate-800 rounded-full flex items-center justify-center mb-3">
                     <Calendar className="h-8 w-8 text-slate-300 dark:text-slate-600" />
@@ -1093,6 +990,140 @@ export function MobileDashboard({ schedules, onScheduleClick, onStartCleaning, o
                   </p>
                 </div>
               )}
+
+              {/* Scheduled Inspections */}
+              {scheduledInspections.map(inspection => (
+                <div 
+                  key={inspection.id}
+                  className="overflow-hidden rounded-2xl bg-white dark:bg-[#2d3138] shadow-soft transition-all hover:shadow-md border-2 border-purple-300 dark:border-purple-700"
+                >
+                  <div className="flex flex-row p-4 gap-4">
+                    <div className="flex-1 flex flex-col justify-between">
+                      <div>
+                        <div className="mb-1 flex items-center gap-1.5">
+                          <span className="inline-flex h-2 w-2 rounded-full bg-purple-500 animate-pulse" />
+                          <span className="text-xs font-bold uppercase tracking-wider text-purple-600 dark:text-purple-400">Inspeção</span>
+                        </div>
+                        <h3 className="text-lg font-bold text-slate-900 dark:text-white leading-tight mb-2">{inspection.property_name}</h3>
+                        <div className="flex flex-col">
+                          <span className="text-[10px] font-bold uppercase tracking-wider text-[#8A8B88] mb-0.5">Agendado para</span>
+                          <div className="flex items-center gap-1 text-[#8A8B88]">
+                            <Clock className="w-4 h-4" />
+                            <p className="text-sm font-bold">
+                              {inspection.scheduled_time ? inspection.scheduled_time.slice(0, 5) : 'A definir'}
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+                      <button 
+                        onClick={async () => {
+                          const success = await updateInspectionStatus(inspection.id, 'in_progress');
+                          if (success) {
+                            toast.success('Inspeção iniciada!');
+                          } else {
+                            toast.error('Erro ao iniciar inspeção');
+                          }
+                        }}
+                        className="mt-4 flex w-fit items-center gap-2 rounded-lg bg-purple-600 px-4 py-2.5 text-sm font-bold text-white transition-colors hover:bg-purple-700 active:bg-purple-700"
+                      >
+                        <Play className="w-5 h-5" />
+                        Iniciar Inspeção
+                      </button>
+                    </div>
+                    {inspection.property_image_url ? (
+                      <img 
+                        src={inspection.property_image_url} 
+                        alt={inspection.property_name}
+                        className="w-28 shrink-0 rounded-xl object-cover"
+                      />
+                    ) : (
+                      <div className="w-28 shrink-0 rounded-xl bg-purple-100 dark:bg-purple-900/30 flex items-center justify-center">
+                        <ClipboardCheck className="w-8 h-8 text-purple-500" />
+                      </div>
+                    )}
+                  </div>
+                  <div className="border-t border-purple-200 dark:border-purple-800 bg-purple-50 dark:bg-purple-900/20 px-4 py-2 flex justify-between items-center">
+                    <span className="text-xs font-medium text-purple-600 dark:text-purple-400">
+                      {inspection.title}
+                    </span>
+                    <span className="text-xs font-medium text-[#8A8B88]">Agendada</span>
+                  </div>
+                </div>
+              ))}
+
+              {/* In Progress Inspections */}
+              {inProgressInspections.map(inspection => {
+                const completedItems = inspection.checklist_state.filter(i => i.checked).length;
+                const totalItems = inspection.checklist_state.length;
+                
+                return (
+                  <div 
+                    key={inspection.id}
+                    className="overflow-hidden rounded-2xl bg-white dark:bg-[#2d3138] shadow-soft transition-all hover:shadow-md border-2 border-purple-300 dark:border-purple-700"
+                  >
+                    <div className="flex flex-row p-4 gap-4">
+                      <div className="flex-1 flex flex-col justify-between">
+                        <div>
+                          <div className="mb-1 flex items-center gap-1.5">
+                            <span className="inline-flex h-2 w-2 rounded-full bg-[#E0C051] animate-pulse" />
+                            <span className="text-xs font-bold uppercase tracking-wider text-purple-600 dark:text-purple-400">Inspeção</span>
+                            <span className="text-xs font-bold uppercase tracking-wider text-[#E0C051]">• Em Andamento</span>
+                          </div>
+                          <h3 className="text-lg font-bold text-slate-900 dark:text-white leading-tight mb-2">{inspection.property_name}</h3>
+                          <div className="flex flex-col">
+                            <span className="text-[10px] font-bold uppercase tracking-wider text-[#8A8B88] mb-0.5">Progresso do checklist</span>
+                            <div className="flex items-center gap-1 text-[#8A8B88]">
+                              <ClipboardCheck className="w-4 h-4" />
+                              <p className="text-sm font-bold">{completedItems}/{totalItems} itens</p>
+                            </div>
+                          </div>
+                        </div>
+                        <div className="mt-4 flex gap-2">
+                          <button 
+                            onClick={() => navigate(`/inspecoes?inspection=${inspection.id}`)}
+                            className="flex items-center gap-2 rounded-lg bg-slate-200 dark:bg-slate-700 px-3 py-2.5 text-sm font-bold text-foreground transition-colors hover:bg-slate-300 active:bg-slate-300"
+                          >
+                            <ClipboardCheck className="w-4 h-4" />
+                            Checklist
+                          </button>
+                          <button 
+                            onClick={async () => {
+                              const success = await updateInspectionStatus(inspection.id, 'completed');
+                              if (success) {
+                                toast.success('Inspeção finalizada!');
+                                refetchInspections();
+                              } else {
+                                toast.error('Erro ao finalizar inspeção');
+                              }
+                            }}
+                            className="flex items-center gap-2 rounded-lg bg-green-500 px-3 py-2.5 text-sm font-bold text-white transition-colors hover:bg-green-600 active:bg-green-600"
+                          >
+                            <CheckCircle2 className="w-4 h-4" />
+                            Finalizar
+                          </button>
+                        </div>
+                      </div>
+                      {inspection.property_image_url ? (
+                        <img 
+                          src={inspection.property_image_url} 
+                          alt={inspection.property_name}
+                          className="w-28 shrink-0 rounded-xl object-cover"
+                        />
+                      ) : (
+                        <div className="w-28 shrink-0 rounded-xl bg-purple-100 dark:bg-purple-900/30 flex items-center justify-center">
+                          <ClipboardCheck className="w-8 h-8 text-purple-500" />
+                        </div>
+                      )}
+                    </div>
+                    <div className="border-t border-purple-200 dark:border-purple-800 bg-purple-50 dark:bg-purple-900/20 px-4 py-2 flex justify-between items-center">
+                      <span className="text-xs font-medium text-purple-600 dark:text-purple-400">
+                        {inspection.title}
+                      </span>
+                      <span className="text-xs font-medium text-[#E0C051]">Em andamento</span>
+                    </div>
+                  </div>
+                );
+              })}
 
               {/* All Pending Cards - following the same pattern */}
               {pendingSchedules.map(schedule => (
