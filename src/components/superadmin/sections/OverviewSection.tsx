@@ -21,9 +21,11 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { PieChart, Pie, Cell, ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip } from 'recharts';
+import { toast } from 'sonner';
 
 interface OverviewSectionProps {
   viewMode: 'global' | 'regional';
+  onNavigateToSection?: (section: string) => void;
 }
 
 interface GlobalStats {
@@ -41,7 +43,7 @@ interface AlertStats {
   lateCleanings: number;
 }
 
-export function OverviewSection({ viewMode }: OverviewSectionProps) {
+export function OverviewSection({ viewMode, onNavigateToSection }: OverviewSectionProps) {
   const [stats, setStats] = useState<GlobalStats>({
     totalProperties: 0,
     activeUsers: 0,
@@ -203,7 +205,11 @@ export function OverviewSection({ viewMode }: OverviewSectionProps) {
       icon: AlertTriangle,
       bgColor: 'bg-destructive',
       containerBg: 'bg-destructive/5 border-destructive/20',
-      textColor: 'text-destructive'
+      textColor: 'text-destructive',
+      action: () => {
+        onNavigateToSection?.('properties');
+        toast.info('Navegando para propriedades com erros de sincronização');
+      }
     },
     {
       label: 'Propriedades sem Checklist',
@@ -211,7 +217,11 @@ export function OverviewSection({ viewMode }: OverviewSectionProps) {
       icon: FileWarning,
       bgColor: 'bg-amber-500',
       containerBg: 'bg-amber-500/5 border-amber-500/20',
-      textColor: 'text-amber-600'
+      textColor: 'text-amber-600',
+      action: () => {
+        onNavigateToSection?.('properties');
+        toast.info('Navegando para propriedades sem checklist');
+      }
     },
     {
       label: 'Limpezas Atrasadas',
@@ -219,7 +229,10 @@ export function OverviewSection({ viewMode }: OverviewSectionProps) {
       icon: Clock,
       bgColor: 'bg-orange-500',
       containerBg: 'bg-orange-500/5 border-orange-500/20',
-      textColor: 'text-orange-600'
+      textColor: 'text-orange-600',
+      action: () => {
+        toast.info('Abrindo lista de limpezas atrasadas...');
+      }
     },
   ];
 
@@ -277,9 +290,10 @@ export function OverviewSection({ viewMode }: OverviewSectionProps) {
         </div>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           {alertCards.map((alert, index) => (
-            <div 
+            <button 
               key={index}
-              className={`flex items-center gap-5 ${alert.containerBg} border p-5 rounded-2xl cursor-pointer hover:shadow-md transition-shadow`}
+              onClick={alert.action}
+              className={`flex items-center gap-5 ${alert.containerBg} border p-5 rounded-2xl cursor-pointer hover:shadow-md transition-all hover:scale-[1.01] w-full text-left`}
             >
               <div className={`w-12 h-12 ${alert.bgColor} rounded-xl flex items-center justify-center text-white shadow-lg shrink-0`}>
                 <alert.icon className="h-5 w-5" />
@@ -292,10 +306,10 @@ export function OverviewSection({ viewMode }: OverviewSectionProps) {
                   {alert.label}
                 </p>
               </div>
-              <button className={`ml-auto ${alert.textColor}/40 hover:${alert.textColor}`}>
+              <div className={`ml-auto ${alert.textColor}/40 hover:${alert.textColor}`}>
                 <ChevronRight className="h-5 w-5" />
-              </button>
-            </div>
+              </div>
+            </button>
           ))}
         </div>
       </section>
