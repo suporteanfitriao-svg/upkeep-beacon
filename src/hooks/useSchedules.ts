@@ -499,10 +499,11 @@ export function useSchedules() {
 export function calculateStats(schedules: Schedule[]) {
   const now = new Date();
   
-  // Calculate delayed: status is 'released' (not started cleaning) AND 
+  // Calculate delayed: status is 'waiting' or 'released' (cleaning not started) AND 
   // less than 1 hour until check-in time
   const delayed = schedules.filter(s => {
-    if (s.status !== 'released') return false;
+    // Only consider schedules that haven't started cleaning
+    if (s.status !== 'waiting' && s.status !== 'released') return false;
     
     // Check-in time is when the next guest arrives
     const checkInTime = s.checkIn;
