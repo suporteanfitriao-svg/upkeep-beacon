@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Schedule, ScheduleStatus, STATUS_FLOW, STATUS_LABELS, STATUS_ALLOWED_ROLES } from '@/types/scheduling';
 import { cn } from '@/lib/utils';
-import { AlertTriangle, Check, Clock, Sparkles, ChevronDown, ChevronUp, ExternalLink, User, Timer, Play, CircleCheck, KeyRound } from 'lucide-react';
+import { AlertTriangle, Check, Clock, Sparkles, ChevronDown, ChevronUp, ExternalLink, User, Timer, Play, CircleCheck, KeyRound, MessageSquare, Send } from 'lucide-react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { AssignCleanerPopover } from './AssignCleanerPopover';
@@ -117,6 +117,8 @@ export function AdminScheduleRow({ schedule, onClick, onScheduleUpdated }: Admin
   }>({ open: false, targetStatus: null, isRelease: false });
   const [passwordMode, setPasswordMode] = useState<'ical' | 'manual' | 'global' | null>(null);
   const [showPasswordModal, setShowPasswordModal] = useState(false);
+  const [adminNotes, setAdminNotes] = useState(schedule.notes || '');
+  const [isSavingNotes, setIsSavingNotes] = useState(false);
 
   const statusStyle = statusConfig[localSchedule.status];
   const hasIssue = localSchedule.maintenanceStatus !== 'ok';
@@ -159,6 +161,7 @@ export function AdminScheduleRow({ schedule, onClick, onScheduleUpdated }: Admin
   // Sync with parent schedule updates
   useEffect(() => {
     setLocalSchedule(schedule);
+    setAdminNotes(schedule.notes || '');
   }, [schedule]);
 
   const handleAssigned = (cleanerName: string, cleanerTeamMemberId: string) => {
@@ -179,6 +182,30 @@ export function AdminScheduleRow({ schedule, onClick, onScheduleUpdated }: Admin
     };
     setLocalSchedule(updated);
     onScheduleUpdated?.(updated);
+  };
+
+  const handleSaveNotes = async () => {
+    if (!canManage || adminNotes === localSchedule.notes) return;
+    
+    setIsSavingNotes(true);
+    try {
+      const { error } = await supabase
+        .from('schedules')
+        .update({ notes: adminNotes })
+        .eq('id', localSchedule.id);
+
+      if (error) throw error;
+
+      const updated = { ...localSchedule, notes: adminNotes };
+      setLocalSchedule(updated);
+      onScheduleUpdated?.(updated);
+      toast.success('Observação salva!');
+    } catch (error) {
+      console.error('Error saving notes:', error);
+      toast.error('Erro ao salvar observação');
+    } finally {
+      setIsSavingNotes(false);
+    }
   };
 
   // Cleaner cannot reassign during cleaning, only admin can
@@ -684,6 +711,70 @@ export function AdminScheduleRow({ schedule, onClick, onScheduleUpdated }: Admin
                   <ExternalLink className="w-4 h-4" />
                   Acessar Detalhes
                 </Button>
+              </div>
+            </div>
+
+            {/* Observations Section */}
+            <div className="px-5 pb-5 pt-0 grid grid-cols-1 md:grid-cols-2 gap-4">
+              {/* Admin Notes - Editable */}
+              <div className="bg-muted/30 rounded-xl p-4">
+                <div className="flex items-center justify-between mb-3">
+                  <div className="flex items-center gap-2">
+                    <MessageSquare className="w-4 h-4 text-muted-foreground" />
+                    <span className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
+                      Observação para o Cleaner
+                    </span>
+                  </div>
+                  {canManage && adminNotes !== localSchedule.notes && (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="h-7 gap-1 text-xs"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleSaveNotes();
+                      }}
+                      disabled={isSavingNotes}
+                    >
+                      <Send className="w-3 h-3" />
+                      {isSavingNotes ? 'Salvando...' : 'Salvar'}
+                    </Button>
+                  )}
+                </div>
+                {canManage ? (
+                  <textarea
+                    value={adminNotes}
+                    onChange={(e) => setAdminNotes(e.target.value)}
+                    onClick={(e) => e.stopPropagation()}
+                    className="w-full h-20 bg-background/50 border border-border rounded-lg p-2 text-sm text-foreground placeholder:text-muted-foreground resize-none focus:outline-none focus:ring-2 focus:ring-primary/20"
+                    placeholder="Adicione observações que o cleaner verá ao abrir a tarefa..."
+                  />
+                ) : (
+                  <p className="text-sm text-foreground">
+                    {localSchedule.notes || 'Sem observações'}
+                  </p>
+                )}
+              </div>
+
+              {/* Cleaner Observations - Read Only for Admin */}
+              <div className="bg-muted/30 rounded-xl p-4">
+                <div className="flex items-center gap-2 mb-3">
+                  <MessageSquare className="w-4 h-4 text-primary" />
+                  <span className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
+                    Observações do Cleaner
+                  </span>
+                </div>
+                <div className="min-h-[80px] bg-background/50 border border-border rounded-lg p-2">
+                  {localSchedule.cleanerObservations ? (
+                    <p className="text-sm text-foreground whitespace-pre-wrap">
+                      {localSchedule.cleanerObservations}
+                    </p>
+                  ) : (
+                    <p className="text-sm text-muted-foreground italic">
+                      Nenhuma observação do cleaner ainda
+                    </p>
+                  )}
+                </div>
               </div>
             </div>
           </div>
