@@ -12,6 +12,7 @@ export interface CleanerInspection {
   id: string;
   property_id: string;
   property_name: string;
+  property_image_url?: string;
   title: string;
   description?: string;
   scheduled_date: string;
@@ -66,7 +67,7 @@ export function useCleanerInspections() {
       
       let query = supabase
         .from('inspections')
-        .select('*')
+        .select('*, properties(image_url)')
         .in('status', ['scheduled', 'in_progress'])
         .order('scheduled_date', { ascending: true });
 
@@ -81,6 +82,7 @@ export function useCleanerInspections() {
 
       setInspections((data || []).map(i => ({
         ...i,
+        property_image_url: (i.properties as any)?.image_url || undefined,
         status: i.status as 'scheduled' | 'in_progress' | 'completed',
         checklist_state: Array.isArray(i.checklist_state) 
           ? (i.checklist_state as unknown as ChecklistItem[]) 

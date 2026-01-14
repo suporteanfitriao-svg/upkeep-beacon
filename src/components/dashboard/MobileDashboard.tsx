@@ -322,12 +322,14 @@ export function MobileDashboard({ schedules, onScheduleClick, onStartCleaning, o
     ).length;
   }, [schedules]);
 
-  // Calculate future pending tasks (after today)
+  // Calculate future pending tasks (next 7 days after today)
   const futurePendingCount = useMemo(() => {
     const today = startOfDay(new Date());
+    const sevenDaysLater = addDays(today, 7);
     return schedules.filter(s => 
       s.status !== 'completed' &&
-      isAfter(s.checkOut, today)
+      isAfter(s.checkOut, today) &&
+      isWithinInterval(s.checkOut, { start: today, end: sevenDaysLater })
     ).length;
   }, [schedules]);
 
@@ -482,8 +484,20 @@ export function MobileDashboard({ schedules, onScheduleClick, onStartCleaning, o
               )}
             </div>
 
-            {/* Tasks Card - Period Tasks */}
-            <div className="rounded-2xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 p-4 mb-3 shadow-sm">
+            {/* Tasks Card - Period Tasks - Clickable only for today */}
+            <button
+              onClick={() => {
+                if (paymentPeriod === 'today') {
+                  setActiveTab('agenda');
+                  setSelectedDate(startOfDay(new Date()));
+                }
+              }}
+              disabled={paymentPeriod !== 'today'}
+              className={cn(
+                "w-full rounded-2xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 p-4 mb-3 shadow-sm text-left transition-all",
+                paymentPeriod === 'today' && "hover:shadow-md active:scale-[0.99] cursor-pointer"
+              )}
+            >
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
                   <div className="h-12 w-12 rounded-xl bg-primary/10 flex items-center justify-center">
@@ -502,9 +516,9 @@ export function MobileDashboard({ schedules, onScheduleClick, onStartCleaning, o
                   </span>
                 )}
               </div>
-            </div>
+            </button>
 
-            {/* Stats Cards Row */}
+            {/* Stats Cards Row - Not clickable */}
             <div className="grid grid-cols-2 gap-3 mb-3">
               <div className="p-4 rounded-2xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 shadow-sm">
                 <div className="h-10 w-10 rounded-xl bg-emerald-100 dark:bg-emerald-900/30 flex items-center justify-center mb-2">
@@ -517,7 +531,7 @@ export function MobileDashboard({ schedules, onScheduleClick, onStartCleaning, o
                 <div className="h-10 w-10 rounded-xl bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center mb-2">
                   <Play className="w-5 h-5 text-blue-600" />
                 </div>
-                <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-1">Tarefas Futuras</p>
+                <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-1">Próximos 7 dias</p>
                 <p className="text-2xl font-bold text-foreground">{futurePendingCount}</p>
               </div>
             </div>
@@ -603,58 +617,48 @@ export function MobileDashboard({ schedules, onScheduleClick, onStartCleaning, o
                         key={inspection.id}
                         className="overflow-hidden rounded-2xl bg-white dark:bg-[#2d3138] shadow-soft border-2 border-purple-300 dark:border-purple-700"
                       >
-                        <div className="p-4">
-                          <div className="flex items-start gap-3">
-                            <div className={cn(
-                              "h-12 w-12 shrink-0 rounded-xl flex items-center justify-center",
-                              isScheduled && "bg-blue-100 dark:bg-blue-900/30",
-                              isInProgress && "bg-yellow-100 dark:bg-yellow-900/30"
-                            )}>
-                              <ClipboardCheck className={cn(
-                                "w-6 h-6",
-                                isScheduled && "text-blue-600",
-                                isInProgress && "text-yellow-600"
-                              )} />
+                        {/* Card Header with Image - Like schedule cards */}
+                        <div className="flex flex-row p-4 gap-4">
+                          {inspection.property_image_url ? (
+                            <img 
+                              src={inspection.property_image_url}
+                              alt={inspection.property_name}
+                              className="w-20 h-20 shrink-0 rounded-xl object-cover"
+                            />
+                          ) : (
+                            <div className="w-20 h-20 shrink-0 rounded-xl bg-purple-100 dark:bg-purple-900/30 flex items-center justify-center">
+                              <ClipboardCheck className="w-8 h-8 text-purple-500" />
                             </div>
-                          <div className="flex-1 min-w-0">
-                              <div className="flex items-center gap-2 mb-1">
-                                <Badge variant="outline" className="bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300 border-purple-300 dark:border-purple-700 text-[10px] font-bold uppercase tracking-wide">
-                                  Inspeção
-                                </Badge>
-                                <span className={cn(
-                                  "rounded-full px-2 py-0.5 text-xs font-bold",
-                                  isScheduled && "bg-blue-100 dark:bg-blue-900/30 text-blue-700",
-                                  isInProgress && "bg-yellow-100 dark:bg-yellow-900/30 text-yellow-700"
-                                )}>
-                                  {isScheduled ? 'Agendada' : 'Em Andamento'}
-                                </span>
-                                {totalItems > 0 && (
-                                  <span className="text-xs text-muted-foreground">
-                                    {completedItems}/{totalItems}
-                                  </span>
-                                )}
-                              </div>
-                              <h4 className="font-bold text-foreground truncate">{inspection.title}</h4>
-                              <p className="text-sm text-muted-foreground flex items-center gap-1">
-                                <Building2 className="w-3.5 h-3.5" />
-                                {inspection.property_name}
-                              </p>
-                              <p className="text-sm text-muted-foreground flex items-center gap-1 mt-1">
-                                <Calendar className="w-3.5 h-3.5" />
-                                {format(parseISO(inspection.scheduled_date), "dd/MM/yyyy", { locale: ptBR })}
-                                {inspection.scheduled_time && (
-                                  <span className="flex items-center gap-1 ml-2">
-                                    <Clock className="w-3.5 h-3.5" />
-                                    {inspection.scheduled_time.slice(0, 5)}
-                                  </span>
-                                )}
-                              </p>
+                          )}
+                          <div className="flex-1 flex flex-col justify-center min-w-0">
+                            <div className="flex items-center gap-2 mb-1 flex-wrap">
+                              <Badge variant="outline" className="bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300 border-purple-300 dark:border-purple-700 text-[10px] font-bold uppercase tracking-wide">
+                                Inspeção
+                              </Badge>
+                              <span className={cn(
+                                "rounded-full px-2 py-0.5 text-xs font-bold",
+                                isScheduled && "bg-blue-100 dark:bg-blue-900/30 text-blue-700",
+                                isInProgress && "bg-yellow-100 dark:bg-yellow-900/30 text-yellow-700"
+                              )}>
+                                {isScheduled ? 'Agendada' : 'Em Andamento'}
+                              </span>
                             </div>
+                            <h4 className="font-bold text-foreground truncate">{inspection.property_name}</h4>
+                            <p className="text-sm text-muted-foreground flex items-center gap-1">
+                              <Clock className="w-3.5 h-3.5" />
+                              {format(parseISO(inspection.scheduled_date), "dd/MM", { locale: ptBR })}
+                              {inspection.scheduled_time && ` às ${inspection.scheduled_time.slice(0, 5)}`}
+                            </p>
+                            {totalItems > 0 && (
+                              <p className="text-xs text-muted-foreground mt-1">
+                                Checklist: {completedItems}/{totalItems}
+                              </p>
+                            )}
                           </div>
                         </div>
                         
-                        {/* Action Buttons */}
-                        <div className="border-t border-slate-100 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/50 px-4 py-3 flex gap-2">
+                        {/* Footer with Action Button and Status */}
+                        <div className="border-t border-purple-200 dark:border-purple-800 bg-purple-50 dark:bg-purple-900/20 px-4 py-3 flex items-center justify-between">
                           {isScheduled && (
                             <button
                               onClick={async () => {
@@ -665,20 +669,20 @@ export function MobileDashboard({ schedules, onScheduleClick, onStartCleaning, o
                                   toast.error('Erro ao iniciar inspeção');
                                 }
                               }}
-                              className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-yellow-500 text-white font-semibold text-sm transition-all active:scale-[0.98]"
+                              className="flex items-center gap-2 px-4 py-2 rounded-xl bg-primary text-white font-semibold text-sm transition-all active:scale-[0.98]"
                             >
                               <Play className="w-4 h-4" />
                               Iniciar Inspeção
                             </button>
                           )}
                           {isInProgress && (
-                            <>
+                            <div className="flex gap-2 w-full">
                               <button
                                 onClick={() => navigate(`/inspecoes?inspection=${inspection.id}`)}
-                                className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-slate-200 dark:bg-slate-700 text-foreground font-semibold text-sm transition-all active:scale-[0.98]"
+                                className="flex-1 flex items-center justify-center gap-2 px-3 py-2 rounded-xl bg-slate-200 dark:bg-slate-700 text-foreground font-semibold text-sm transition-all active:scale-[0.98]"
                               >
                                 <ClipboardCheck className="w-4 h-4" />
-                                Ver Checklist
+                                Checklist
                               </button>
                               <button
                                 onClick={async () => {
@@ -690,12 +694,17 @@ export function MobileDashboard({ schedules, onScheduleClick, onStartCleaning, o
                                     toast.error('Erro ao finalizar inspeção');
                                   }
                                 }}
-                                className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-green-500 text-white font-semibold text-sm transition-all active:scale-[0.98]"
+                                className="flex-1 flex items-center justify-center gap-2 px-3 py-2 rounded-xl bg-green-500 text-white font-semibold text-sm transition-all active:scale-[0.98]"
                               >
                                 <CheckCircle2 className="w-4 h-4" />
                                 Finalizar
                               </button>
-                            </>
+                            </div>
+                          )}
+                          {isScheduled && (
+                            <span className="text-xs font-medium text-purple-600 dark:text-purple-400">
+                              {inspection.title}
+                            </span>
                           )}
                         </div>
                       </div>
