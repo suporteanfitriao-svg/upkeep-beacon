@@ -1,7 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useTeamMemberId } from './useTeamMemberId';
-import { useUserRole } from './useUserRole';
 
 interface ChecklistItem {
   id: string;
@@ -27,18 +26,34 @@ export interface CleanerInspection {
 
 export function useCleanerInspections() {
   const { teamMemberId } = useTeamMemberId();
-  const { role, loading: roleLoading } = useUserRole();
   const [inspections, setInspections] = useState<CleanerInspection[]>([]);
   const [loading, setLoading] = useState(true);
+  const [userRole, setUserRole] = useState<string | null>(null);
 
-  const isAdminOrManager = role === 'admin' || role === 'manager';
+  // Fetch user role separately to avoid hook nesting issues
+  useEffect(() => {
+    async function fetchUserRole() {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        setUserRole(null);
+        return;
+      }
+      
+      const { data } = await supabase
+        .from('user_roles')
+        .select('role')
+        .eq('user_id', user.id)
+        .maybeSingle();
+      
+      setUserRole(data?.role || null);
+    }
+    
+    fetchUserRole();
+  }, []);
+
+  const isAdminOrManager = userRole === 'admin' || userRole === 'manager';
 
   const fetchInspections = useCallback(async () => {
-    // Wait for role to be loaded
-    if (roleLoading) {
-      return;
-    }
-
     // For cleaners, require teamMemberId
     if (!isAdminOrManager && !teamMemberId) {
       setInspections([]);
@@ -77,7 +92,7 @@ export function useCleanerInspections() {
     } finally {
       setLoading(false);
     }
-  }, [teamMemberId, isAdminOrManager, roleLoading]);
+  }, [teamMemberId, isAdminOrManager]);
 
   useEffect(() => {
     fetchInspections();
