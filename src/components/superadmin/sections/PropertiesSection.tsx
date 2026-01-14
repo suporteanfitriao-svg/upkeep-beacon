@@ -868,6 +868,14 @@ export function PropertiesSection() {
           </DialogHeader>
 
           <div className="space-y-4 py-4">
+            {/* Property Code */}
+            {!isEditing && propertyToView?.property_code && (
+              <div className="inline-flex items-center gap-2 px-3 py-1.5 bg-primary/10 rounded-lg">
+                <span className="text-[10px] font-bold text-muted-foreground uppercase">Código</span>
+                <span className="text-sm font-mono font-bold text-primary">{propertyToView.property_code}</span>
+              </div>
+            )}
+
             {/* Name */}
             <div className="space-y-2">
               <Label htmlFor="prop-name" className="text-xs font-medium text-muted-foreground">

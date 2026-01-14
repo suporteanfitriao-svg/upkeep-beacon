@@ -27,6 +27,7 @@ interface Property {
   default_check_in_time: string | null;
   default_check_out_time: string | null;
   image_url: string | null;
+  property_code: string | null;
   created_at: string;
 }
 
@@ -96,7 +97,7 @@ export default function Properties() {
     setIsLoading(true);
     const { data, error } = await supabase
       .from('properties')
-      .select('id, name, address, default_check_in_time, default_check_out_time, image_url, created_at')
+      .select('id, name, address, default_check_in_time, default_check_out_time, image_url, property_code, created_at')
       .order('name', { ascending: true });
 
     if (error) {
@@ -789,7 +790,14 @@ export default function Properties() {
                             </div>
                           )}
                           <div className="min-w-0">
-                            <h3 className="font-bold text-foreground truncate">{property.name}</h3>
+                            <div className="flex items-center gap-2">
+                              <h3 className="font-bold text-foreground truncate">{property.name}</h3>
+                              {property.property_code && (
+                                <span className="text-[10px] font-mono font-bold text-primary bg-primary/10 px-1.5 py-0.5 rounded">
+                                  {property.property_code}
+                                </span>
+                              )}
+                            </div>
                             {property.address && (
                               <p className="text-sm text-muted-foreground truncate">{property.address}</p>
                             )}

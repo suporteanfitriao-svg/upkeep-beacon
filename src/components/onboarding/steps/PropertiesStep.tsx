@@ -16,6 +16,7 @@ interface Property {
   id: string;
   name: string;
   address: string;
+  property_code: string | null;
 }
 
 export function PropertiesStep({ onNext, onBack }: PropertiesStepProps) {
@@ -32,7 +33,7 @@ export function PropertiesStep({ onNext, onBack }: PropertiesStepProps) {
     try {
       const { data, error } = await supabase
         .from('properties')
-        .select('id, name, address')
+        .select('id, name, address, property_code')
         .order('name');
 
       if (error) throw error;
@@ -160,17 +161,24 @@ export function PropertiesStep({ onNext, onBack }: PropertiesStepProps) {
                   key={property.id}
                   className="flex items-center justify-between p-3 rounded-lg bg-muted/50 border border-border"
                 >
-                  <div className="flex items-center gap-3">
-                    <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center">
-                      <Building2 className="h-4 w-4 text-primary" />
+                    <div className="flex items-center gap-3">
+                      <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center">
+                        <Building2 className="h-4 w-4 text-primary" />
+                      </div>
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <p className="text-sm font-medium">{property.name}</p>
+                          {property.property_code && (
+                            <span className="text-[9px] font-mono font-bold text-primary bg-primary/10 px-1.5 py-0.5 rounded">
+                              {property.property_code}
+                            </span>
+                          )}
+                        </div>
+                        {property.address && (
+                          <p className="text-xs text-muted-foreground">{property.address}</p>
+                        )}
+                      </div>
                     </div>
-                    <div>
-                      <p className="text-sm font-medium">{property.name}</p>
-                      {property.address && (
-                        <p className="text-xs text-muted-foreground">{property.address}</p>
-                      )}
-                    </div>
-                  </div>
                   <Button
                     variant="ghost"
                     size="icon"
