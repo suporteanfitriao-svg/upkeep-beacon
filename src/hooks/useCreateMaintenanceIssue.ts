@@ -44,12 +44,12 @@ export function useCreateMaintenanceIssue() {
     try {
       let photoUrl: string | null = null;
 
-      // Upload photo if provided
+      // Upload photo if provided (with timestamp enabled by default)
       if (params.photoFile) {
         photoUrl = await compressAndUpload(
           params.photoFile,
           uploadPhoto,
-          { maxWidth: 1280, maxSizeKB: 600 }
+          { maxWidth: 1280, maxSizeKB: 600, addTimestamp: true }
         );
       }
 

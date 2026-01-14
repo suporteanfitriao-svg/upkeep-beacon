@@ -1,10 +1,13 @@
 import { useState, useCallback } from 'react';
+import { format } from 'date-fns';
+import { ptBR } from 'date-fns/locale';
 
 interface CompressionOptions {
   maxWidth?: number;
   maxHeight?: number;
   quality?: number;
   maxSizeKB?: number;
+  addTimestamp?: boolean;
 }
 
 const DEFAULT_OPTIONS: CompressionOptions = {
@@ -12,10 +15,46 @@ const DEFAULT_OPTIONS: CompressionOptions = {
   maxHeight: 1280,
   quality: 0.75,
   maxSizeKB: 600,
+  addTimestamp: true,
 };
 
 export function useImageCompression() {
   const [isCompressing, setIsCompressing] = useState(false);
+
+  // Add timestamp overlay to image
+  const addTimestampToImage = useCallback((
+    ctx: CanvasRenderingContext2D,
+    canvas: HTMLCanvasElement
+  ): Date => {
+    const now = new Date();
+    const timestamp = format(now, "dd/MM/yyyy HH:mm:ss", { locale: ptBR });
+    
+    const fontSize = Math.max(14, Math.floor(canvas.width / 40));
+    const padding = Math.floor(fontSize * 0.8);
+    
+    ctx.font = `bold ${fontSize}px 'Segoe UI', Arial, sans-serif`;
+    const textWidth = ctx.measureText(timestamp).width;
+    
+    // Position at bottom-right corner
+    const x = canvas.width - textWidth - padding * 2;
+    const y = canvas.height - padding * 2;
+    
+    // Draw semi-transparent background
+    ctx.fillStyle = 'rgba(0, 0, 0, 0.6)';
+    const bgHeight = fontSize + padding;
+    const bgWidth = textWidth + padding * 2;
+    const borderRadius = 4;
+    
+    ctx.beginPath();
+    ctx.roundRect(x - padding, y - fontSize, bgWidth, bgHeight, borderRadius);
+    ctx.fill();
+    
+    // Draw timestamp text
+    ctx.fillStyle = '#ffffff';
+    ctx.fillText(timestamp, x, y - padding / 2);
+    
+    return now;
+  }, []);
 
   const compressImage = useCallback(async (
     file: File,
@@ -56,6 +95,11 @@ export function useImageCompression() {
             }
 
             ctx.drawImage(img, 0, 0, width, height);
+
+            // Add timestamp overlay if enabled
+            if (opts.addTimestamp) {
+              addTimestampToImage(ctx, canvas);
+            }
 
             // Convert to blob with quality adjustment
             let quality = opts.quality!;
@@ -106,7 +150,7 @@ export function useImageCompression() {
 
       reader.readAsDataURL(file);
     });
-  }, []);
+  }, [addTimestampToImage]);
 
   const compressAndUpload = useCallback(async (
     file: File,
@@ -133,6 +177,7 @@ export function useImageCompression() {
   return {
     compressImage,
     compressAndUpload,
+    addTimestampToImage,
     isCompressing,
   };
 }
