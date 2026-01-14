@@ -120,6 +120,23 @@ export function PropertiesSection() {
 
   const navigate = useNavigate();
 
+  const getPropertyId = (index: number) => {
+    return `PM-${(24901 + index).toString().padStart(5, '0')}`;
+  };
+
+  const getOwner = (index: number) => {
+    return mockOwners[index % mockOwners.length];
+  };
+
+  const getPropertyStatus = (property: Property): 'active' | 'trial' | 'inactive' => {
+    if (property.isActive === false) return 'inactive';
+    if (!property.airbnb_ical_url) return 'inactive';
+    if (property.lastSyncStatus === 'error') return 'inactive';
+    // Use a deterministic "random" based on property id
+    const hash = property.id.charCodeAt(0) + property.id.charCodeAt(property.id.length - 1);
+    return hash % 3 === 0 ? 'trial' : 'active';
+  };
+
   // Apply all filters
   const filteredProperties = properties.filter(p => {
     // Search filter
@@ -151,23 +168,6 @@ export function PropertiesSection() {
     (currentPage - 1) * ITEMS_PER_PAGE,
     currentPage * ITEMS_PER_PAGE
   );
-
-  const getPropertyId = (index: number) => {
-    return `PM-${(24901 + index).toString().padStart(5, '0')}`;
-  };
-
-  const getOwner = (index: number) => {
-    return mockOwners[index % mockOwners.length];
-  };
-
-  const getPropertyStatus = (property: Property): 'active' | 'trial' | 'inactive' => {
-    if (property.isActive === false) return 'inactive';
-    if (!property.airbnb_ical_url) return 'inactive';
-    if (property.lastSyncStatus === 'error') return 'inactive';
-    // Use a deterministic "random" based on property id
-    const hash = property.id.charCodeAt(0) + property.id.charCodeAt(property.id.length - 1);
-    return hash % 3 === 0 ? 'trial' : 'active';
-  };
 
   const handleAdminAccess = (property: Property) => {
     toast.info(`Acessando painel admin de "${property.name}"...`);
