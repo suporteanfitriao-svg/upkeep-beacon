@@ -64,6 +64,7 @@ interface Property {
   name: string;
   address: string | null;
   airbnb_ical_url: string | null;
+  property_code: string | null;
   created_at: string;
   updated_at: string;
   is_active: boolean;
@@ -187,9 +188,7 @@ export function PropertiesSection() {
 
   const navigate = useNavigate();
 
-  const getPropertyId = (index: number) => {
-    return `PM-${(24901 + index).toString().padStart(5, '0')}`;
-  };
+  // Property code now comes from database
 
   const getOwner = (index: number) => {
     return mockOwners[index % mockOwners.length];
@@ -580,7 +579,7 @@ export function PropertiesSection() {
                       <TableCell className="py-4">
                         <div className="flex flex-col">
                           <span className="text-sm font-bold text-foreground">{property.name}</span>
-                          <span className="text-[11px] text-muted-foreground">ID: {getPropertyId(globalIndex)}</span>
+                          <span className="text-[11px] text-muted-foreground font-mono">{property.property_code || 'Sem código'}</span>
                         </div>
                       </TableCell>
 
