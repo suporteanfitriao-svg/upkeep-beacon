@@ -47,8 +47,8 @@ export function CategoryPhotoUpload({
 
     setIsUploading(true);
     try {
-      // Compress image
-      const compressedFile = await compressImage(file);
+      // Compress image with timestamp
+      const compressedFile = await compressImage(file, { addTimestamp: true });
       
       // Generate unique filename
       const timestamp = Date.now();
