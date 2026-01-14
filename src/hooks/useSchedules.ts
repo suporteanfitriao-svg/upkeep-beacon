@@ -497,11 +497,27 @@ export function useSchedules() {
 }
 
 export function calculateStats(schedules: Schedule[]) {
+  const now = new Date();
+  
+  // Calculate delayed: status is 'released' (not started cleaning) AND 
+  // less than 1 hour until check-in time
+  const delayed = schedules.filter(s => {
+    if (s.status !== 'released') return false;
+    
+    // Check-in time is when the next guest arrives
+    const checkInTime = s.checkIn;
+    const oneHourFromNow = new Date(now.getTime() + 60 * 60 * 1000);
+    
+    // If check-in is within the next hour or already passed, it's delayed
+    return checkInTime <= oneHourFromNow;
+  }).length;
+
   return {
     waiting: schedules.filter(s => s.status === 'waiting').length,
     released: schedules.filter(s => s.status === 'released').length,
     cleaning: schedules.filter(s => s.status === 'cleaning').length,
     completed: schedules.filter(s => s.status === 'completed').length,
     maintenanceAlerts: schedules.filter(s => s.maintenanceStatus !== 'ok').length,
+    delayed,
   };
 }

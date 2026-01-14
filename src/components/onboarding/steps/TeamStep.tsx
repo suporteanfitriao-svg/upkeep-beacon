@@ -53,13 +53,40 @@ export function TeamStep({ onNext, onBack }: TeamStepProps) {
       return;
     }
 
+    // Validate email format
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(newMember.email.trim())) {
+      toast.error('E-mail inválido');
+      return;
+    }
+
+    // Check for duplicate email in local state
+    const emailExists = members.some(m => m.email.toLowerCase() === newMember.email.trim().toLowerCase());
+    if (emailExists) {
+      toast.error('Este e-mail já está cadastrado na equipe');
+      return;
+    }
+
     setAdding(true);
     try {
+      // Check for duplicate email in database
+      const { data: existingMember } = await supabase
+        .from('team_members')
+        .select('id')
+        .eq('email', newMember.email.trim().toLowerCase())
+        .maybeSingle();
+
+      if (existingMember) {
+        toast.error('Este e-mail já está cadastrado no sistema');
+        setAdding(false);
+        return;
+      }
+
       const { data, error } = await supabase
         .from('team_members')
         .insert([{
           name: newMember.name,
-          email: newMember.email,
+          email: newMember.email.trim().toLowerCase(),
           cpf: newMember.cpf,
           whatsapp: newMember.whatsapp,
           role: newMember.role as 'admin' | 'manager' | 'cleaner',
@@ -72,9 +99,13 @@ export function TeamStep({ onNext, onBack }: TeamStepProps) {
       setMembers(prev => [...prev, data]);
       setNewMember({ name: '', email: '', cpf: '', whatsapp: '', role: 'cleaner' });
       toast.success('Membro adicionado com sucesso!');
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error adding team member:', error);
-      toast.error('Erro ao adicionar membro');
+      if (error?.code === '23505') {
+        toast.error('Este e-mail já está cadastrado no sistema');
+      } else {
+        toast.error('Erro ao adicionar membro');
+      }
     } finally {
       setAdding(false);
     }
