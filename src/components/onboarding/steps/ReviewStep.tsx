@@ -11,7 +11,9 @@ import {
   ScrollText, 
   Settings,
   Loader2,
-  PartyPopper
+  PartyPopper,
+  XCircle,
+  RefreshCw
 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useNavigate } from 'react-router-dom';
@@ -25,11 +27,23 @@ interface Summary {
   properties: number;
   teamMembers: number;
   checklists: number;
+  houseRules: number;
+  inventoryCategories: number;
+  hasConfig: boolean;
+  hasIcalSources: boolean;
 }
 
 export function ReviewStep({ onBack }: ReviewStepProps) {
   const navigate = useNavigate();
-  const [summary, setSummary] = useState<Summary>({ properties: 0, teamMembers: 0, checklists: 0 });
+  const [summary, setSummary] = useState<Summary>({ 
+    properties: 0, 
+    teamMembers: 0, 
+    checklists: 0,
+    houseRules: 0,
+    inventoryCategories: 0,
+    hasConfig: false,
+    hasIcalSources: false,
+  });
   const [loading, setLoading] = useState(true);
   const [finishing, setFinishing] = useState(false);
 
@@ -39,16 +53,34 @@ export function ReviewStep({ onBack }: ReviewStepProps) {
 
   const fetchSummary = async () => {
     try {
-      const [propertiesRes, teamRes, checklistsRes] = await Promise.all([
+      const { data: { user } } = await supabase.auth.getUser();
+      
+      const [
+        propertiesRes, 
+        teamRes, 
+        checklistsRes, 
+        rulesRes, 
+        inventoryRes,
+        configRes,
+        icalRes,
+      ] = await Promise.all([
         supabase.from('properties').select('id', { count: 'exact', head: true }),
         supabase.from('team_members').select('id', { count: 'exact', head: true }),
-        supabase.from('property_checklists').select('id', { count: 'exact', head: true }),
+        supabase.from('default_checklists').select('id', { count: 'exact', head: true }).eq('is_active', true),
+        supabase.from('house_rules').select('id', { count: 'exact', head: true }).eq('is_active', true),
+        supabase.from('inventory_categories').select('id', { count: 'exact', head: true }).eq('is_active', true),
+        user ? supabase.from('onboarding_settings').select('id').eq('user_id', user.id).maybeSingle() : Promise.resolve({ data: null }),
+        supabase.from('property_ical_sources').select('id', { count: 'exact', head: true }),
       ]);
 
       setSummary({
         properties: propertiesRes.count || 0,
         teamMembers: teamRes.count || 0,
         checklists: checklistsRes.count || 0,
+        houseRules: rulesRes.count || 0,
+        inventoryCategories: inventoryRes.count || 0,
+        hasConfig: !!configRes.data,
+        hasIcalSources: (icalRes.count || 0) > 0,
       });
     } catch (error) {
       console.error('Error fetching summary:', error);
@@ -60,11 +92,16 @@ export function ReviewStep({ onBack }: ReviewStepProps) {
   const handleFinish = async () => {
     setFinishing(true);
     
-    // Simulate finishing setup
-    await new Promise(resolve => setTimeout(resolve, 1500));
-    
-    toast.success('Configuração concluída com sucesso!');
-    navigate('/');
+    try {
+      // Mark onboarding as complete (could add a flag in profiles or settings)
+      toast.success('Configuração concluída com sucesso!');
+      navigate('/');
+    } catch (error) {
+      console.error('Error finishing:', error);
+      toast.error('Erro ao finalizar');
+    } finally {
+      setFinishing(false);
+    }
   };
 
   const summaryItems = [
@@ -74,9 +111,28 @@ export function ReviewStep({ onBack }: ReviewStepProps) {
   ];
 
   const configuredItems = [
-    { icon: Settings, label: 'Configurações gerais', done: true },
-    { icon: Package, label: 'Inventário padrão', done: true },
-    { icon: ScrollText, label: 'Regras da casa', done: true },
+    { 
+      icon: Settings, 
+      label: 'Configurações gerais', 
+      done: summary.hasConfig 
+    },
+    { 
+      icon: RefreshCw, 
+      label: 'Sincronização de calendários', 
+      done: summary.hasIcalSources 
+    },
+    { 
+      icon: Package, 
+      label: 'Inventário padrão', 
+      done: summary.inventoryCategories > 0,
+      count: summary.inventoryCategories > 0 ? `${summary.inventoryCategories} categorias` : undefined,
+    },
+    { 
+      icon: ScrollText, 
+      label: 'Regras da casa', 
+      done: summary.houseRules > 0,
+      count: summary.houseRules > 0 ? `${summary.houseRules} regras` : undefined,
+    },
   ];
 
   return (
@@ -119,9 +175,20 @@ export function ReviewStep({ onBack }: ReviewStepProps) {
               <div className="space-y-3">
                 {configuredItems.map((item) => (
                   <div key={item.label} className="flex items-center gap-3">
-                    <CheckCircle2 className="h-5 w-5 text-emerald-500" />
+                    {item.done ? (
+                      <CheckCircle2 className="h-5 w-5 text-emerald-500" />
+                    ) : (
+                      <XCircle className="h-5 w-5 text-muted-foreground" />
+                    )}
                     <item.icon className="h-4 w-4 text-muted-foreground" />
-                    <span className="text-sm">{item.label}</span>
+                    <span className={`text-sm ${!item.done ? 'text-muted-foreground' : ''}`}>
+                      {item.label}
+                    </span>
+                    {item.count && (
+                      <span className="text-xs text-muted-foreground ml-auto">
+                        {item.count}
+                      </span>
+                    )}
                   </div>
                 ))}
               </div>

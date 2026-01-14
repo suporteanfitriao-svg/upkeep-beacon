@@ -1,10 +1,12 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { ScrollText, ArrowLeft, ArrowRight, Plus, Trash2, AlertTriangle, Info } from 'lucide-react';
+import { ScrollText, ArrowLeft, ArrowRight, Plus, Trash2, AlertTriangle, Info, Loader2 } from 'lucide-react';
+import { supabase } from '@/integrations/supabase/client';
+import { toast } from 'sonner';
 
 interface HouseRulesStepProps {
   onNext: () => void;
@@ -16,25 +18,70 @@ interface HouseRule {
   title: string;
   description: string;
   priority: 'info' | 'warning';
+  isNew?: boolean;
 }
 
 const defaultRules: HouseRule[] = [
-  { id: '1', title: 'Horário de Silêncio', description: 'Manter silêncio entre 22h e 8h', priority: 'info' },
-  { id: '2', title: 'Proibido Fumar', description: 'Não é permitido fumar em áreas internas', priority: 'warning' },
-  { id: '3', title: 'Animais de Estimação', description: 'Não é permitido animais de estimação', priority: 'info' },
-  { id: '4', title: 'Check-out', description: 'Deixar chaves na mesa de centro ao sair', priority: 'info' },
+  { id: '1', title: 'Horário de Silêncio', description: 'Manter silêncio entre 22h e 8h', priority: 'info', isNew: true },
+  { id: '2', title: 'Proibido Fumar', description: 'Não é permitido fumar em áreas internas', priority: 'warning', isNew: true },
+  { id: '3', title: 'Animais de Estimação', description: 'Não é permitido animais de estimação', priority: 'info', isNew: true },
+  { id: '4', title: 'Check-out', description: 'Deixar chaves na mesa de centro ao sair', priority: 'info', isNew: true },
 ];
 
 export function HouseRulesStep({ onNext, onBack }: HouseRulesStepProps) {
-  const [rules, setRules] = useState<HouseRule[]>(defaultRules);
+  const [rules, setRules] = useState<HouseRule[]>([]);
   const [newRule, setNewRule] = useState<{ title: string; description: string; priority: 'info' | 'warning' }>({ title: '', description: '', priority: 'info' });
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    fetchRules();
+  }, []);
+
+  const fetchRules = async () => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        setRules(defaultRules);
+        setLoading(false);
+        return;
+      }
+
+      const { data, error } = await supabase
+        .from('house_rules')
+        .select('*')
+        .eq('user_id', user.id)
+        .eq('is_active', true)
+        .order('sort_order');
+
+      if (error) throw error;
+
+      if (data && data.length > 0) {
+        const mappedRules: HouseRule[] = data.map(r => ({
+          id: r.id,
+          title: r.title,
+          description: r.description || '',
+          priority: r.priority as 'info' | 'warning',
+        }));
+        setRules(mappedRules);
+      } else {
+        // Use default rules for new users
+        setRules(defaultRules);
+      }
+    } catch (error) {
+      console.error('Error fetching rules:', error);
+      setRules(defaultRules);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const handleAddRule = () => {
     if (!newRule.title.trim()) return;
     
     setRules(prev => [
       ...prev,
-      { ...newRule, id: Date.now().toString() }
+      { ...newRule, id: `temp-${Date.now()}`, isNew: true }
     ]);
     setNewRule({ title: '', description: '', priority: 'info' });
   };
@@ -42,6 +89,55 @@ export function HouseRulesStep({ onNext, onBack }: HouseRulesStepProps) {
   const handleRemoveRule = (id: string) => {
     setRules(prev => prev.filter(r => r.id !== id));
   };
+
+  const handleSaveAndNext = async () => {
+    setSaving(true);
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        toast.error('Usuário não autenticado');
+        return;
+      }
+
+      // Deactivate existing rules
+      await supabase
+        .from('house_rules')
+        .update({ is_active: false })
+        .eq('user_id', user.id);
+
+      // Insert all current rules
+      for (let idx = 0; idx < rules.length; idx++) {
+        const rule = rules[idx];
+        const { error } = await supabase
+          .from('house_rules')
+          .insert({
+            user_id: user.id,
+            title: rule.title,
+            description: rule.description,
+            priority: rule.priority,
+            sort_order: idx,
+          });
+
+        if (error) throw error;
+      }
+
+      toast.success('Regras salvas com sucesso!');
+      onNext();
+    } catch (error) {
+      console.error('Error saving rules:', error);
+      toast.error('Erro ao salvar regras');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="max-w-2xl w-full flex items-center justify-center py-20">
+        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+      </div>
+    );
+  }
 
   return (
     <div className="max-w-2xl w-full">
@@ -163,9 +259,18 @@ export function HouseRulesStep({ onNext, onBack }: HouseRulesStepProps) {
           <ArrowLeft className="h-4 w-4 mr-2" />
           Voltar
         </Button>
-        <Button onClick={onNext}>
-          Próximo
-          <ArrowRight className="h-4 w-4 ml-2" />
+        <Button onClick={handleSaveAndNext} disabled={saving}>
+          {saving ? (
+            <>
+              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+              Salvando...
+            </>
+          ) : (
+            <>
+              Próximo
+              <ArrowRight className="h-4 w-4 ml-2" />
+            </>
+          )}
         </Button>
       </div>
     </div>
