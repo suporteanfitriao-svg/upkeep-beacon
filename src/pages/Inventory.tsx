@@ -13,8 +13,9 @@ import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { 
   Package, Plus, Trash2, Loader2, Edit2, FolderOpen, 
-  ChevronRight, Search, Box, Hash, Building2
+  ChevronRight, Search, Box, Hash, Building2, Copy, ArrowRight
 } from 'lucide-react';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 
@@ -68,6 +69,12 @@ const Inventory = () => {
     details: '' 
   });
   const [savingItem, setSavingItem] = useState(false);
+
+  // Copy inventory dialog
+  const [copyDialogOpen, setCopyDialogOpen] = useState(false);
+  const [sourcePropertyId, setSourcePropertyId] = useState<string>('');
+  const [targetPropertyId, setTargetPropertyId] = useState<string>('');
+  const [copying, setCopying] = useState(false);
 
   useEffect(() => {
     fetchProperties();
@@ -335,6 +342,116 @@ const Inventory = () => {
     }
   };
 
+  // Copy inventory function
+  const handleCopyInventory = async () => {
+    if (!sourcePropertyId || !targetPropertyId) {
+      toast.error('Selecione a propriedade de origem e destino');
+      return;
+    }
+
+    if (sourcePropertyId === targetPropertyId) {
+      toast.error('A propriedade de origem e destino devem ser diferentes');
+      return;
+    }
+
+    setCopying(true);
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        toast.error('Usuário não autenticado');
+        return;
+      }
+
+      // Fetch categories from source property
+      const { data: sourceCategories, error: catError } = await supabase
+        .from('inventory_categories')
+        .select('*')
+        .eq('property_id', sourcePropertyId);
+
+      if (catError) throw catError;
+
+      if (!sourceCategories || sourceCategories.length === 0) {
+        toast.error('Nenhuma categoria encontrada na propriedade de origem');
+        setCopying(false);
+        return;
+      }
+
+      // Get all items from source categories
+      const sourceCategoryIds = sourceCategories.map(c => c.id);
+      const { data: sourceItems, error: itemsError } = await supabase
+        .from('inventory_items')
+        .select('*')
+        .in('category_id', sourceCategoryIds);
+
+      if (itemsError) throw itemsError;
+
+      // Check how many categories already exist in target property
+      const { data: existingTargetCategories } = await supabase
+        .from('inventory_categories')
+        .select('id')
+        .eq('property_id', targetPropertyId);
+
+      const startingSortOrder = existingTargetCategories?.length || 0;
+
+      // Create new categories in target property
+      const categoryIdMap: Record<string, string> = {};
+      
+      for (let i = 0; i < sourceCategories.length; i++) {
+        const cat = sourceCategories[i];
+        const { data: newCategory, error: newCatError } = await supabase
+          .from('inventory_categories')
+          .insert({
+            user_id: user.id,
+            name: cat.name,
+            description: cat.description,
+            property_id: targetPropertyId,
+            sort_order: startingSortOrder + i,
+            is_active: cat.is_active,
+          })
+          .select()
+          .single();
+
+        if (newCatError) throw newCatError;
+        categoryIdMap[cat.id] = newCategory.id;
+      }
+
+      // Create items in new categories
+      if (sourceItems && sourceItems.length > 0) {
+        const newItems = sourceItems.map(item => ({
+          category_id: categoryIdMap[item.category_id],
+          name: item.name,
+          quantity: item.quantity,
+          unit: item.unit,
+          details: item.details,
+          sort_order: item.sort_order,
+          is_active: item.is_active,
+        }));
+
+        const { error: insertItemsError } = await supabase
+          .from('inventory_items')
+          .insert(newItems);
+
+        if (insertItemsError) throw insertItemsError;
+      }
+
+      const targetProperty = properties.find(p => p.id === targetPropertyId);
+      toast.success(`Inventário copiado para ${targetProperty?.name || 'propriedade'}!`);
+      setCopyDialogOpen(false);
+      setSourcePropertyId('');
+      setTargetPropertyId('');
+      
+      // Refresh inventory if viewing target property
+      if (selectedPropertyId === targetPropertyId || selectedPropertyId === 'all') {
+        fetchInventory();
+      }
+    } catch (error) {
+      console.error('Error copying inventory:', error);
+      toast.error('Erro ao copiar inventário');
+    } finally {
+      setCopying(false);
+    }
+  };
+
   // Get property name helper
   const getPropertyName = (propertyId?: string) => {
     if (!propertyId) return 'Sem propriedade';
@@ -395,6 +512,14 @@ const Inventory = () => {
                   </SelectContent>
                 </Select>
               </div>
+              <Button 
+                variant="outline" 
+                onClick={() => setCopyDialogOpen(true)}
+                disabled={properties.length < 2}
+              >
+                <Copy className="h-4 w-4 mr-2" />
+                Copiar Inventário
+              </Button>
               <Button onClick={() => handleOpenCategoryDialog()}>
                 <Plus className="h-4 w-4 mr-2" />
                 Nova Categoria
@@ -729,6 +854,105 @@ const Inventory = () => {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Copy Inventory Dialog */}
+      <AlertDialog open={copyDialogOpen} onOpenChange={setCopyDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2">
+              <Copy className="h-5 w-5" />
+              Copiar Inventário
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              Copie todas as categorias e itens de uma propriedade para outra. 
+              Os itens serão adicionados ao inventário existente na propriedade de destino.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label>Propriedade de Origem</Label>
+              <Select value={sourcePropertyId} onValueChange={setSourcePropertyId}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Selecione a origem" />
+                </SelectTrigger>
+                <SelectContent>
+                  {properties.map(property => (
+                    <SelectItem 
+                      key={property.id} 
+                      value={property.id}
+                      disabled={property.id === targetPropertyId}
+                    >
+                      {property.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="flex justify-center">
+              <ArrowRight className="h-5 w-5 text-muted-foreground" />
+            </div>
+
+            <div className="space-y-2">
+              <Label>Propriedade de Destino</Label>
+              <Select value={targetPropertyId} onValueChange={setTargetPropertyId}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Selecione o destino" />
+                </SelectTrigger>
+                <SelectContent>
+                  {properties.map(property => (
+                    <SelectItem 
+                      key={property.id} 
+                      value={property.id}
+                      disabled={property.id === sourcePropertyId}
+                    >
+                      {property.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            {sourcePropertyId && targetPropertyId && (
+              <div className="bg-muted/50 rounded-lg p-3 text-sm">
+                <p className="text-muted-foreground">
+                  <span className="font-medium text-foreground">
+                    {properties.find(p => p.id === sourcePropertyId)?.name}
+                  </span>
+                  {' → '}
+                  <span className="font-medium text-foreground">
+                    {properties.find(p => p.id === targetPropertyId)?.name}
+                  </span>
+                </p>
+              </div>
+            )}
+          </div>
+
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={copying}>Cancelar</AlertDialogCancel>
+            <AlertDialogAction 
+              onClick={(e) => {
+                e.preventDefault();
+                handleCopyInventory();
+              }}
+              disabled={copying || !sourcePropertyId || !targetPropertyId}
+            >
+              {copying ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  Copiando...
+                </>
+              ) : (
+                <>
+                  <Copy className="h-4 w-4 mr-2" />
+                  Copiar Inventário
+                </>
+              )}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </SidebarProvider>
   );
 };
