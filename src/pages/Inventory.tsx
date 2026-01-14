@@ -14,11 +14,14 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { 
   Package, Plus, Trash2, Loader2, Edit2, FolderOpen, 
   ChevronRight, Search, Box, Hash, Building2, Copy, ArrowRight, ListChecks, Sparkles,
-  Camera, X, Image as ImageIcon, Clock, Images
+  Camera, X, Image as ImageIcon, Clock, Images, FileText, History
 } from 'lucide-react';
 import { InventoryPhotoGallery } from '@/components/inventory/InventoryPhotoGallery';
+import { InventoryPDFReport } from '@/components/inventory/InventoryPDFReport';
+import { InventoryItemHistory } from '@/components/inventory/InventoryItemHistory';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { useInventoryPhotoUpload } from '@/hooks/useInventoryPhotoUpload';
+import { useInventoryItemHistory } from '@/hooks/useInventoryItemHistory';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 
@@ -189,6 +192,7 @@ const Inventory = () => {
 
   // Photo upload hook
   const { compressAndUploadWithTimestamp, deletePhoto, isUploading } = useInventoryPhotoUpload();
+  const { recordHistory } = useInventoryItemHistory();
 
   // Copy inventory dialog
   const [copyDialogOpen, setCopyDialogOpen] = useState(false);
@@ -203,6 +207,14 @@ const Inventory = () => {
   // Photo gallery dialog
   const [galleryOpen, setGalleryOpen] = useState(false);
   const [applyingTemplate, setApplyingTemplate] = useState(false);
+
+  // PDF Report dialog
+  const [pdfReportOpen, setPdfReportOpen] = useState(false);
+
+  // Item history dialog
+  const [historyOpen, setHistoryOpen] = useState(false);
+  const [historyItemId, setHistoryItemId] = useState<string | null>(null);
+  const [historyItemName, setHistoryItemName] = useState('');
 
   useEffect(() => {
     fetchProperties();
@@ -811,6 +823,14 @@ const Inventory = () => {
               </Button>
               <Button 
                 variant="outline" 
+                onClick={() => setPdfReportOpen(true)}
+                disabled={categories.length === 0}
+              >
+                <FileText className="h-4 w-4 mr-2" />
+                PDF
+              </Button>
+              <Button 
+                variant="outline" 
                 onClick={() => setTemplateDialogOpen(true)}
                 disabled={properties.length === 0}
                 className="text-primary border-primary/30 hover:bg-primary/10"
@@ -1201,16 +1221,31 @@ const Inventory = () => {
                   )}
                 </div>
               ) : (
-                <label className="flex flex-col items-center justify-center h-32 w-32 border-2 border-dashed rounded-lg cursor-pointer hover:bg-muted/50 transition-colors">
-                  <Camera className="h-8 w-8 text-muted-foreground mb-1" />
-                  <span className="text-xs text-muted-foreground">Adicionar foto</span>
-                  <input
-                    type="file"
-                    accept="image/jpeg,image/jpg,image/png,image/webp"
-                    onChange={handlePhotoSelect}
-                    className="hidden"
-                  />
-                </label>
+                <div className="flex gap-2">
+                  {/* Camera capture button for mobile */}
+                  <label className="flex flex-col items-center justify-center h-32 w-28 border-2 border-dashed rounded-lg cursor-pointer hover:bg-muted/50 transition-colors border-primary/30">
+                    <Camera className="h-6 w-6 text-primary mb-1" />
+                    <span className="text-xs text-primary font-medium">Câmera</span>
+                    <input
+                      type="file"
+                      accept="image/*"
+                      capture="environment"
+                      onChange={handlePhotoSelect}
+                      className="hidden"
+                    />
+                  </label>
+                  {/* Gallery selection button */}
+                  <label className="flex flex-col items-center justify-center h-32 w-28 border-2 border-dashed rounded-lg cursor-pointer hover:bg-muted/50 transition-colors">
+                    <ImageIcon className="h-6 w-6 text-muted-foreground mb-1" />
+                    <span className="text-xs text-muted-foreground">Galeria</span>
+                    <input
+                      type="file"
+                      accept="image/jpeg,image/jpg,image/png,image/webp"
+                      onChange={handlePhotoSelect}
+                      className="hidden"
+                    />
+                  </label>
+                </div>
               )}
             </div>
           </div>
@@ -1415,6 +1450,23 @@ const Inventory = () => {
         onOpenChange={setGalleryOpen}
         categories={categories}
         propertyName={selectedPropertyId !== 'all' ? properties.find(p => p.id === selectedPropertyId)?.name : undefined}
+      />
+
+      {/* PDF Report */}
+      <InventoryPDFReport
+        open={pdfReportOpen}
+        onOpenChange={setPdfReportOpen}
+        properties={properties}
+        categories={categories}
+        selectedPropertyId={selectedPropertyId}
+      />
+
+      {/* Item History */}
+      <InventoryItemHistory
+        open={historyOpen}
+        onOpenChange={setHistoryOpen}
+        itemId={historyItemId}
+        itemName={historyItemName}
       />
     </SidebarProvider>
   );
