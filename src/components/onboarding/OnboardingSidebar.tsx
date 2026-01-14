@@ -1,5 +1,5 @@
 import { cn } from '@/lib/utils';
-import { STEPS, OnboardingStep } from '@/pages/SuperAdmin';
+import { STEPS, OnboardingStep } from '@/pages/Onboarding';
 import logo from '@/assets/logo.png';
 import { Check } from 'lucide-react';
 
