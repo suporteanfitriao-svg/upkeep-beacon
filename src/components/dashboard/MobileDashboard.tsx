@@ -775,6 +775,27 @@ export function MobileDashboard({ schedules, onScheduleClick, onStartCleaning, o
           {viewMode === 'calendario' ? (
             // Calendar Monthly View
             <main className="flex flex-col w-full px-4 mt-4">
+          {/* Color Legend */}
+          <div className="flex flex-wrap items-center gap-3 mb-4 px-2 py-2 bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700">
+            <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide">Legenda:</span>
+            <div className="flex items-center gap-1">
+              <div className="h-2 w-2 rounded-full bg-primary" />
+              <span className="text-[10px] text-muted-foreground">Pendente</span>
+            </div>
+            <div className="flex items-center gap-1">
+              <div className="h-2 w-2 rounded-full bg-[#E0C051]" />
+              <span className="text-[10px] text-muted-foreground">Em andamento</span>
+            </div>
+            <div className="flex items-center gap-1">
+              <div className="h-2 w-2 rounded-full bg-[#8A8B88]/40" />
+              <span className="text-[10px] text-muted-foreground">Concluída</span>
+            </div>
+            <div className="flex items-center gap-1">
+              <div className="h-2 w-2 rounded-full bg-purple-500" />
+              <span className="text-[10px] text-muted-foreground">Inspeção</span>
+            </div>
+          </div>
+
           {/* Weekday headers */}
           <div className="grid grid-cols-7 mb-3">
             {dayNames.map((day) => (
@@ -926,6 +947,27 @@ export function MobileDashboard({ schedules, onScheduleClick, onStartCleaning, o
           ) : (
             // Day View (original implementation)
             <>
+          {/* Color Legend for Day View */}
+          <div className="flex flex-wrap items-center gap-3 mx-6 mt-4 px-3 py-2 bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700">
+            <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide">Legenda:</span>
+            <div className="flex items-center gap-1">
+              <div className="h-2 w-2 rounded-full bg-primary" />
+              <span className="text-[10px] text-muted-foreground">Pendente</span>
+            </div>
+            <div className="flex items-center gap-1">
+              <div className="h-2 w-2 rounded-full bg-[#E0C051]" />
+              <span className="text-[10px] text-muted-foreground">Em andamento</span>
+            </div>
+            <div className="flex items-center gap-1">
+              <div className="h-2 w-2 rounded-full bg-primary/50" />
+              <span className="text-[10px] text-muted-foreground">Concluída</span>
+            </div>
+            <div className="flex items-center gap-1">
+              <div className="h-2 w-2 rounded-full bg-purple-500" />
+              <span className="text-[10px] text-muted-foreground">Inspeção</span>
+            </div>
+          </div>
+
           {/* Week Calendar Strip */}
           <section className="mt-4 w-full">
             <div className="flex w-full snap-x gap-3 overflow-x-auto px-6 py-4 hide-scrollbar">
