@@ -1,7 +1,7 @@
 import { useState, useMemo, useCallback, useEffect, createContext, useContext, useRef } from 'react';
 import { Loader2, CalendarX } from 'lucide-react';
 import { toast } from 'sonner';
-import { isToday, isTomorrow, isSameDay, isWithinInterval, startOfDay, endOfDay } from 'date-fns';
+import { isToday, isTomorrow, isSameDay, isWithinInterval, startOfDay, endOfDay, parseISO } from 'date-fns';
 import type { DateRange } from 'react-day-picker';
 
 import { SidebarProvider } from '@/components/ui/sidebar';
@@ -209,6 +209,24 @@ const Index = () => {
     });
     return calculateStats(dateFiltered);
   }, [schedules, dateFilter, customDate, dateRange]);
+
+  // Filter inspections by date filter (same as schedules)
+  const filteredInspections = useMemo(() => {
+    return adminInspections.filter(inspection => {
+      const inspectionDate = parseISO(inspection.scheduled_date);
+      if (dateFilter === 'today') return isToday(inspectionDate);
+      if (dateFilter === 'tomorrow') return isTomorrow(inspectionDate);
+      if (dateFilter === 'custom' && customDate) return isSameDay(inspectionDate, customDate);
+      if (dateFilter === 'range' && dateRange?.from) {
+        const rangeEnd = dateRange.to || dateRange.from;
+        return isWithinInterval(inspectionDate, { 
+          start: startOfDay(dateRange.from), 
+          end: endOfDay(rangeEnd) 
+        });
+      }
+      return true;
+    });
+  }, [adminInspections, dateFilter, customDate, dateRange]);
 
   // Sync function with all rules implemented
   const startSync = useCallback(async (): Promise<{ synced: number } | null> => {
@@ -591,7 +609,7 @@ const Index = () => {
 
             {/* Inspections Section */}
             <AdminInspectionsSection 
-              inspections={adminInspections} 
+              inspections={filteredInspections} 
               loading={inspectionsLoading} 
             />
 
