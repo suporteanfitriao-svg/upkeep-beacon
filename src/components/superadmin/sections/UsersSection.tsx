@@ -3,6 +3,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Checkbox } from '@/components/ui/checkbox';
 import { 
   RefreshCw,
   ChevronLeft,
@@ -12,7 +13,9 @@ import {
   UserX,
   UserCheck,
   Plus,
-  Loader2
+  Loader2,
+  Building2,
+  Shield
 } from 'lucide-react';
 import {
   Table,
@@ -31,12 +34,23 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
+import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import { ScrollArea } from '@/components/ui/scroll-area';
 import { toast } from 'sonner';
 
 interface TeamMember {
@@ -49,6 +63,19 @@ interface TeamMember {
   is_active: boolean;
   created_at: string;
   activated_at: string | null;
+  has_all_properties: boolean;
+}
+
+interface Property {
+  id: string;
+  name: string;
+  property_code: string | null;
+}
+
+interface TeamMemberProperty {
+  id: string;
+  team_member_id: string;
+  property_id: string;
 }
 
 type FilterTab = 'all' | 'admin' | 'manager' | 'cleaner' | 'active' | 'inactive';
@@ -64,6 +91,7 @@ const avatarColors: Record<string, string> = {
 
 export function UsersSection() {
   const [members, setMembers] = useState<TeamMember[]>([]);
+  const [properties, setProperties] = useState<Property[]>([]);
   const [loading, setLoading] = useState(true);
   const [activeFilter, setActiveFilter] = useState<FilterTab>('all');
   const [currentPage, setCurrentPage] = useState(1);
@@ -79,8 +107,26 @@ export function UsersSection() {
     role: 'cleaner' as 'admin' | 'manager' | 'cleaner',
   });
 
+  // Permissions modal state
+  const [permissionsDialogOpen, setPermissionsDialogOpen] = useState(false);
+  const [selectedMember, setSelectedMember] = useState<TeamMember | null>(null);
+  const [memberProperties, setMemberProperties] = useState<string[]>([]);
+  const [hasAllProperties, setHasAllProperties] = useState(false);
+  const [savingPermissions, setSavingPermissions] = useState(false);
+
+  // Toggle status confirmation
+  const [toggleStatusDialogOpen, setToggleStatusDialogOpen] = useState(false);
+  const [memberToToggle, setMemberToToggle] = useState<TeamMember | null>(null);
+  const [togglingStatus, setTogglingStatus] = useState(false);
+
+  // Reset password confirmation
+  const [resetPasswordDialogOpen, setResetPasswordDialogOpen] = useState(false);
+  const [memberToReset, setMemberToReset] = useState<TeamMember | null>(null);
+  const [resettingPassword, setResettingPassword] = useState(false);
+
   useEffect(() => {
     fetchMembers();
+    fetchProperties();
   }, []);
 
   const fetchMembers = async () => {
@@ -97,6 +143,35 @@ export function UsersSection() {
       console.error('Error fetching members:', error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const fetchProperties = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('properties')
+        .select('id, name, property_code')
+        .order('name');
+
+      if (error) throw error;
+      setProperties(data || []);
+    } catch (error) {
+      console.error('Error fetching properties:', error);
+    }
+  };
+
+  const fetchMemberProperties = async (memberId: string) => {
+    try {
+      const { data, error } = await supabase
+        .from('team_member_properties')
+        .select('property_id')
+        .eq('team_member_id', memberId);
+
+      if (error) throw error;
+      return (data || []).map(p => p.property_id);
+    } catch (error) {
+      console.error('Error fetching member properties:', error);
+      return [];
     }
   };
 
@@ -150,6 +225,138 @@ export function UsersSection() {
       }
     } finally {
       setCreating(false);
+    }
+  };
+
+  const handleOpenPermissions = async (member: TeamMember) => {
+    setSelectedMember(member);
+    setHasAllProperties(member.has_all_properties);
+    const props = await fetchMemberProperties(member.id);
+    setMemberProperties(props);
+    setPermissionsDialogOpen(true);
+  };
+
+  const handleSavePermissions = async () => {
+    if (!selectedMember) return;
+
+    setSavingPermissions(true);
+    try {
+      // Update has_all_properties flag
+      const { error: updateError } = await supabase
+        .from('team_members')
+        .update({ has_all_properties: hasAllProperties })
+        .eq('id', selectedMember.id);
+
+      if (updateError) throw updateError;
+
+      // Update member properties
+      // First delete all existing
+      await supabase
+        .from('team_member_properties')
+        .delete()
+        .eq('team_member_id', selectedMember.id);
+
+      // Then insert new ones (only if not has_all_properties)
+      if (!hasAllProperties && memberProperties.length > 0) {
+        const { error: insertError } = await supabase
+          .from('team_member_properties')
+          .insert(memberProperties.map(propId => ({
+            team_member_id: selectedMember.id,
+            property_id: propId,
+          })));
+
+        if (insertError) throw insertError;
+      }
+
+      // Update local state
+      setMembers(prev => prev.map(m => 
+        m.id === selectedMember.id 
+          ? { ...m, has_all_properties: hasAllProperties }
+          : m
+      ));
+
+      setPermissionsDialogOpen(false);
+      toast.success('Permissões atualizadas com sucesso!');
+    } catch (error) {
+      console.error('Error saving permissions:', error);
+      toast.error('Erro ao salvar permissões');
+    } finally {
+      setSavingPermissions(false);
+    }
+  };
+
+  const handleToggleProperty = (propertyId: string) => {
+    setMemberProperties(prev => 
+      prev.includes(propertyId)
+        ? prev.filter(id => id !== propertyId)
+        : [...prev, propertyId]
+    );
+  };
+
+  const handleToggleStatus = async () => {
+    if (!memberToToggle) return;
+
+    setTogglingStatus(true);
+    try {
+      const newStatus = !memberToToggle.is_active;
+      const { error } = await supabase
+        .from('team_members')
+        .update({ 
+          is_active: newStatus,
+          activated_at: newStatus ? new Date().toISOString() : null 
+        })
+        .eq('id', memberToToggle.id);
+
+      if (error) throw error;
+
+      // Log audit
+      await supabase.from('team_member_audit_logs').insert({
+        team_member_id: memberToToggle.id,
+        action: newStatus ? 'ativou_conta' : 'desativou_conta',
+        details: { previous_status: memberToToggle.is_active, new_status: newStatus },
+      });
+
+      setMembers(prev => prev.map(m => 
+        m.id === memberToToggle.id 
+          ? { ...m, is_active: newStatus, activated_at: newStatus ? new Date().toISOString() : null }
+          : m
+      ));
+
+      setToggleStatusDialogOpen(false);
+      setMemberToToggle(null);
+      toast.success(newStatus ? 'Usuário ativado com sucesso!' : 'Usuário desativado com sucesso!');
+    } catch (error) {
+      console.error('Error toggling status:', error);
+      toast.error('Erro ao alterar status do usuário');
+    } finally {
+      setTogglingStatus(false);
+    }
+  };
+
+  const handleResetPassword = async () => {
+    if (!memberToReset) return;
+
+    setResettingPassword(true);
+    try {
+      const { error } = await supabase.functions.invoke('send-password-reset', {
+        body: {
+          teamMemberId: memberToReset.id,
+          teamMemberName: memberToReset.name,
+          email: memberToReset.email,
+          appUrl: window.location.origin,
+        },
+      });
+
+      if (error) throw error;
+
+      setResetPasswordDialogOpen(false);
+      setMemberToReset(null);
+      toast.success('E-mail de redefinição de senha enviado com sucesso!');
+    } catch (error: any) {
+      console.error('Error resetting password:', error);
+      toast.error(error?.message || 'Erro ao enviar e-mail de redefinição');
+    } finally {
+      setResettingPassword(false);
     }
   };
 
@@ -290,6 +497,9 @@ export function UsersSection() {
                   Nível de Acesso
                 </TableHead>
                 <TableHead className="px-6 py-4 text-[11px] font-bold text-muted-foreground uppercase tracking-wider">
+                  Permissões
+                </TableHead>
+                <TableHead className="px-6 py-4 text-[11px] font-bold text-muted-foreground uppercase tracking-wider">
                   Status
                 </TableHead>
                 <TableHead className="px-6 py-4 text-[11px] font-bold text-muted-foreground uppercase tracking-wider">
@@ -303,7 +513,7 @@ export function UsersSection() {
             <TableBody className="divide-y divide-border">
               {loading ? (
                 <TableRow>
-                  <TableCell colSpan={6} className="text-center py-8">
+                  <TableCell colSpan={7} className="text-center py-8">
                     <div className="flex items-center justify-center gap-2">
                       <RefreshCw className="h-4 w-4 animate-spin" />
                       Carregando...
@@ -312,7 +522,7 @@ export function UsersSection() {
                 </TableRow>
               ) : paginatedMembers.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
+                  <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
                     Nenhum usuário encontrado
                   </TableCell>
                 </TableRow>
@@ -352,6 +562,19 @@ export function UsersSection() {
                         </span>
                       </TableCell>
 
+                      {/* Permissions */}
+                      <TableCell className="px-6 py-4">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="gap-2 text-xs"
+                          onClick={() => handleOpenPermissions(member)}
+                        >
+                          <Shield className="h-3.5 w-3.5" />
+                          {member.has_all_properties ? 'Todas' : 'Específicas'}
+                        </Button>
+                      </TableCell>
+
                       {/* Status */}
                       <TableCell className="px-6 py-4">
                         <div className="flex items-center gap-2">
@@ -375,6 +598,10 @@ export function UsersSection() {
                             size="icon"
                             className="h-8 w-8 text-muted-foreground hover:text-primary"
                             title="Resetar Senha"
+                            onClick={() => {
+                              setMemberToReset(member);
+                              setResetPasswordDialogOpen(true);
+                            }}
                           >
                             <KeyRound className="h-4 w-4" />
                           </Button>
@@ -392,6 +619,10 @@ export function UsersSection() {
                               size="icon"
                               className="h-8 w-8 text-muted-foreground hover:text-destructive"
                               title="Desativar Conta"
+                              onClick={() => {
+                                setMemberToToggle(member);
+                                setToggleStatusDialogOpen(true);
+                              }}
                             >
                               <UserX className="h-4 w-4" />
                             </Button>
@@ -401,6 +632,10 @@ export function UsersSection() {
                               size="icon"
                               className="h-8 w-8 text-muted-foreground hover:text-green-500"
                               title="Ativar Conta"
+                              onClick={() => {
+                                setMemberToToggle(member);
+                                setToggleStatusDialogOpen(true);
+                              }}
                             >
                               <UserCheck className="h-4 w-4" />
                             </Button>
@@ -560,6 +795,160 @@ export function UsersSection() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Permissions Dialog */}
+      <Dialog open={permissionsDialogOpen} onOpenChange={setPermissionsDialogOpen}>
+        <DialogContent className="sm:max-w-lg">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Shield className="h-5 w-5" />
+              Permissões de Propriedades
+            </DialogTitle>
+            <DialogDescription>
+              Configure quais propriedades {selectedMember?.name} pode acessar.
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="space-y-4 py-4">
+            {/* All properties toggle */}
+            <div className="flex items-center space-x-2 p-4 bg-muted/50 rounded-lg">
+              <Checkbox
+                id="has-all-properties"
+                checked={hasAllProperties}
+                onCheckedChange={(checked) => setHasAllProperties(checked === true)}
+              />
+              <Label htmlFor="has-all-properties" className="text-sm font-medium cursor-pointer">
+                Acesso a todas as propriedades
+              </Label>
+            </div>
+
+            {/* Property list */}
+            {!hasAllProperties && (
+              <div className="space-y-2">
+                <Label className="text-sm text-muted-foreground">
+                  Selecione as propriedades específicas:
+                </Label>
+                <ScrollArea className="h-64 border rounded-lg p-2">
+                  <div className="space-y-2">
+                    {properties.map((property) => (
+                      <div 
+                        key={property.id}
+                        className="flex items-center space-x-3 p-2 hover:bg-muted/50 rounded-md"
+                      >
+                        <Checkbox
+                          id={`property-${property.id}`}
+                          checked={memberProperties.includes(property.id)}
+                          onCheckedChange={() => handleToggleProperty(property.id)}
+                        />
+                        <Label 
+                          htmlFor={`property-${property.id}`}
+                          className="flex items-center gap-2 text-sm cursor-pointer flex-1"
+                        >
+                          <Building2 className="h-4 w-4 text-muted-foreground" />
+                          <span>{property.name}</span>
+                          {property.property_code && (
+                            <span className="text-xs text-muted-foreground">
+                              ({property.property_code})
+                            </span>
+                          )}
+                        </Label>
+                      </div>
+                    ))}
+                  </div>
+                </ScrollArea>
+                <p className="text-xs text-muted-foreground">
+                  {memberProperties.length} de {properties.length} propriedades selecionadas
+                </p>
+              </div>
+            )}
+          </div>
+          
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setPermissionsDialogOpen(false)}>
+              Cancelar
+            </Button>
+            <Button onClick={handleSavePermissions} disabled={savingPermissions}>
+              {savingPermissions ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  Salvando...
+                </>
+              ) : (
+                'Salvar Permissões'
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Toggle Status Confirmation Dialog */}
+      <AlertDialog open={toggleStatusDialogOpen} onOpenChange={setToggleStatusDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              {memberToToggle?.is_active ? 'Desativar Usuário' : 'Ativar Usuário'}
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              {memberToToggle?.is_active 
+                ? `Tem certeza que deseja desativar a conta de ${memberToToggle?.name}? O usuário não poderá mais acessar o sistema.`
+                : `Tem certeza que deseja ativar a conta de ${memberToToggle?.name}? O usuário poderá acessar o sistema novamente.`
+              }
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => setMemberToToggle(null)}>
+              Cancelar
+            </AlertDialogCancel>
+            <AlertDialogAction 
+              onClick={handleToggleStatus}
+              disabled={togglingStatus}
+              className={memberToToggle?.is_active ? 'bg-destructive hover:bg-destructive/90' : ''}
+            >
+              {togglingStatus ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  Processando...
+                </>
+              ) : memberToToggle?.is_active ? (
+                'Desativar'
+              ) : (
+                'Ativar'
+              )}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Reset Password Confirmation Dialog */}
+      <AlertDialog open={resetPasswordDialogOpen} onOpenChange={setResetPasswordDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Resetar Senha</AlertDialogTitle>
+            <AlertDialogDescription>
+              Um e-mail será enviado para <strong>{memberToReset?.email}</strong> com instruções para criar uma nova senha.
+              Deseja continuar?
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => setMemberToReset(null)}>
+              Cancelar
+            </AlertDialogCancel>
+            <AlertDialogAction 
+              onClick={handleResetPassword}
+              disabled={resettingPassword}
+            >
+              {resettingPassword ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  Enviando...
+                </>
+              ) : (
+                'Enviar E-mail'
+              )}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
