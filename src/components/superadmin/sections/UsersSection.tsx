@@ -124,9 +124,9 @@ export function UsersSection() {
 
   const filterTabs: { key: FilterTab; label: string }[] = [
     { key: 'all', label: 'Todos os Usuários' },
-    { key: 'admin', label: 'Admin' },
-    { key: 'manager', label: 'Manager' },
-    { key: 'cleaner', label: 'Cleaner' },
+    { key: 'admin', label: 'Administrador' },
+    { key: 'manager', label: 'Gerente' },
+    { key: 'cleaner', label: 'Limpeza' },
     { key: 'active', label: 'Ativos' },
     { key: 'inactive', label: 'Inativos' },
   ];
@@ -147,11 +147,11 @@ export function UsersSection() {
   const getRoleLabel = (role: string) => {
     switch (role) {
       case 'admin':
-        return 'Admin';
+        return 'Administrador';
       case 'manager':
-        return 'Manager';
+        return 'Gerente';
       case 'cleaner':
-        return 'Cleaner';
+        return 'Limpeza';
       default:
         return role;
     }

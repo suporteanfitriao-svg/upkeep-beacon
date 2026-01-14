@@ -101,7 +101,7 @@ export function TeamStep({ onNext, onBack }: TeamStepProps) {
     switch (role) {
       case 'admin': return 'Administrador';
       case 'manager': return 'Gerente';
-      case 'cleaner': return 'Responsável';
+      case 'cleaner': return 'Limpeza';
       default: return role;
     }
   };
@@ -174,7 +174,7 @@ export function TeamStep({ onNext, onBack }: TeamStepProps) {
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="cleaner">Responsável (Limpeza)</SelectItem>
+                <SelectItem value="cleaner">Limpeza</SelectItem>
                 <SelectItem value="manager">Gerente</SelectItem>
                 <SelectItem value="admin">Administrador</SelectItem>
               </SelectContent>

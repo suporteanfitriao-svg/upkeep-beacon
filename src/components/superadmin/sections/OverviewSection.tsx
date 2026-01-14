@@ -179,7 +179,7 @@ export function OverviewSection({ viewMode, onNavigateToSection }: OverviewSecti
       iconColor: 'text-indigo-500'
     },
     { 
-      label: 'Cleaners', 
+      label: 'Limpeza', 
       value: stats.cleaners.toLocaleString(), 
       icon: Sparkles, 
       change: 'Estável', 
