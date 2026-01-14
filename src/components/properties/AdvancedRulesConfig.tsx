@@ -4,7 +4,7 @@ import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
-import { Clock, Camera, AlertTriangle, Loader2 } from 'lucide-react';
+import { Clock, Camera, AlertTriangle, Loader2, ClipboardList } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 interface AdvancedRulesConfigProps {
@@ -16,6 +16,7 @@ interface PropertyRules {
   auto_release_on_checkout: boolean;
   auto_release_before_checkout_enabled: boolean;
   auto_release_before_checkout_minutes: number;
+  require_checklist: boolean;
   require_photo_per_category: boolean;
   require_photo_for_issues: boolean;
 }
@@ -25,6 +26,7 @@ export function AdvancedRulesConfig({ propertyId, propertyName }: AdvancedRulesC
     auto_release_on_checkout: false,
     auto_release_before_checkout_enabled: false,
     auto_release_before_checkout_minutes: 60,
+    require_checklist: true,
     require_photo_per_category: false,
     require_photo_for_issues: false,
   });
@@ -39,7 +41,7 @@ export function AdvancedRulesConfig({ propertyId, propertyName }: AdvancedRulesC
     setIsLoading(true);
     const { data, error } = await supabase
       .from('properties')
-      .select('auto_release_on_checkout, auto_release_before_checkout_enabled, auto_release_before_checkout_minutes, require_photo_per_category, require_photo_for_issues')
+      .select('auto_release_on_checkout, auto_release_before_checkout_enabled, auto_release_before_checkout_minutes, require_checklist, require_photo_per_category, require_photo_for_issues')
       .eq('id', propertyId)
       .single();
 
@@ -51,6 +53,7 @@ export function AdvancedRulesConfig({ propertyId, propertyName }: AdvancedRulesC
         auto_release_on_checkout: data.auto_release_on_checkout ?? false,
         auto_release_before_checkout_enabled: data.auto_release_before_checkout_enabled ?? false,
         auto_release_before_checkout_minutes: data.auto_release_before_checkout_minutes ?? 60,
+        require_checklist: data.require_checklist ?? true,
         require_photo_per_category: data.require_photo_per_category ?? false,
         require_photo_for_issues: data.require_photo_for_issues ?? false,
       });
@@ -307,47 +310,91 @@ export function AdvancedRulesConfig({ propertyId, propertyName }: AdvancedRulesC
         </div>
       </div>
 
-      {/* Section: Fotos do Checklist */}
+      {/* Section: Checklist */}
       <div className="space-y-4">
         <div className="space-y-1">
           <h4 className="text-sm font-semibold flex items-center gap-2">
-            <Camera className="h-4 w-4 text-primary" />
-            Fotos do Checklist
+            <ClipboardList className="h-4 w-4 text-primary" />
+            Checklist de Limpeza
           </h4>
           <p className="text-xs text-muted-foreground">
-            Configure exigências de fotos durante a limpeza.
+            Configure se o checklist é obrigatório para esta propriedade.
           </p>
         </div>
 
-        {/* Require photo per category */}
+        {/* Require checklist */}
         <div className={cn(
           "flex items-start justify-between gap-4 p-4 rounded-lg border transition-colors",
-          rules.require_photo_per_category ? "bg-primary/5 border-primary/30" : "bg-muted/30"
+          rules.require_checklist ? "bg-primary/5 border-primary/30" : "bg-muted/30"
         )}>
           <div className="flex gap-3">
             <div className="space-y-1">
-              <Label htmlFor="require-photo" className="text-sm font-medium cursor-pointer">
-                Exigir foto por categoria do checklist
+              <Label htmlFor="require-checklist" className="text-sm font-medium cursor-pointer">
+                Exigir checklist de limpeza
               </Label>
               <p className="text-xs text-muted-foreground">
-                Cada categoria/cômodo exige pelo menos 1 foto para finalizar a limpeza. 
-                O botão "Finalizar" ficará bloqueado até todas as fotos serem anexadas.
+                Quando ativado, o cleaner deve preencher o checklist durante a limpeza.
+                Quando desativado, o checklist não será exibido nos cards e detalhes da tarefa.
               </p>
             </div>
           </div>
           <div className="flex items-center gap-2">
-            {isSaving === 'require_photo_per_category' && (
+            {isSaving === 'require_checklist' && (
               <Loader2 className="h-4 w-4 animate-spin" />
             )}
             <Switch
-              id="require-photo"
-              checked={rules.require_photo_per_category}
-              onCheckedChange={(checked) => handleToggle('require_photo_per_category', checked)}
+              id="require-checklist"
+              checked={rules.require_checklist}
+              onCheckedChange={(checked) => handleToggle('require_checklist', checked)}
               disabled={isSaving !== null}
             />
           </div>
         </div>
       </div>
+
+      {/* Section: Fotos do Checklist - Only show if checklist is required */}
+      {rules.require_checklist && (
+        <div className="space-y-4">
+          <div className="space-y-1">
+            <h4 className="text-sm font-semibold flex items-center gap-2">
+              <Camera className="h-4 w-4 text-primary" />
+              Fotos do Checklist
+            </h4>
+            <p className="text-xs text-muted-foreground">
+              Configure exigências de fotos durante a limpeza.
+            </p>
+          </div>
+
+          {/* Require photo per category */}
+          <div className={cn(
+            "flex items-start justify-between gap-4 p-4 rounded-lg border transition-colors",
+            rules.require_photo_per_category ? "bg-primary/5 border-primary/30" : "bg-muted/30"
+          )}>
+            <div className="flex gap-3">
+              <div className="space-y-1">
+                <Label htmlFor="require-photo" className="text-sm font-medium cursor-pointer">
+                  Exigir foto por categoria do checklist
+                </Label>
+                <p className="text-xs text-muted-foreground">
+                  Cada categoria/cômodo exige pelo menos 1 foto para finalizar a limpeza. 
+                  O botão "Finalizar" ficará bloqueado até todas as fotos serem anexadas.
+                </p>
+              </div>
+            </div>
+            <div className="flex items-center gap-2">
+              {isSaving === 'require_photo_per_category' && (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              )}
+              <Switch
+                id="require-photo"
+                checked={rules.require_photo_per_category}
+                onCheckedChange={(checked) => handleToggle('require_photo_per_category', checked)}
+                disabled={isSaving !== null}
+              />
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Section: Fotos em Avarias */}
       <div className="space-y-4">

@@ -147,18 +147,21 @@ export function ScheduleDetail({ schedule, onClose, onUpdateSchedule }: Schedule
 
   // State for require_photo_for_issues
   const [requirePhotoForIssues, setRequirePhotoForIssues] = useState(false);
+  // State for require_checklist (whether checklist is required for this property)
+  const [requireChecklist, setRequireChecklist] = useState(true);
 
-  // Fetch property rules (require_photo_per_category, require_photo_for_issues)
+  // Fetch property rules (require_photo_per_category, require_photo_for_issues, require_checklist)
   useEffect(() => {
     const fetchPropertyRules = async () => {
       const { data } = await supabase
         .from('properties')
-        .select('require_photo_per_category, require_photo_for_issues')
+        .select('require_photo_per_category, require_photo_for_issues, require_checklist')
         .eq('id', schedule.propertyId)
         .maybeSingle();
       if (data) {
         setRequirePhotoPerCategory(data.require_photo_per_category ?? false);
         setRequirePhotoForIssues(data.require_photo_for_issues ?? false);
+        setRequireChecklist(data.require_checklist ?? true);
       }
     };
     fetchPropertyRules();
@@ -256,8 +259,8 @@ export function ScheduleDetail({ schedule, onClose, onUpdateSchedule }: Schedule
       };
     }
 
-    // Rule 6: Check if property has checklist (for starting cleaning)
-    if (nextStatus === 'cleaning' && !hasPropertyChecklist && !isCheckingChecklist) {
+    // Rule 6: Check if property has checklist (for starting cleaning) - only if checklist is required
+    if (nextStatus === 'cleaning' && requireChecklist && !hasPropertyChecklist && !isCheckingChecklist) {
       return { 
         allowed: false, 
         reason: 'Este imóvel não possui checklist configurado' 
@@ -277,7 +280,7 @@ export function ScheduleDetail({ schedule, onClose, onUpdateSchedule }: Schedule
     }
 
     return { allowed: true };
-  }, [schedule.status, schedule.responsibleTeamMemberId, role, teamMemberId, hasPropertyAccess, isCheckingAccess, hasImportantInfo, hasAcknowledged, hasPropertyChecklist, isCheckingChecklist]);
+  }, [schedule.status, schedule.responsibleTeamMemberId, role, teamMemberId, hasPropertyAccess, isCheckingAccess, hasImportantInfo, hasAcknowledged, hasPropertyChecklist, isCheckingChecklist, requireChecklist]);
 
   const toggleCategory = (category: string) => {
     setExpandedCategories(prev => ({
@@ -441,8 +444,8 @@ export function ScheduleDetail({ schedule, onClose, onUpdateSchedule }: Schedule
       return;
     }
 
-    // Check checklist completion for finalizing
-    if (targetStatus === 'completed' && checklist.length > 0) {
+    // Check checklist completion for finalizing - only if checklist is required
+    if (targetStatus === 'completed' && requireChecklist && checklist.length > 0) {
       const pending = getPendingCategoriesDetails();
       if (pending.length > 0) {
         setPendingCategories(pending);
@@ -747,7 +750,7 @@ export function ScheduleDetail({ schedule, onClose, onUpdateSchedule }: Schedule
                       toast.error(canTransition.reason);
                       return;
                     }
-                    if (!hasPropertyChecklist && !isCheckingChecklist) {
+                    if (requireChecklist && !hasPropertyChecklist && !isCheckingChecklist) {
                       setShowNoChecklistModal(true);
                       return;
                     }
@@ -843,26 +846,29 @@ export function ScheduleDetail({ schedule, onClose, onUpdateSchedule }: Schedule
             "space-y-4",
             schedule.status === 'waiting' && "opacity-40 select-none pointer-events-none"
           )}>
-            {/* Progress Section */}
-            <section className="flex flex-col gap-3">
-              <div className="flex items-center justify-between">
-                <h3 className="text-sm font-bold uppercase tracking-widest text-slate-500">Progresso do Checklist</h3>
-                <span className="text-xs font-bold text-slate-400">{completedTasks}/{totalTasks} Concluídos</span>
-              </div>
-              <div className="h-2 w-full rounded-full bg-slate-200 dark:bg-slate-800 overflow-hidden">
-                <div 
-                  className="h-full rounded-full bg-primary transition-all duration-500" 
-                  style={{ width: `${totalTasks > 0 ? (completedTasks / totalTasks) * 100 : 0}%` }}
-                />
-              </div>
-            </section>
+            {/* Progress Section - Only show if checklist is required */}
+            {requireChecklist && (
+              <section className="flex flex-col gap-3">
+                <div className="flex items-center justify-between">
+                  <h3 className="text-sm font-bold uppercase tracking-widest text-slate-500">Progresso do Checklist</h3>
+                  <span className="text-xs font-bold text-slate-400">{completedTasks}/{totalTasks} Concluídos</span>
+                </div>
+                <div className="h-2 w-full rounded-full bg-slate-200 dark:bg-slate-800 overflow-hidden">
+                  <div 
+                    className="h-full rounded-full bg-primary transition-all duration-500" 
+                    style={{ width: `${totalTasks > 0 ? (completedTasks / totalTasks) * 100 : 0}%` }}
+                  />
+                </div>
+              </section>
+            )}
 
-            {/* Checklist Section */}
-            <section className="flex flex-col gap-4 pt-2">
-              <div className="flex items-center gap-2">
-                <span className="material-symbols-outlined text-slate-400 text-[20px]">check_circle</span>
-                <h3 className="text-xs font-bold uppercase tracking-widest text-slate-500">Checklist de Limpeza</h3>
-              </div>
+            {/* Checklist Section - Only show if checklist is required */}
+            {requireChecklist && (
+              <section className="flex flex-col gap-4 pt-2">
+                <div className="flex items-center gap-2">
+                  <span className="material-symbols-outlined text-slate-400 text-[20px]">check_circle</span>
+                  <h3 className="text-xs font-bold uppercase tracking-widest text-slate-500">Checklist de Limpeza</h3>
+                </div>
 
             {Object.entries(groupedChecklist).map(([category, items]) => {
               const totalInCategory = items.length;
@@ -1057,6 +1063,7 @@ export function ScheduleDetail({ schedule, onClose, onUpdateSchedule }: Schedule
               );
             })}
             </section>
+            )}
 
             {/* Maintenance Section - Uses localIssues (Rule 41.1, 44.1) */}
             <section className="flex flex-col gap-3">

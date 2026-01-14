@@ -3,8 +3,7 @@ import { cn } from '@/lib/utils';
 import { 
   Clock, 
   Play,
-  AlertTriangle, 
-  CheckCircle2, 
+  AlertTriangle,
   Wrench,
   Eye,
   Loader2
@@ -12,6 +11,8 @@ import {
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { useStayStatus } from '@/hooks/useStayStatus';
+import { useState, useEffect } from 'react';
+import { supabase } from '@/integrations/supabase/client';
 
 interface ScheduleCardProps {
   schedule: Schedule;
@@ -56,11 +57,32 @@ export function ScheduleCard({ schedule, onClick, isLoading = false }: ScheduleC
   const completedTasks = schedule.checklist.filter(item => item.completed).length;
   const totalTasks = schedule.checklist.length;
   const progressPercent = totalTasks > 0 ? (completedTasks / totalTasks) * 100 : 0;
+  
+  // Fetch require_checklist from property
+  const [requireChecklist, setRequireChecklist] = useState(true);
+  
+  useEffect(() => {
+    const fetchPropertyConfig = async () => {
+      if (!schedule.propertyId) return;
+      const { data } = await supabase
+        .from('properties')
+        .select('require_checklist')
+        .eq('id', schedule.propertyId)
+        .maybeSingle();
+      if (data) {
+        setRequireChecklist(data.require_checklist ?? true);
+      }
+    };
+    fetchPropertyConfig();
+  }, [schedule.propertyId]);
 
   // Determine context message based on status
   const getContextMessage = () => {
-    if (schedule.status === 'cleaning') {
+    if (schedule.status === 'cleaning' && requireChecklist) {
       return `${completedTasks}/${totalTasks} tarefas concluídas`;
+    }
+    if (schedule.status === 'cleaning' && !requireChecklist) {
+      return 'Limpeza em andamento';
     }
     if (schedule.status === 'completed') {
       return 'Limpeza finalizada';
@@ -165,8 +187,8 @@ export function ScheduleCard({ schedule, onClick, isLoading = false }: ScheduleC
             </span>
           </div>
 
-          {/* Progress bar for cleaning status */}
-          {schedule.status === 'cleaning' && (
+          {/* Progress bar for cleaning status - only show if checklist is required */}
+          {schedule.status === 'cleaning' && requireChecklist && (
             <div className="mt-2">
               <div className="h-1.5 bg-muted rounded-full overflow-hidden">
                 <div 
