@@ -259,7 +259,7 @@ export function HouseRulesStep({ onNext, onBack }: HouseRulesStepProps) {
           <ArrowLeft className="h-4 w-4 mr-2" />
           Voltar
         </Button>
-        <Button onClick={handleSaveAndNext} disabled={saving}>
+        <Button onClick={handleSaveAndNext} disabled={saving || rules.length === 0}>
           {saving ? (
             <>
               <Loader2 className="h-4 w-4 mr-2 animate-spin" />
@@ -273,6 +273,11 @@ export function HouseRulesStep({ onNext, onBack }: HouseRulesStepProps) {
           )}
         </Button>
       </div>
+      {rules.length === 0 && (
+        <p className="text-xs text-destructive text-center mt-2">
+          Adicione pelo menos uma regra da casa para continuar.
+        </p>
+      )}
     </div>
   );
 }

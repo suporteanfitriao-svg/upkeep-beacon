@@ -269,7 +269,7 @@ export function InventoryStep({ onNext, onBack }: InventoryStepProps) {
           <ArrowLeft className="h-4 w-4 mr-2" />
           Voltar
         </Button>
-        <Button onClick={handleSaveAndNext} disabled={saving}>
+        <Button onClick={handleSaveAndNext} disabled={saving || categories.length === 0}>
           {saving ? (
             <>
               <Loader2 className="h-4 w-4 mr-2 animate-spin" />
@@ -283,6 +283,11 @@ export function InventoryStep({ onNext, onBack }: InventoryStepProps) {
           )}
         </Button>
       </div>
+      {categories.length === 0 && (
+        <p className="text-xs text-destructive text-center mt-2">
+          Adicione pelo menos uma categoria de inventário para continuar.
+        </p>
+      )}
     </div>
   );
 }

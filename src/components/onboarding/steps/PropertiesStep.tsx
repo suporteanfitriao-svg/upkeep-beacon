@@ -199,11 +199,16 @@ export function PropertiesStep({ onNext, onBack }: PropertiesStepProps) {
           <ArrowLeft className="h-4 w-4 mr-2" />
           Voltar
         </Button>
-        <Button onClick={onNext}>
+        <Button onClick={onNext} disabled={properties.length === 0}>
           Próximo
           <ArrowRight className="h-4 w-4 ml-2" />
         </Button>
       </div>
+      {properties.length === 0 && (
+        <p className="text-xs text-destructive text-center mt-2">
+          Adicione pelo menos uma propriedade para continuar.
+        </p>
+      )}
     </div>
   );
 }

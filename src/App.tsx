@@ -18,6 +18,7 @@ import Landing from "./pages/Landing";
 import NotFound from "./pages/NotFound";
 import Onboarding from "./pages/Onboarding";
 import SuperAdmin from "./pages/SuperAdmin";
+import Settings from "./pages/Settings";
 
 const queryClient = new QueryClient();
 
@@ -108,6 +109,14 @@ const App = () => (
               element={
                 <ProtectedRoute>
                   <SuperAdmin />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/configuracoes"
+              element={
+                <ProtectedRoute>
+                  <Settings />
                 </ProtectedRoute>
               }
             />
