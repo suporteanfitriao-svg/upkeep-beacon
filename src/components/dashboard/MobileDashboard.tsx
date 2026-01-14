@@ -1,7 +1,7 @@
 import { useState, useMemo, useEffect, useCallback, useRef } from 'react';
-import { format, isSameDay, addDays, startOfWeek, endOfWeek, getWeek, isAfter, startOfDay, endOfDay, isToday as checkIsToday, startOfMonth, endOfMonth, eachDayOfInterval, addMonths, subMonths, getDay, formatDistanceToNow, isWithinInterval } from 'date-fns';
+import { format, isSameDay, addDays, startOfWeek, endOfWeek, getWeek, isAfter, startOfDay, endOfDay, isToday as checkIsToday, startOfMonth, endOfMonth, eachDayOfInterval, addMonths, subMonths, getDay, formatDistanceToNow, isWithinInterval, parseISO } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { Calendar, Play, Clock, Check, ChevronRight, LayoutGrid, MessageSquare, Menu, RefreshCw, Home, Building2, AlertCircle, Users, Loader2 } from 'lucide-react';
+import { Calendar, Play, Clock, Check, ChevronRight, LayoutGrid, MessageSquare, Menu, RefreshCw, Home, Building2, AlertCircle, Users, Loader2, ClipboardCheck, CheckCircle2 } from 'lucide-react';
 import { Schedule } from '@/types/scheduling';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
@@ -11,6 +11,7 @@ import { useTeamMemberId } from '@/hooks/useTeamMemberId';
 import { useCleanerPayments, PaymentPeriod } from '@/hooks/useCleanerPayments';
 import { CleanerPaymentCards } from './CleanerPaymentCards';
 import { useStayStatus, StayStatusInfo } from '@/hooks/useStayStatus';
+import { useCleanerInspections, CleanerInspection } from '@/hooks/useCleanerInspections';
 
 // Component to render the footer of pending cards with stay status
 function PendingCardFooter({ schedule }: { schedule: Schedule }) {
@@ -59,6 +60,14 @@ export function MobileDashboard({ schedules, onScheduleClick, onStartCleaning, o
   const { user } = useAuth();
   const { teamMemberId } = useTeamMemberId();
   const [paymentPeriod, setPaymentPeriod] = useState<PaymentPeriod>('today');
+  
+  // Cleaner inspections
+  const { 
+    inspections, 
+    loading: inspectionsLoading, 
+    updateInspectionStatus,
+    refetch: refetchInspections 
+  } = useCleanerInspections();
   
   // Always initialize with the current date from the device
   const [selectedDate, setSelectedDate] = useState(() => startOfDay(new Date()));
@@ -571,6 +580,124 @@ export function MobileDashboard({ schedules, onScheduleClick, onStartCleaning, o
                     <ChevronRight className="w-5 h-5 text-muted-foreground self-center" />
                   </div>
                 </button>
+              </div>
+            )}
+
+            {/* Inspections Section */}
+            {inspections.length > 0 && (
+              <div className="mb-6">
+                <h3 className="text-sm font-semibold text-muted-foreground mb-3 flex items-center gap-2">
+                  <ClipboardCheck className="w-4 h-4" />
+                  Minhas Inspeções
+                </h3>
+                <div className="space-y-3">
+                  {inspections.map(inspection => {
+                    const isScheduled = inspection.status === 'scheduled';
+                    const isInProgress = inspection.status === 'in_progress';
+                    const completedItems = inspection.checklist_state.filter(i => i.checked).length;
+                    const totalItems = inspection.checklist_state.length;
+                    
+                    return (
+                      <div
+                        key={inspection.id}
+                        className="overflow-hidden rounded-2xl bg-white dark:bg-[#2d3138] shadow-soft border border-slate-100 dark:border-slate-700"
+                      >
+                        <div className="p-4">
+                          <div className="flex items-start gap-3">
+                            <div className={cn(
+                              "h-12 w-12 shrink-0 rounded-xl flex items-center justify-center",
+                              isScheduled && "bg-blue-100 dark:bg-blue-900/30",
+                              isInProgress && "bg-yellow-100 dark:bg-yellow-900/30"
+                            )}>
+                              <ClipboardCheck className={cn(
+                                "w-6 h-6",
+                                isScheduled && "text-blue-600",
+                                isInProgress && "text-yellow-600"
+                              )} />
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-center gap-2 mb-1">
+                                <span className={cn(
+                                  "rounded-full px-2 py-0.5 text-xs font-bold",
+                                  isScheduled && "bg-blue-100 dark:bg-blue-900/30 text-blue-700",
+                                  isInProgress && "bg-yellow-100 dark:bg-yellow-900/30 text-yellow-700"
+                                )}>
+                                  {isScheduled ? 'Agendada' : 'Em Andamento'}
+                                </span>
+                                {totalItems > 0 && (
+                                  <span className="text-xs text-muted-foreground">
+                                    {completedItems}/{totalItems}
+                                  </span>
+                                )}
+                              </div>
+                              <h4 className="font-bold text-foreground truncate">{inspection.title}</h4>
+                              <p className="text-sm text-muted-foreground flex items-center gap-1">
+                                <Building2 className="w-3.5 h-3.5" />
+                                {inspection.property_name}
+                              </p>
+                              <p className="text-sm text-muted-foreground flex items-center gap-1 mt-1">
+                                <Calendar className="w-3.5 h-3.5" />
+                                {format(parseISO(inspection.scheduled_date), "dd/MM/yyyy", { locale: ptBR })}
+                                {inspection.scheduled_time && (
+                                  <span className="flex items-center gap-1 ml-2">
+                                    <Clock className="w-3.5 h-3.5" />
+                                    {inspection.scheduled_time.slice(0, 5)}
+                                  </span>
+                                )}
+                              </p>
+                            </div>
+                          </div>
+                        </div>
+                        
+                        {/* Action Buttons */}
+                        <div className="border-t border-slate-100 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/50 px-4 py-3 flex gap-2">
+                          {isScheduled && (
+                            <button
+                              onClick={async () => {
+                                const success = await updateInspectionStatus(inspection.id, 'in_progress');
+                                if (success) {
+                                  toast.success('Inspeção iniciada!');
+                                } else {
+                                  toast.error('Erro ao iniciar inspeção');
+                                }
+                              }}
+                              className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-yellow-500 text-white font-semibold text-sm transition-all active:scale-[0.98]"
+                            >
+                              <Play className="w-4 h-4" />
+                              Iniciar Inspeção
+                            </button>
+                          )}
+                          {isInProgress && (
+                            <>
+                              <button
+                                onClick={() => navigate(`/inspecoes?inspection=${inspection.id}`)}
+                                className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-slate-200 dark:bg-slate-700 text-foreground font-semibold text-sm transition-all active:scale-[0.98]"
+                              >
+                                <ClipboardCheck className="w-4 h-4" />
+                                Ver Checklist
+                              </button>
+                              <button
+                                onClick={async () => {
+                                  const success = await updateInspectionStatus(inspection.id, 'completed');
+                                  if (success) {
+                                    toast.success('Inspeção finalizada!');
+                                    refetchInspections();
+                                  } else {
+                                    toast.error('Erro ao finalizar inspeção');
+                                  }
+                                }}
+                                className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-green-500 text-white font-semibold text-sm transition-all active:scale-[0.98]"
+                              >
+                                <CheckCircle2 className="w-4 h-4" />
+                                Finalizar
+                              </button>
+                            </>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
               </div>
             )}
 
