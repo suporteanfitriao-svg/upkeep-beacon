@@ -59,7 +59,7 @@ export function ScheduleDetail({ schedule, onClose, onUpdateSchedule }: Schedule
   const { role, isAdmin, isManager } = useUserRole();
   const { user } = useAuth();
   const [notes, setNotes] = useState(schedule.notes);
-  const [cleanerObservations, setCleanerObservations] = useState('');
+  const [cleanerObservations, setCleanerObservations] = useState(schedule.cleanerObservations || '');
   const [checklist, setChecklist] = useState(schedule.checklist);
   const [localIssues, setLocalIssues] = useState<MaintenanceIssue[]>(schedule.maintenanceIssues);
   const [showIssueForm, setShowIssueForm] = useState(false);
@@ -114,8 +114,11 @@ export function ScheduleDetail({ schedule, onClose, onUpdateSchedule }: Schedule
         if (Object.keys(cachedData.checklistItemStates).length > 0) {
           setChecklistItemStates(cachedData.checklistItemStates);
         }
+        // Prioritize cached observations over schedule value (more recent)
         if (cachedData.observationsText) {
           setCleanerObservations(cachedData.observationsText);
+        } else if (schedule.cleanerObservations) {
+          setCleanerObservations(schedule.cleanerObservations);
         }
         if (cachedData.draftIssues.length > 0) {
           setLocalIssues(cachedData.draftIssues);
@@ -127,7 +130,7 @@ export function ScheduleDetail({ schedule, onClose, onUpdateSchedule }: Schedule
       }
       cacheInitializedRef.current = true;
     }
-  }, [schedule.status, teamMemberId, loadCache]);
+  }, [schedule.status, schedule.cleanerObservations, teamMemberId, loadCache]);
 
   // Auto-save to cache on state changes (Rule 41.3.2, 44.3.2)
   useEffect(() => {
@@ -1097,27 +1100,42 @@ export function ScheduleDetail({ schedule, onClose, onUpdateSchedule }: Schedule
               </button>
             </section>
 
-            {/* Observations Section - Visible in all states */}
+            {/* Admin Notes Section - Read Only for Cleaner */}
+            {schedule.notes && schedule.notes.trim().length > 0 && (
+              <section className="flex flex-col gap-3">
+                <div className="flex items-center gap-2">
+                  <span className="material-symbols-outlined text-amber-500 text-[20px]">campaign</span>
+                  <h3 className="text-xs font-bold uppercase tracking-widest text-amber-600 dark:text-amber-400">Observações do Admin</h3>
+                </div>
+                <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-xl p-4">
+                  <p className="text-sm text-amber-800 dark:text-amber-200 whitespace-pre-wrap">
+                    {schedule.notes}
+                  </p>
+                </div>
+              </section>
+            )}
+
+            {/* Cleaner Observations Section - Editable during cleaning */}
             <section className="flex flex-col gap-3">
               <div className="flex items-center gap-2">
                 <span className="material-symbols-outlined text-slate-400 text-[20px]">chat_bubble</span>
-                <h3 className="text-xs font-bold uppercase tracking-widest text-slate-500">Observações</h3>
+                <h3 className="text-xs font-bold uppercase tracking-widest text-slate-500">Suas Observações</h3>
               </div>
               <div className="bg-white dark:bg-[#2d3138] border border-slate-200 dark:border-slate-800 rounded-xl p-4 min-h-[96px]">
                 {schedule.status === 'waiting' ? (
                   <span className="text-sm text-slate-300 dark:text-slate-600 italic">
-                    Adicione observações sobre este agendamento...
+                    Disponível quando a limpeza iniciar...
                   </span>
                 ) : schedule.status === 'cleaning' ? (
                   <textarea 
                     value={cleanerObservations}
                     onChange={(e) => setCleanerObservations(e.target.value)}
                     className="w-full h-full min-h-[72px] bg-transparent text-sm text-slate-600 dark:text-slate-300 placeholder:text-slate-300 dark:placeholder:text-slate-600 placeholder:italic resize-none focus:outline-none" 
-                    placeholder="Adicione observações sobre este agendamento..."
+                    placeholder="Adicione observações sobre a limpeza (serão enviadas ao finalizar)..."
                   />
                 ) : (
                   <span className="text-sm text-slate-600 dark:text-slate-300">
-                    {cleanerObservations || notes || 'Sem observações'}
+                    {cleanerObservations || 'Sem observações'}
                   </span>
                 )}
               </div>

@@ -72,7 +72,8 @@ export interface Schedule {
   checklist: ChecklistItem[];
   photos: PhotoUpload[];
   maintenanceIssues: MaintenanceIssue[];
-  notes: string;
+  notes: string; // Admin notes visible to cleaner
+  cleanerObservations?: string; // Cleaner observations visible to admin
   teamArrival?: Date;
   teamDeparture?: Date;
   missingMaterials: string[];

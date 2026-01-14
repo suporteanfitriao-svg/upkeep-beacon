@@ -248,6 +248,7 @@ const mapRowToSchedule = (row: ScheduleRow): Schedule => {
     photos: [],
     maintenanceIssues: parseMaintenanceIssues(row.maintenance_issues),
     notes: row.notes || '',
+    cleanerObservations: row.cleaner_observations || undefined,
     missingMaterials: [],
     doorPassword,
     // New fields
