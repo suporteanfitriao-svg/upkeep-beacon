@@ -655,6 +655,7 @@ export type Database = {
           name: string
           password_mode: Database["public"]["Enums"]["property_password_mode"]
           property_code: string | null
+          require_checklist: boolean
           require_photo_for_issues: boolean
           require_photo_per_category: boolean
           updated_at: string
@@ -675,6 +676,7 @@ export type Database = {
           name: string
           password_mode?: Database["public"]["Enums"]["property_password_mode"]
           property_code?: string | null
+          require_checklist?: boolean
           require_photo_for_issues?: boolean
           require_photo_per_category?: boolean
           updated_at?: string
@@ -695,6 +697,7 @@ export type Database = {
           name?: string
           password_mode?: Database["public"]["Enums"]["property_password_mode"]
           property_code?: string | null
+          require_checklist?: boolean
           require_photo_for_issues?: boolean
           require_photo_per_category?: boolean
           updated_at?: string
