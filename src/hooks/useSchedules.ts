@@ -323,17 +323,35 @@ export function useSchedules() {
           updatePayload.responsible_team_member_id = teamMemberId;
         }
 
-        // Fetch and link property checklists
+        // Fetch and link property checklists - prioritize default checklist
         if (updatedSchedule.propertyId) {
-          const { data: propertyChecklists, error: checklistError } = await supabase
+          // First try to get the default checklist
+          let { data: propertyChecklists, error: checklistError } = await supabase
             .from('property_checklists')
-            .select('items, name')
+            .select('items, name, is_default')
             .eq('property_id', updatedSchedule.propertyId)
             .eq('is_active', true)
+            .eq('is_default', true)
             .limit(1);
+
+          // If no default found, get any active checklist
+          if (!checklistError && (!propertyChecklists || propertyChecklists.length === 0)) {
+            const fallback = await supabase
+              .from('property_checklists')
+              .select('items, name, is_default')
+              .eq('property_id', updatedSchedule.propertyId)
+              .eq('is_active', true)
+              .order('created_at', { ascending: false })
+              .limit(1);
+            
+            if (!fallback.error) {
+              propertyChecklists = fallback.data;
+            }
+          }
 
           if (!checklistError && propertyChecklists && propertyChecklists.length > 0) {
             const items = propertyChecklists[0].items as unknown[];
+            console.log('Found property checklist:', propertyChecklists[0].name, 'with', items?.length || 0, 'items');
             if (Array.isArray(items) && items.length > 0) {
               checklistToUse = items.map((item: unknown, index: number) => {
                 const typedItem = item as Record<string, unknown>;
@@ -349,7 +367,11 @@ export function useSchedules() {
               // Rule 46.2: Save frozen state to checklist_state
               updatePayload.checklist_state = checklistToUse as unknown as Json;
               console.log('Linked property checklist to schedule:', checklistToUse.length, 'items');
+            } else {
+              console.warn('Property checklist has no items:', propertyChecklists[0].name);
             }
+          } else {
+            console.warn('No active checklist found for property:', updatedSchedule.propertyId);
           }
         }
       }
