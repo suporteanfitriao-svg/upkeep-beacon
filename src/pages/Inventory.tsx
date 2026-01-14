@@ -14,8 +14,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { 
   Package, Plus, Trash2, Loader2, Edit2, FolderOpen, 
   ChevronRight, Search, Box, Hash, Building2, Copy, ArrowRight, ListChecks, Sparkles,
-  Camera, X, Image as ImageIcon, Clock
+  Camera, X, Image as ImageIcon, Clock, Images
 } from 'lucide-react';
+import { InventoryPhotoGallery } from '@/components/inventory/InventoryPhotoGallery';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { useInventoryPhotoUpload } from '@/hooks/useInventoryPhotoUpload';
 import { format } from 'date-fns';
@@ -198,6 +199,9 @@ const Inventory = () => {
   // Default template dialog
   const [templateDialogOpen, setTemplateDialogOpen] = useState(false);
   const [templateTargetPropertyId, setTemplateTargetPropertyId] = useState<string>('');
+  
+  // Photo gallery dialog
+  const [galleryOpen, setGalleryOpen] = useState(false);
   const [applyingTemplate, setApplyingTemplate] = useState(false);
 
   useEffect(() => {
@@ -266,6 +270,12 @@ const Inventory = () => {
         const currentStillExists = selectedCategory && mappedCategories.some(c => c.id === selectedCategory.id);
         if (!currentStillExists) {
           setSelectedCategory(mappedCategories[0]);
+        } else if (selectedCategory) {
+          // Update selectedCategory reference with fresh data
+          const updatedCategory = mappedCategories.find(c => c.id === selectedCategory.id);
+          if (updatedCategory) {
+            setSelectedCategory(updatedCategory);
+          }
         }
       } else {
         setSelectedCategory(null);
@@ -436,23 +446,25 @@ const Inventory = () => {
       let photoUrl = itemForm.photo_url;
       let photoTakenAt = itemForm.photo_taken_at;
 
-      // If there's a new photo to upload
-      if (pendingPhotoFile) {
-        // Delete old photo if exists
-        if (editingItem?.photo_url) {
-          await deletePhoto(editingItem.photo_url);
-        }
+      // Handle photo for existing item
+      if (editingItem) {
+        // If there's a new photo to upload
+        if (pendingPhotoFile) {
+          // Delete old photo if exists
+          if (editingItem.photo_url) {
+            await deletePhoto(editingItem.photo_url);
+          }
 
-        // Upload new photo with timestamp
-        const itemId = editingItem?.id || 'new-' + Date.now();
-        const result = await compressAndUploadWithTimestamp(pendingPhotoFile, itemId);
-        photoUrl = result.url;
-        photoTakenAt = result.takenAt.toISOString();
-      } else if (!photoPreview && editingItem?.photo_url) {
-        // Photo was removed
-        await deletePhoto(editingItem.photo_url);
-        photoUrl = '';
-        photoTakenAt = '';
+          // Upload new photo with timestamp
+          const result = await compressAndUploadWithTimestamp(pendingPhotoFile, editingItem.id);
+          photoUrl = result.url;
+          photoTakenAt = result.takenAt.toISOString();
+        } else if (!photoPreview && editingItem.photo_url) {
+          // Photo was removed
+          await deletePhoto(editingItem.photo_url);
+          photoUrl = '';
+          photoTakenAt = '';
+        }
       }
 
       if (editingItem) {
@@ -471,7 +483,8 @@ const Inventory = () => {
         if (error) throw error;
         toast.success('Item atualizado!');
       } else {
-        const { error } = await supabase
+        // Create new item first, then upload photo if present
+        const { data: newItem, error } = await supabase
           .from('inventory_items')
           .insert({
             category_id: selectedCategory.id,
@@ -479,12 +492,32 @@ const Inventory = () => {
             quantity: itemForm.quantity,
             unit: itemForm.unit.trim() || null,
             details: itemForm.details.trim() || null,
-            photo_url: photoUrl || null,
-            photo_taken_at: photoTakenAt || null,
             sort_order: selectedCategory.items.length,
-          });
+          })
+          .select()
+          .single();
 
         if (error) throw error;
+
+        // If there's a photo to upload for the new item
+        if (pendingPhotoFile && newItem) {
+          const result = await compressAndUploadWithTimestamp(pendingPhotoFile, newItem.id);
+          
+          // Update the item with the photo URL
+          const { error: updateError } = await supabase
+            .from('inventory_items')
+            .update({
+              photo_url: result.url,
+              photo_taken_at: result.takenAt.toISOString(),
+            })
+            .eq('id', newItem.id);
+
+          if (updateError) {
+            console.error('Error updating photo:', updateError);
+            toast.warning('Item criado, mas houve erro ao salvar a foto');
+          }
+        }
+        
         toast.success('Item criado!');
       }
 
@@ -768,6 +801,14 @@ const Inventory = () => {
                   </SelectContent>
                 </Select>
               </div>
+              <Button 
+                variant="outline" 
+                onClick={() => setGalleryOpen(true)}
+                disabled={categories.length === 0}
+              >
+                <Images className="h-4 w-4 mr-2" />
+                Galeria
+              </Button>
               <Button 
                 variant="outline" 
                 onClick={() => setTemplateDialogOpen(true)}
@@ -1367,6 +1408,14 @@ const Inventory = () => {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Photo Gallery */}
+      <InventoryPhotoGallery
+        open={galleryOpen}
+        onOpenChange={setGalleryOpen}
+        categories={categories}
+        propertyName={selectedPropertyId !== 'all' ? properties.find(p => p.id === selectedPropertyId)?.name : undefined}
+      />
     </SidebarProvider>
   );
 };
