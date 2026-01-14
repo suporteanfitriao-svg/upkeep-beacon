@@ -549,7 +549,7 @@ export function MobileDashboard({ schedules, onScheduleClick, onStartCleaning, o
                   }
                 }
               }}
-              className="w-full rounded-2xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 p-4 mb-3 shadow-sm text-left transition-all hover:shadow-md active:scale-[0.99] cursor-pointer"
+              className="w-full rounded-2xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 p-4 mb-3 shadow-sm text-left transition-all hover:shadow-md active:scale-[0.99] cursor-pointer relative"
             >
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
@@ -563,12 +563,15 @@ export function MobileDashboard({ schedules, onScheduleClick, onStartCleaning, o
                     </p>
                   </div>
                 </div>
-                {periodStats.pending > 0 && (
+                {periodStats.pending > 0 ? (
                   <span className="px-3 py-1 rounded-full bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400 text-xs font-bold">
                     Pendente
                   </span>
+                ) : (
+                  <ChevronRight className="w-5 h-5 text-muted-foreground" />
                 )}
               </div>
+              <ChevronRight className="w-5 h-5 text-muted-foreground absolute right-4 top-1/2 -translate-y-1/2" />
             </button>
 
             {/* Stats Cards Row - Not clickable */}
