@@ -10,11 +10,13 @@ import { AdminDashboardHeader } from '@/components/dashboard/AdminDashboardHeade
 import { AdminStatusCards } from '@/components/dashboard/AdminStatusCards';
 import { AdminFilters, DateFilter } from '@/components/dashboard/AdminFilters';
 import { AdminScheduleRow } from '@/components/dashboard/AdminScheduleRow';
+import { AdminInspectionsSection } from '@/components/dashboard/AdminInspectionsSection';
 import { ScheduleDetail } from '@/components/dashboard/ScheduleDetail';
 import { MobileDashboard } from '@/components/dashboard/MobileDashboard';
 import { UpcomingSchedules } from '@/components/dashboard/UpcomingSchedules';
 
 import { useSchedules, calculateStats } from '@/hooks/useSchedules';
+import { useAdminInspections } from '@/hooks/useAdminInspections';
 import { Schedule, ScheduleStatus } from '@/types/scheduling';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { supabase } from '@/integrations/supabase/client';
@@ -92,6 +94,7 @@ function SyncOverlayInline({ isSyncing }: { isSyncing: boolean }) {
 const Index = () => {
   const isMobile = useIsMobile();
   const { schedules, loading, error, refetch, updateSchedule, updateScheduleTimes } = useSchedules();
+  const { inspections: adminInspections, loading: inspectionsLoading, refetch: refetchInspections } = useAdminInspections();
   
   // Sync state
   const [isSyncing, setIsSyncing] = useState(false);
@@ -584,6 +587,12 @@ const Index = () => {
               onSearchChange={setSearchQuery}
               onStatusFilterChange={setStatusFilter}
               onResponsibleFilterChange={setResponsibleFilter}
+            />
+
+            {/* Inspections Section */}
+            <AdminInspectionsSection 
+              inspections={adminInspections} 
+              loading={inspectionsLoading} 
             />
 
             {/* Schedules List */}
