@@ -30,6 +30,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import { useNavigate } from 'react-router-dom';
+import { toast } from 'sonner';
 
 interface Property {
   id: string;
@@ -42,6 +44,7 @@ interface Property {
   checklistsCount?: number;
   lastSyncStatus?: 'success' | 'error' | 'pending';
   lastSyncAt?: string;
+  isActive?: boolean;
 }
 
 // Mock data for owner/manager - in a real app this would come from a relation
@@ -115,10 +118,33 @@ export function PropertiesSection() {
     }
   };
 
-  const filteredProperties = properties.filter(p =>
-    p.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    p.address?.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  const navigate = useNavigate();
+
+  // Apply all filters
+  const filteredProperties = properties.filter(p => {
+    // Search filter
+    const matchesSearch = p.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      p.address?.toLowerCase().includes(searchTerm.toLowerCase());
+    
+    // Plan filter
+    const owner = getOwner(properties.indexOf(p));
+    const matchesPlan = planFilter === 'all' || 
+      (planFilter === 'basic' && owner.plan === 'Básico') ||
+      (planFilter === 'professional' && owner.plan === 'Profissional') ||
+      (planFilter === 'enterprise' && owner.plan === 'Enterprise');
+    
+    // Status filter
+    const status = getPropertyStatus(p);
+    const matchesStatus = statusFilter === 'all' || status === statusFilter;
+    
+    // Region filter (based on address)
+    const matchesRegion = regionFilter === 'global' || 
+      (regionFilter === 'sudeste' && (p.address?.toLowerCase().includes('são paulo') || p.address?.toLowerCase().includes('rio'))) ||
+      (regionFilter === 'sul' && (p.address?.toLowerCase().includes('curitiba') || p.address?.toLowerCase().includes('porto alegre'))) ||
+      (regionFilter === 'norte-ne' && (p.address?.toLowerCase().includes('salvador') || p.address?.toLowerCase().includes('recife')));
+    
+    return matchesSearch && matchesPlan && matchesStatus && matchesRegion;
+  });
 
   const totalPages = Math.ceil(filteredProperties.length / ITEMS_PER_PAGE);
   const paginatedProperties = filteredProperties.slice(
@@ -134,10 +160,65 @@ export function PropertiesSection() {
     return mockOwners[index % mockOwners.length];
   };
 
-  const getStatus = (property: Property) => {
+  const getPropertyStatus = (property: Property): 'active' | 'trial' | 'inactive' => {
+    if (property.isActive === false) return 'inactive';
     if (!property.airbnb_ical_url) return 'inactive';
     if (property.lastSyncStatus === 'error') return 'inactive';
-    return Math.random() > 0.3 ? 'active' : 'trial';
+    // Use a deterministic "random" based on property id
+    const hash = property.id.charCodeAt(0) + property.id.charCodeAt(property.id.length - 1);
+    return hash % 3 === 0 ? 'trial' : 'active';
+  };
+
+  const handleAdminAccess = (property: Property) => {
+    toast.info(`Acessando painel admin de "${property.name}"...`);
+    // Navigate to the property admin page
+    navigate(`/properties?id=${property.id}`);
+  };
+
+  const handleForceSync = async (property: Property) => {
+    if (!property.airbnb_ical_url) {
+      toast.error('Esta propriedade não possui URL iCal configurada');
+      return;
+    }
+    
+    toast.loading(`Sincronizando "${property.name}"...`, { id: `sync-${property.id}` });
+    
+    try {
+      const { error } = await supabase.functions.invoke('sync-ical-reservations', {
+        body: { propertyId: property.id }
+      });
+      
+      if (error) throw error;
+      
+      toast.success(`"${property.name}" sincronizada com sucesso!`, { id: `sync-${property.id}` });
+      fetchProperties();
+    } catch (error) {
+      console.error('Sync error:', error);
+      toast.error(`Erro ao sincronizar "${property.name}"`, { id: `sync-${property.id}` });
+    }
+  };
+
+  const handleToggleStatus = (property: Property) => {
+    const currentStatus = getPropertyStatus(property);
+    const newStatus = currentStatus === 'inactive' ? 'ativar' : 'suspender';
+    
+    // Update local state to toggle status
+    setProperties(prev => prev.map(p => 
+      p.id === property.id 
+        ? { ...p, isActive: currentStatus === 'inactive' } 
+        : p
+    ));
+    
+    toast.success(`Propriedade "${property.name}" ${currentStatus === 'inactive' ? 'ativada' : 'suspensa'} com sucesso!`);
+  };
+
+  const clearFilters = () => {
+    setSearchTerm('');
+    setPlanFilter('all');
+    setStatusFilter('all');
+    setRegionFilter('global');
+    setCurrentPage(1);
+    toast.info('Filtros limpos');
   };
 
   const formatSyncTime = (dateStr?: string) => {
@@ -248,7 +329,13 @@ export function PropertiesSection() {
               </Select>
             </div>
 
-            <Button variant="ghost" size="icon" className="text-muted-foreground hover:text-primary">
+            <Button 
+              variant="ghost" 
+              size="icon" 
+              className="text-muted-foreground hover:text-primary"
+              onClick={clearFilters}
+              title="Limpar filtros"
+            >
               <Filter className="h-5 w-5" />
             </Button>
           </div>
@@ -304,7 +391,7 @@ export function PropertiesSection() {
                 paginatedProperties.map((property, index) => {
                   const globalIndex = (currentPage - 1) * ITEMS_PER_PAGE + index;
                   const owner = getOwner(globalIndex);
-                  const status = getStatus(property);
+                  const status = getPropertyStatus(property);
                   const syncTime = formatSyncTime(property.lastSyncAt);
 
                   return (
@@ -394,6 +481,7 @@ export function PropertiesSection() {
                             size="icon"
                             className="h-8 w-8 bg-muted hover:bg-muted/80 text-muted-foreground hover:text-primary"
                             title="Acessar modo admin"
+                            onClick={() => handleAdminAccess(property)}
                           >
                             <Shield className="h-4 w-4" />
                           </Button>
@@ -402,7 +490,7 @@ export function PropertiesSection() {
                             size="icon"
                             className="h-8 w-8 bg-muted hover:bg-muted/80 text-muted-foreground hover:text-primary"
                             title="Forçar Sincronização"
-                            onClick={fetchProperties}
+                            onClick={() => handleForceSync(property)}
                           >
                             <RefreshCw className="h-4 w-4" />
                           </Button>
@@ -410,8 +498,9 @@ export function PropertiesSection() {
                             <Button
                               variant="ghost"
                               size="icon"
-                              className="h-8 w-8 bg-destructive/10 text-destructive hover:bg-destructive/20"
+                              className="h-8 w-8 bg-green-100 text-green-700 hover:bg-green-200 dark:bg-green-900/30 dark:text-green-400"
                               title="Ativar"
+                              onClick={() => handleToggleStatus(property)}
                             >
                               <CheckCircle className="h-4 w-4" />
                             </Button>
@@ -421,6 +510,7 @@ export function PropertiesSection() {
                               size="icon"
                               className="h-8 w-8 bg-muted hover:bg-destructive/10 text-muted-foreground hover:text-destructive"
                               title="Suspender"
+                              onClick={() => handleToggleStatus(property)}
                             >
                               <Ban className="h-4 w-4" />
                             </Button>
