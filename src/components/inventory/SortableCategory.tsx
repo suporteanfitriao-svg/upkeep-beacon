@@ -43,51 +43,55 @@ export const SortableCategory = ({
     <div
       ref={setNodeRef}
       style={style}
-      className={`flex items-center justify-between p-3 cursor-pointer hover:bg-muted/50 transition-colors ${
-        isSelected ? 'bg-primary/5 border-l-2 border-primary' : ''
-      } ${isDragging ? 'bg-muted shadow-lg z-10' : ''}`}
+      className={`flex items-center justify-between p-4 cursor-pointer active:bg-muted/70 transition-colors touch-manipulation ${
+        isSelected ? 'bg-primary/5 border-l-4 border-primary' : ''
+      } ${isDragging ? 'bg-muted shadow-lg z-10 ring-2 ring-primary' : ''}`}
       onClick={onSelect}
     >
-      <div className="flex items-center gap-2 flex-1 min-w-0">
+      <div className="flex items-center gap-3 flex-1 min-w-0">
+        {/* Drag handle - larger touch target */}
         <button
           {...attributes}
           {...listeners}
-          className="touch-none p-1 hover:bg-muted rounded cursor-grab active:cursor-grabbing"
+          className="touch-none p-2 -m-1 hover:bg-muted rounded-lg cursor-grab active:cursor-grabbing active:bg-muted/80"
           onClick={(e) => e.stopPropagation()}
+          aria-label="Arrastar para reordenar"
         >
-          <GripVertical className="h-4 w-4 text-muted-foreground" />
+          <GripVertical className="h-5 w-5 text-muted-foreground" />
         </button>
         <div className="flex-1 min-w-0">
-          <p className="font-medium text-sm truncate">{name}</p>
-          <p className="text-xs text-muted-foreground truncate">
+          <p className="font-semibold text-base truncate">{name}</p>
+          <p className="text-sm text-muted-foreground truncate">
             {propertyName} • {itemCount} itens
           </p>
         </div>
       </div>
-      <div className="flex items-center gap-1">
+      <div className="flex items-center gap-0.5">
         <Button
           variant="ghost"
           size="icon"
-          className="h-7 w-7"
+          className="h-9 w-9 rounded-lg active:bg-muted"
           onClick={(e) => {
             e.stopPropagation();
             onEdit();
           }}
+          aria-label="Editar categoria"
         >
-          <Edit2 className="h-3 w-3" />
+          <Edit2 className="h-4 w-4" />
         </Button>
         <Button
           variant="ghost"
           size="icon"
-          className="h-7 w-7 text-destructive hover:bg-destructive/10"
+          className="h-9 w-9 rounded-lg text-destructive active:bg-destructive/10"
           onClick={(e) => {
             e.stopPropagation();
             onDelete();
           }}
+          aria-label="Excluir categoria"
         >
-          <Trash2 className="h-3 w-3" />
+          <Trash2 className="h-4 w-4" />
         </Button>
-        <ChevronRight className="h-4 w-4 text-muted-foreground" />
+        <ChevronRight className="h-5 w-5 text-muted-foreground ml-1" />
       </div>
     </div>
   );

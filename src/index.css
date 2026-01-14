@@ -148,12 +148,49 @@
     scrollbar-width: none;
   }
   
+  /* No horizontal scrollbar for tabs */
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+  
+  .no-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+  
   .shadow-soft {
     box-shadow: 0 4px 20px -2px rgba(0, 0, 0, 0.05);
   }
   
   .shadow-glow {
     box-shadow: 0 4px 20px -2px rgba(51, 153, 153, 0.3);
+  }
+  
+  /* Touch manipulation for mobile - prevents zoom on double-tap */
+  .touch-manipulation {
+    touch-action: manipulation;
+  }
+  
+  /* Prevent text selection on mobile for interactive elements */
+  .select-none-touch {
+    -webkit-touch-callout: none;
+    -webkit-user-select: none;
+    user-select: none;
+  }
+  
+  /* Larger touch targets for mobile */
+  .touch-target {
+    min-height: 44px;
+    min-width: 44px;
+  }
+  
+  /* Safe area padding for notched devices */
+  .safe-area-inset-bottom {
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+  
+  .safe-area-inset-top {
+    padding-top: env(safe-area-inset-top);
   }
 }
 
