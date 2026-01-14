@@ -17,6 +17,8 @@ import { useAcknowledgeInfo } from '@/hooks/useAcknowledgeInfo';
 import { usePropertyChecklist } from '@/hooks/usePropertyChecklist';
 import { usePropertyAccess } from '@/hooks/usePropertyAccess';
 import { useCleaningCache } from '@/hooks/useCleaningCache';
+import { useCheckoutDayVerification } from '@/hooks/useCheckoutDayVerification';
+import { useCleaningConcurrencyCheck } from '@/hooks/useCleaningConcurrencyCheck';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { CategoryPhotoUpload } from './CategoryPhotoUpload';
 
@@ -94,6 +96,12 @@ export function ScheduleDetail({ schedule, onClose, onUpdateSchedule }: Schedule
   const [isCommitting, setIsCommitting] = useState(false);
   const cacheInitializedRef = useRef(false);
   const statusStyle = statusConfig[schedule.status];
+
+  // Checkout day verification for password visibility
+  const isCheckoutDay = useCheckoutDayVerification(schedule);
+  
+  // Concurrency check hook
+  const { checkConcurrency, startCleaningAtomic } = useCleaningConcurrencyCheck();
 
   // Cleaning cache hook - only active during cleaning status (Rule 41.3, 44.3)
   const { loadCache, saveCache, clearCache } = useCleaningCache({
@@ -825,7 +833,7 @@ export function ScheduleDetail({ schedule, onClose, onUpdateSchedule }: Schedule
               Ver Endereço
             </button>
             {/* Rule: Cleaners can only see password button when schedule is released/cleaning/completed AND it's checkout day */}
-            {(isAdmin || isManager || (schedule.status !== 'waiting')) ? (
+            {(isAdmin || isManager || (schedule.status !== 'waiting' && isCheckoutDay)) ? (
               <button 
                 onClick={() => setShowPasswordModal(true)}
                 className="flex items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white py-3.5 text-xs font-bold text-slate-500 shadow-sm transition-all hover:bg-slate-50 active:scale-[0.98] dark:border-slate-700 dark:bg-[#2d3138] dark:text-slate-400 dark:hover:bg-slate-800"
@@ -834,9 +842,9 @@ export function ScheduleDetail({ schedule, onClose, onUpdateSchedule }: Schedule
                 Ver Senha da Porta
               </button>
             ) : (
-              <div className="flex items-center justify-center gap-2 rounded-xl border border-slate-200 bg-slate-50 py-3.5 text-xs font-medium text-slate-400 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-500">
+              <div className="flex items-center justify-center gap-2 rounded-xl border border-slate-200 bg-slate-50 py-3.5 text-xs font-medium text-slate-400 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-500" title={!isCheckoutDay ? 'Senha disponível apenas no dia do checkout' : 'Aguardando liberação'}>
                 <span className="material-symbols-outlined text-[18px]">lock</span>
-                Senha Bloqueada
+                {!isCheckoutDay && schedule.status !== 'waiting' ? 'Senha (dia do checkout)' : 'Senha Bloqueada'}
               </div>
             )}
           </div>

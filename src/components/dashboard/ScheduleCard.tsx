@@ -6,11 +6,13 @@ import {
   AlertTriangle,
   Wrench,
   Eye,
-  Loader2
+  Loader2,
+  Timer
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { useStayStatus } from '@/hooks/useStayStatus';
+import { useReleaseCountdown } from '@/hooks/useReleaseCountdown';
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 
@@ -54,6 +56,7 @@ export function ScheduleCard({ schedule, onClick, isLoading = false }: ScheduleC
   const statusStyle = statusConfig[schedule.status];
   const buttonStyle = buttonConfig[schedule.status];
   const stayStatus = useStayStatus(schedule);
+  const releaseCountdown = useReleaseCountdown(schedule);
   const completedTasks = schedule.checklist.filter(item => item.completed).length;
   const totalTasks = schedule.checklist.length;
   const progressPercent = totalTasks > 0 ? (completedTasks / totalTasks) * 100 : 0;
@@ -137,13 +140,26 @@ export function ScheduleCard({ schedule, onClick, isLoading = false }: ScheduleC
             {schedule.propertyName}
           </h3>
 
-          {/* Liberado a partir de */}
+          {/* Liberado a partir de - with countdown/overdue indicator */}
           <div className="flex items-center gap-2 text-sm text-muted-foreground mb-4">
             <Clock className="w-4 h-4" />
             <span className="uppercase text-xs font-medium">Liberado a partir de</span>
             <span className="font-semibold text-foreground">
               {format(schedule.checkOut, "HH:mm", { locale: ptBR })}
             </span>
+            {releaseCountdown && (
+              releaseCountdown.isOverdue ? (
+                <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full bg-red-100 dark:bg-red-900/30 text-[10px] font-bold text-red-600 dark:text-red-400 animate-pulse">
+                  <AlertTriangle className="w-3 h-3" />
+                  {releaseCountdown.overdueLabel}
+                </span>
+              ) : releaseCountdown.countdownMinutes <= 60 ? (
+                <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full bg-blue-100 dark:bg-blue-900/30 text-[10px] font-bold text-blue-600 dark:text-blue-400">
+                  <Timer className="w-3 h-3" />
+                  {releaseCountdown.countdownLabel}
+                </span>
+              ) : null
+            )}
           </div>
 
           {/* Action Button */}

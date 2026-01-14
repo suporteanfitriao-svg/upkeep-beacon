@@ -1,5 +1,5 @@
-import { useState, useEffect } from 'react';
-import { Schedule, ScheduleStatus, STATUS_FLOW, STATUS_LABELS, STATUS_ALLOWED_ROLES } from '@/types/scheduling';
+import { useState, useEffect, useMemo } from 'react';
+import { Schedule, ScheduleStatus, STATUS_FLOW, STATUS_LABELS, STATUS_ALLOWED_ROLES, ChecklistItem } from '@/types/scheduling';
 import { cn } from '@/lib/utils';
 import { AlertTriangle, Check, Clock, Sparkles, ChevronDown, ChevronUp, ExternalLink, User, Timer, Play, CircleCheck, KeyRound, MessageSquare, Send } from 'lucide-react';
 import { format } from 'date-fns';
@@ -129,6 +129,11 @@ export function AdminScheduleRow({ schedule, onClick, onScheduleUpdated }: Admin
   const isCompleted = localSchedule.status === 'completed';
   const canManage = isAdmin || isManager;
   const hasManualPassword = Boolean(localSchedule.accessPassword);
+
+  // Calculate NOK (not_ok) items count for visual indicator
+  const nokItemsCount = useMemo(() => {
+    return localSchedule.checklist.filter(item => item.status === 'not_ok').length;
+  }, [localSchedule.checklist]);
 
   // Fetch property password mode
   useEffect(() => {
@@ -430,6 +435,15 @@ export function AdminScheduleRow({ schedule, onClick, onScheduleUpdated }: Admin
                       <AlertTriangle className="w-3 h-3 text-rose-500" />
                       <span className="text-[10px] font-bold text-rose-600 dark:text-rose-400 uppercase tracking-wide">
                         Avaria
+                      </span>
+                    </div>
+                  )}
+                  {/* NOK items indicator */}
+                  {nokItemsCount > 0 && (
+                    <div className="flex items-center gap-1 bg-red-100 dark:bg-red-900/40 px-2 py-0.5 rounded-full" title={`${nokItemsCount} item(ns) marcado(s) como NOK no checklist`}>
+                      <span className="material-symbols-outlined text-[12px] text-red-500">close</span>
+                      <span className="text-[10px] font-bold text-red-600 dark:text-red-400 uppercase tracking-wide">
+                        {nokItemsCount} NOK
                       </span>
                     </div>
                   )}

@@ -40,6 +40,7 @@ import { ReportFilters, SortField, SortOrder } from '@/components/reports/Report
 import { ReportStatsCards } from '@/components/reports/ReportStatsCards';
 import { CompletedScheduleRow } from '@/components/reports/CompletedScheduleRow';
 import { ScheduleDetailReadOnly } from '@/components/reports/ScheduleDetailReadOnly';
+import { NokItemsReport } from '@/components/reports/NokItemsReport';
 import { Schedule } from '@/types/scheduling';
 
 function MaintenanceStatCard({ 
@@ -444,16 +445,25 @@ export default function Manutencao() {
                 refetchReports();
               }
             }} className="space-y-6">
-            <TabsList className="grid w-full max-w-md grid-cols-2">
+            <TabsList className="grid w-full max-w-lg grid-cols-3">
               <TabsTrigger value="avarias" className="gap-2">
                 <Wrench className="w-4 h-4" />
                 Avarias
+              </TabsTrigger>
+              <TabsTrigger value="nok" className="gap-2">
+                <AlertTriangle className="w-4 h-4" />
+                Itens NOK
               </TabsTrigger>
               <TabsTrigger value="relatorios" className="gap-2">
                 <FileText className="w-4 h-4" />
                 Relatórios
               </TabsTrigger>
             </TabsList>
+
+            {/* NOK Items Tab */}
+            <TabsContent value="nok">
+              <NokItemsReport />
+            </TabsContent>
 
             {/* Avarias Tab */}
             <TabsContent value="avarias" className="space-y-6">
