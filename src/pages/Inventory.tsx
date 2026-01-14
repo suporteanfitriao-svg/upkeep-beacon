@@ -13,9 +13,115 @@ import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { 
   Package, Plus, Trash2, Loader2, Edit2, FolderOpen, 
-  ChevronRight, Search, Box, Hash, Building2, Copy, ArrowRight
+  ChevronRight, Search, Box, Hash, Building2, Copy, ArrowRight, ListChecks, Sparkles
 } from 'lucide-react';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
+
+// Default global inventory template
+const DEFAULT_INVENTORY_TEMPLATE = [
+  {
+    name: 'Sala de Estar',
+    description: 'Móveis e itens da sala principal',
+    items: [
+      { name: 'Sofá', quantity: 1, unit: 'unidade', details: 'Verificar estado do estofado' },
+      { name: 'Almofadas', quantity: 4, unit: 'unidades', details: 'Decorativas' },
+      { name: 'Mesa de centro', quantity: 1, unit: 'unidade', details: '' },
+      { name: 'TV', quantity: 1, unit: 'unidade', details: 'Smart TV - verificar controle remoto' },
+      { name: 'Controle remoto', quantity: 2, unit: 'unidades', details: 'TV e ar condicionado' },
+      { name: 'Tapete', quantity: 1, unit: 'unidade', details: '' },
+      { name: 'Cortinas', quantity: 2, unit: 'unidades', details: '' },
+      { name: 'Abajur', quantity: 1, unit: 'unidade', details: '' },
+    ],
+  },
+  {
+    name: 'Quarto Principal',
+    description: 'Móveis e roupas de cama',
+    items: [
+      { name: 'Cama casal', quantity: 1, unit: 'unidade', details: 'Verificar colchão' },
+      { name: 'Travesseiros', quantity: 4, unit: 'unidades', details: '' },
+      { name: 'Lençol', quantity: 2, unit: 'jogos', details: 'Casal' },
+      { name: 'Edredom', quantity: 1, unit: 'unidade', details: '' },
+      { name: 'Cobertor extra', quantity: 1, unit: 'unidade', details: 'No armário' },
+      { name: 'Cabides', quantity: 10, unit: 'unidades', details: '' },
+      { name: 'Espelho', quantity: 1, unit: 'unidade', details: '' },
+      { name: 'Criado-mudo', quantity: 2, unit: 'unidades', details: '' },
+      { name: 'Luminária', quantity: 2, unit: 'unidades', details: 'Cabeceira' },
+    ],
+  },
+  {
+    name: 'Quarto de Hóspedes',
+    description: 'Quarto secundário',
+    items: [
+      { name: 'Cama solteiro', quantity: 2, unit: 'unidades', details: '' },
+      { name: 'Travesseiros', quantity: 2, unit: 'unidades', details: '' },
+      { name: 'Lençol', quantity: 2, unit: 'jogos', details: 'Solteiro' },
+      { name: 'Cobertor', quantity: 2, unit: 'unidades', details: '' },
+      { name: 'Cabides', quantity: 6, unit: 'unidades', details: '' },
+    ],
+  },
+  {
+    name: 'Cozinha',
+    description: 'Utensílios e eletrodomésticos',
+    items: [
+      { name: 'Pratos', quantity: 6, unit: 'unidades', details: 'Rasos' },
+      { name: 'Pratos fundo', quantity: 6, unit: 'unidades', details: '' },
+      { name: 'Copos', quantity: 8, unit: 'unidades', details: 'Vidro' },
+      { name: 'Xícaras', quantity: 4, unit: 'unidades', details: 'Com pires' },
+      { name: 'Talheres - Garfo', quantity: 6, unit: 'unidades', details: '' },
+      { name: 'Talheres - Faca', quantity: 6, unit: 'unidades', details: '' },
+      { name: 'Talheres - Colher', quantity: 6, unit: 'unidades', details: '' },
+      { name: 'Panela grande', quantity: 1, unit: 'unidade', details: '' },
+      { name: 'Panela média', quantity: 1, unit: 'unidade', details: '' },
+      { name: 'Frigideira', quantity: 1, unit: 'unidade', details: '' },
+      { name: 'Chaleira', quantity: 1, unit: 'unidade', details: '' },
+      { name: 'Cafeteira', quantity: 1, unit: 'unidade', details: 'Verificar funcionamento' },
+      { name: 'Liquidificador', quantity: 1, unit: 'unidade', details: '' },
+      { name: 'Tábua de corte', quantity: 1, unit: 'unidade', details: '' },
+      { name: 'Faca de cozinha', quantity: 2, unit: 'unidades', details: '' },
+      { name: 'Abridor de garrafa', quantity: 1, unit: 'unidade', details: '' },
+      { name: 'Saca-rolhas', quantity: 1, unit: 'unidade', details: '' },
+      { name: 'Pano de prato', quantity: 3, unit: 'unidades', details: '' },
+      { name: 'Lixeira', quantity: 1, unit: 'unidade', details: 'Com pedal' },
+    ],
+  },
+  {
+    name: 'Banheiro Social',
+    description: 'Toalhas e acessórios',
+    items: [
+      { name: 'Toalha de banho', quantity: 4, unit: 'unidades', details: '' },
+      { name: 'Toalha de rosto', quantity: 4, unit: 'unidades', details: '' },
+      { name: 'Tapete de banheiro', quantity: 1, unit: 'unidade', details: '' },
+      { name: 'Lixeira', quantity: 1, unit: 'unidade', details: '' },
+      { name: 'Porta-papel higiênico', quantity: 1, unit: 'unidade', details: '' },
+      { name: 'Espelho', quantity: 1, unit: 'unidade', details: '' },
+      { name: 'Secador de cabelo', quantity: 1, unit: 'unidade', details: 'Verificar funcionamento' },
+    ],
+  },
+  {
+    name: 'Área de Serviço',
+    description: 'Produtos e equipamentos de limpeza',
+    items: [
+      { name: 'Máquina de lavar', quantity: 1, unit: 'unidade', details: 'Verificar funcionamento' },
+      { name: 'Ferro de passar', quantity: 1, unit: 'unidade', details: '' },
+      { name: 'Tábua de passar', quantity: 1, unit: 'unidade', details: '' },
+      { name: 'Vassoura', quantity: 1, unit: 'unidade', details: '' },
+      { name: 'Rodo', quantity: 1, unit: 'unidade', details: '' },
+      { name: 'Balde', quantity: 1, unit: 'unidade', details: '' },
+      { name: 'Pá de lixo', quantity: 1, unit: 'unidade', details: '' },
+    ],
+  },
+  {
+    name: 'Área Externa',
+    description: 'Varanda, piscina ou jardim',
+    items: [
+      { name: 'Cadeira de área', quantity: 4, unit: 'unidades', details: '' },
+      { name: 'Mesa externa', quantity: 1, unit: 'unidade', details: '' },
+      { name: 'Guarda-sol', quantity: 1, unit: 'unidade', details: '' },
+      { name: 'Churrasqueira', quantity: 1, unit: 'unidade', details: 'Verificar gás' },
+      { name: 'Utensílios de churrasco', quantity: 1, unit: 'kit', details: 'Espeto, garfo, faca' },
+    ],
+  },
+];
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 
@@ -75,6 +181,11 @@ const Inventory = () => {
   const [sourcePropertyId, setSourcePropertyId] = useState<string>('');
   const [targetPropertyId, setTargetPropertyId] = useState<string>('');
   const [copying, setCopying] = useState(false);
+
+  // Default template dialog
+  const [templateDialogOpen, setTemplateDialogOpen] = useState(false);
+  const [templateTargetPropertyId, setTemplateTargetPropertyId] = useState<string>('');
+  const [applyingTemplate, setApplyingTemplate] = useState(false);
 
   useEffect(() => {
     fetchProperties();
@@ -452,6 +563,86 @@ const Inventory = () => {
     }
   };
 
+  // Apply default template function
+  const handleApplyDefaultTemplate = async () => {
+    if (!templateTargetPropertyId) {
+      toast.error('Selecione uma propriedade');
+      return;
+    }
+
+    setApplyingTemplate(true);
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        toast.error('Usuário não autenticado');
+        return;
+      }
+
+      // Check how many categories already exist in target property
+      const { data: existingCategories } = await supabase
+        .from('inventory_categories')
+        .select('id')
+        .eq('property_id', templateTargetPropertyId);
+
+      const startingSortOrder = existingCategories?.length || 0;
+
+      // Create categories and items from template
+      for (let i = 0; i < DEFAULT_INVENTORY_TEMPLATE.length; i++) {
+        const templateCategory = DEFAULT_INVENTORY_TEMPLATE[i];
+        
+        // Create category
+        const { data: newCategory, error: catError } = await supabase
+          .from('inventory_categories')
+          .insert({
+            user_id: user.id,
+            name: templateCategory.name,
+            description: templateCategory.description,
+            property_id: templateTargetPropertyId,
+            sort_order: startingSortOrder + i,
+            is_active: true,
+          })
+          .select()
+          .single();
+
+        if (catError) throw catError;
+
+        // Create items for this category
+        if (templateCategory.items.length > 0) {
+          const itemsToInsert = templateCategory.items.map((item, index) => ({
+            category_id: newCategory.id,
+            name: item.name,
+            quantity: item.quantity,
+            unit: item.unit,
+            details: item.details || null,
+            sort_order: index,
+            is_active: true,
+          }));
+
+          const { error: itemsError } = await supabase
+            .from('inventory_items')
+            .insert(itemsToInsert);
+
+          if (itemsError) throw itemsError;
+        }
+      }
+
+      const targetProperty = properties.find(p => p.id === templateTargetPropertyId);
+      toast.success(`Lista padrão aplicada em ${targetProperty?.name || 'propriedade'}!`);
+      setTemplateDialogOpen(false);
+      setTemplateTargetPropertyId('');
+      
+      // Refresh inventory if viewing target property
+      if (selectedPropertyId === templateTargetPropertyId || selectedPropertyId === 'all') {
+        fetchInventory();
+      }
+    } catch (error) {
+      console.error('Error applying template:', error);
+      toast.error('Erro ao aplicar lista padrão');
+    } finally {
+      setApplyingTemplate(false);
+    }
+  };
+
   // Get property name helper
   const getPropertyName = (propertyId?: string) => {
     if (!propertyId) return 'Sem propriedade';
@@ -512,6 +703,15 @@ const Inventory = () => {
                   </SelectContent>
                 </Select>
               </div>
+              <Button 
+                variant="outline" 
+                onClick={() => setTemplateDialogOpen(true)}
+                disabled={properties.length === 0}
+                className="text-primary border-primary/30 hover:bg-primary/10"
+              >
+                <Sparkles className="h-4 w-4 mr-2" />
+                Lista Padrão
+              </Button>
               <Button 
                 variant="outline" 
                 onClick={() => setCopyDialogOpen(true)}
@@ -947,6 +1147,84 @@ const Inventory = () => {
                 <>
                   <Copy className="h-4 w-4 mr-2" />
                   Copiar Inventário
+                </>
+              )}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Apply Default Template Dialog */}
+      <AlertDialog open={templateDialogOpen} onOpenChange={setTemplateDialogOpen}>
+        <AlertDialogContent className="max-w-lg">
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2">
+              <Sparkles className="h-5 w-5 text-primary" />
+              Aplicar Lista Padrão
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              Adicione um inventário pré-configurado com categorias e itens típicos de imóveis de aluguel.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label>Propriedade de Destino</Label>
+              <Select value={templateTargetPropertyId} onValueChange={setTemplateTargetPropertyId}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Selecione a propriedade" />
+                </SelectTrigger>
+                <SelectContent>
+                  {properties.map(property => (
+                    <SelectItem key={property.id} value={property.id}>
+                      {property.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="bg-muted/50 rounded-lg p-4 space-y-3">
+              <p className="text-sm font-medium text-foreground flex items-center gap-2">
+                <ListChecks className="h-4 w-4" />
+                Categorias incluídas:
+              </p>
+              <div className="grid grid-cols-2 gap-2">
+                {DEFAULT_INVENTORY_TEMPLATE.map((cat, index) => (
+                  <div key={index} className="flex items-center gap-2 text-sm text-muted-foreground">
+                    <div className="h-1.5 w-1.5 rounded-full bg-primary" />
+                    <span>{cat.name}</span>
+                    <Badge variant="secondary" className="text-xs ml-auto">
+                      {cat.items.length}
+                    </Badge>
+                  </div>
+                ))}
+              </div>
+              <p className="text-xs text-muted-foreground pt-2 border-t border-border">
+                Total: {DEFAULT_INVENTORY_TEMPLATE.length} categorias, {DEFAULT_INVENTORY_TEMPLATE.reduce((acc, cat) => acc + cat.items.length, 0)} itens
+              </p>
+            </div>
+          </div>
+
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={applyingTemplate}>Cancelar</AlertDialogCancel>
+            <AlertDialogAction 
+              onClick={(e) => {
+                e.preventDefault();
+                handleApplyDefaultTemplate();
+              }}
+              disabled={applyingTemplate || !templateTargetPropertyId}
+              className="bg-primary hover:bg-primary/90"
+            >
+              {applyingTemplate ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  Aplicando...
+                </>
+              ) : (
+                <>
+                  <Sparkles className="h-4 w-4 mr-2" />
+                  Aplicar Lista
                 </>
               )}
             </AlertDialogAction>
