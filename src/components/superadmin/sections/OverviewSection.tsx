@@ -30,6 +30,8 @@ interface OverviewSectionProps {
 
 interface GlobalStats {
   totalProperties: number;
+  activeProperties: number;
+  inactiveProperties: number;
   activeUsers: number;
   cleaners: number;
   managers: number;
@@ -46,6 +48,8 @@ interface AlertStats {
 export function OverviewSection({ viewMode, onNavigateToSection }: OverviewSectionProps) {
   const [stats, setStats] = useState<GlobalStats>({
     totalProperties: 0,
+    activeProperties: 0,
+    inactiveProperties: 0,
     activeUsers: 0,
     cleaners: 0,
     managers: 0,
@@ -66,10 +70,15 @@ export function OverviewSection({ viewMode, onNavigateToSection }: OverviewSecti
   const fetchStats = async () => {
     setLoading(true);
     try {
-      // Fetch properties count
-      const { count: propertiesCount } = await supabase
+      // Fetch properties count with active/inactive breakdown
+      const { count: totalPropertiesCount } = await supabase
         .from('properties')
         .select('*', { count: 'exact', head: true });
+
+      const { count: activePropertiesCount } = await supabase
+        .from('properties')
+        .select('*', { count: 'exact', head: true })
+        .eq('is_active', true);
 
       // Fetch team members by role
       const { data: teamMembers } = await supabase
@@ -119,7 +128,9 @@ export function OverviewSection({ viewMode, onNavigateToSection }: OverviewSecti
         .lt('updated_at', twoHoursAgo);
 
       setStats({
-        totalProperties: propertiesCount || 0,
+        totalProperties: totalPropertiesCount || 0,
+        activeProperties: activePropertiesCount || 0,
+        inactiveProperties: (totalPropertiesCount || 0) - (activePropertiesCount || 0),
         activeUsers: cleaners + managers + admins,
         cleaners,
         managers,
@@ -141,11 +152,20 @@ export function OverviewSection({ viewMode, onNavigateToSection }: OverviewSecti
 
   const statsCards = [
     { 
+      label: 'Propriedades Ativas', 
+      value: stats.activeProperties.toLocaleString(), 
+      icon: Building2, 
+      change: `${stats.inactiveProperties} inativas`, 
+      changeType: stats.inactiveProperties > 0 ? 'neutral' : 'positive',
+      bgColor: 'bg-green-500/10',
+      iconColor: 'text-green-500'
+    },
+    { 
       label: 'Total Propriedades', 
       value: stats.totalProperties.toLocaleString(), 
       icon: Building2, 
-      change: '+12%', 
-      changeType: 'positive',
+      change: '100%', 
+      changeType: 'info',
       bgColor: 'bg-primary/10',
       iconColor: 'text-primary'
     },
@@ -175,15 +195,6 @@ export function OverviewSection({ viewMode, onNavigateToSection }: OverviewSecti
       changeType: 'positive',
       bgColor: 'bg-blue-500/10',
       iconColor: 'text-blue-500'
-    },
-    { 
-      label: 'Reservas Sinc.', 
-      value: stats.syncedReservations.toLocaleString(), 
-      icon: RefreshCw, 
-      change: '99.2%', 
-      changeType: 'positive',
-      bgColor: 'bg-primary/10',
-      iconColor: 'text-primary'
     },
     { 
       label: 'Tarefas Finaliz.', 
