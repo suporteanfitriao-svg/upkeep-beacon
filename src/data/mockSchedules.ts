@@ -183,8 +183,9 @@ export const mockSchedules: Schedule[] = [
 export const calculateStats = (schedules: Schedule[]): DashboardStats => {
   const now = new Date();
   
+  // Delayed: 'waiting' or 'released' (cleaning not started) and check-in within 1 hour
   const delayed = schedules.filter(s => {
-    if (s.status !== 'released') return false;
+    if (s.status !== 'waiting' && s.status !== 'released') return false;
     const checkInTime = s.checkIn;
     const oneHourFromNow = new Date(now.getTime() + 60 * 60 * 1000);
     return checkInTime <= oneHourFromNow;
