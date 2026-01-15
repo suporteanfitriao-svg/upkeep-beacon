@@ -1,8 +1,7 @@
-import { useState, useMemo, useEffect, useCallback, useRef } from 'react';
+import { useState, useMemo, useEffect, useCallback, useRef, memo } from 'react';
 import { format, isSameDay, addDays, startOfWeek, endOfWeek, getWeek, isAfter, startOfDay, endOfDay, isToday as checkIsToday, startOfMonth, endOfMonth, eachDayOfInterval, addMonths, subMonths, getDay, formatDistanceToNow, isWithinInterval, parseISO } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { Calendar, Play, Clock, Check, ChevronRight, LayoutGrid, MessageSquare, Menu, RefreshCw, Home, Building2, AlertCircle, Users, Loader2, ClipboardCheck, CheckCircle2, Download } from 'lucide-react';
-import { Badge } from '@/components/ui/badge';
+import { Calendar, Play, Clock, Check, ChevronRight, RefreshCw, Building2, ClipboardCheck, CheckCircle2 } from 'lucide-react';
 import { Schedule } from '@/types/scheduling';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
@@ -11,33 +10,18 @@ import { useAuth } from '@/hooks/useAuth';
 import { useTeamMemberId } from '@/hooks/useTeamMemberId';
 import { useCleanerPayments, PaymentPeriod } from '@/hooks/useCleanerPayments';
 import { CleanerPaymentCards } from './CleanerPaymentCards';
-import { useStayStatus, StayStatusInfo } from '@/hooks/useStayStatus';
-import { useCleanerInspections, CleanerInspection } from '@/hooks/useCleanerInspections';
+import { useCleanerInspections } from '@/hooks/useCleanerInspections';
 import { AddToHomeScreen } from '@/components/pwa/AddToHomeScreen';
 import { CleaningTimeAlertBanner } from '@/components/dashboard/CleaningTimeAlertBanner';
 import { useCleaningTimeAlerts } from '@/hooks/useCleaningTimeAlert';
 
-// Component to render the footer of pending cards with stay status
-function PendingCardFooter({ schedule }: { schedule: Schedule }) {
-  const stayStatus = useStayStatus(schedule);
-  
-  return (
-    <div className="border-t border-slate-100 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/50 px-4 py-2 flex justify-between items-center">
-      <div className="flex -space-x-2">
-        <span className="flex h-6 w-6 items-center justify-center rounded-full bg-primary/20 text-primary text-[10px] font-bold ring-2 ring-white dark:ring-[#2d3138]">
-          {schedule.cleanerName?.split(' ').map(n => n[0]).join('').slice(0, 2) || 'N'}
-        </span>
-      </div>
-      {stayStatus ? (
-        <span className={cn("text-xs font-medium", stayStatus.colorClass)}>
-          {stayStatus.label}
-        </span>
-      ) : (
-        <span className="text-xs font-medium text-[#8A8B88]">Aguardando liberação</span>
-      )}
-    </div>
-  );
-}
+// Import memoized subcomponents
+import { MobileBottomNav } from './mobile/MobileBottomNav';
+import { MobilePeriodFilterTabs } from './mobile/MobilePeriodFilterTabs';
+import { MobileScheduleCard } from './mobile/MobileScheduleCard';
+import { MobileScheduleList } from './mobile/MobileScheduleList';
+import { MobileWeekStrip } from './mobile/MobileWeekStrip';
+import { MobileInspectionCard } from './mobile/MobileInspectionCard';
 
 interface MobileDashboardProps {
   schedules: Schedule[];
@@ -105,7 +89,6 @@ export function MobileDashboard({ schedules, onScheduleClick, onStartCleaning, o
       const result = await onRefresh();
       setLastSyncTime(new Date());
       
-      // Show toast with sync count
       if (isAutoSync) {
         if (result?.synced && result.synced > 0) {
           toast.success(`${result.synced} reserva${result.synced > 1 ? 's' : ''} sincronizada${result.synced > 1 ? 's' : ''}!`, {
@@ -120,11 +103,8 @@ export function MobileDashboard({ schedules, onScheduleClick, onStartCleaning, o
         }
       }
       
-      // Vibrate on successful refresh (manual pull-to-refresh)
       if (!isAutoSync) {
-        vibrate([50, 30, 50]); // Double vibration pattern
-        
-        // Show toast for manual refresh
+        vibrate([50, 30, 50]);
         if (result?.synced !== undefined) {
           if (result.synced > 0) {
             toast.success(`${result.synced} reserva${result.synced > 1 ? 's' : ''} sincronizada${result.synced > 1 ? 's' : ''}!`);
@@ -142,28 +122,21 @@ export function MobileDashboard({ schedules, onScheduleClick, onStartCleaning, o
   // Auto-sync every 5 minutes
   useEffect(() => {
     if (!onRefresh) return;
-
     const interval = setInterval(() => {
-      handleRefresh(true); // Pass true to indicate auto-sync
+      handleRefresh(true);
     }, AUTO_SYNC_INTERVAL);
-
     return () => clearInterval(interval);
   }, [handleRefresh, onRefresh]);
 
   // Pull-to-refresh with Pointer Events - safer implementation
-  // Only activates for clearly vertical gestures starting from scroll top
-  const DIRECTION_THRESHOLD = 15; // px before deciding if it's vertical or horizontal
-  const VERTICAL_RATIO = 2; // Must move 2x more vertical than horizontal
+  const DIRECTION_THRESHOLD = 15;
+  const VERTICAL_RATIO = 2;
 
   const handlePointerDown = useCallback((e: React.PointerEvent) => {
-    // Only handle touch and pen, not mouse (avoids desktop issues)
     if (e.pointerType === 'mouse') return;
-    
-    // Check if we're at the top of the scroll container
     if (containerRef.current && containerRef.current.scrollTop === 0) {
       startPosRef.current = { x: e.clientX, y: e.clientY };
       setGestureDecided(false);
-      // Don't set isPulling yet - wait until gesture direction is clear
     }
   }, []);
 
@@ -174,11 +147,9 @@ export function MobileDashboard({ schedules, onScheduleClick, onStartCleaning, o
     const deltaX = Math.abs(e.clientX - startPosRef.current.x);
     const deltaY = e.clientY - startPosRef.current.y;
     
-    // If gesture not yet decided, check direction after threshold
     if (!gestureDecided) {
       const totalMovement = Math.max(deltaX, Math.abs(deltaY));
       if (totalMovement > DIRECTION_THRESHOLD) {
-        // Decide: is this a vertical pull-down gesture?
         const isVerticalPull = deltaY > 0 && 
                                Math.abs(deltaY) > deltaX * VERTICAL_RATIO &&
                                containerRef.current?.scrollTop === 0;
@@ -187,22 +158,17 @@ export function MobileDashboard({ schedules, onScheduleClick, onStartCleaning, o
           setIsPulling(true);
           setGestureDecided(true);
         } else {
-          // Not a pull gesture - cancel and let normal interactions work
           setIsPulling(false);
           setGestureDecided(true);
           return;
         }
       } else {
-        // Not enough movement yet - don't interfere
         return;
       }
     }
     
-    // If we decided this is a pull gesture, update the pull distance
     if (isPulling && deltaY > 0) {
       setPullDistance(Math.min(deltaY * 0.5, PULL_THRESHOLD * 1.5));
-      
-      // Light vibration when reaching threshold
       if (deltaY * 0.5 >= PULL_THRESHOLD && deltaY * 0.5 < PULL_THRESHOLD + 5) {
         vibrate(20);
       }
@@ -224,51 +190,42 @@ export function MobileDashboard({ schedules, onScheduleClick, onStartCleaning, o
     setGestureDecided(false);
   }, []);
 
-  // Format last sync time
+  // Memoized calculations
   const lastSyncText = useMemo(() => {
     if (!lastSyncTime) return null;
     return formatDistanceToNow(lastSyncTime, { addSuffix: true, locale: ptBR });
   }, [lastSyncTime]);
 
-  // Generate week days for the calendar strip (Dia view)
   const weekDays = useMemo(() => {
     const start = startOfWeek(selectedDate, { weekStartsOn: 0 });
     return Array.from({ length: 7 }, (_, i) => addDays(start, i));
   }, [selectedDate]);
 
-  // Generate month days for calendar view
   const monthDays = useMemo(() => {
     const start = startOfMonth(currentMonth);
     const end = endOfMonth(currentMonth);
     const days = eachDayOfInterval({ start, end });
-    
-    // Add padding days from previous month
     const startDayOfWeek = getDay(start);
     const paddingBefore = Array.from({ length: startDayOfWeek }, (_, i) => 
       addDays(start, -(startDayOfWeek - i))
     );
-    
     return [...paddingBefore, ...days];
   }, [currentMonth]);
 
-  // Filter schedules for selected date
   const selectedDaySchedules = useMemo(() => {
     return schedules.filter(s => isSameDay(s.checkOut, selectedDate))
       .sort((a, b) => a.checkOut.getTime() - b.checkOut.getTime());
   }, [schedules, selectedDate]);
 
-  // Get next day with schedules after selected date
   const nextDaySchedules = useMemo(() => {
     const tomorrow = addDays(selectedDate, 1);
     return schedules.filter(s => isSameDay(s.checkOut, tomorrow))
       .sort((a, b) => a.checkOut.getTime() - b.checkOut.getTime());
   }, [schedules, selectedDate]);
 
-  // Count tasks with indicators for each day (schedules + inspections)
   const dayIndicators = useMemo(() => {
     const indicators: Record<string, { pending: number; completed: number; gold: number; inspections: number }> = {};
     
-    // Add schedule indicators
     schedules.forEach(s => {
       const dateKey = format(s.checkOut, 'yyyy-MM-dd');
       if (!indicators[dateKey]) {
@@ -283,7 +240,6 @@ export function MobileDashboard({ schedules, onScheduleClick, onStartCleaning, o
       }
     });
     
-    // Add inspection indicators
     inspections.forEach(i => {
       const dateKey = i.scheduled_date;
       if (!indicators[dateKey]) {
@@ -297,12 +253,19 @@ export function MobileDashboard({ schedules, onScheduleClick, onStartCleaning, o
     return indicators;
   }, [schedules, inspections]);
 
-  // Separate schedules by status
-  const pendingSchedules = selectedDaySchedules.filter(s => s.status === 'waiting' || s.status === 'released');
-  const inProgressSchedules = selectedDaySchedules.filter(s => s.status === 'cleaning');
-  const completedSchedules = selectedDaySchedules.filter(s => s.status === 'completed');
+  const pendingSchedules = useMemo(() => 
+    selectedDaySchedules.filter(s => s.status === 'waiting' || s.status === 'released'),
+    [selectedDaySchedules]
+  );
+  const inProgressSchedules = useMemo(() => 
+    selectedDaySchedules.filter(s => s.status === 'cleaning'),
+    [selectedDaySchedules]
+  );
+  const completedSchedules = useMemo(() => 
+    selectedDaySchedules.filter(s => s.status === 'completed'),
+    [selectedDaySchedules]
+  );
 
-  // Filter inspections for selected date
   const selectedDayInspections = useMemo(() => {
     return inspections.filter(i => {
       const inspectionDate = parseISO(i.scheduled_date);
@@ -310,11 +273,15 @@ export function MobileDashboard({ schedules, onScheduleClick, onStartCleaning, o
     });
   }, [inspections, selectedDate]);
 
-  // Separate inspections by status
-  const scheduledInspections = selectedDayInspections.filter(i => i.status === 'scheduled');
-  const inProgressInspections = selectedDayInspections.filter(i => i.status === 'in_progress');
+  const scheduledInspections = useMemo(() => 
+    selectedDayInspections.filter(i => i.status === 'scheduled'),
+    [selectedDayInspections]
+  );
+  const inProgressInspections = useMemo(() => 
+    selectedDayInspections.filter(i => i.status === 'in_progress'),
+    [selectedDayInspections]
+  );
 
-  // Find next checkout
   const nextCheckout = useMemo(() => {
     return selectedDaySchedules.find(s => 
       s.status !== 'completed' && 
@@ -326,10 +293,8 @@ export function MobileDashboard({ schedules, onScheduleClick, onStartCleaning, o
   const formatTime = (date: Date) => format(date, 'HH:mm');
   const monthName = format(viewMode === 'calendario' ? currentMonth : selectedDate, "MMMM", { locale: ptBR });
   const yearNumber = format(viewMode === 'calendario' ? currentMonth : selectedDate, "yyyy");
-  const weekNumber = getWeek(selectedDate, { weekStartsOn: 0 });
   const isSelectedToday = isSameDay(selectedDate, new Date());
 
-  // Count today's pending tasks for badge
   const todayTasksCount = useMemo(() => {
     const today = new Date();
     return schedules.filter(s => 
@@ -337,7 +302,6 @@ export function MobileDashboard({ schedules, onScheduleClick, onStartCleaning, o
     ).length;
   }, [schedules]);
 
-  // Count tomorrow's pending tasks for badge
   const tomorrowTasksCount = useMemo(() => {
     const tomorrow = addDays(new Date(), 1);
     return schedules.filter(s => 
@@ -345,7 +309,6 @@ export function MobileDashboard({ schedules, onScheduleClick, onStartCleaning, o
     ).length;
   }, [schedules]);
 
-  // Calculate period-based stats
   const periodStats = useMemo(() => {
     const now = new Date();
     let dateRange: { start: Date; end: Date };
@@ -372,20 +335,17 @@ export function MobileDashboard({ schedules, onScheduleClick, onStartCleaning, o
 
     const completed = periodSchedules.filter(s => s.status === 'completed');
     const pending = periodSchedules.filter(s => s.status !== 'completed');
-    const total = periodSchedules.length;
-    const pendingCount = pending.length;
 
     return {
-      total,
+      total: periodSchedules.length,
       completed: completed.length,
-      pending: pendingCount,
+      pending: pending.length,
       periodLabel: paymentPeriod === 'today' ? 'Hoje' : 
                    paymentPeriod === 'tomorrow' ? 'Amanhã' :
                    paymentPeriod === 'week' ? 'Semana' : 'Mês'
     };
   }, [schedules, paymentPeriod]);
 
-  // Calculate completed tasks in the current month
   const monthCompletedCount = useMemo(() => {
     const now = new Date();
     const monthStart = startOfMonth(now);
@@ -396,7 +356,6 @@ export function MobileDashboard({ schedules, onScheduleClick, onStartCleaning, o
     ).length;
   }, [schedules]);
 
-  // Calculate future pending tasks (next 7 days after today)
   const futurePendingCount = useMemo(() => {
     const today = startOfDay(new Date());
     const sevenDaysLater = addDays(today, 7);
@@ -407,9 +366,55 @@ export function MobileDashboard({ schedules, onScheduleClick, onStartCleaning, o
     ).length;
   }, [schedules]);
 
+  const handlePrevMonth = useCallback(() => setCurrentMonth(prev => subMonths(prev, 1)), []);
+  const handleNextMonth = useCallback(() => setCurrentMonth(prev => addMonths(prev, 1)), []);
 
-  const handlePrevMonth = () => setCurrentMonth(prev => subMonths(prev, 1));
-  const handleNextMonth = () => setCurrentMonth(prev => addMonths(prev, 1));
+  const handleTabChange = useCallback((tab: 'inicio' | 'agenda' | 'msgs' | 'menu') => {
+    setActiveTab(tab);
+  }, []);
+
+  const handlePeriodChange = useCallback((period: PaymentPeriod) => {
+    setPaymentPeriod(period);
+  }, []);
+
+  const handleDateSelect = useCallback((date: Date) => {
+    setSelectedDate(date);
+  }, []);
+
+  const handleNavigateToAgenda = useCallback(() => {
+    setActiveTab('agenda');
+    if (paymentPeriod === 'today') {
+      setSelectedDate(startOfDay(new Date()));
+    } else if (paymentPeriod === 'tomorrow') {
+      setSelectedDate(startOfDay(addDays(new Date(), 1)));
+    } else if (paymentPeriod === 'week') {
+      const weekStart = startOfWeek(new Date(), { weekStartsOn: 0 });
+      const weekEnd = endOfWeek(new Date(), { weekStartsOn: 0 });
+      const firstPendingInWeek = schedules.find(s => {
+        const scheduleDate = startOfDay(new Date(s.checkOut));
+        return isWithinInterval(scheduleDate, { start: weekStart, end: weekEnd }) && 
+               ['waiting', 'released', 'cleaning'].includes(s.status);
+      });
+      if (firstPendingInWeek) {
+        setSelectedDate(startOfDay(new Date(firstPendingInWeek.checkOut)));
+      } else {
+        setSelectedDate(startOfDay(new Date()));
+      }
+    } else if (paymentPeriod === 'month') {
+      const monthStart = startOfMonth(new Date());
+      const monthEnd = endOfMonth(new Date());
+      const firstPendingInMonth = schedules.find(s => {
+        const scheduleDate = startOfDay(new Date(s.checkOut));
+        return isWithinInterval(scheduleDate, { start: monthStart, end: monthEnd }) && 
+               ['waiting', 'released', 'cleaning'].includes(s.status);
+      });
+      if (firstPendingInMonth) {
+        setSelectedDate(startOfDay(new Date(firstPendingInMonth.checkOut)));
+      } else {
+        setSelectedDate(startOfDay(new Date()));
+      }
+    }
+  }, [paymentPeriod, schedules]);
 
   return (
     <div 
@@ -420,7 +425,7 @@ export function MobileDashboard({ schedules, onScheduleClick, onStartCleaning, o
       onPointerCancel={handlePointerCancel}
       className="relative flex min-h-screen w-full flex-col overflow-x-hidden pb-24 bg-stone-50 dark:bg-[#22252a] font-display text-slate-800 dark:text-slate-100 antialiased touch-pan-y"
     >
-      {/* Pull-to-refresh indicator - only shows when actively pulling */}
+      {/* Pull-to-refresh indicator */}
       {isPulling && pullDistance > 0 && (
         <div 
           className="absolute left-0 right-0 flex items-center justify-center transition-all duration-200 z-30 pointer-events-none"
@@ -488,7 +493,7 @@ export function MobileDashboard({ schedules, onScheduleClick, onStartCleaning, o
             <AddToHomeScreen />
           </div>
 
-          {/* Cleaning Time Alerts - Only show if there are alerts */}
+          {/* Cleaning Time Alerts */}
           {cleaningTimeAlerts.length > 0 && (
             <div className="px-6 pt-3 relative z-10">
               <CleaningTimeAlertBanner 
@@ -503,79 +508,13 @@ export function MobileDashboard({ schedules, onScheduleClick, onStartCleaning, o
           )}
 
           <main className="flex-1 px-6 py-4 relative z-0">
-            {/* Period Filter Tabs */}
-            <div className="flex items-center gap-2 mb-4 overflow-x-auto hide-scrollbar relative z-20">
-              <button
-                type="button"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  setPaymentPeriod('today');
-                }}
-                className={cn(
-                  "relative px-4 py-2 rounded-full text-sm font-semibold transition-all whitespace-nowrap touch-manipulation",
-                  paymentPeriod === 'today'
-                    ? "bg-primary text-white shadow-md"
-                    : "bg-white dark:bg-slate-800 text-muted-foreground border border-slate-200 dark:border-slate-700"
-                )}
-              >
-                Hoje
-                {todayTasksCount > 0 && paymentPeriod !== 'today' && (
-                  <span className="absolute -top-1 -right-1 h-5 w-5 rounded-full bg-red-500 text-white text-xs font-bold flex items-center justify-center">
-                    {todayTasksCount}
-                  </span>
-                )}
-              </button>
-              <button
-                type="button"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  setPaymentPeriod('tomorrow');
-                }}
-                className={cn(
-                  "relative px-4 py-2 rounded-full text-sm font-semibold transition-all whitespace-nowrap touch-manipulation",
-                  paymentPeriod === 'tomorrow'
-                    ? "bg-primary text-white shadow-md"
-                    : "bg-white dark:bg-slate-800 text-muted-foreground border border-slate-200 dark:border-slate-700"
-                )}
-              >
-                Amanhã
-                {tomorrowTasksCount > 0 && paymentPeriod !== 'tomorrow' && (
-                  <span className="absolute -top-1 -right-1 h-5 w-5 rounded-full bg-red-500 text-white text-xs font-bold flex items-center justify-center">
-                    {tomorrowTasksCount}
-                  </span>
-                )}
-              </button>
-              <button
-                type="button"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  setPaymentPeriod('week');
-                }}
-                className={cn(
-                  "px-4 py-2 rounded-full text-sm font-semibold transition-all whitespace-nowrap touch-manipulation",
-                  paymentPeriod === 'week'
-                    ? "bg-primary text-white shadow-md"
-                    : "bg-white dark:bg-slate-800 text-muted-foreground border border-slate-200 dark:border-slate-700"
-                )}
-              >
-                Semana
-              </button>
-              <button
-                type="button"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  setPaymentPeriod('month');
-                }}
-                className={cn(
-                  "px-4 py-2 rounded-full text-sm font-semibold transition-all whitespace-nowrap touch-manipulation",
-                  paymentPeriod === 'month'
-                    ? "bg-primary text-white shadow-md"
-                    : "bg-white dark:bg-slate-800 text-muted-foreground border border-slate-200 dark:border-slate-700"
-                )}
-              >
-                Mês
-              </button>
-            </div>
+            {/* Period Filter Tabs - Memoized */}
+            <MobilePeriodFilterTabs
+              paymentPeriod={paymentPeriod}
+              onPeriodChange={handlePeriodChange}
+              todayTasksCount={todayTasksCount}
+              tomorrowTasksCount={tomorrowTasksCount}
+            />
 
             {/* Today Summary */}
             <div className="flex items-center justify-between mb-4">
@@ -594,45 +533,9 @@ export function MobileDashboard({ schedules, onScheduleClick, onStartCleaning, o
               )}
             </div>
 
-            {/* Tasks Card - Period Tasks - Always Clickable */}
+            {/* Tasks Card */}
             <button
-              onClick={() => {
-                setActiveTab('agenda');
-                // Navigate to appropriate date based on period
-                if (paymentPeriod === 'today') {
-                  setSelectedDate(startOfDay(new Date()));
-                } else if (paymentPeriod === 'tomorrow') {
-                  setSelectedDate(startOfDay(addDays(new Date(), 1)));
-                } else if (paymentPeriod === 'week') {
-                  // Navigate to first day of the week with pending tasks, or today
-                  const weekStart = startOfWeek(new Date(), { weekStartsOn: 0 });
-                  const weekEnd = endOfWeek(new Date(), { weekStartsOn: 0 });
-                  const firstPendingInWeek = schedules.find(s => {
-                    const scheduleDate = startOfDay(new Date(s.checkOut));
-                    return isWithinInterval(scheduleDate, { start: weekStart, end: weekEnd }) && 
-                           ['waiting', 'released', 'cleaning'].includes(s.status);
-                  });
-                  if (firstPendingInWeek) {
-                    setSelectedDate(startOfDay(new Date(firstPendingInWeek.checkOut)));
-                  } else {
-                    setSelectedDate(startOfDay(new Date()));
-                  }
-                } else if (paymentPeriod === 'month') {
-                  // Navigate to first day of the month with pending tasks, or today
-                  const monthStart = startOfMonth(new Date());
-                  const monthEnd = endOfMonth(new Date());
-                  const firstPendingInMonth = schedules.find(s => {
-                    const scheduleDate = startOfDay(new Date(s.checkOut));
-                    return isWithinInterval(scheduleDate, { start: monthStart, end: monthEnd }) && 
-                           ['waiting', 'released', 'cleaning'].includes(s.status);
-                  });
-                  if (firstPendingInMonth) {
-                    setSelectedDate(startOfDay(new Date(firstPendingInMonth.checkOut)));
-                  } else {
-                    setSelectedDate(startOfDay(new Date()));
-                  }
-                }
-              }}
+              onClick={handleNavigateToAgenda}
               className="w-full rounded-2xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 p-4 mb-3 shadow-sm text-left transition-all hover:shadow-md active:scale-[0.99] cursor-pointer relative"
             >
               <div className="flex items-center justify-between">
@@ -658,7 +561,7 @@ export function MobileDashboard({ schedules, onScheduleClick, onStartCleaning, o
               <ChevronRight className="w-5 h-5 text-muted-foreground absolute right-4 top-1/2 -translate-y-1/2" />
             </button>
 
-            {/* Stats Cards Row - Not clickable */}
+            {/* Stats Cards Row */}
             <div className="grid grid-cols-2 gap-3 mb-3">
               <div className="p-4 rounded-2xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 shadow-sm">
                 <div className="h-10 w-10 rounded-xl bg-emerald-100 dark:bg-emerald-900/30 flex items-center justify-center mb-2">
@@ -676,7 +579,7 @@ export function MobileDashboard({ schedules, onScheduleClick, onStartCleaning, o
               </div>
             </div>
 
-            {/* Payment Cards - Only shows if cleaner has required rates */}
+            {/* Payment Cards */}
             <CleanerPaymentCards teamMemberId={teamMemberId} period={paymentPeriod} />
 
             {/* Properties Responsibility Card */}
@@ -737,8 +640,6 @@ export function MobileDashboard({ schedules, onScheduleClick, onStartCleaning, o
                 </button>
               </div>
             )}
-
-
           </main>
         </div>
       )}
@@ -792,15 +693,10 @@ export function MobileDashboard({ schedules, onScheduleClick, onStartCleaning, o
                     <Calendar className="w-6 h-6 text-muted-foreground" />
                   </button>
                   <div className="flex flex-col">
-                    <h2 className="text-xl font-extrabold leading-none tracking-tight text-foreground">
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Semana {getWeek(selectedDate, { weekStartsOn: 0 })}</span>
+                    <h2 className="text-lg font-extrabold leading-none tracking-tight text-slate-900 dark:text-white">
                       <span className="capitalize">{monthName}</span> <span className="text-primary">{yearNumber}</span>
                     </h2>
-                    <div className="flex items-center gap-2">
-                      <span className="text-xs font-medium text-muted-foreground">Semana {weekNumber}</span>
-                      {lastSyncText && (
-                        <span className="text-[10px] text-muted-foreground/70">• Sync {lastSyncText}</span>
-                      )}
-                    </div>
                   </div>
                 </div>
                 <button 
@@ -811,763 +707,268 @@ export function MobileDashboard({ schedules, onScheduleClick, onStartCleaning, o
                 </button>
               </>
             )}
-            <div className="flex items-center gap-2">
-              {onRefresh && (
-                <button 
-                  onClick={() => handleRefresh(false)}
-                  disabled={isSyncing}
-                  className="relative flex h-10 w-10 items-center justify-center rounded-full transition-colors hover:bg-muted disabled:opacity-50"
-                >
-                  <RefreshCw className={cn("w-5 h-5 text-muted-foreground", isSyncing && "animate-spin")} />
-                  {lastSyncTime && !isSyncing && (
-                    <span className="absolute -bottom-0.5 -right-0.5 h-2.5 w-2.5 rounded-full bg-primary border-2 border-stone-50 dark:border-[#22252a]" />
-                  )}
-                </button>
-              )}
-              <button 
-                onClick={() => navigate('/minha-conta')}
-                className="relative flex h-10 w-10 overflow-hidden rounded-full border-2 border-white shadow-sm dark:border-slate-600"
-              >
-                <div className="h-full w-full bg-primary/10 flex items-center justify-center">
-                  <span className="text-primary font-bold text-sm">
-                    {user?.email?.substring(0, 2).toUpperCase() || 'U'}
-                  </span>
-                </div>
-              </button>
-            </div>
+            <button 
+              onClick={() => setViewMode(viewMode === 'dia' ? 'calendario' : 'dia')}
+              className="flex items-center justify-center rounded-full p-2 transition-colors hover:bg-muted"
+            >
+              <span className="material-symbols-outlined text-muted-foreground text-[22px]">
+                {viewMode === 'dia' ? 'calendar_month' : 'view_week'}
+              </span>
+            </button>
           </header>
 
-          {/* View Toggle + Today Button */}
-          <div className="px-6 pt-2 flex items-center gap-2">
-            <div className="relative flex h-10 flex-1 items-center rounded-xl bg-slate-100 dark:bg-slate-800 p-1">
-              <button 
-                onClick={() => setViewMode('dia')}
-                className={cn(
-                  "flex h-full flex-1 items-center justify-center rounded-lg text-xs font-bold transition-all",
-                  viewMode === 'dia' 
-                    ? "bg-white dark:bg-[#2d3138] text-slate-900 dark:text-white shadow-sm" 
-                    : "text-[#8A8B88] hover:text-slate-900 dark:hover:text-white"
-                )}
-              >
-                Dia
-              </button>
-              <button 
-                onClick={() => setViewMode('calendario')}
-                className={cn(
-                  "flex h-full flex-1 items-center justify-center rounded-lg text-xs font-bold transition-all",
-                  viewMode === 'calendario' 
-                    ? "bg-white dark:bg-[#2d3138] text-slate-900 dark:text-white shadow-sm" 
-                    : "text-[#8A8B88] hover:text-slate-900 dark:hover:text-white"
-                )}
-              >
-                Calendário
-              </button>
-            </div>
-            
-            {/* Today Button - only shows when not on today */}
-            {!isSelectedToday && (
-              <button
-                onClick={() => {
-                  const today = new Date();
-                  setSelectedDate(startOfDay(today));
-                  setCurrentMonth(startOfMonth(today));
-                  vibrate(30);
-                }}
-                className="relative flex h-10 items-center gap-1.5 px-3 rounded-xl bg-primary text-white text-xs font-bold shadow-sm hover:bg-primary/90 transition-all active:scale-95"
-              >
-                <Calendar className="w-3.5 h-3.5" />
-                Hoje
-                {todayTasksCount > 0 && (
-                  <span className="absolute -top-1.5 -right-1.5 flex h-5 min-w-5 items-center justify-center rounded-full bg-amber-500 text-[10px] font-bold text-white px-1 shadow-md border-2 border-stone-50 dark:border-[#22252a]">
-                    {todayTasksCount > 9 ? '9+' : todayTasksCount}
-                  </span>
-                )}
-              </button>
-            )}
-          </div>
-
           {viewMode === 'calendario' ? (
-            // Calendar Monthly View
-            <main className="flex flex-col w-full px-4 mt-4">
-          {/* Color Legend */}
-          <div className="flex flex-wrap items-center gap-3 mb-4 px-2 py-2 bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700">
-            <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide">Legenda:</span>
-            <div className="flex items-center gap-1">
-              <div className="h-2 w-2 rounded-full bg-primary" />
-              <span className="text-[10px] text-muted-foreground">Pendente</span>
-            </div>
-            <div className="flex items-center gap-1">
-              <div className="h-2 w-2 rounded-full bg-[#E0C051]" />
-              <span className="text-[10px] text-muted-foreground">Em andamento</span>
-            </div>
-            <div className="flex items-center gap-1">
-              <div className="h-2 w-2 rounded-full bg-[#8A8B88]/40" />
-              <span className="text-[10px] text-muted-foreground">Concluída</span>
-            </div>
-            <div className="flex items-center gap-1">
-              <div className="h-2 w-2 rounded-full bg-purple-500" />
-              <span className="text-[10px] text-muted-foreground">Inspeção</span>
-            </div>
-          </div>
-
-          {/* Weekday headers */}
-          <div className="grid grid-cols-7 mb-3">
-            {dayNames.map((day) => (
-              <div key={day} className="text-center text-[10px] font-bold tracking-widest text-[#8A8B88] uppercase">
-                {day}
-              </div>
-            ))}
-          </div>
-
-          {/* Calendar Grid */}
-          <div className="grid grid-cols-7 gap-y-2 gap-x-1">
-            {monthDays.map((day, index) => {
-              const dateKey = format(day, 'yyyy-MM-dd');
-              const isSelected = isSameDay(day, selectedDate);
-              const isCurrentMonth = day.getMonth() === currentMonth.getMonth();
-              const indicators = dayIndicators[dateKey] || { pending: 0, completed: 0, gold: 0, inspections: 0 };
-              const totalTasks = indicators.pending + indicators.completed + indicators.gold + indicators.inspections;
-
-              if (!isCurrentMonth) {
-                return (
-                  <div key={index} className="min-h-[3.5rem] flex flex-col items-center pt-2 opacity-30 pointer-events-none">
-                    <span className="text-sm font-medium text-slate-400">{format(day, 'd')}</span>
-                  </div>
-                );
-              }
-
-              return (
-                <button
-                  key={index}
-                  onClick={() => setSelectedDate(day)}
-                  className={cn(
-                    "group min-h-[3.5rem] rounded-xl flex flex-col items-center justify-start pt-2 gap-1 transition-all",
-                    isSelected
-                      ? "bg-primary shadow-glow ring-2 ring-primary ring-offset-2 ring-offset-stone-50 dark:ring-offset-[#22252a]"
-                      : "border border-transparent hover:bg-white dark:hover:bg-[#2d3138] hover:shadow-soft"
-                  )}
-                >
-                  <span className={cn(
-                    "text-sm font-semibold",
-                    isSelected ? "font-bold text-white" : "text-slate-700 dark:text-slate-300"
-                  )}>
-                    {format(day, 'd')}
-                  </span>
-                  {/* Task indicators */}
-                  {totalTasks > 0 && (
-                    <div className="flex gap-0.5">
-                      {isSelected ? (
-                        <>
-                          {Array.from({ length: Math.min(indicators.pending, 2) }).map((_, i) => (
-                            <div key={`p-${i}`} className="h-1.5 w-1.5 rounded-full bg-white" />
-                          ))}
-                          {Array.from({ length: Math.min(indicators.completed, 2) }).map((_, i) => (
-                            <div key={`c-${i}`} className="h-1.5 w-1.5 rounded-full bg-white/60" />
-                          ))}
-                          {Array.from({ length: Math.min(indicators.gold, 2) }).map((_, i) => (
-                            <div key={`g-${i}`} className="h-1.5 w-1.5 rounded-full bg-[#E0C051] border border-white/20" />
-                          ))}
-                          {Array.from({ length: Math.min(indicators.inspections, 2) }).map((_, i) => (
-                            <div key={`i-${i}`} className="h-1.5 w-1.5 rounded-full bg-purple-300 border border-white/20" />
-                          ))}
-                        </>
-                      ) : (
-                        <>
-                          {Array.from({ length: Math.min(indicators.pending, 2) }).map((_, i) => (
-                            <div key={`p-${i}`} className="h-1.5 w-1.5 rounded-full bg-primary" />
-                          ))}
-                          {Array.from({ length: Math.min(indicators.completed, 2) }).map((_, i) => (
-                            <div key={`c-${i}`} className="h-1.5 w-1.5 rounded-full bg-[#8A8B88]/40" />
-                          ))}
-                          {Array.from({ length: Math.min(indicators.gold, 2) }).map((_, i) => (
-                            <div key={`g-${i}`} className="h-1.5 w-1.5 rounded-full bg-[#E0C051]" />
-                          ))}
-                          {Array.from({ length: Math.min(indicators.inspections, 2) }).map((_, i) => (
-                            <div key={`i-${i}`} className="h-1.5 w-1.5 rounded-full bg-purple-500" />
-                          ))}
-                        </>
-                      )}
-                    </div>
-                  )}
-                </button>
-              );
-            })}
-          </div>
-
-          {/* Selected Day Tasks Section */}
-          <section className="mt-4 px-2 flex-1">
-            <div className="flex items-baseline justify-between mb-4 pt-2 border-t border-slate-100 dark:border-slate-800">
-              <h2 className="text-lg font-bold text-slate-900 dark:text-white">
-                {format(selectedDate, "d 'de' MMMM", { locale: ptBR })}
-              </h2>
-              <span className="text-xs font-semibold text-primary">{selectedDaySchedules.length} Tarefas</span>
-            </div>
-
-            {/* Task Cards for Calendar View */}
-            <div className="flex flex-col gap-3 pb-6">
-              {selectedDaySchedules.map(schedule => (
-                <button
-                  key={schedule.id}
-                  onClick={() => onScheduleClick(schedule)}
-                  className="overflow-hidden rounded-2xl bg-white dark:bg-[#2d3138] shadow-soft border border-slate-100 dark:border-slate-700 transition-transform active:scale-[0.98] text-left"
-                >
-                  <div className="flex flex-row p-3 gap-3">
-                    {schedule.propertyImageUrl ? (
-                      <img 
-                        src={schedule.propertyImageUrl} 
-                        alt={schedule.propertyName}
-                        className="w-16 h-16 shrink-0 rounded-xl object-cover border border-slate-100 dark:border-slate-700"
-                      />
-                    ) : (
-                      <div className="w-16 h-16 shrink-0 rounded-xl bg-slate-50 dark:bg-slate-800 flex items-center justify-center border border-slate-100 dark:border-slate-700">
-                        <span className="material-symbols-outlined text-slate-400 text-[28px]">apartment</span>
-                      </div>
-                    )}
-                    <div className="flex-1 flex flex-col justify-center">
-                      <h3 className="text-sm font-bold text-slate-900 dark:text-white leading-tight mb-1">
-                        {schedule.propertyName}
-                      </h3>
-                      <div className="flex items-center gap-1.5 text-[#8A8B88] dark:text-slate-400">
-                        <span className="material-symbols-outlined text-[16px]">schedule</span>
-                        <span className="text-xs font-bold">
-                          Liberado {formatTime(schedule.checkOut)} 
-                          <span className="font-normal opacity-70">
-                            - {schedule.status === 'completed' ? 'Finalizado' : schedule.status === 'cleaning' ? 'Em limpeza' : 'Pendente'}
-                          </span>
-                        </span>
-                      </div>
-                    </div>
-                    <div className="flex items-center pr-1">
-                      {schedule.status === 'completed' ? (
-                        <span className="material-symbols-outlined text-primary text-[24px]">check_circle</span>
-                      ) : schedule.status === 'cleaning' ? (
-                        <div className="h-2.5 w-2.5 rounded-full bg-[#E0C051] ring-2 ring-[#E0C051]/30" />
-                      ) : (
-                        <div className="h-2.5 w-2.5 rounded-full bg-primary ring-2 ring-primary/30" />
-                      )}
-                    </div>
-                  </div>
-                </button>
-              ))}
-
-              {selectedDaySchedules.length === 0 && (
-                <div className="py-8 text-center">
-                  <p className="text-[#8A8B88]">Nenhum agendamento para este dia</p>
+            // Calendar View
+            <main className="flex flex-col px-4 pt-2 pb-6">
+              {/* Color Legend */}
+              <div className="flex flex-wrap items-center gap-3 mb-4 px-2 py-2 bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700">
+                <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide">Legenda:</span>
+                <div className="flex items-center gap-1">
+                  <div className="h-2 w-2 rounded-full bg-primary" />
+                  <span className="text-[10px] text-muted-foreground">Pendente</span>
                 </div>
-              )}
-            </div>
-          </section>
+                <div className="flex items-center gap-1">
+                  <div className="h-2 w-2 rounded-full bg-[#E0C051]" />
+                  <span className="text-[10px] text-muted-foreground">Em andamento</span>
+                </div>
+                <div className="flex items-center gap-1">
+                  <div className="h-2 w-2 rounded-full bg-[#8A8B88]/40" />
+                  <span className="text-[10px] text-muted-foreground">Concluída</span>
+                </div>
+                <div className="flex items-center gap-1">
+                  <div className="h-2 w-2 rounded-full bg-purple-500" />
+                  <span className="text-[10px] text-muted-foreground">Inspeção</span>
+                </div>
+              </div>
+
+              {/* Weekday headers */}
+              <div className="grid grid-cols-7 mb-3">
+                {dayNames.map((day) => (
+                  <div key={day} className="text-center text-[10px] font-bold tracking-widest text-[#8A8B88] uppercase">
+                    {day}
+                  </div>
+                ))}
+              </div>
+
+              {/* Calendar Grid */}
+              <div className="grid grid-cols-7 gap-y-2 gap-x-1">
+                {monthDays.map((day, index) => {
+                  const dateKey = format(day, 'yyyy-MM-dd');
+                  const isSelected = isSameDay(day, selectedDate);
+                  const isCurrentMonth = day.getMonth() === currentMonth.getMonth();
+                  const indicators = dayIndicators[dateKey] || { pending: 0, completed: 0, gold: 0, inspections: 0 };
+                  const totalTasks = indicators.pending + indicators.completed + indicators.gold + indicators.inspections;
+
+                  if (!isCurrentMonth) {
+                    return (
+                      <div key={index} className="min-h-[3.5rem] flex flex-col items-center pt-2 opacity-30 pointer-events-none">
+                        <span className="text-sm font-medium text-slate-400">{format(day, 'd')}</span>
+                      </div>
+                    );
+                  }
+
+                  return (
+                    <button
+                      key={index}
+                      onClick={() => handleDateSelect(day)}
+                      className={cn(
+                        "group min-h-[3.5rem] rounded-xl flex flex-col items-center justify-start pt-2 gap-1 transition-all",
+                        isSelected
+                          ? "bg-primary shadow-glow ring-2 ring-primary ring-offset-2 ring-offset-stone-50 dark:ring-offset-[#22252a]"
+                          : "border border-transparent hover:bg-white dark:hover:bg-[#2d3138] hover:shadow-soft"
+                      )}
+                    >
+                      <span className={cn(
+                        "text-sm font-semibold",
+                        isSelected ? "font-bold text-white" : "text-slate-700 dark:text-slate-300"
+                      )}>
+                        {format(day, 'd')}
+                      </span>
+                      {totalTasks > 0 && (
+                        <div className="flex gap-0.5">
+                          {isSelected ? (
+                            <>
+                              {Array.from({ length: Math.min(indicators.pending, 2) }).map((_, i) => (
+                                <div key={`p-${i}`} className="h-1.5 w-1.5 rounded-full bg-white" />
+                              ))}
+                              {Array.from({ length: Math.min(indicators.completed, 2) }).map((_, i) => (
+                                <div key={`c-${i}`} className="h-1.5 w-1.5 rounded-full bg-white/60" />
+                              ))}
+                              {Array.from({ length: Math.min(indicators.gold, 2) }).map((_, i) => (
+                                <div key={`g-${i}`} className="h-1.5 w-1.5 rounded-full bg-[#E0C051] border border-white/20" />
+                              ))}
+                              {Array.from({ length: Math.min(indicators.inspections, 2) }).map((_, i) => (
+                                <div key={`i-${i}`} className="h-1.5 w-1.5 rounded-full bg-purple-300 border border-white/20" />
+                              ))}
+                            </>
+                          ) : (
+                            <>
+                              {Array.from({ length: Math.min(indicators.pending, 2) }).map((_, i) => (
+                                <div key={`p-${i}`} className="h-1.5 w-1.5 rounded-full bg-primary" />
+                              ))}
+                              {Array.from({ length: Math.min(indicators.completed, 2) }).map((_, i) => (
+                                <div key={`c-${i}`} className="h-1.5 w-1.5 rounded-full bg-[#8A8B88]/40" />
+                              ))}
+                              {Array.from({ length: Math.min(indicators.gold, 2) }).map((_, i) => (
+                                <div key={`g-${i}`} className="h-1.5 w-1.5 rounded-full bg-[#E0C051]" />
+                              ))}
+                              {Array.from({ length: Math.min(indicators.inspections, 2) }).map((_, i) => (
+                                <div key={`i-${i}`} className="h-1.5 w-1.5 rounded-full bg-purple-500" />
+                              ))}
+                            </>
+                          )}
+                        </div>
+                      )}
+                    </button>
+                  );
+                })}
+              </div>
+
+              {/* Selected Day Tasks Section */}
+              <section className="mt-4 px-2 flex-1">
+                <div className="flex items-baseline justify-between mb-4 pt-2 border-t border-slate-100 dark:border-slate-800">
+                  <h2 className="text-lg font-bold text-slate-900 dark:text-white">
+                    {format(selectedDate, "d 'de' MMMM", { locale: ptBR })}
+                  </h2>
+                  <span className="text-xs font-semibold text-primary">{selectedDaySchedules.length} Tarefas</span>
+                </div>
+
+                <div className="flex flex-col gap-3 pb-6">
+                  {selectedDaySchedules.map(schedule => (
+                    <MobileScheduleCard
+                      key={schedule.id}
+                      schedule={schedule}
+                      onScheduleClick={onScheduleClick}
+                      variant="calendar"
+                    />
+                  ))}
+
+                  {selectedDaySchedules.length === 0 && (
+                    <div className="py-8 text-center">
+                      <p className="text-[#8A8B88]">Nenhum agendamento para este dia</p>
+                    </div>
+                  )}
+                </div>
+              </section>
             </main>
           ) : (
-            // Day View (original implementation)
+            // Day View
             <>
-          {/* Color Legend for Day View */}
-          <div className="flex flex-wrap items-center gap-3 mx-6 mt-4 px-3 py-2 bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700">
-            <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide">Legenda:</span>
-            <div className="flex items-center gap-1">
-              <div className="h-2 w-2 rounded-full bg-primary" />
-              <span className="text-[10px] text-muted-foreground">Pendente</span>
-            </div>
-            <div className="flex items-center gap-1">
-              <div className="h-2 w-2 rounded-full bg-[#E0C051]" />
-              <span className="text-[10px] text-muted-foreground">Em andamento</span>
-            </div>
-            <div className="flex items-center gap-1">
-              <div className="h-2 w-2 rounded-full bg-primary/50" />
-              <span className="text-[10px] text-muted-foreground">Concluída</span>
-            </div>
-            <div className="flex items-center gap-1">
-              <div className="h-2 w-2 rounded-full bg-purple-500" />
-              <span className="text-[10px] text-muted-foreground">Inspeção</span>
-            </div>
-          </div>
-
-          {/* Week Calendar Strip */}
-          <section className="mt-4 w-full">
-            <div className="flex w-full snap-x gap-3 overflow-x-auto px-6 py-4 hide-scrollbar">
-              {weekDays.map((day, index) => {
-                const dateKey = format(day, 'yyyy-MM-dd');
-                const isSelected = isSameDay(day, selectedDate);
-                const indicators = dayIndicators[dateKey] || { pending: 0, completed: 0, gold: 0, inspections: 0 };
-                const totalTasks = indicators.pending + indicators.completed + indicators.gold + indicators.inspections;
-                const isPast = day < startOfDay(new Date()) && !isSameDay(day, new Date());
-
-                return (
-                  <button
-                    key={index}
-                    onClick={() => setSelectedDate(day)}
-                    className={cn(
-                      "group flex h-24 min-w-[4.5rem] snap-start flex-col items-center justify-center gap-2 rounded-2xl transition-transform active:scale-95",
-                      isSelected
-                        ? "bg-primary shadow-glow ring-2 ring-primary ring-offset-2 ring-offset-stone-50 dark:ring-offset-[#22252a]"
-                        : "bg-white dark:bg-[#2d3138] shadow-sm border border-slate-200 dark:border-slate-700"
-                    )}
-                  >
-                    <span className={cn(
-                      "text-xs font-semibold",
-                      isSelected ? "text-white/90 font-bold" : "text-[#8A8B88]"
-                    )}>
-                      {dayNames[index]}
-                    </span>
-                    <span className={cn(
-                      "font-bold",
-                      isSelected ? "text-2xl text-white font-extrabold" : "text-lg text-slate-900 dark:text-white",
-                      isPast && !isSelected && "text-[#8A8B88]"
-                    )}>
-                      {format(day, 'd')}
-                    </span>
-                    {/* Task indicators */}
-                    <div className="flex gap-1">
-                      {isSelected ? (
-                        <>
-                          {indicators.pending > 0 && <div className="h-1.5 w-1.5 rounded-full bg-white" />}
-                          {indicators.completed > 0 && <div className="h-1.5 w-1.5 rounded-full bg-white/50" />}
-                          {indicators.gold > 0 && <div className="h-1.5 w-1.5 rounded-full bg-[#E0C051]" />}
-                          {indicators.inspections > 0 && <div className="h-1.5 w-1.5 rounded-full bg-purple-300" />}
-                        </>
-                      ) : (
-                        <>
-                          {indicators.pending > 0 && <div className="h-1.5 w-1.5 rounded-full bg-primary" />}
-                          {indicators.completed > 0 && <div className="h-1.5 w-1.5 rounded-full bg-primary/50" />}
-                          {indicators.gold > 0 && <div className="h-1.5 w-1.5 rounded-full bg-[#E0C051]" />}
-                          {indicators.inspections > 0 && <div className="h-1.5 w-1.5 rounded-full bg-purple-500" />}
-                        </>
-                      )}
-                      {totalTasks === 0 && <div className="h-1.5 w-1.5" />}
-                    </div>
-                  </button>
-                );
-              })}
-            </div>
-          </section>
-
-          {/* Main Content */}
-          <main className="flex flex-col">
-            {/* Today Section Header */}
-            <div className="px-6 pt-6 pb-3 flex items-baseline justify-between">
-              <h2 className="text-[26px] font-bold leading-tight text-slate-900 dark:text-white tracking-tight">
-                {isSelectedToday ? 'Hoje' : format(selectedDate, "d 'de' MMMM", { locale: ptBR })}
-              </h2>
-              <span className="text-sm font-semibold text-primary">{selectedDaySchedules.length + selectedDayInspections.length} Tarefas</span>
-            </div>
-
-            <div className="px-6 flex flex-col gap-4">
-              {/* Empty state when no schedules or inspections for today */}
-              {selectedDaySchedules.length === 0 && selectedDayInspections.length === 0 && (
-                <div className="py-8 flex flex-col items-center text-center">
-                  <div className="w-16 h-16 bg-slate-100 dark:bg-slate-800 rounded-full flex items-center justify-center mb-3">
-                    <Calendar className="h-8 w-8 text-slate-300 dark:text-slate-600" />
-                  </div>
-                  <h3 className="text-base font-bold text-slate-800 dark:text-white mb-1">
-                    Nenhum agendamento
-                  </h3>
-                  <p className="text-sm text-[#8A8B88] max-w-[280px]">
-                    {checkIsToday(selectedDate) 
-                      ? 'Você não tem tarefas para hoje. Aproveite o dia! 🎉' 
-                      : 'Não há agendamentos para esta data.'}
-                  </p>
+              {/* Color Legend */}
+              <div className="flex flex-wrap items-center gap-3 mx-6 mt-4 px-3 py-2 bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700">
+                <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide">Legenda:</span>
+                <div className="flex items-center gap-1">
+                  <div className="h-2 w-2 rounded-full bg-primary" />
+                  <span className="text-[10px] text-muted-foreground">Pendente</span>
                 </div>
-              )}
-
-              {/* Scheduled Inspections */}
-              {scheduledInspections.map(inspection => (
-                <div 
-                  key={inspection.id}
-                  className="overflow-hidden rounded-2xl bg-white dark:bg-[#2d3138] shadow-soft transition-all hover:shadow-md border-2 border-purple-300 dark:border-purple-700"
-                >
-                  <div className="flex flex-row p-4 gap-4">
-                    <div className="flex-1 flex flex-col justify-between">
-                      <div>
-                        <div className="mb-1 flex items-center gap-1.5">
-                          <span className="inline-flex h-2 w-2 rounded-full bg-purple-500 animate-pulse" />
-                          <span className="text-xs font-bold uppercase tracking-wider text-purple-600 dark:text-purple-400">Inspeção</span>
-                        </div>
-                        <h3 className="text-lg font-bold text-slate-900 dark:text-white leading-tight mb-2">{inspection.property_name}</h3>
-                        <div className="flex flex-col">
-                          <span className="text-[10px] font-bold uppercase tracking-wider text-[#8A8B88] mb-0.5">Agendado para</span>
-                          <div className="flex items-center gap-1 text-[#8A8B88]">
-                            <Clock className="w-4 h-4" />
-                            <p className="text-sm font-bold">
-                              {inspection.scheduled_time ? inspection.scheduled_time.slice(0, 5) : 'A definir'}
-                            </p>
-                          </div>
-                        </div>
-                      </div>
-                      <button 
-                        onClick={async () => {
-                          const success = await updateInspectionStatus(inspection.id, 'in_progress');
-                          if (success) {
-                            toast.success('Inspeção iniciada!');
-                          } else {
-                            toast.error('Erro ao iniciar inspeção');
-                          }
-                        }}
-                        className="mt-4 flex w-fit items-center gap-2 rounded-lg bg-purple-600 px-4 py-2.5 text-sm font-bold text-white transition-colors hover:bg-purple-700 active:bg-purple-700"
-                      >
-                        <Play className="w-5 h-5" />
-                        Iniciar Inspeção
-                      </button>
-                    </div>
-                    {inspection.property_image_url ? (
-                      <img 
-                        src={inspection.property_image_url} 
-                        alt={inspection.property_name}
-                        className="w-28 shrink-0 rounded-xl object-cover"
-                      />
-                    ) : (
-                      <div className="w-28 shrink-0 rounded-xl bg-purple-100 dark:bg-purple-900/30 flex items-center justify-center">
-                        <ClipboardCheck className="w-8 h-8 text-purple-500" />
-                      </div>
-                    )}
-                  </div>
-                  <div className="border-t border-purple-200 dark:border-purple-800 bg-purple-50 dark:bg-purple-900/20 px-4 py-2 flex justify-between items-center">
-                    <span className="text-xs font-medium text-purple-600 dark:text-purple-400">
-                      {inspection.title}
-                    </span>
-                    <span className="text-xs font-medium text-[#8A8B88]">Agendada</span>
-                  </div>
+                <div className="flex items-center gap-1">
+                  <div className="h-2 w-2 rounded-full bg-[#E0C051]" />
+                  <span className="text-[10px] text-muted-foreground">Em andamento</span>
                 </div>
-              ))}
+                <div className="flex items-center gap-1">
+                  <div className="h-2 w-2 rounded-full bg-primary/50" />
+                  <span className="text-[10px] text-muted-foreground">Concluída</span>
+                </div>
+                <div className="flex items-center gap-1">
+                  <div className="h-2 w-2 rounded-full bg-purple-500" />
+                  <span className="text-[10px] text-muted-foreground">Inspeção</span>
+                </div>
+              </div>
 
-              {/* In Progress Inspections */}
-              {inProgressInspections.map(inspection => {
-                const completedItems = inspection.checklist_state.filter(i => i.checked).length;
-                const totalItems = inspection.checklist_state.length;
-                
-                return (
-                  <div 
-                    key={inspection.id}
-                    className="overflow-hidden rounded-2xl bg-white dark:bg-[#2d3138] shadow-soft transition-all hover:shadow-md border-2 border-purple-300 dark:border-purple-700"
-                  >
-                    <div className="flex flex-row p-4 gap-4">
-                      <div className="flex-1 flex flex-col justify-between">
-                        <div>
-                          <div className="mb-1 flex items-center gap-1.5">
-                            <span className="inline-flex h-2 w-2 rounded-full bg-[#E0C051] animate-pulse" />
-                            <span className="text-xs font-bold uppercase tracking-wider text-purple-600 dark:text-purple-400">Inspeção</span>
-                            <span className="text-xs font-bold uppercase tracking-wider text-[#E0C051]">• Em Andamento</span>
-                          </div>
-                          <h3 className="text-lg font-bold text-slate-900 dark:text-white leading-tight mb-2">{inspection.property_name}</h3>
-                          <div className="flex flex-col">
-                            <span className="text-[10px] font-bold uppercase tracking-wider text-[#8A8B88] mb-0.5">Progresso do checklist</span>
-                            <div className="flex items-center gap-1 text-[#8A8B88]">
-                              <ClipboardCheck className="w-4 h-4" />
-                              <p className="text-sm font-bold">{completedItems}/{totalItems} itens</p>
-                            </div>
-                          </div>
-                        </div>
-                        <div className="mt-4 flex gap-2">
-                          <button 
-                            onClick={() => navigate(`/inspecoes?inspection=${inspection.id}`)}
-                            className="flex items-center gap-2 rounded-lg bg-slate-200 dark:bg-slate-700 px-3 py-2.5 text-sm font-bold text-foreground transition-colors hover:bg-slate-300 active:bg-slate-300"
-                          >
-                            <ClipboardCheck className="w-4 h-4" />
-                            Checklist
-                          </button>
-                          <button 
-                            onClick={async () => {
-                              const success = await updateInspectionStatus(inspection.id, 'completed');
-                              if (success) {
-                                toast.success('Inspeção finalizada!');
-                                refetchInspections();
-                              } else {
-                                toast.error('Erro ao finalizar inspeção');
-                              }
-                            }}
-                            className="flex items-center gap-2 rounded-lg bg-green-500 px-3 py-2.5 text-sm font-bold text-white transition-colors hover:bg-green-600 active:bg-green-600"
-                          >
-                            <CheckCircle2 className="w-4 h-4" />
-                            Finalizar
-                          </button>
-                        </div>
+              {/* Week Calendar Strip - Memoized */}
+              <MobileWeekStrip
+                weekDays={weekDays}
+                selectedDate={selectedDate}
+                onDateSelect={handleDateSelect}
+                dayIndicators={dayIndicators}
+              />
+
+              {/* Main Content */}
+              <main className="flex flex-col">
+                <div className="px-6 pt-6 pb-3 flex items-baseline justify-between">
+                  <h2 className="text-[26px] font-bold leading-tight text-slate-900 dark:text-white tracking-tight">
+                    {isSelectedToday ? 'Hoje' : format(selectedDate, "d 'de' MMMM", { locale: ptBR })}
+                  </h2>
+                  <span className="text-sm font-semibold text-primary">{selectedDaySchedules.length + selectedDayInspections.length} Tarefas</span>
+                </div>
+
+                <div className="px-6 flex flex-col gap-4">
+                  {/* Empty state */}
+                  {selectedDaySchedules.length === 0 && selectedDayInspections.length === 0 && (
+                    <div className="py-8 flex flex-col items-center text-center">
+                      <div className="w-16 h-16 bg-slate-100 dark:bg-slate-800 rounded-full flex items-center justify-center mb-3">
+                        <Calendar className="h-8 w-8 text-slate-300 dark:text-slate-600" />
                       </div>
-                      {inspection.property_image_url ? (
-                        <img 
-                          src={inspection.property_image_url} 
-                          alt={inspection.property_name}
-                          className="w-28 shrink-0 rounded-xl object-cover"
+                      <h3 className="text-base font-bold text-slate-800 dark:text-white mb-1">
+                        Nenhum agendamento
+                      </h3>
+                      <p className="text-sm text-[#8A8B88] max-w-[280px]">
+                        {checkIsToday(selectedDate) 
+                          ? 'Você não tem tarefas para hoje. Aproveite o dia! 🎉' 
+                          : 'Não há agendamentos para esta data.'}
+                      </p>
+                    </div>
+                  )}
+
+                  {/* Scheduled Inspections - Memoized */}
+                  {scheduledInspections.map(inspection => (
+                    <MobileInspectionCard
+                      key={inspection.id}
+                      inspection={inspection}
+                      variant="scheduled"
+                      onUpdateStatus={updateInspectionStatus}
+                    />
+                  ))}
+
+                  {/* In Progress Inspections - Memoized */}
+                  {inProgressInspections.map(inspection => (
+                    <MobileInspectionCard
+                      key={inspection.id}
+                      inspection={inspection}
+                      variant="inProgress"
+                      onUpdateStatus={updateInspectionStatus}
+                    />
+                  ))}
+
+                  {/* Schedule List - Memoized */}
+                  <MobileScheduleList
+                    pendingSchedules={pendingSchedules}
+                    inProgressSchedules={inProgressSchedules}
+                    completedSchedules={completedSchedules}
+                    onScheduleClick={onScheduleClick}
+                    loadingScheduleId={loadingScheduleId}
+                  />
+                </div>
+
+                {/* Tomorrow Section */}
+                {nextDaySchedules.length > 0 && (
+                  <>
+                    <div className="mt-4 px-6 pt-4 pb-3">
+                      <h2 className="text-[26px] font-bold leading-tight text-slate-900 dark:text-white tracking-tight">Amanhã</h2>
+                    </div>
+                    <div className="px-6 flex flex-col gap-4 pb-6">
+                      {nextDaySchedules.map(schedule => (
+                        <MobileScheduleCard
+                          key={schedule.id}
+                          schedule={schedule}
+                          onScheduleClick={onScheduleClick}
+                          variant="tomorrow"
                         />
-                      ) : (
-                        <div className="w-28 shrink-0 rounded-xl bg-purple-100 dark:bg-purple-900/30 flex items-center justify-center">
-                          <ClipboardCheck className="w-8 h-8 text-purple-500" />
-                        </div>
-                      )}
+                      ))}
                     </div>
-                    <div className="border-t border-purple-200 dark:border-purple-800 bg-purple-50 dark:bg-purple-900/20 px-4 py-2 flex justify-between items-center">
-                      <span className="text-xs font-medium text-purple-600 dark:text-purple-400">
-                        {inspection.title}
-                      </span>
-                      <span className="text-xs font-medium text-[#E0C051]">Em andamento</span>
-                    </div>
-                  </div>
-                );
-              })}
-
-              {/* All Pending Cards - following the same pattern */}
-              {pendingSchedules.map(schedule => (
-                <div 
-                  key={schedule.id}
-                  className="overflow-hidden rounded-2xl bg-white dark:bg-[#2d3138] shadow-soft transition-all hover:shadow-md border border-slate-100 dark:border-slate-700"
-                >
-                  <div className="flex flex-row p-4 gap-4">
-                    <div className="flex-1 flex flex-col justify-between">
-                      <div>
-                        <div className="mb-1 flex items-center gap-1.5">
-                          <span className="inline-flex h-2 w-2 rounded-full bg-primary animate-pulse" />
-                          <span className="text-xs font-bold uppercase tracking-wider text-primary">Pendente</span>
-                        </div>
-                        <h3 className="text-lg font-bold text-slate-900 dark:text-white leading-tight mb-2">{schedule.propertyName}</h3>
-                      <div className="flex flex-col">
-                          <span className="text-[10px] font-bold uppercase tracking-wider text-[#8A8B88] mb-0.5">Liberado a partir de</span>
-                          <div className="flex items-center gap-1 text-[#8A8B88]">
-                            <Clock className="w-4 h-4" />
-                            <p className="text-sm font-bold">{formatTime(schedule.checkOut)}</p>
-                          </div>
-                        </div>
-                      </div>
-                      <button 
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          if (!loadingScheduleId) onScheduleClick(schedule);
-                        }}
-                        disabled={loadingScheduleId === schedule.id}
-                        className="mt-4 flex w-fit items-center gap-2 rounded-lg bg-primary px-4 py-2.5 text-sm font-bold text-white transition-colors hover:bg-[#267373] active:bg-[#267373] disabled:opacity-50 disabled:cursor-not-allowed"
-                      >
-                        {loadingScheduleId === schedule.id ? (
-                          <Loader2 className="w-5 h-5 animate-spin" />
-                        ) : (
-                          <Play className="w-5 h-5" />
-                        )}
-                        {loadingScheduleId === schedule.id ? 'Carregando...' : 'Iniciar Limpeza'}
-                      </button>
-                    </div>
-                    {schedule.propertyImageUrl ? (
-                      <img 
-                        src={schedule.propertyImageUrl} 
-                        alt={schedule.propertyName}
-                        className="w-28 shrink-0 rounded-xl object-cover"
-                      />
-                    ) : (
-                      <div 
-                        className="w-28 shrink-0 rounded-xl bg-slate-100 dark:bg-slate-800 flex items-center justify-center"
-                      >
-                        <span className="material-symbols-outlined text-slate-400 text-[32px]">apartment</span>
-                      </div>
-                    )}
-                  </div>
-                  <PendingCardFooter schedule={schedule} />
-                </div>
-              ))}
-
-              {/* In Progress Cards - same pattern but with different status */}
-              {inProgressSchedules.map(schedule => (
-                <div 
-                  key={schedule.id}
-                  className="overflow-hidden rounded-2xl bg-white dark:bg-[#2d3138] shadow-soft transition-all hover:shadow-md border border-slate-100 dark:border-slate-700"
-                >
-                  <div className="flex flex-row p-4 gap-4">
-                    <div className="flex-1 flex flex-col justify-between">
-                      <div>
-                        <div className="mb-1 flex items-center gap-1.5">
-                          <span className="inline-flex h-2 w-2 rounded-full bg-[#E0C051] animate-pulse" />
-                          <span className="text-xs font-bold uppercase tracking-wider text-[#E0C051]">Em Limpeza</span>
-                        </div>
-                        <h3 className="text-lg font-bold text-slate-900 dark:text-white leading-tight mb-2">{schedule.propertyName}</h3>
-                      <div className="flex flex-col">
-                          <span className="text-[10px] font-bold uppercase tracking-wider text-[#8A8B88] mb-0.5">Liberado a partir de</span>
-                          <div className="flex items-center gap-1 text-[#8A8B88]">
-                            <Clock className="w-4 h-4" />
-                            <p className="text-sm font-bold">{formatTime(schedule.checkOut)}</p>
-                          </div>
-                        </div>
-                      </div>
-                      <button 
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          if (!loadingScheduleId) onScheduleClick(schedule);
-                        }}
-                        disabled={loadingScheduleId === schedule.id}
-                        className="mt-4 flex w-fit items-center gap-2 rounded-lg bg-[#E0C051] px-4 py-2.5 text-sm font-bold text-white transition-colors hover:bg-[#c9a844] active:bg-[#c9a844] disabled:opacity-50 disabled:cursor-not-allowed"
-                      >
-                        {loadingScheduleId === schedule.id ? (
-                          <Loader2 className="w-5 h-5 animate-spin" />
-                        ) : (
-                          <Play className="w-5 h-5" />
-                        )}
-                        {loadingScheduleId === schedule.id ? 'Carregando...' : 'Continuar Limpeza'}
-                      </button>
-                    </div>
-                    {schedule.propertyImageUrl ? (
-                      <img 
-                        src={schedule.propertyImageUrl} 
-                        alt={schedule.propertyName}
-                        className="w-28 shrink-0 rounded-xl object-cover"
-                      />
-                    ) : (
-                      <div 
-                        className="w-28 shrink-0 rounded-xl bg-slate-100 dark:bg-slate-800 flex items-center justify-center"
-                      >
-                        <span className="material-symbols-outlined text-slate-400 text-[32px]">apartment</span>
-                      </div>
-                    )}
-                  </div>
-                  <div className="border-t border-slate-100 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/50 px-4 py-2 flex justify-between items-center">
-                    <div className="flex -space-x-2">
-                      <span className="flex h-6 w-6 items-center justify-center rounded-full bg-[#E0C051]/20 text-[#E0C051] text-[10px] font-bold ring-2 ring-white dark:ring-[#2d3138]">
-                        {schedule.cleanerName?.split(' ').map(n => n[0]).join('').slice(0, 2) || 'N'}
-                      </span>
-                    </div>
-                    <span className="text-xs font-medium text-[#E0C051]">Limpeza em andamento</span>
-                  </div>
-                </div>
-              ))}
-
-              {/* Completed Section */}
-              {completedSchedules.length > 0 && (
-                <>
-                  <div className="relative py-2 flex items-center gap-4">
-                    <div className="h-px bg-slate-200 dark:bg-slate-700 flex-grow" />
-                    <span className="text-xs font-bold text-[#8A8B88] uppercase tracking-widest">Concluídas</span>
-                    <div className="h-px bg-slate-200 dark:bg-slate-700 flex-grow" />
-                  </div>
-                  
-                  {completedSchedules.map(schedule => (
-                    <button
-                      key={schedule.id}
-                      onClick={() => onScheduleClick(schedule)}
-                      className="flex items-center justify-between rounded-xl border border-slate-200 dark:border-slate-700 bg-white/60 dark:bg-[#2d3138]/60 px-4 py-3 opacity-70 text-left"
-                    >
-                      <div className="flex items-center gap-3">
-                        <div className="flex h-8 w-8 items-center justify-center rounded-full bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400">
-                          <Check className="w-[18px] h-[18px]" />
-                        </div>
-                        <div className="flex flex-col">
-                          <p className="text-sm font-bold text-slate-900 dark:text-white line-through decoration-[#8A8B88]/30">{schedule.propertyName}</p>
-                          <div className="mt-1 flex flex-col">
-                            <span className="text-[10px] font-bold uppercase tracking-wider text-[#8A8B88]">Liberado</span>
-                            <p className="text-xs font-bold text-[#8A8B88]">{formatTime(schedule.checkOut)}</p>
-                          </div>
-                        </div>
-                      </div>
-                      <span className="text-xs font-bold text-emerald-600 dark:text-emerald-400">Concluído</span>
-                    </button>
-                  ))}
-                </>
-              )}
-            </div>
-
-            {/* Tomorrow Section */}
-            {nextDaySchedules.length > 0 && (
-              <>
-                <div className="mt-4 px-6 pt-4 pb-3">
-                  <h2 className="text-[26px] font-bold leading-tight text-slate-900 dark:text-white tracking-tight">Amanhã</h2>
-                </div>
-                <div className="px-6 flex flex-col gap-4 pb-6">
-                  {nextDaySchedules.map(schedule => (
-                    <button
-                      key={schedule.id}
-                      onClick={() => onScheduleClick(schedule)}
-                      className="overflow-hidden rounded-2xl bg-white dark:bg-[#2d3138] shadow-soft transition-all border border-slate-100 dark:border-slate-700 text-left"
-                    >
-                      <div className="flex flex-row p-4 gap-4">
-                        {schedule.propertyImageUrl ? (
-                          <img 
-                            src={schedule.propertyImageUrl}
-                            alt={schedule.propertyName}
-                            className="w-20 h-20 shrink-0 rounded-xl object-cover"
-                          />
-                        ) : (
-                          <div className="w-20 h-20 shrink-0 rounded-xl bg-slate-100 dark:bg-slate-800 flex items-center justify-center">
-                            <Building2 className="w-8 h-8 text-slate-400" />
-                          </div>
-                        )}
-                        <div className="flex-1 flex flex-col justify-center">
-                          <h3 className="text-base font-bold text-slate-900 dark:text-white leading-tight mb-1">{schedule.propertyName}</h3>
-                          <div className="mt-1 flex flex-col">
-                            <span className="text-[10px] font-bold uppercase tracking-wider text-[#8A8B88] mb-0.5">Liberado a partir de</span>
-                            <div className="flex items-center gap-1 text-[#8A8B88]">
-                              <Clock className="w-4 h-4" />
-                              <p className="text-sm font-bold">{formatTime(schedule.checkOut)}</p>
-                            </div>
-                          </div>
-                        </div>
-                        <div className="flex items-center">
-                          <span className="rounded-full bg-slate-100 dark:bg-slate-800 px-3 py-1 text-xs font-bold text-[#8A8B88]">Agendado</span>
-                        </div>
-                      </div>
-                    </button>
-                  ))}
-                </div>
-              </>
-            )}
-          </main>
+                  </>
+                )}
+              </main>
             </>
           )}
         </div>
       )}
 
-      {/* Bottom Navigation - Fixed with highest z-index */}
-      <nav className="fixed bottom-0 left-0 right-0 z-[100] safe-area-inset-bottom">
-        <div className="absolute inset-0 bg-stone-50/95 dark:bg-[#22252a]/95 backdrop-blur-lg border-t border-slate-200/50 dark:border-slate-700/50" />
-        <div className="relative flex h-20 items-center justify-around px-2 pb-2">
-          <button 
-            type="button"
-            onClick={(e) => {
-              e.stopPropagation();
-              setActiveTab('inicio');
-            }}
-            className={cn(
-              "group flex flex-col items-center justify-center gap-1 p-3 min-w-[60px] transition-colors touch-manipulation",
-              activeTab === 'inicio' ? "text-primary" : "text-[#8A8B88] hover:text-primary"
-            )}
-          >
-            <span className={cn(
-              "material-symbols-outlined text-[28px] transition-transform group-active:scale-90",
-              activeTab === 'inicio' && "filled"
-            )}>home</span>
-            <span className={cn("text-[10px]", activeTab === 'inicio' ? "font-bold" : "font-medium")}>Início</span>
-          </button>
-          <button 
-            type="button"
-            onClick={(e) => {
-              e.stopPropagation();
-              setActiveTab('agenda');
-            }}
-            className={cn(
-              "group flex flex-col items-center justify-center gap-1 p-3 min-w-[60px] transition-colors touch-manipulation",
-              activeTab === 'agenda' ? "text-primary" : "text-[#8A8B88] hover:text-primary"
-            )}
-          >
-            <span className="material-symbols-outlined text-[28px] transition-transform group-active:scale-90">calendar_today</span>
-            <span className={cn("text-[10px]", activeTab === 'agenda' ? "font-bold" : "font-medium")}>Agenda</span>
-          </button>
-          <button 
-            type="button"
-            onClick={(e) => {
-              e.stopPropagation();
-              navigate('/mensagens');
-            }}
-            className="group flex flex-col items-center justify-center gap-1 p-3 min-w-[60px] transition-colors text-[#8A8B88] hover:text-primary touch-manipulation"
-          >
-            <div className="relative">
-              <span className="material-symbols-outlined text-[28px] transition-transform group-active:scale-90">chat_bubble</span>
-              <span className="absolute -right-0.5 -top-0.5 h-2.5 w-2.5 rounded-full bg-red-500 border-2 border-stone-50 dark:border-[#22252a]" />
-            </div>
-            <span className="text-[10px] font-medium">Msgs</span>
-          </button>
-          <button 
-            type="button"
-            onClick={(e) => {
-              e.stopPropagation();
-              navigate('/minha-conta');
-            }}
-            className="group flex flex-col items-center justify-center gap-1 p-3 min-w-[60px] transition-colors text-[#8A8B88] hover:text-primary touch-manipulation"
-          >
-            <span className="material-symbols-outlined text-[28px] transition-transform group-active:scale-90">menu</span>
-            <span className="text-[10px] font-medium">Menu</span>
-          </button>
-        </div>
-      </nav>
+      {/* Bottom Navigation - Memoized */}
+      <MobileBottomNav 
+        activeTab={activeTab} 
+        onTabChange={handleTabChange} 
+      />
     </div>
   );
 }
