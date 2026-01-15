@@ -10,10 +10,34 @@ import { toast } from 'sonner';
 import { Loader2, Building2 } from 'lucide-react';
 import { AddToHomeScreen } from '@/components/pwa/AddToHomeScreen';
 
+// Password strength validation
+const passwordSchema = z.string()
+  .min(8, { message: 'Senha deve ter no mínimo 8 caracteres' })
+  .max(72, { message: 'Senha deve ter no máximo 72 caracteres' })
+  .refine((val) => /[A-Z]/.test(val), { message: 'Senha deve conter pelo menos uma letra maiúscula' })
+  .refine((val) => /[a-z]/.test(val), { message: 'Senha deve conter pelo menos uma letra minúscula' })
+  .refine((val) => /[0-9]/.test(val), { message: 'Senha deve conter pelo menos um número' })
+  .refine((val) => /[!@#$%^&*(),.?":{}|<>_\-+=\[\]\\\/`~;']/.test(val), { message: 'Senha deve conter pelo menos um caractere especial (!@#$%^&*...)' });
+
 const authSchema = z.object({
   email: z.string().email({ message: 'Email inválido' }).max(255),
-  password: z.string().min(6, { message: 'Senha deve ter no mínimo 6 caracteres' }).max(72),
+  password: passwordSchema,
 });
+
+// Password strength indicator
+const getPasswordStrength = (password: string): { score: number; label: string; color: string } => {
+  let score = 0;
+  if (password.length >= 8) score++;
+  if (password.length >= 12) score++;
+  if (/[A-Z]/.test(password)) score++;
+  if (/[a-z]/.test(password)) score++;
+  if (/[0-9]/.test(password)) score++;
+  if (/[!@#$%^&*(),.?":{}|<>_\-+=\[\]\\\/`~;']/.test(password)) score++;
+
+  if (score <= 2) return { score, label: 'Fraca', color: 'bg-destructive' };
+  if (score <= 4) return { score, label: 'Média', color: 'bg-yellow-500' };
+  return { score, label: 'Forte', color: 'bg-green-500' };
+};
 
 const Auth = () => {
   const [isLogin, setIsLogin] = useState(true);
@@ -138,6 +162,45 @@ const Auth = () => {
                 disabled={loading}
                 className={errors.password ? 'border-destructive' : ''}
               />
+              {!isLogin && password && (
+                <div className="space-y-1.5">
+                  <div className="flex gap-1">
+                    {[...Array(6)].map((_, i) => (
+                      <div
+                        key={i}
+                        className={`h-1.5 flex-1 rounded-full transition-colors ${
+                          i < getPasswordStrength(password).score
+                            ? getPasswordStrength(password).color
+                            : 'bg-muted'
+                        }`}
+                      />
+                    ))}
+                  </div>
+                  <p className={`text-xs ${
+                    getPasswordStrength(password).score <= 2 ? 'text-destructive' :
+                    getPasswordStrength(password).score <= 4 ? 'text-yellow-600' : 'text-green-600'
+                  }`}>
+                    Força: {getPasswordStrength(password).label}
+                  </p>
+                  <ul className="text-xs text-muted-foreground space-y-0.5">
+                    <li className={password.length >= 8 ? 'text-green-600' : ''}>
+                      {password.length >= 8 ? '✓' : '○'} Mínimo 8 caracteres
+                    </li>
+                    <li className={/[A-Z]/.test(password) ? 'text-green-600' : ''}>
+                      {/[A-Z]/.test(password) ? '✓' : '○'} Uma letra maiúscula
+                    </li>
+                    <li className={/[a-z]/.test(password) ? 'text-green-600' : ''}>
+                      {/[a-z]/.test(password) ? '✓' : '○'} Uma letra minúscula
+                    </li>
+                    <li className={/[0-9]/.test(password) ? 'text-green-600' : ''}>
+                      {/[0-9]/.test(password) ? '✓' : '○'} Um número
+                    </li>
+                    <li className={/[!@#$%^&*(),.?":{}|<>_\-+=\[\]\\\/`~;']/.test(password) ? 'text-green-600' : ''}>
+                      {/[!@#$%^&*(),.?":{}|<>_\-+=\[\]\\\/`~;']/.test(password) ? '✓' : '○'} Um caractere especial
+                    </li>
+                  </ul>
+                </div>
+              )}
               {errors.password && (
                 <p className="text-sm text-destructive">{errors.password}</p>
               )}
