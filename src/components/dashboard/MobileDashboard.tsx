@@ -149,22 +149,48 @@ export function MobileDashboard({ schedules, onScheduleClick, onStartCleaning, o
     return () => clearInterval(interval);
   }, [handleRefresh, onRefresh]);
 
+  // Check if target is an interactive element
+  const isInteractiveElement = useCallback((target: EventTarget | null): boolean => {
+    if (!target || !(target instanceof HTMLElement)) return false;
+    const interactiveTagNames = ['BUTTON', 'A', 'INPUT', 'SELECT', 'TEXTAREA'];
+    let element: HTMLElement | null = target;
+    while (element) {
+      if (interactiveTagNames.includes(element.tagName)) return true;
+      if (element.getAttribute('role') === 'button') return true;
+      if (element.onclick) return true;
+      element = element.parentElement;
+    }
+    return false;
+  }, []);
+
   // Pull-to-refresh handlers
   const handleTouchStart = useCallback((e: React.TouchEvent) => {
+    // Don't start pull-to-refresh if touching an interactive element
+    if (isInteractiveElement(e.target)) {
+      setIsPulling(false);
+      return;
+    }
+    
     if (containerRef.current?.scrollTop === 0) {
       startYRef.current = e.touches[0].clientY;
       setIsPulling(true);
     }
-  }, []);
+  }, [isInteractiveElement]);
 
   const handleTouchMove = useCallback((e: React.TouchEvent) => {
     if (!isPulling || isSyncing) return;
+    
+    // Don't interfere if touching an interactive element
+    if (isInteractiveElement(e.target)) return;
     
     const currentY = e.touches[0].clientY;
     const diff = currentY - startYRef.current;
     
     if (diff > 0 && containerRef.current?.scrollTop === 0) {
-      e.preventDefault();
+      // Only prevent default for significant pull distance
+      if (diff > 10) {
+        e.preventDefault();
+      }
       setPullDistance(Math.min(diff * 0.5, PULL_THRESHOLD * 1.5));
       
       // Light vibration when reaching threshold
@@ -172,7 +198,7 @@ export function MobileDashboard({ schedules, onScheduleClick, onStartCleaning, o
         vibrate(20);
       }
     }
-  }, [isPulling, isSyncing]);
+  }, [isPulling, isSyncing, isInteractiveElement]);
 
   const handleTouchEnd = useCallback(async () => {
     if (pullDistance >= PULL_THRESHOLD && !isSyncing) {
