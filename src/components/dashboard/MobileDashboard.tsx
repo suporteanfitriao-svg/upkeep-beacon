@@ -88,11 +88,12 @@ export function MobileDashboard({ schedules, onScheduleClick, onStartCleaning, o
   const [isSyncing, setIsSyncing] = useState(false);
   const [lastSyncTime, setLastSyncTime] = useState<Date | null>(null);
   
-  // Pull-to-refresh state
+  // Pull-to-refresh state - using Pointer Events for safer interaction
   const [pullDistance, setPullDistance] = useState(0);
   const [isPulling, setIsPulling] = useState(false);
+  const [gestureDecided, setGestureDecided] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
-  const startYRef = useRef(0);
+  const startPosRef = useRef({ x: 0, y: 0 });
   const isAutoSyncRef = useRef(false);
 
   // Handle manual refresh
@@ -138,7 +139,7 @@ export function MobileDashboard({ schedules, onScheduleClick, onStartCleaning, o
     }
   }, [onRefresh, isSyncing]);
 
-  // Auto-sync every minute
+  // Auto-sync every 5 minutes
   useEffect(() => {
     if (!onRefresh) return;
 
@@ -149,64 +150,79 @@ export function MobileDashboard({ schedules, onScheduleClick, onStartCleaning, o
     return () => clearInterval(interval);
   }, [handleRefresh, onRefresh]);
 
-  // Check if target is an interactive element
-  const isInteractiveElement = useCallback((target: EventTarget | null): boolean => {
-    if (!target || !(target instanceof HTMLElement)) return false;
-    const interactiveTagNames = ['BUTTON', 'A', 'INPUT', 'SELECT', 'TEXTAREA'];
-    let element: HTMLElement | null = target;
-    while (element) {
-      if (interactiveTagNames.includes(element.tagName)) return true;
-      if (element.getAttribute('role') === 'button') return true;
-      if (element.onclick) return true;
-      element = element.parentElement;
+  // Pull-to-refresh with Pointer Events - safer implementation
+  // Only activates for clearly vertical gestures starting from scroll top
+  const DIRECTION_THRESHOLD = 15; // px before deciding if it's vertical or horizontal
+  const VERTICAL_RATIO = 2; // Must move 2x more vertical than horizontal
+
+  const handlePointerDown = useCallback((e: React.PointerEvent) => {
+    // Only handle touch and pen, not mouse (avoids desktop issues)
+    if (e.pointerType === 'mouse') return;
+    
+    // Check if we're at the top of the scroll container
+    if (containerRef.current && containerRef.current.scrollTop === 0) {
+      startPosRef.current = { x: e.clientX, y: e.clientY };
+      setGestureDecided(false);
+      // Don't set isPulling yet - wait until gesture direction is clear
     }
-    return false;
   }, []);
 
-  // Pull-to-refresh handlers
-  const handleTouchStart = useCallback((e: React.TouchEvent) => {
-    // Don't start pull-to-refresh if touching an interactive element
-    if (isInteractiveElement(e.target)) {
-      setIsPulling(false);
-      return;
-    }
+  const handlePointerMove = useCallback((e: React.PointerEvent) => {
+    if (e.pointerType === 'mouse') return;
+    if (isSyncing) return;
     
-    if (containerRef.current?.scrollTop === 0) {
-      startYRef.current = e.touches[0].clientY;
-      setIsPulling(true);
-    }
-  }, [isInteractiveElement]);
-
-  const handleTouchMove = useCallback((e: React.TouchEvent) => {
-    if (!isPulling || isSyncing) return;
+    const deltaX = Math.abs(e.clientX - startPosRef.current.x);
+    const deltaY = e.clientY - startPosRef.current.y;
     
-    // Don't interfere if touching an interactive element
-    if (isInteractiveElement(e.target)) return;
-    
-    const currentY = e.touches[0].clientY;
-    const diff = currentY - startYRef.current;
-    
-    if (diff > 0 && containerRef.current?.scrollTop === 0) {
-      // Only prevent default for significant pull distance
-      if (diff > 10) {
-        e.preventDefault();
+    // If gesture not yet decided, check direction after threshold
+    if (!gestureDecided) {
+      const totalMovement = Math.max(deltaX, Math.abs(deltaY));
+      if (totalMovement > DIRECTION_THRESHOLD) {
+        // Decide: is this a vertical pull-down gesture?
+        const isVerticalPull = deltaY > 0 && 
+                               Math.abs(deltaY) > deltaX * VERTICAL_RATIO &&
+                               containerRef.current?.scrollTop === 0;
+        
+        if (isVerticalPull) {
+          setIsPulling(true);
+          setGestureDecided(true);
+        } else {
+          // Not a pull gesture - cancel and let normal interactions work
+          setIsPulling(false);
+          setGestureDecided(true);
+          return;
+        }
+      } else {
+        // Not enough movement yet - don't interfere
+        return;
       }
-      setPullDistance(Math.min(diff * 0.5, PULL_THRESHOLD * 1.5));
+    }
+    
+    // If we decided this is a pull gesture, update the pull distance
+    if (isPulling && deltaY > 0) {
+      setPullDistance(Math.min(deltaY * 0.5, PULL_THRESHOLD * 1.5));
       
       // Light vibration when reaching threshold
-      if (diff * 0.5 >= PULL_THRESHOLD && diff * 0.5 < PULL_THRESHOLD + 5) {
+      if (deltaY * 0.5 >= PULL_THRESHOLD && deltaY * 0.5 < PULL_THRESHOLD + 5) {
         vibrate(20);
       }
     }
-  }, [isPulling, isSyncing, isInteractiveElement]);
+  }, [isPulling, isSyncing, gestureDecided]);
 
-  const handleTouchEnd = useCallback(async () => {
-    if (pullDistance >= PULL_THRESHOLD && !isSyncing) {
-      await handleRefresh(false); // Manual refresh
+  const handlePointerUp = useCallback(async () => {
+    if (isPulling && pullDistance >= PULL_THRESHOLD && !isSyncing) {
+      await handleRefresh(false);
     }
     setPullDistance(0);
     setIsPulling(false);
-  }, [pullDistance, isSyncing, handleRefresh]);
+    setGestureDecided(false);
+  }, [isPulling, pullDistance, isSyncing, handleRefresh]);
+
+  const handlePointerCancel = useCallback(() => {
+    setPullDistance(0);
+    setIsPulling(false);
+    setGestureDecided(false);
+  }, []);
 
   // Format last sync time
   const lastSyncText = useMemo(() => {
@@ -398,10 +414,40 @@ export function MobileDashboard({ schedules, onScheduleClick, onStartCleaning, o
   return (
     <div 
       ref={containerRef}
+      onPointerDown={handlePointerDown}
+      onPointerMove={handlePointerMove}
+      onPointerUp={handlePointerUp}
+      onPointerCancel={handlePointerCancel}
       className="relative flex min-h-screen w-full flex-col overflow-x-hidden pb-24 bg-stone-50 dark:bg-[#22252a] font-display text-slate-800 dark:text-slate-100 antialiased touch-pan-y"
     >
-      {/* Pull-to-refresh indicator disabled (was intercepting taps on some devices) */}
-      {null}
+      {/* Pull-to-refresh indicator - only shows when actively pulling */}
+      {isPulling && pullDistance > 0 && (
+        <div 
+          className="absolute left-0 right-0 flex items-center justify-center transition-all duration-200 z-30 pointer-events-none"
+          style={{ 
+            top: Math.min(pullDistance - 40, 60),
+            transform: `scale(${Math.min(pullDistance / PULL_THRESHOLD, 1)})`,
+            opacity: pullDistance > 10 ? 1 : 0
+          }}
+        >
+          <div className={cn(
+            "flex items-center gap-2 px-4 py-2 rounded-full bg-white dark:bg-slate-800 shadow-lg border border-slate-200 dark:border-slate-700",
+            pullDistance >= PULL_THRESHOLD && "bg-primary text-white border-primary"
+          )}>
+            <RefreshCw className={cn(
+              "w-4 h-4",
+              isSyncing && "animate-spin",
+              pullDistance >= PULL_THRESHOLD ? "text-white" : "text-primary"
+            )} />
+            <span className={cn(
+              "text-xs font-medium",
+              pullDistance >= PULL_THRESHOLD ? "text-white" : "text-slate-600 dark:text-slate-300"
+            )}>
+              {pullDistance >= PULL_THRESHOLD ? "Solte para atualizar" : "Puxe para atualizar"}
+            </span>
+          </div>
+        </div>
+      )}
 
       {/* INÍCIO (HOME) TAB */}
       {activeTab === 'inicio' && (
