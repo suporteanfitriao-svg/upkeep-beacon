@@ -1,7 +1,7 @@
 import { useState, useMemo, useEffect, useCallback, useRef } from 'react';
 import { format, isSameDay, addDays, startOfWeek, endOfWeek, getWeek, isAfter, startOfDay, endOfDay, isToday as checkIsToday, startOfMonth, endOfMonth, eachDayOfInterval, addMonths, subMonths, getDay, formatDistanceToNow, isWithinInterval, parseISO } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { Calendar, Play, Clock, Check, ChevronRight, LayoutGrid, MessageSquare, Menu, RefreshCw, Home, Building2, AlertCircle, Users, Loader2, ClipboardCheck, CheckCircle2 } from 'lucide-react';
+import { Calendar, Play, Clock, Check, ChevronRight, LayoutGrid, MessageSquare, Menu, RefreshCw, Home, Building2, AlertCircle, Users, Loader2, ClipboardCheck, CheckCircle2, Download } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Schedule } from '@/types/scheduling';
 import { cn } from '@/lib/utils';
@@ -13,6 +13,7 @@ import { useCleanerPayments, PaymentPeriod } from '@/hooks/useCleanerPayments';
 import { CleanerPaymentCards } from './CleanerPaymentCards';
 import { useStayStatus, StayStatusInfo } from '@/hooks/useStayStatus';
 import { useCleanerInspections, CleanerInspection } from '@/hooks/useCleanerInspections';
+import { AddToHomeScreen } from '@/components/pwa/AddToHomeScreen';
 
 // Component to render the footer of pending cards with stay status
 function PendingCardFooter({ schedule }: { schedule: Schedule }) {
@@ -433,6 +434,11 @@ export function MobileDashboard({ schedules, onScheduleClick, onStartCleaning, o
               </button>
             </div>
           </header>
+
+          {/* Install App Prompt */}
+          <div className="px-6 pt-2">
+            <AddToHomeScreen />
+          </div>
 
           <main className="flex-1 px-6 py-4">
             {/* Period Filter Tabs */}
