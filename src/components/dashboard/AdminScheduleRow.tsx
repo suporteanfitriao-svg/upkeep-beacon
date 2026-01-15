@@ -1,7 +1,8 @@
 import { useState, useEffect, useMemo } from 'react';
 import { Schedule, ScheduleStatus, STATUS_FLOW, STATUS_LABELS, STATUS_ALLOWED_ROLES, ChecklistItem } from '@/types/scheduling';
 import { cn } from '@/lib/utils';
-import { AlertTriangle, Check, Clock, Sparkles, ChevronDown, ChevronUp, ExternalLink, User, Timer, Play, CircleCheck, KeyRound, MessageSquare, Send } from 'lucide-react';
+import { AlertTriangle, Check, Clock, Sparkles, ChevronDown, ChevronUp, ExternalLink, User, Timer, Play, CircleCheck, KeyRound, MessageSquare, Send, AlertCircle } from 'lucide-react';
+import { wasCompletedWithDelay, getDelayMinutes } from '@/hooks/useCleaningTimeAlert';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { AssignCleanerPopover } from './AssignCleanerPopover';
@@ -134,6 +135,10 @@ export function AdminScheduleRow({ schedule, onClick, onScheduleUpdated }: Admin
   const nokItemsCount = useMemo(() => {
     return localSchedule.checklist.filter(item => item.status === 'not_ok').length;
   }, [localSchedule.checklist]);
+
+  // Check if completed with delay
+  const completedWithDelay = useMemo(() => wasCompletedWithDelay(localSchedule), [localSchedule]);
+  const delayMinutes = useMemo(() => getDelayMinutes(localSchedule), [localSchedule]);
 
   // Fetch property password mode
   useEffect(() => {
@@ -444,6 +449,18 @@ export function AdminScheduleRow({ schedule, onClick, onScheduleUpdated }: Admin
                       <span className="material-symbols-outlined text-[12px] text-red-500">close</span>
                       <span className="text-[10px] font-bold text-red-600 dark:text-red-400 uppercase tracking-wide">
                         {nokItemsCount} NOK
+                      </span>
+                    </div>
+                  )}
+                  {/* Completed with delay indicator */}
+                  {completedWithDelay && (
+                    <div 
+                      className="flex items-center gap-1 bg-orange-100 dark:bg-orange-900/40 px-2 py-0.5 rounded-full" 
+                      title={`Concluído com ${delayMinutes} minutos de atraso após check-in`}
+                    >
+                      <AlertCircle className="w-3 h-3 text-orange-500" />
+                      <span className="text-[10px] font-bold text-orange-600 dark:text-orange-400 uppercase tracking-wide">
+                        +{delayMinutes}min atraso
                       </span>
                     </div>
                   )}

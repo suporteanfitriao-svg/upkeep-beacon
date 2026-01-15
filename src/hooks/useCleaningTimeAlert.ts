@@ -12,6 +12,54 @@ export interface CleaningTimeAlert {
 }
 
 /**
+ * Check if a schedule was completed with delay (after check-in time)
+ */
+export function wasCompletedWithDelay(schedule: Schedule): boolean {
+  if (schedule.status !== 'completed' || !schedule.endAt) return false;
+  
+  const endTime = schedule.endAt instanceof Date ? schedule.endAt : new Date(schedule.endAt);
+  const checkInTime = schedule.checkIn instanceof Date ? schedule.checkIn : new Date(schedule.checkIn);
+  
+  return isAfter(endTime, checkInTime);
+}
+
+/**
+ * Calculate delay in minutes for a completed schedule
+ */
+export function getDelayMinutes(schedule: Schedule): number {
+  if (!schedule.endAt) return 0;
+  
+  const endTime = schedule.endAt instanceof Date ? schedule.endAt : new Date(schedule.endAt);
+  const checkInTime = schedule.checkIn instanceof Date ? schedule.checkIn : new Date(schedule.checkIn);
+  
+  if (isAfter(endTime, checkInTime)) {
+    return differenceInMinutes(endTime, checkInTime);
+  }
+  return 0;
+}
+
+/**
+ * Check if a cleaning is currently exceeding or at risk of exceeding check-in time
+ */
+export function isCleaningDelayed(schedule: Schedule): { isDelayed: boolean; minutesDelayed: number } {
+  if (schedule.status !== 'cleaning' || !schedule.startAt) {
+    return { isDelayed: false, minutesDelayed: 0 };
+  }
+
+  const now = new Date();
+  const checkInTime = schedule.checkIn instanceof Date ? schedule.checkIn : new Date(schedule.checkIn);
+  
+  if (isAfter(now, checkInTime)) {
+    return { 
+      isDelayed: true, 
+      minutesDelayed: differenceInMinutes(now, checkInTime) 
+    };
+  }
+  
+  return { isDelayed: false, minutesDelayed: 0 };
+}
+
+/**
  * Hook to detect cleanings that are at risk of exceeding check-in time
  * - 'exceeding': Cleaning has already exceeded check-in time
  * - 'at_risk': Cleaning is in progress and estimated to exceed check-in time (< 30 min remaining)
