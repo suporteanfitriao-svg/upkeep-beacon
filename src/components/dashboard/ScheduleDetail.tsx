@@ -10,6 +10,7 @@ import { IssueReportModal } from './IssueReportModal';
 import { AttentionModal } from './AttentionModal';
 import { ChecklistPendingModal } from './ChecklistPendingModal';
 import { NoChecklistModal } from './NoChecklistModal';
+import LocationRequiredModal from './mobile/LocationRequiredModal';
 import { useUserRole } from '@/hooks/useUserRole';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
@@ -88,6 +89,7 @@ export function ScheduleDetail({ schedule, onClose, onUpdateSchedule }: Schedule
   const [showAttentionModal, setShowAttentionModal] = useState(false);
   const [showChecklistPendingModal, setShowChecklistPendingModal] = useState(false);
   const [showNoChecklistModal, setShowNoChecklistModal] = useState(false);
+  const [showLocationRequiredModal, setShowLocationRequiredModal] = useState(false);
   const [pendingCategories, setPendingCategories] = useState<{ name: string; pendingCount: number; totalCount: number }[]>([]);
   const [teamMemberId, setTeamMemberId] = useState<string | null>(null);
   const [requirePhotoPerCategory, setRequirePhotoPerCategory] = useState(false);
@@ -197,6 +199,17 @@ export function ScheduleDetail({ schedule, onClose, onUpdateSchedule }: Schedule
     shouldCheckProximity ? propertyCoords.longitude : null,
     500 // 500 meters max distance
   );
+
+  // Auto-close location required modal when location becomes available and within range
+  useEffect(() => {
+    if (showLocationRequiredModal && 
+        proximityCheck.permissionState === 'granted' && 
+        proximityCheck.isWithinRange && 
+        !proximityCheck.loading) {
+      setShowLocationRequiredModal(false);
+      toast.success('Localização verificada! Você pode iniciar a limpeza.');
+    }
+  }, [showLocationRequiredModal, proximityCheck.permissionState, proximityCheck.isWithinRange, proximityCheck.loading]);
 
   // Load category photos from schedule (stored in category_photos JSON column)
   useEffect(() => {
@@ -1002,6 +1015,33 @@ export function ScheduleDetail({ schedule, onClose, onUpdateSchedule }: Schedule
               {schedule.status === 'released' && (
                 <button 
                   onClick={() => {
+                    // First, check if property has coordinates - if it does, location is MANDATORY
+                    if (role === 'cleaner' && proximityCheck.propertyHasCoordinates) {
+                      // Check location permission state
+                      if (proximityCheck.permissionState === 'denied' || proximityCheck.permissionState === 'prompt') {
+                        setShowLocationRequiredModal(true);
+                        return;
+                      }
+                      
+                      // Check if we have an error (GPS off, etc)
+                      if (proximityCheck.error) {
+                        setShowLocationRequiredModal(true);
+                        return;
+                      }
+                      
+                      // Check if still loading
+                      if (proximityCheck.loading) {
+                        toast.info('Aguarde a verificação de localização...');
+                        return;
+                      }
+                      
+                      // Check if too far from property
+                      if (!proximityCheck.isWithinRange && proximityCheck.distance !== null) {
+                        setShowLocationRequiredModal(true);
+                        return;
+                      }
+                    }
+
                     if (!canTransition.allowed) {
                       toast.error(canTransition.reason);
                       return;
@@ -1016,18 +1056,30 @@ export function ScheduleDetail({ schedule, onClose, onUpdateSchedule }: Schedule
                     }
                     handleStatusChange('cleaning');
                   }}
-                  disabled={isAckSubmitting || isCheckingChecklist || isCheckingAccess || proximityCheck.loading || !canTransition.allowed}
+                  disabled={isAckSubmitting || isCheckingChecklist || isCheckingAccess || proximityCheck.loading}
                   className={cn(
                     "flex w-full items-center justify-center gap-2 rounded-xl py-4 font-bold text-white shadow-[0_4px_20px_-2px_rgba(51,153,153,0.3)] transition-all active:scale-[0.98]",
-                    !canTransition.allowed
-                      ? "bg-slate-400 hover:bg-slate-500 cursor-not-allowed"
-                      : "bg-primary hover:bg-[#267373]"
+                    (role === 'cleaner' && proximityCheck.propertyHasCoordinates && (!proximityCheck.isWithinRange || proximityCheck.permissionState !== 'granted'))
+                      ? "bg-slate-400 hover:bg-slate-500"
+                      : !canTransition.allowed
+                        ? "bg-slate-400 hover:bg-slate-500 cursor-not-allowed"
+                        : "bg-primary hover:bg-[#267373]"
                   )}
                 >
                   {(isCheckingChecklist || isCheckingAccess || proximityCheck.loading) ? (
                     <>
                       <span className="material-symbols-outlined animate-spin">progress_activity</span>
                       {proximityCheck.loading ? 'Verificando localização...' : 'Verificando...'}
+                    </>
+                  ) : (role === 'cleaner' && proximityCheck.propertyHasCoordinates && proximityCheck.permissionState !== 'granted') ? (
+                    <>
+                      <span className="material-symbols-outlined">location_off</span>
+                      Permitir Localização
+                    </>
+                  ) : (role === 'cleaner' && proximityCheck.propertyHasCoordinates && !proximityCheck.isWithinRange && proximityCheck.distance !== null) ? (
+                    <>
+                      <span className="material-symbols-outlined">location_off</span>
+                      Aproxime-se ({formatDistance(proximityCheck.distance)})
                     </>
                   ) : (
                     <>
@@ -1731,6 +1783,24 @@ export function ScheduleDetail({ schedule, onClose, onUpdateSchedule }: Schedule
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Location Required Modal - Forces location permission before starting cleaning */}
+      <LocationRequiredModal
+        isOpen={showLocationRequiredModal}
+        onClose={() => setShowLocationRequiredModal(false)}
+        permissionState={proximityCheck.permissionState}
+        onRequestPermission={() => {
+          proximityCheck.requestPermission();
+          // After requesting permission, check again
+          setTimeout(() => {
+            proximityCheck.refresh();
+          }, 1000);
+        }}
+        distance={proximityCheck.distance}
+        isLoading={proximityCheck.loading}
+        onRetry={() => proximityCheck.refresh()}
+        error={proximityCheck.error}
+      />
     </div>
   );
 }
