@@ -1306,11 +1306,16 @@ export type Database = {
         Returns: Json
       }
       has_any_role: { Args: { _user_id: string }; Returns: boolean }
+      has_property_access: { Args: { p_property_id: string }; Returns: boolean }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
           _user_id: string
         }
+        Returns: boolean
+      }
+      is_cleaner_assigned_to_schedule: {
+        Args: { p_schedule_id: string }
         Returns: boolean
       }
       is_schedule_completed: {
