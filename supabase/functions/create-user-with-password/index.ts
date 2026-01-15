@@ -22,9 +22,34 @@ const validateEmail = (email: string): boolean => {
   return emailRegex.test(email) && email.length <= 255;
 };
 
-const validatePassword = (password: string): boolean => {
-  // Minimum 8 characters, at least one letter and one number
-  return password.length >= 8 && password.length <= 128;
+interface PasswordValidationResult {
+  valid: boolean;
+  errors: string[];
+}
+
+const validatePassword = (password: string): PasswordValidationResult => {
+  const errors: string[] = [];
+  
+  if (password.length < 8) {
+    errors.push("Senha deve ter no mínimo 8 caracteres");
+  }
+  if (password.length > 128) {
+    errors.push("Senha deve ter no máximo 128 caracteres");
+  }
+  if (!/[A-Z]/.test(password)) {
+    errors.push("Senha deve conter pelo menos uma letra maiúscula");
+  }
+  if (!/[a-z]/.test(password)) {
+    errors.push("Senha deve conter pelo menos uma letra minúscula");
+  }
+  if (!/[0-9]/.test(password)) {
+    errors.push("Senha deve conter pelo menos um número");
+  }
+  if (!/[!@#$%^&*(),.?":{}|<>_\-+=\[\]\\\/`~;']/.test(password)) {
+    errors.push("Senha deve conter pelo menos um caractere especial");
+  }
+  
+  return { valid: errors.length === 0, errors };
 };
 
 const handler = async (req: Request): Promise<Response> => {
@@ -93,9 +118,14 @@ const handler = async (req: Request): Promise<Response> => {
       );
     }
 
-    if (!validatePassword(password)) {
+    const passwordValidation = validatePassword(password);
+    if (!passwordValidation.valid) {
+      console.log("Password validation failed:", passwordValidation.errors);
       return new Response(
-        JSON.stringify({ error: "Senha deve ter no mínimo 8 caracteres" }),
+        JSON.stringify({ 
+          error: "Senha não atende aos requisitos de segurança", 
+          details: passwordValidation.errors 
+        }),
         { status: 400, headers: { "Content-Type": "application/json", ...corsHeaders } }
       );
     }
