@@ -189,8 +189,9 @@ export function ScheduleDetail({ schedule, onClose, onUpdateSchedule }: Schedule
     fetchPropertyRules();
   }, [schedule.propertyId]);
 
-  // Proximity check for cleaner - only check when status is released (about to start cleaning)
-  const shouldCheckProximity = schedule.status === 'released' && role === 'cleaner';
+  // Proximity check for cleaner - check when status is released or cleaning
+  // This is used for both starting cleaning AND for content access control
+  const shouldCheckProximity = (schedule.status === 'released' || schedule.status === 'cleaning') && role === 'cleaner';
   const proximityCheck = useProximityCheck(
     shouldCheckProximity ? propertyCoords.latitude : null,
     shouldCheckProximity ? propertyCoords.longitude : null,
@@ -230,6 +231,41 @@ export function ScheduleDetail({ schedule, onClose, onUpdateSchedule }: Schedule
 
   // Check if important info exists
   const hasImportantInfo = Boolean(schedule.importantInfo && schedule.importantInfo.trim().length > 0);
+
+  // Determine if content should be locked (checklist, observations)
+  // Content is locked when:
+  // 1. Status is 'waiting' (not released yet)
+  // 2. Cleaner is too far from property (for status released/cleaning)
+  // 3. Important info exists but not acknowledged yet
+  const isContentLocked = useMemo(() => {
+    // Status waiting = always locked
+    if (schedule.status === 'waiting') {
+      return { locked: true, reason: 'Aguardando liberação do checkout' };
+    }
+
+    // For cleaners, check proximity
+    if (role === 'cleaner' && proximityCheck.propertyHasCoordinates) {
+      if (proximityCheck.loading) {
+        return { locked: true, reason: 'Verificando sua localização...', isLoading: true };
+      }
+      if (proximityCheck.error) {
+        return { locked: true, reason: proximityCheck.error };
+      }
+      if (!proximityCheck.isWithinRange && proximityCheck.distance !== null) {
+        return { 
+          locked: true, 
+          reason: `Você está a ${formatDistance(proximityCheck.distance)} do imóvel. Aproxime-se para acessar o conteúdo (máx 500m).`
+        };
+      }
+    }
+
+    // Check if important info acknowledgment is required
+    if (hasImportantInfo && !hasAcknowledged && role === 'cleaner') {
+      return { locked: true, reason: 'Leia e confirme as informações importantes antes de continuar' };
+    }
+
+    return { locked: false };
+  }, [schedule.status, role, proximityCheck, hasImportantInfo, hasAcknowledged]);
 
   // Check if property has checklist configured (only for released status, to validate before starting)
   const shouldCheckForChecklist = schedule.status === 'released';
@@ -806,29 +842,53 @@ export function ScheduleDetail({ schedule, onClose, onUpdateSchedule }: Schedule
               "rounded-2xl bg-white dark:bg-[#2d3138] shadow-lg p-5 border border-slate-100 dark:border-slate-700 space-y-4",
               schedule.status === 'waiting' && "opacity-50 grayscale-[0.5]"
             )}>
-              {/* Important Info */}
+              {/* Important Info - ALWAYS visible and required, even when content is locked */}
               {(hasImportantInfo || schedule.importantInfo) && (
-                <div className="flex flex-col gap-3">
+                <div className={cn(
+                  "flex flex-col gap-3 p-4 rounded-xl border-2",
+                  hasAcknowledged 
+                    ? "bg-emerald-50 dark:bg-emerald-900/20 border-emerald-300 dark:border-emerald-700" 
+                    : "bg-amber-50 dark:bg-amber-900/20 border-amber-300 dark:border-amber-700 animate-pulse"
+                )}>
                   <div className="flex items-center gap-2">
-                    <span className="material-symbols-outlined text-amber-500 text-[18px]">info</span>
-                    <h3 className="text-xs font-bold uppercase tracking-widest text-slate-600 dark:text-slate-300">Informações Importantes</h3>
+                    <span className={cn(
+                      "material-symbols-outlined text-[20px]",
+                      hasAcknowledged ? "text-emerald-500" : "text-amber-500"
+                    )}>
+                      {hasAcknowledged ? 'check_circle' : 'warning'}
+                    </span>
+                    <h3 className={cn(
+                      "text-xs font-bold uppercase tracking-widest",
+                      hasAcknowledged ? "text-emerald-700 dark:text-emerald-300" : "text-amber-700 dark:text-amber-300"
+                    )}>
+                      {hasAcknowledged ? 'Informações Confirmadas' : '⚠️ Leitura Obrigatória'}
+                    </h3>
+                    {!hasAcknowledged && (
+                      <span className="ml-auto text-[10px] font-bold text-red-600 dark:text-red-400 bg-red-100 dark:bg-red-900/30 px-2 py-0.5 rounded-full">
+                        OBRIGATÓRIO
+                      </span>
+                    )}
                   </div>
-                  <div className="rounded-xl bg-slate-50 dark:bg-slate-800/50 p-4 border border-slate-100 dark:border-slate-700">
-                    <p className="text-sm text-slate-600 dark:text-slate-300 leading-relaxed">
-                      <span className="font-bold text-slate-800 dark:text-slate-100">⚠️ Atenção:</span>{' '}
+                  <div className={cn(
+                    "rounded-xl p-4 border",
+                    hasAcknowledged 
+                      ? "bg-white dark:bg-slate-800/50 border-emerald-200 dark:border-emerald-800" 
+                      : "bg-white dark:bg-slate-800/50 border-amber-200 dark:border-amber-800"
+                  )}>
+                    <p className="text-sm text-slate-700 dark:text-slate-300 leading-relaxed whitespace-pre-wrap">
                       {schedule.importantInfo || 'Nenhuma informação importante para esta limpeza.'}
                     </p>
                   </div>
                   <label className={cn(
                     "flex items-center gap-3 py-2 cursor-pointer group/label",
-                    hasAcknowledged && "opacity-75 cursor-default",
-                    schedule.status === 'waiting' && "pointer-events-none"
+                    hasAcknowledged && "cursor-default",
+                    schedule.status === 'waiting' && "pointer-events-none opacity-50"
                   )}>
                     <div className={cn(
                       "w-6 h-6 border-2 rounded flex items-center justify-center transition-colors",
                       hasAcknowledged 
-                        ? "bg-primary border-primary" 
-                        : "border-slate-300 dark:border-slate-600"
+                        ? "bg-emerald-500 border-emerald-500" 
+                        : "border-amber-400 dark:border-amber-600 bg-white dark:bg-slate-800"
                     )}>
                       {hasAcknowledged && (
                         <span className="material-symbols-outlined text-white text-[16px]">check</span>
@@ -849,17 +909,22 @@ export function ScheduleDetail({ schedule, onClose, onUpdateSchedule }: Schedule
                       className="sr-only"
                     />
                     <span className={cn(
-                      "text-sm transition-colors",
+                      "text-sm font-medium transition-colors",
                       hasAcknowledged 
-                        ? "text-emerald-600 dark:text-emerald-400 font-medium" 
-                        : "text-slate-500 dark:text-slate-400"
+                        ? "text-emerald-700 dark:text-emerald-400" 
+                        : "text-amber-700 dark:text-amber-400"
                     )}>
-                      {hasAcknowledged ? '✓ Leitura confirmada' : 'Li e compreendi as informações'}
+                      {hasAcknowledged ? '✓ Leitura confirmada' : 'Li e compreendi as informações acima'}
                     </span>
                     {isAckSubmitting && (
-                      <span className="text-xs text-slate-400">Salvando...</span>
+                      <span className="text-xs text-slate-400 ml-2">Salvando...</span>
                     )}
                   </label>
+                  {!hasAcknowledged && schedule.status !== 'waiting' && (
+                    <p className="text-xs text-amber-600 dark:text-amber-400 italic">
+                      Você deve confirmar a leitura antes de iniciar a limpeza.
+                    </p>
+                  )}
                 </div>
               )}
 
@@ -1032,10 +1097,32 @@ export function ScheduleDetail({ schedule, onClose, onUpdateSchedule }: Schedule
             )}
           </div>
 
-          {/* === Content with opacity-40 when waiting === */}
+          {/* Content Lock Alert Banner - shown when content is locked for cleaners */}
+          {isContentLocked.locked && role === 'cleaner' && schedule.status !== 'waiting' && (
+            <div className="rounded-2xl bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800/50 p-4 flex gap-3 items-start">
+              <span className="material-symbols-outlined text-red-500 text-[22px] mt-0.5">block</span>
+              <div className="flex-1">
+                <h4 className="font-bold text-red-700 dark:text-red-400 text-sm mb-1">Conteúdo Bloqueado</h4>
+                <p className="text-xs text-red-600 dark:text-red-500/80 leading-relaxed">
+                  {isContentLocked.reason}
+                </p>
+                {proximityCheck.propertyHasCoordinates && !proximityCheck.isWithinRange && (
+                  <button
+                    onClick={() => proximityCheck.refresh()}
+                    className="mt-2 text-xs font-medium text-red-700 dark:text-red-400 underline hover:no-underline flex items-center gap-1"
+                  >
+                    <MapPin className="h-3 w-3" />
+                    Verificar localização novamente
+                  </button>
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* === Content with opacity-40 when locked === */}
           <div className={cn(
             "space-y-4",
-            schedule.status === 'waiting' && "opacity-40 select-none pointer-events-none"
+            isContentLocked.locked && "opacity-40 select-none pointer-events-none"
           )}>
             {/* Progress Section - Only show if checklist is required */}
             {requireChecklist && (
