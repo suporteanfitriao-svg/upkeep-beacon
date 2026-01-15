@@ -1,7 +1,7 @@
 project_id = "itvnpqeymmcktqqohhsk"
 
 [functions.send-team-invite]
-verify_jwt = true
+verify_jwt = false
 
 [functions.sync-ical-reservations]
 verify_jwt = false
@@ -13,6 +13,12 @@ verify_jwt = false
 verify_jwt = false
 
 [functions.geocode-address]
+verify_jwt = false
+
+[functions.create-user-with-password]
+verify_jwt = false
+
+[functions.admin-reset-password]
 verify_jwt = false
 
 # Cron job para sincronizar reservas do iCal automaticamente a cada hora
