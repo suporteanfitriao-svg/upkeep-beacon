@@ -398,39 +398,10 @@ export function MobileDashboard({ schedules, onScheduleClick, onStartCleaning, o
   return (
     <div 
       ref={containerRef}
-      onTouchStart={handleTouchStart}
-      onTouchMove={handleTouchMove}
-      onTouchEnd={handleTouchEnd}
       className="relative flex min-h-screen w-full flex-col overflow-x-hidden pb-24 bg-stone-50 dark:bg-[#22252a] font-display text-slate-800 dark:text-slate-100 antialiased touch-pan-y"
     >
-      {/* Pull-to-refresh indicator */}
-      <div 
-        className={cn(
-          "absolute left-0 right-0 flex items-center justify-center transition-all duration-200 z-30",
-          pullDistance > 0 ? "opacity-100" : "opacity-0"
-        )}
-        style={{ 
-          top: Math.min(pullDistance - 40, 60),
-          transform: `scale(${Math.min(pullDistance / PULL_THRESHOLD, 1)})`
-        }}
-      >
-        <div className={cn(
-          "flex items-center gap-2 px-4 py-2 rounded-full bg-white dark:bg-slate-800 shadow-lg border border-slate-200 dark:border-slate-700",
-          pullDistance >= PULL_THRESHOLD && "bg-primary text-white border-primary"
-        )}>
-          <RefreshCw className={cn(
-            "w-4 h-4",
-            isSyncing && "animate-spin",
-            pullDistance >= PULL_THRESHOLD ? "text-white" : "text-primary"
-          )} />
-          <span className={cn(
-            "text-xs font-medium",
-            pullDistance >= PULL_THRESHOLD ? "text-white" : "text-slate-600 dark:text-slate-300"
-          )}>
-            {pullDistance >= PULL_THRESHOLD ? "Solte para atualizar" : "Puxe para atualizar"}
-          </span>
-        </div>
-      </div>
+      {/* Pull-to-refresh indicator disabled (was intercepting taps on some devices) */}
+      {null}
 
       {/* INÍCIO (HOME) TAB */}
       {activeTab === 'inicio' && (
