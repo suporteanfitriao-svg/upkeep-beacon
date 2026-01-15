@@ -1313,6 +1313,10 @@ export type Database = {
         }
         Returns: boolean
       }
+      is_schedule_completed: {
+        Args: { p_schedule_id: string }
+        Returns: boolean
+      }
       log_password_action: {
         Args: {
           p_action: string
