@@ -1,6 +1,6 @@
 import { memo } from 'react';
 import { format } from 'date-fns';
-import { Clock, Play, Check, ChevronRight, Building2, Loader2 } from 'lucide-react';
+import { Clock, Play, Check, ChevronRight, Building2, Loader2, AlertTriangle } from 'lucide-react';
 import { Schedule } from '@/types/scheduling';
 import { cn } from '@/lib/utils';
 import { useStayStatus } from '@/hooks/useStayStatus';
@@ -153,6 +153,9 @@ export const MobileScheduleCard = memo(function MobileScheduleCard({
   const statusLabel = isPending ? 'Pendente' : 'Em Limpeza';
   const buttonLabel = isPending ? 'Iniciar Limpeza' : 'Continuar Limpeza';
 
+  // Check if schedule has important info that requires reading
+  const hasImportantInfo = Boolean(schedule.importantInfo && schedule.importantInfo.trim().length > 0);
+
   return (
     <div 
       className="overflow-hidden rounded-2xl bg-white dark:bg-[#2d3138] shadow-soft transition-all hover:shadow-md border border-slate-100 dark:border-slate-700"
@@ -163,6 +166,13 @@ export const MobileScheduleCard = memo(function MobileScheduleCard({
             <div className="mb-1 flex items-center gap-1.5">
               <span className={cn("inline-flex h-2 w-2 rounded-full animate-pulse", isPending ? "bg-primary" : "bg-[#E0C051]")} />
               <span className={cn("text-xs font-bold uppercase tracking-wider", isPending ? "text-primary" : "text-[#E0C051]")}>{statusLabel}</span>
+              {/* Important info indicator */}
+              {hasImportantInfo && isPending && (
+                <div className="flex items-center gap-1 ml-2 px-2 py-0.5 bg-amber-100 dark:bg-amber-900/30 rounded-full">
+                  <AlertTriangle className="w-3 h-3 text-amber-600 dark:text-amber-400" />
+                  <span className="text-[10px] font-bold text-amber-600 dark:text-amber-400">Ler obs.</span>
+                </div>
+              )}
             </div>
             <h3 className="text-lg font-bold text-slate-900 dark:text-white leading-tight mb-2">{schedule.propertyName}</h3>
             <div className="flex flex-col">
