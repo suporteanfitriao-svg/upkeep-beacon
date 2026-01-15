@@ -95,6 +95,8 @@ export function ScheduleDetail({ schedule, onClose, onUpdateSchedule }: Schedule
   const [photoUploadModal, setPhotoUploadModal] = useState<{ open: boolean; category: string | null }>({ open: false, category: null });
   const [deleteIssueConfirm, setDeleteIssueConfirm] = useState<{ open: boolean; issueId: string | null }>({ open: false, issueId: null });
   const [isCommitting, setIsCommitting] = useState(false);
+  const [isSyncing, setIsSyncing] = useState(false);
+  const [syncingCategory, setSyncingCategory] = useState<string | null>(null);
   const cacheInitializedRef = useRef(false);
   const statusStyle = statusConfig[schedule.status];
 
@@ -323,6 +325,9 @@ export function ScheduleDetail({ schedule, onClose, onUpdateSchedule }: Schedule
   const handleSaveCategory = useCallback(async (category: string) => {
     if (!teamMemberId) return;
     
+    setIsSyncing(true);
+    setSyncingCategory(category);
+    
     try {
       // Direct database update to avoid realtime listener causing reload
       const { error } = await supabase
@@ -360,6 +365,9 @@ export function ScheduleDetail({ schedule, onClose, onUpdateSchedule }: Schedule
     } catch (err) {
       console.error('Error saving category:', err);
       toast.error('Erro ao salvar categoria');
+    } finally {
+      setIsSyncing(false);
+      setSyncingCategory(null);
     }
   }, [schedule.id, checklist, teamMemberId]);
 
@@ -389,6 +397,9 @@ export function ScheduleDetail({ schedule, onClose, onUpdateSchedule }: Schedule
     setChecklist(updatedChecklist);
     setChecklistItemStates(updatedStates);
     
+    setIsSyncing(true);
+    setSyncingCategory(category);
+    
     try {
       // Direct database update to avoid realtime listener causing reload
       const { error } = await supabase
@@ -415,10 +426,20 @@ export function ScheduleDetail({ schedule, onClose, onUpdateSchedule }: Schedule
         p_payload: { category_name: category }
       });
       
+      // Remove category from unsaved set
+      setUnsavedCategories(prev => {
+        const newSet = new Set(prev);
+        newSet.delete(category);
+        return newSet;
+      });
+      
       toast.success(`Categoria "${category}" marcada como completa!`);
     } catch (error) {
       console.error('Error logging category complete:', error);
       toast.error('Erro ao marcar categoria');
+    } finally {
+      setIsSyncing(false);
+      setSyncingCategory(null);
     }
     
     setConfirmMarkCategory({ open: false, category: null });
@@ -686,7 +707,14 @@ export function ScheduleDetail({ schedule, onClose, onUpdateSchedule }: Schedule
             <h2 className="text-lg font-bold leading-none tracking-tight text-slate-900 dark:text-white">{schedule.propertyName}</h2>
             <span className="text-xs font-medium text-[#8A8B88] dark:text-slate-400">{schedule.propertyAddress}</span>
           </div>
-          <div className="ml-auto">
+          <div className="ml-auto flex items-center gap-2">
+            {/* Global sync indicator */}
+            {isSyncing && (
+              <div className="flex items-center gap-1.5 text-primary animate-pulse">
+                <span className="material-symbols-outlined text-[18px] animate-spin">sync</span>
+                <span className="text-xs font-medium">Sincronizando...</span>
+              </div>
+            )}
             <span className={cn(
               "inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium",
               statusStyle.badgeClass
@@ -935,7 +963,7 @@ export function ScheduleDetail({ schedule, onClose, onUpdateSchedule }: Schedule
 
               return (
                 <div key={category} className={cn(
-                  "overflow-hidden rounded-xl border bg-white dark:bg-[#2d3138]",
+                  "relative overflow-hidden rounded-xl border bg-white dark:bg-[#2d3138]",
                   allSelected 
                     ? hasDX 
                       ? "border-amber-300 dark:border-amber-700" 
@@ -1101,11 +1129,31 @@ export function ScheduleDetail({ schedule, onClose, onUpdateSchedule }: Schedule
                           <div className="p-3 border-t border-slate-100 dark:border-slate-700/50 bg-slate-50/50 dark:bg-slate-800/30">
                             <button
                               onClick={() => handleSaveCategory(category)}
-                              className="w-full flex items-center justify-center gap-2 rounded-xl bg-primary py-3 text-base font-bold text-white shadow-sm transition-all hover:bg-primary/90 active:scale-[0.98] touch-manipulation"
+                              disabled={isSyncing && syncingCategory === category}
+                              className="w-full flex items-center justify-center gap-2 rounded-xl bg-primary py-3 text-base font-bold text-white shadow-sm transition-all hover:bg-primary/90 active:scale-[0.98] touch-manipulation disabled:opacity-70 disabled:cursor-not-allowed"
                             >
-                              <span className="material-symbols-outlined text-[20px]">save</span>
-                              Salvar Categoria
+                              {isSyncing && syncingCategory === category ? (
+                                <>
+                                  <span className="material-symbols-outlined text-[20px] animate-spin">sync</span>
+                                  Sincronizando...
+                                </>
+                              ) : (
+                                <>
+                                  <span className="material-symbols-outlined text-[20px]">save</span>
+                                  Salvar Categoria
+                                </>
+                              )}
                             </button>
+                          </div>
+                        )}
+                        
+                        {/* Sync indicator when saving */}
+                        {isSyncing && syncingCategory === category && (
+                          <div className="absolute inset-0 bg-white/50 dark:bg-slate-900/50 backdrop-blur-sm flex items-center justify-center rounded-2xl z-10">
+                            <div className="flex flex-col items-center gap-2">
+                              <span className="material-symbols-outlined text-[32px] text-primary animate-spin">sync</span>
+                              <span className="text-sm font-medium text-slate-600 dark:text-slate-300">Salvando...</span>
+                            </div>
                           </div>
                         )}
                       </div>
