@@ -50,6 +50,8 @@ interface ScheduleRow {
   category_photos: Json | null;
   properties?: {
     image_url: string | null;
+    latitude: number | null;
+    longitude: number | null;
   } | null;
   reservations?: {
     check_in: string;
@@ -233,6 +235,8 @@ const mapRowToSchedule = (row: ScheduleRow): Schedule => {
     propertyName: listingNameSource,
     propertyAddress: row.property_address || '',
     propertyImageUrl: row.properties?.image_url || undefined,
+    propertyLatitude: row.properties?.latitude || undefined,
+    propertyLongitude: row.properties?.longitude || undefined,
     guestName: guestNameSource || 'Hóspede não informado',
     numberOfGuests: numberOfGuestsSource,
     checkIn: new Date(checkInSource),
@@ -280,7 +284,7 @@ export function useSchedules() {
 
       const { data, error: fetchError } = await supabase
         .from('schedules')
-        .select('*, properties(image_url), reservations(check_in, check_out, guest_name, listing_name, number_of_guests, description)')
+        .select('*, properties(image_url, latitude, longitude), reservations(check_in, check_out, guest_name, listing_name, number_of_guests, description)')
         .eq('is_active', true)
         .order('check_out_time', { ascending: true });
 

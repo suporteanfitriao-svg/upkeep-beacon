@@ -4,6 +4,8 @@ import { toast } from 'sonner';
 interface LocationModalProps {
   propertyName: string;
   address: string;
+  latitude?: number;
+  longitude?: number;
   onClose: () => void;
 }
 
@@ -12,12 +14,22 @@ interface Coordinates {
   lng: number;
 }
 
-export function LocationModal({ propertyName, address, onClose }: LocationModalProps) {
-  const [coordinates, setCoordinates] = useState<Coordinates | null>(null);
-  const [loading, setLoading] = useState(true);
+export function LocationModal({ propertyName, address, latitude, longitude, onClose }: LocationModalProps) {
+  const [coordinates, setCoordinates] = useState<Coordinates | null>(
+    // Use provided coordinates immediately if available
+    latitude && longitude ? { lat: latitude, lng: longitude } : null
+  );
+  const [loading, setLoading] = useState(!latitude || !longitude);
 
-  // Geocode address using Nominatim (OpenStreetMap)
+  // Only geocode if no coordinates provided
   useEffect(() => {
+    // If we already have coordinates from props, don't geocode
+    if (latitude && longitude) {
+      setCoordinates({ lat: latitude, lng: longitude });
+      setLoading(false);
+      return;
+    }
+
     const geocodeAddress = async () => {
       if (!address) {
         setLoading(false);
@@ -50,7 +62,7 @@ export function LocationModal({ propertyName, address, onClose }: LocationModalP
     };
 
     geocodeAddress();
-  }, [address]);
+  }, [address, latitude, longitude]);
 
   const getMapUrl = () => {
     if (coordinates) {
