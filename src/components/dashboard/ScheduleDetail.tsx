@@ -20,8 +20,10 @@ import { usePropertyAccess } from '@/hooks/usePropertyAccess';
 import { useCleaningCache } from '@/hooks/useCleaningCache';
 import { useCheckoutDayVerification } from '@/hooks/useCheckoutDayVerification';
 import { useCleaningConcurrencyCheck } from '@/hooks/useCleaningConcurrencyCheck';
+import { useProximityCheck, formatDistance } from '@/hooks/useGeolocation';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { CategoryPhotoUpload } from './CategoryPhotoUpload';
+import { MapPin, Navigation } from 'lucide-react';
 
 interface ScheduleDetailProps {
   schedule: Schedule;
@@ -160,23 +162,40 @@ export function ScheduleDetail({ schedule, onClose, onUpdateSchedule }: Schedule
   const [requirePhotoForIssues, setRequirePhotoForIssues] = useState(false);
   // State for require_checklist (whether checklist is required for this property)
   const [requireChecklist, setRequireChecklist] = useState(true);
+  // State for property coordinates (geolocation)
+  const [propertyCoords, setPropertyCoords] = useState<{ latitude: number | null; longitude: number | null }>({
+    latitude: null,
+    longitude: null,
+  });
 
-  // Fetch property rules (require_photo_per_category, require_photo_for_issues, require_checklist)
+  // Fetch property rules (require_photo_per_category, require_photo_for_issues, require_checklist, coordinates)
   useEffect(() => {
     const fetchPropertyRules = async () => {
       const { data } = await supabase
         .from('properties')
-        .select('require_photo_per_category, require_photo_for_issues, require_checklist')
+        .select('require_photo_per_category, require_photo_for_issues, require_checklist, latitude, longitude')
         .eq('id', schedule.propertyId)
         .maybeSingle();
       if (data) {
         setRequirePhotoPerCategory(data.require_photo_per_category ?? false);
         setRequirePhotoForIssues(data.require_photo_for_issues ?? false);
         setRequireChecklist(data.require_checklist ?? true);
+        setPropertyCoords({
+          latitude: data.latitude,
+          longitude: data.longitude,
+        });
       }
     };
     fetchPropertyRules();
   }, [schedule.propertyId]);
+
+  // Proximity check for cleaner - only check when status is released (about to start cleaning)
+  const shouldCheckProximity = schedule.status === 'released' && role === 'cleaner';
+  const proximityCheck = useProximityCheck(
+    shouldCheckProximity ? propertyCoords.latitude : null,
+    shouldCheckProximity ? propertyCoords.longitude : null,
+    500 // 500 meters max distance
+  );
 
   // Load category photos from schedule (stored in category_photos JSON column)
   useEffect(() => {
@@ -290,8 +309,32 @@ export function ScheduleDetail({ schedule, onClose, onUpdateSchedule }: Schedule
       // Admin can override but should be logged in history
     }
 
+    // Rule 8: Check proximity for cleaners (must be within 500m of property)
+    // Only applies if property has coordinates configured
+    if (nextStatus === 'cleaning' && role === 'cleaner' && proximityCheck.propertyHasCoordinates) {
+      if (proximityCheck.loading) {
+        return { 
+          allowed: false, 
+          reason: 'Verificando sua localização...',
+          isLoadingLocation: true
+        };
+      }
+      if (proximityCheck.error) {
+        return { 
+          allowed: false, 
+          reason: proximityCheck.error
+        };
+      }
+      if (!proximityCheck.isWithinRange && proximityCheck.distance !== null) {
+        return { 
+          allowed: false, 
+          reason: `Você está a ${formatDistance(proximityCheck.distance)} do imóvel. Aproxime-se para iniciar (máx 500m).`
+        };
+      }
+    }
+
     return { allowed: true };
-  }, [schedule.status, schedule.responsibleTeamMemberId, role, teamMemberId, hasPropertyAccess, isCheckingAccess, hasImportantInfo, hasAcknowledged, hasPropertyChecklist, isCheckingChecklist, requireChecklist]);
+  }, [schedule.status, schedule.responsibleTeamMemberId, role, teamMemberId, hasPropertyAccess, isCheckingAccess, hasImportantInfo, hasAcknowledged, hasPropertyChecklist, isCheckingChecklist, requireChecklist, proximityCheck]);
 
   const toggleCategory = (category: string) => {
     setExpandedCategories(prev => ({
@@ -820,6 +863,42 @@ export function ScheduleDetail({ schedule, onClose, onUpdateSchedule }: Schedule
                 </div>
               )}
 
+              {/* Proximity indicator for cleaners */}
+              {schedule.status === 'released' && role === 'cleaner' && proximityCheck.propertyHasCoordinates && (
+                <div className={cn(
+                  "flex items-center justify-between rounded-xl p-3 mb-3 text-sm",
+                  proximityCheck.loading 
+                    ? "bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400"
+                    : proximityCheck.isWithinRange 
+                      ? "bg-emerald-50 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800"
+                      : "bg-amber-50 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400 border border-amber-200 dark:border-amber-800"
+                )}>
+                  <div className="flex items-center gap-2">
+                    <Navigation className="h-4 w-4" />
+                    {proximityCheck.loading ? (
+                      <span>Verificando localização...</span>
+                    ) : proximityCheck.error ? (
+                      <span>{proximityCheck.error}</span>
+                    ) : proximityCheck.distance !== null ? (
+                      <span>
+                        {proximityCheck.isWithinRange 
+                          ? `Você está a ${formatDistance(proximityCheck.distance)} ✓` 
+                          : `Distância: ${formatDistance(proximityCheck.distance)} (máx 500m)`
+                        }
+                      </span>
+                    ) : null}
+                  </div>
+                  {!proximityCheck.loading && (
+                    <button
+                      onClick={() => proximityCheck.refresh()}
+                      className="text-xs underline hover:no-underline"
+                    >
+                      Atualizar
+                    </button>
+                  )}
+                </div>
+              )}
+
               {/* Action button for Iniciar Limpeza - Only when status is released */}
               {schedule.status === 'released' && (
                 <button 
@@ -838,7 +917,7 @@ export function ScheduleDetail({ schedule, onClose, onUpdateSchedule }: Schedule
                     }
                     handleStatusChange('cleaning');
                   }}
-                  disabled={isAckSubmitting || isCheckingChecklist || isCheckingAccess || !canTransition.allowed}
+                  disabled={isAckSubmitting || isCheckingChecklist || isCheckingAccess || proximityCheck.loading || !canTransition.allowed}
                   className={cn(
                     "flex w-full items-center justify-center gap-2 rounded-xl py-4 font-bold text-white shadow-[0_4px_20px_-2px_rgba(51,153,153,0.3)] transition-all active:scale-[0.98]",
                     !canTransition.allowed
@@ -846,10 +925,10 @@ export function ScheduleDetail({ schedule, onClose, onUpdateSchedule }: Schedule
                       : "bg-primary hover:bg-[#267373]"
                   )}
                 >
-                  {(isCheckingChecklist || isCheckingAccess) ? (
+                  {(isCheckingChecklist || isCheckingAccess || proximityCheck.loading) ? (
                     <>
                       <span className="material-symbols-outlined animate-spin">progress_activity</span>
-                      Verificando...
+                      {proximityCheck.loading ? 'Verificando localização...' : 'Verificando...'}
                     </>
                   ) : (
                     <>

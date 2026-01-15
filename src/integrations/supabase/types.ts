@@ -699,6 +699,8 @@ export type Database = {
           id: string
           image_url: string | null
           is_active: boolean
+          latitude: number | null
+          longitude: number | null
           name: string
           password_mode: Database["public"]["Enums"]["property_password_mode"]
           property_code: string | null
@@ -720,6 +722,8 @@ export type Database = {
           id?: string
           image_url?: string | null
           is_active?: boolean
+          latitude?: number | null
+          longitude?: number | null
           name: string
           password_mode?: Database["public"]["Enums"]["property_password_mode"]
           property_code?: string | null
@@ -741,6 +745,8 @@ export type Database = {
           id?: string
           image_url?: string | null
           is_active?: boolean
+          latitude?: number | null
+          longitude?: number | null
           name?: string
           password_mode?: Database["public"]["Enums"]["property_password_mode"]
           property_code?: string | null
