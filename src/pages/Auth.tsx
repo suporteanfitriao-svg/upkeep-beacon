@@ -8,6 +8,7 @@ import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { toast } from 'sonner';
 import { Loader2, Building2 } from 'lucide-react';
+import { AddToHomeScreen } from '@/components/pwa/AddToHomeScreen';
 
 const authSchema = z.object({
   email: z.string().email({ message: 'Email inválido' }).max(255),
@@ -90,7 +91,7 @@ const Auth = () => {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-background px-4">
+    <div className="min-h-screen flex flex-col items-center justify-center bg-background px-4 py-8 gap-4">
       <Card className="w-full max-w-md">
         <CardHeader className="text-center">
           <div className="flex justify-center mb-4">
@@ -165,6 +166,9 @@ const Auth = () => {
           </div>
         </CardContent>
       </Card>
+      
+      {/* Install prompt for mobile */}
+      <AddToHomeScreen className="w-full max-w-md" />
     </div>
   );
 };
