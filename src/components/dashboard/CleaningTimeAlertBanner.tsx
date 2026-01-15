@@ -15,8 +15,6 @@ export function CleaningTimeAlertBanner({
   onAlertClick,
   variant = 'admin' 
 }: CleaningTimeAlertBannerProps) {
-  console.log('[CleaningTimeAlertBanner] Received alerts:', alerts.length, alerts);
-  
   if (alerts.length === 0) return null;
 
   const formatMinutes = (minutes: number) => {

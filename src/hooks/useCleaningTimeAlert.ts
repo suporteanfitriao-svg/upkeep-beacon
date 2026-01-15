@@ -71,12 +71,6 @@ export function useCleaningTimeAlerts(schedules: Schedule[]): CleaningTimeAlert[
 
     // Filter only schedules that are currently being cleaned
     const cleaningSchedules = schedules.filter(s => s.status === 'cleaning' && s.startAt);
-    
-    console.log('[useCleaningTimeAlerts] Total schedules:', schedules.length);
-    console.log('[useCleaningTimeAlerts] Cleaning schedules with startAt:', cleaningSchedules.length);
-    cleaningSchedules.forEach(s => {
-      console.log('[useCleaningTimeAlerts] Schedule:', s.propertyName, 'checkIn:', s.checkIn, 'now:', now, 'isAfter:', isAfter(now, s.checkIn));
-    });
 
     for (const schedule of cleaningSchedules) {
       if (!schedule.startAt) continue;
