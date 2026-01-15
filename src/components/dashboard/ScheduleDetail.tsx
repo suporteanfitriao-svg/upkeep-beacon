@@ -1634,6 +1634,8 @@ export function ScheduleDetail({ schedule, onClose, onUpdateSchedule }: Schedule
         <LocationModal
           propertyName={schedule.propertyName}
           address={schedule.propertyAddress || ''}
+          latitude={schedule.propertyLatitude}
+          longitude={schedule.propertyLongitude}
           onClose={() => setShowLocationModal(false)}
         />
       )}
