@@ -40,7 +40,7 @@ interface TeamMember {
 const roleLabels: Record<string, string> = {
   admin: 'Administrador',
   manager: 'Gerente',
-  cleaner: 'Auxiliar',
+  cleaner: 'Limpeza',
 };
 
 const roleDescriptions: Record<string, string> = {
