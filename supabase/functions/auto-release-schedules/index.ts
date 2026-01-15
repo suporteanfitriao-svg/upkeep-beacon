@@ -5,13 +5,20 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
-// São Paulo timezone offset (UTC-3)
-function getSaoPauloTime(): Date {
-  const now = new Date();
-  // Get UTC time
-  const utcTime = now.getTime() + (now.getTimezoneOffset() * 60000);
-  // São Paulo is UTC-3
-  return new Date(utcTime - (3 * 60 * 60 * 1000));
+// Get current time in São Paulo timezone as a proper Date object for comparison
+function getSaoPauloNow(): Date {
+  return new Date();
+}
+
+// Parse checkout time string and return as Date
+// The checkout time in database is stored as 'YYYY-MM-DD HH:mm:ss+00' format
+function parseCheckoutTime(checkoutTimeStr: string): Date {
+  return new Date(checkoutTimeStr);
+}
+
+// Format date for logging in São Paulo timezone
+function formatSaoPauloTime(date: Date): string {
+  return date.toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo' });
 }
 
 Deno.serve(async (req) => {
@@ -27,8 +34,9 @@ Deno.serve(async (req) => {
     
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-    const nowSP = getSaoPauloTime();
-    console.log(`[auto-release-schedules] São Paulo time: ${nowSP.toISOString()}`);
+    const now = getSaoPauloNow();
+    console.log(`[auto-release-schedules] Current time (UTC): ${now.toISOString()}`);
+    console.log(`[auto-release-schedules] Current time (São Paulo): ${formatSaoPauloTime(now)}`);
 
     // Fetch all waiting schedules that are active
     const { data: waitingSchedules, error: fetchError } = await supabase
@@ -87,37 +95,54 @@ Deno.serve(async (req) => {
 
     let releasedCount = 0;
     const errors: string[] = [];
-    const now = new Date();
 
     for (const schedule of waitingSchedules) {
       try {
         const config = propertyConfig.get(schedule.property_id);
-        if (!config) continue;
+        if (!config) {
+          console.log(`[auto-release-schedules] Schedule ${schedule.id}: No property config found, skipping`);
+          continue;
+        }
 
         // Skip if no auto-release is enabled
-        if (!config.onCheckout && !config.beforeCheckout) continue;
+        if (!config.onCheckout && !config.beforeCheckout) {
+          console.log(`[auto-release-schedules] Schedule ${schedule.id}: No auto-release enabled for property`);
+          continue;
+        }
 
-        const checkoutTime = new Date(schedule.check_out_time);
+        const checkoutTime = parseCheckoutTime(schedule.check_out_time);
         let shouldRelease = false;
         let releaseAction = '';
         let minutesConfigured: number | null = null;
 
+        console.log(`[auto-release-schedules] Schedule ${schedule.id} (${schedule.property_name}): checkout at ${formatSaoPauloTime(checkoutTime)} (${schedule.check_out_time})`);
+        console.log(`[auto-release-schedules] Schedule ${schedule.id}: onCheckout=${config.onCheckout}, beforeCheckout=${config.beforeCheckout}, minutesBefore=${config.minutesBefore}`);
+
         // Check "before checkout" rule first (takes precedence)
         if (config.beforeCheckout) {
           const releaseTime = new Date(checkoutTime.getTime() - (config.minutesBefore * 60 * 1000));
-          if (nowSP >= releaseTime) {
+          console.log(`[auto-release-schedules] Schedule ${schedule.id}: Release time (${config.minutesBefore}min before): ${formatSaoPauloTime(releaseTime)}`);
+          console.log(`[auto-release-schedules] Schedule ${schedule.id}: now.getTime()=${now.getTime()}, releaseTime.getTime()=${releaseTime.getTime()}, diff=${(now.getTime() - releaseTime.getTime()) / 1000 / 60} min`);
+          
+          if (now.getTime() >= releaseTime.getTime()) {
             shouldRelease = true;
             releaseAction = 'liberacao_automatica_antecipada';
             minutesConfigured = config.minutesBefore;
-            console.log(`[auto-release-schedules] Schedule ${schedule.id}: Before checkout rule triggered (${config.minutesBefore}min before)`);
+            console.log(`[auto-release-schedules] Schedule ${schedule.id}: Before checkout rule TRIGGERED (${config.minutesBefore}min before)`);
+          } else {
+            console.log(`[auto-release-schedules] Schedule ${schedule.id}: Before checkout rule NOT triggered yet`);
           }
         }
         // Check "on checkout" rule (only if before checkout is not enabled)
         else if (config.onCheckout) {
-          if (nowSP >= checkoutTime) {
+          console.log(`[auto-release-schedules] Schedule ${schedule.id}: now.getTime()=${now.getTime()}, checkoutTime.getTime()=${checkoutTime.getTime()}, diff=${(now.getTime() - checkoutTime.getTime()) / 1000 / 60} min`);
+          
+          if (now.getTime() >= checkoutTime.getTime()) {
             shouldRelease = true;
             releaseAction = 'liberacao_automatica_checkout';
-            console.log(`[auto-release-schedules] Schedule ${schedule.id}: On checkout rule triggered`);
+            console.log(`[auto-release-schedules] Schedule ${schedule.id}: On checkout rule TRIGGERED`);
+          } else {
+            console.log(`[auto-release-schedules] Schedule ${schedule.id}: On checkout rule NOT triggered yet (${Math.round((checkoutTime.getTime() - now.getTime()) / 1000 / 60)} min remaining)`);
           }
         }
 
@@ -170,7 +195,7 @@ Deno.serve(async (req) => {
         }
 
         releasedCount++;
-        console.log(`[auto-release-schedules] Released schedule ${schedule.id} (${schedule.property_name}) - Action: ${releaseAction}`);
+        console.log(`[auto-release-schedules] ✅ Released schedule ${schedule.id} (${schedule.property_name}) - Action: ${releaseAction}`);
       } catch (err: unknown) {
         const errorMessage = err instanceof Error ? err.message : 'Unknown error';
         console.error(`[auto-release-schedules] Unexpected error for schedule ${schedule.id}:`, err);
