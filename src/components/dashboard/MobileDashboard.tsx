@@ -660,97 +660,124 @@ export function MobileDashboard({ schedules, onScheduleClick, onStartCleaning, o
         <div className="animate-fade-in">
           {/* Agenda Header */}
           <header 
-            className="sticky top-0 z-20 flex items-center justify-between bg-stone-50/90 dark:bg-[#22252a]/90 px-6 py-4 backdrop-blur-md transition-all"
+            className="sticky top-0 z-20 bg-stone-50/90 dark:bg-[#22252a]/90 px-6 py-4 backdrop-blur-md transition-all"
             style={{ transform: pullDistance > 0 ? `translateY(${pullDistance * 0.3}px)` : undefined }}
           >
-            {viewMode === 'calendario' ? (
-              <>
-                <button 
-                  onClick={() => setViewMode('dia')}
-                  className="flex items-center justify-center rounded-full p-1 transition-colors hover:bg-slate-200 dark:hover:bg-slate-700"
-                >
-                  <span className="material-symbols-outlined text-[#8A8B88] dark:text-slate-400">arrow_back</span>
-                </button>
-                <div className="flex items-center gap-2">
+            {/* Top row with navigation */}
+            <div className="flex items-center justify-between mb-3">
+              {viewMode === 'calendario' ? (
+                <>
                   <button 
-                    onClick={handlePrevMonth}
-                    className="flex items-center justify-center rounded-full w-8 h-8 hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-500 transition-colors"
+                    onClick={() => setViewMode('dia')}
+                    className="flex items-center justify-center rounded-full p-1 transition-colors hover:bg-slate-200 dark:hover:bg-slate-700"
                   >
-                    <span className="material-symbols-outlined text-[20px]">chevron_left</span>
+                    <span className="material-symbols-outlined text-[#8A8B88] dark:text-slate-400">arrow_back</span>
                   </button>
-                  <div className="flex flex-col items-center">
-                    <h2 className="text-lg font-extrabold leading-none tracking-tight text-slate-900 dark:text-white">
-                      <span className="capitalize">{monthName}</span> <span className="text-primary">{yearNumber}</span>
-                    </h2>
+                  <div className="flex items-center gap-2">
+                    <button 
+                      onClick={handlePrevMonth}
+                      className="flex items-center justify-center rounded-full w-8 h-8 hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-500 transition-colors"
+                    >
+                      <span className="material-symbols-outlined text-[20px]">chevron_left</span>
+                    </button>
+                    <div className="flex flex-col items-center">
+                      <h2 className="text-lg font-extrabold leading-none tracking-tight text-slate-900 dark:text-white">
+                        <span className="capitalize">{monthName}</span> <span className="text-primary">{yearNumber}</span>
+                      </h2>
+                    </div>
+                    <button 
+                      onClick={handleNextMonth}
+                      className="flex items-center justify-center rounded-full w-8 h-8 hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-500 transition-colors"
+                    >
+                      <span className="material-symbols-outlined text-[20px]">chevron_right</span>
+                    </button>
                   </div>
                   <button 
-                    onClick={handleNextMonth}
-                    className="flex items-center justify-center rounded-full w-8 h-8 hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-500 transition-colors"
+                    onClick={() => setViewMode('dia')}
+                    className="flex items-center justify-center rounded-full p-2 transition-colors hover:bg-muted"
                   >
-                    <span className="material-symbols-outlined text-[20px]">chevron_right</span>
+                    <span className="material-symbols-outlined text-muted-foreground text-[22px]">view_week</span>
                   </button>
-                </div>
-              </>
-            ) : (
-              <>
-                <button 
-                  onClick={() => setSelectedDate(prev => addDays(prev, -7))}
-                  className="flex items-center justify-center rounded-full p-2 transition-colors hover:bg-muted"
-                >
-                  <span className="material-symbols-outlined text-muted-foreground text-[20px]">chevron_left</span>
-                </button>
-                <div className="flex items-center gap-3">
-                  <button className="flex items-center justify-center rounded-full p-1 transition-colors hover:bg-muted">
-                    <Calendar className="w-6 h-6 text-muted-foreground" />
+                </>
+              ) : (
+                <>
+                  <button 
+                    onClick={() => setSelectedDate(prev => addDays(prev, -7))}
+                    className="flex items-center justify-center rounded-full p-2 transition-colors hover:bg-muted"
+                  >
+                    <span className="material-symbols-outlined text-muted-foreground text-[20px]">chevron_left</span>
                   </button>
-                  <div className="flex flex-col">
-                    <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Semana {getWeek(selectedDate, { weekStartsOn: 0 })}</span>
-                    <h2 className="text-lg font-extrabold leading-none tracking-tight text-slate-900 dark:text-white">
-                      <span className="capitalize">{monthName}</span> <span className="text-primary">{yearNumber}</span>
-                    </h2>
+                  <div className="flex items-center gap-3">
+                    <button 
+                      onClick={() => setViewMode('calendario')}
+                      className="flex items-center justify-center rounded-full p-1 transition-colors hover:bg-muted"
+                    >
+                      <Calendar className="w-6 h-6 text-muted-foreground" />
+                    </button>
+                    <div className="flex flex-col">
+                      <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Semana {getWeek(selectedDate, { weekStartsOn: 0 })}</span>
+                      <h2 className="text-lg font-extrabold leading-none tracking-tight text-slate-900 dark:text-white">
+                        <span className="capitalize">{monthName}</span> <span className="text-primary">{yearNumber}</span>
+                      </h2>
+                    </div>
                   </div>
-                </div>
-                <button 
-                  onClick={() => setSelectedDate(prev => addDays(prev, 7))}
-                  className="flex items-center justify-center rounded-full p-2 transition-colors hover:bg-muted"
-                >
-                  <span className="material-symbols-outlined text-muted-foreground text-[20px]">chevron_right</span>
-                </button>
-              </>
-            )}
-            <button 
-              onClick={() => setViewMode(viewMode === 'dia' ? 'calendario' : 'dia')}
-              className="flex items-center justify-center rounded-full p-2 transition-colors hover:bg-muted"
-            >
-              <span className="material-symbols-outlined text-muted-foreground text-[22px]">
-                {viewMode === 'dia' ? 'calendar_month' : 'view_week'}
-              </span>
-            </button>
+                  <button 
+                    onClick={() => setSelectedDate(prev => addDays(prev, 7))}
+                    className="flex items-center justify-center rounded-full p-2 transition-colors hover:bg-muted"
+                  >
+                    <span className="material-symbols-outlined text-muted-foreground text-[20px]">chevron_right</span>
+                  </button>
+                </>
+              )}
+            </div>
+
+            {/* Quick navigation buttons */}
+            <div className="flex items-center gap-2 overflow-x-auto hide-scrollbar pb-1">
+              <button
+                onClick={() => {
+                  setSelectedDate(startOfDay(new Date()));
+                  setCurrentMonth(startOfMonth(new Date()));
+                }}
+                className={cn(
+                  "px-3 py-1.5 rounded-full text-xs font-semibold transition-all whitespace-nowrap",
+                  isSameDay(selectedDate, new Date())
+                    ? "bg-primary text-white shadow-md"
+                    : "bg-white dark:bg-slate-800 text-muted-foreground border border-slate-200 dark:border-slate-700"
+                )}
+              >
+                Hoje
+              </button>
+              <button
+                onClick={() => {
+                  setViewMode('calendario');
+                  setCurrentMonth(startOfMonth(new Date()));
+                }}
+                className={cn(
+                  "px-3 py-1.5 rounded-full text-xs font-semibold transition-all whitespace-nowrap",
+                  viewMode === 'calendario' && currentMonth.getMonth() === new Date().getMonth() && currentMonth.getFullYear() === new Date().getFullYear()
+                    ? "bg-primary text-white shadow-md"
+                    : "bg-white dark:bg-slate-800 text-muted-foreground border border-slate-200 dark:border-slate-700"
+                )}
+              >
+                Mês Atual
+              </button>
+              <button
+                onClick={() => setViewMode('calendario')}
+                className={cn(
+                  "px-3 py-1.5 rounded-full text-xs font-semibold transition-all whitespace-nowrap",
+                  viewMode === 'calendario'
+                    ? "bg-primary text-white shadow-md"
+                    : "bg-white dark:bg-slate-800 text-muted-foreground border border-slate-200 dark:border-slate-700"
+                )}
+              >
+                Calendário
+              </button>
+            </div>
           </header>
 
           {viewMode === 'calendario' ? (
             // Calendar View
             <main className="flex flex-col px-4 pt-2 pb-6">
-              {/* Color Legend */}
-              <div className="flex flex-wrap items-center gap-3 mb-4 px-2 py-2 bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700">
-                <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide">Legenda:</span>
-                <div className="flex items-center gap-1">
-                  <div className="h-2 w-2 rounded-full bg-primary" />
-                  <span className="text-[10px] text-muted-foreground">Pendente</span>
-                </div>
-                <div className="flex items-center gap-1">
-                  <div className="h-2 w-2 rounded-full bg-[#E0C051]" />
-                  <span className="text-[10px] text-muted-foreground">Em andamento</span>
-                </div>
-                <div className="flex items-center gap-1">
-                  <div className="h-2 w-2 rounded-full bg-[#8A8B88]/40" />
-                  <span className="text-[10px] text-muted-foreground">Concluída</span>
-                </div>
-                <div className="flex items-center gap-1">
-                  <div className="h-2 w-2 rounded-full bg-purple-500" />
-                  <span className="text-[10px] text-muted-foreground">Inspeção</span>
-                </div>
-              </div>
 
               {/* Weekday headers */}
               <div className="grid grid-cols-7 mb-3">
@@ -844,7 +871,7 @@ export function MobileDashboard({ schedules, onScheduleClick, onStartCleaning, o
                   <span className="text-xs font-semibold text-primary">{selectedDaySchedules.length} Tarefas</span>
                 </div>
 
-                <div className="flex flex-col gap-3 pb-6">
+                <div className="flex flex-col gap-3 pb-4">
                   {selectedDaySchedules.map(schedule => (
                     <MobileScheduleCard
                       key={schedule.id}
@@ -860,32 +887,34 @@ export function MobileDashboard({ schedules, onScheduleClick, onStartCleaning, o
                     </div>
                   )}
                 </div>
+
+                {/* Color Legend - At the bottom */}
+                <div className="mt-4 px-3 py-3 bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700">
+                  <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide block mb-2">Legenda dos indicadores</span>
+                  <div className="grid grid-cols-2 gap-2">
+                    <div className="flex items-center gap-2">
+                      <div className="h-2.5 w-2.5 rounded-full bg-primary" />
+                      <span className="text-xs text-muted-foreground">Pendente</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <div className="h-2.5 w-2.5 rounded-full bg-[#E0C051]" />
+                      <span className="text-xs text-muted-foreground">Em andamento</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <div className="h-2.5 w-2.5 rounded-full bg-[#8A8B88]/40" />
+                      <span className="text-xs text-muted-foreground">Concluída</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <div className="h-2.5 w-2.5 rounded-full bg-purple-500" />
+                      <span className="text-xs text-muted-foreground">Inspeção</span>
+                    </div>
+                  </div>
+                </div>
               </section>
             </main>
           ) : (
             // Day View
             <>
-              {/* Color Legend */}
-              <div className="flex flex-wrap items-center gap-3 mx-6 mt-4 px-3 py-2 bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700">
-                <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide">Legenda:</span>
-                <div className="flex items-center gap-1">
-                  <div className="h-2 w-2 rounded-full bg-primary" />
-                  <span className="text-[10px] text-muted-foreground">Pendente</span>
-                </div>
-                <div className="flex items-center gap-1">
-                  <div className="h-2 w-2 rounded-full bg-[#E0C051]" />
-                  <span className="text-[10px] text-muted-foreground">Em andamento</span>
-                </div>
-                <div className="flex items-center gap-1">
-                  <div className="h-2 w-2 rounded-full bg-primary/50" />
-                  <span className="text-[10px] text-muted-foreground">Concluída</span>
-                </div>
-                <div className="flex items-center gap-1">
-                  <div className="h-2 w-2 rounded-full bg-purple-500" />
-                  <span className="text-[10px] text-muted-foreground">Inspeção</span>
-                </div>
-              </div>
-
               {/* Week Calendar Strip - Memoized */}
               <MobileWeekStrip
                 weekDays={weekDays}
@@ -969,6 +998,29 @@ export function MobileDashboard({ schedules, onScheduleClick, onStartCleaning, o
                     </div>
                   </>
                 )}
+
+                {/* Color Legend - At the bottom of day view */}
+                <div className="mt-6 mx-6 px-4 py-3 bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 mb-4">
+                  <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide block mb-2">Legenda dos indicadores</span>
+                  <div className="grid grid-cols-2 gap-2">
+                    <div className="flex items-center gap-2">
+                      <div className="h-2.5 w-2.5 rounded-full bg-primary" />
+                      <span className="text-xs text-muted-foreground">Pendente</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <div className="h-2.5 w-2.5 rounded-full bg-[#E0C051]" />
+                      <span className="text-xs text-muted-foreground">Em andamento</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <div className="h-2.5 w-2.5 rounded-full bg-primary/50" />
+                      <span className="text-xs text-muted-foreground">Concluída</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <div className="h-2.5 w-2.5 rounded-full bg-purple-500" />
+                      <span className="text-xs text-muted-foreground">Inspeção</span>
+                    </div>
+                  </div>
+                </div>
               </main>
             </>
           )}
