@@ -12,6 +12,9 @@ verify_jwt = false
 [functions.send-password-reset]
 verify_jwt = false
 
+[functions.geocode-address]
+verify_jwt = false
+
 # Cron job para sincronizar reservas do iCal automaticamente a cada hora
 [[cron_jobs]]
 name = "sync-ical-hourly"

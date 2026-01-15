@@ -866,35 +866,69 @@ export function ScheduleDetail({ schedule, onClose, onUpdateSchedule }: Schedule
               {/* Proximity indicator for cleaners */}
               {schedule.status === 'released' && role === 'cleaner' && proximityCheck.propertyHasCoordinates && (
                 <div className={cn(
-                  "flex items-center justify-between rounded-xl p-3 mb-3 text-sm",
+                  "flex flex-col gap-2 rounded-xl p-3 mb-3 text-sm",
                   proximityCheck.loading 
                     ? "bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400"
                     : proximityCheck.isWithinRange 
                       ? "bg-emerald-50 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800"
-                      : "bg-amber-50 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400 border border-amber-200 dark:border-amber-800"
+                      : "bg-red-50 dark:bg-red-900/30 text-red-700 dark:text-red-400 border border-red-200 dark:border-red-800"
                 )}>
-                  <div className="flex items-center gap-2">
-                    <Navigation className="h-4 w-4" />
-                    {proximityCheck.loading ? (
-                      <span>Verificando localização...</span>
-                    ) : proximityCheck.error ? (
-                      <span>{proximityCheck.error}</span>
-                    ) : proximityCheck.distance !== null ? (
-                      <span>
-                        {proximityCheck.isWithinRange 
-                          ? `Você está a ${formatDistance(proximityCheck.distance)} ✓` 
-                          : `Distância: ${formatDistance(proximityCheck.distance)} (máx 500m)`
-                        }
-                      </span>
-                    ) : null}
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <Navigation className="h-4 w-4" />
+                      {proximityCheck.loading ? (
+                        <span className="flex items-center gap-2">
+                          <span className="animate-pulse">●</span>
+                          Verificando sua localização...
+                        </span>
+                      ) : proximityCheck.error ? (
+                        <span className="font-medium">{proximityCheck.error}</span>
+                      ) : proximityCheck.distance !== null ? (
+                        <span className="font-medium">
+                          {proximityCheck.isWithinRange 
+                            ? `Você está a ${formatDistance(proximityCheck.distance)} do imóvel ✓` 
+                            : `Você está a ${formatDistance(proximityCheck.distance)} do imóvel`
+                          }
+                        </span>
+                      ) : null}
+                    </div>
+                    {!proximityCheck.loading && (
+                      <button
+                        onClick={() => proximityCheck.refresh()}
+                        className="text-xs underline hover:no-underline flex items-center gap-1"
+                      >
+                        <MapPin className="h-3 w-3" />
+                        Atualizar
+                      </button>
+                    )}
                   </div>
-                  {!proximityCheck.loading && (
-                    <button
-                      onClick={() => proximityCheck.refresh()}
-                      className="text-xs underline hover:no-underline"
-                    >
-                      Atualizar
-                    </button>
+                  
+                  {/* Additional info when out of range */}
+                  {!proximityCheck.loading && !proximityCheck.isWithinRange && proximityCheck.distance !== null && (
+                    <div className="flex flex-col gap-1 pt-2 border-t border-red-200 dark:border-red-800">
+                      <p className="text-xs font-semibold flex items-center gap-1">
+                        <span className="material-symbols-outlined text-[14px]">block</span>
+                        Você precisa estar dentro de 500m do imóvel para iniciar
+                      </p>
+                      <p className="text-xs opacity-80">
+                        Aproxime-se do endereço: <strong>{schedule.propertyAddress || schedule.propertyName}</strong>
+                      </p>
+                      <p className="text-xs opacity-60 mt-1">
+                        Faltam aproximadamente {formatDistance(proximityCheck.distance - 500)} para entrar no raio permitido
+                      </p>
+                    </div>
+                  )}
+                  
+                  {/* Error help text */}
+                  {proximityCheck.error && (
+                    <div className="text-xs opacity-80 pt-1 border-t border-red-200 dark:border-red-800">
+                      {proximityCheck.error.includes('Permissão') && (
+                        <p>Acesse as configurações do navegador e permita o acesso à localização para este site.</p>
+                      )}
+                      {proximityCheck.error.includes('indisponível') && (
+                        <p>Verifique se o GPS do seu dispositivo está ativado.</p>
+                      )}
+                    </div>
                   )}
                 </div>
               )}

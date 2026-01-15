@@ -19,6 +19,7 @@ import { CleaningRatesManager } from '@/components/properties/CleaningRatesManag
 import { PropertyTeamManager } from '@/components/properties/PropertyTeamManager';
 import { cn } from '@/lib/utils';
 import { useImageCompression } from '@/hooks/useImageCompression';
+import { usePropertyGeocoding } from '@/hooks/usePropertyGeocoding';
 
 interface Property {
   id: string;
@@ -73,6 +74,7 @@ export default function Properties() {
   const [isUploading, setIsUploading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { compressImage, isCompressing } = useImageCompression();
+  const { geocodeProperty } = usePropertyGeocoding();
   
   const [icalDialogOpen, setIcalDialogOpen] = useState(false);
   const [selectedPropertyId, setSelectedPropertyId] = useState<string | null>(null);
@@ -325,6 +327,16 @@ export default function Properties() {
           });
         }
 
+        // Geocode address automatically if it changed
+        const addressChanged = editingProperty.address !== formData.address.trim();
+        if (addressChanged && formData.address.trim()) {
+          geocodeProperty(editingProperty.id).then(result => {
+            if (result.success) {
+              toast.success('Coordenadas do imóvel atualizadas automaticamente');
+            }
+          });
+        }
+
         toast.success('Propriedade atualizada com sucesso');
       } else {
         // Create property first to get the ID
@@ -363,6 +375,15 @@ export default function Properties() {
             property_id: newProperty.id,
             team_member_id: teamMemberId,
             action: `configuracao_horario_propriedade:checkin:${formData.default_check_in_time},checkout:${formData.default_check_out_time}`
+          });
+        }
+
+        // Geocode address automatically for new properties
+        if (newProperty && formData.address.trim()) {
+          geocodeProperty(newProperty.id).then(result => {
+            if (result.success) {
+              toast.success('Coordenadas do imóvel obtidas automaticamente');
+            }
           });
         }
 

@@ -6,6 +6,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Building2, Plus, ArrowLeft, ArrowRight, Loader2, Check, Trash2 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
+import { usePropertyGeocoding } from '@/hooks/usePropertyGeocoding';
 
 interface PropertiesStepProps {
   onNext: () => void;
@@ -25,6 +26,7 @@ export function PropertiesStep({ onNext, onBack }: PropertiesStepProps) {
   const [loading, setLoading] = useState(true);
   const [newProperty, setNewProperty] = useState({ name: '', address: '' });
   const [adding, setAdding] = useState(false);
+  const { geocodeProperty } = usePropertyGeocoding();
 
   useEffect(() => {
     fetchProperties();
@@ -62,6 +64,15 @@ export function PropertiesStep({ onNext, onBack }: PropertiesStepProps) {
         .single();
 
       if (error) throw error;
+
+      // Geocode address automatically if provided
+      if (data && newProperty.address.trim()) {
+        geocodeProperty(data.id).then(result => {
+          if (result.success) {
+            console.log('[PropertiesStep] Property geocoded successfully');
+          }
+        });
+      }
 
       setProperties(prev => [...prev, data]);
       setNewProperty({ name: '', address: '' });
