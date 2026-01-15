@@ -14,6 +14,8 @@ import { CleanerPaymentCards } from './CleanerPaymentCards';
 import { useStayStatus, StayStatusInfo } from '@/hooks/useStayStatus';
 import { useCleanerInspections, CleanerInspection } from '@/hooks/useCleanerInspections';
 import { AddToHomeScreen } from '@/components/pwa/AddToHomeScreen';
+import { CleaningTimeAlertBanner } from '@/components/dashboard/CleaningTimeAlertBanner';
+import { useCleaningTimeAlerts } from '@/hooks/useCleaningTimeAlert';
 
 // Component to render the footer of pending cards with stay status
 function PendingCardFooter({ schedule }: { schedule: Schedule }) {
@@ -71,6 +73,9 @@ export function MobileDashboard({ schedules, onScheduleClick, onStartCleaning, o
     refetch: refetchInspections 
   } = useCleanerInspections();
   
+  // Cleaning time alerts
+  const cleaningTimeAlerts = useCleaningTimeAlerts(schedules);
+
   // Always initialize with the current date from the device
   const [selectedDate, setSelectedDate] = useState(() => startOfDay(new Date()));
   const [activeTab, setActiveTab] = useState<'inicio' | 'agenda' | 'msgs' | 'menu'>(() => {
@@ -439,6 +444,20 @@ export function MobileDashboard({ schedules, onScheduleClick, onStartCleaning, o
           <div className="px-6 pt-2">
             <AddToHomeScreen />
           </div>
+
+          {/* Cleaning Time Alerts */}
+          {cleaningTimeAlerts.length > 0 && (
+            <div className="px-6 pt-3">
+              <CleaningTimeAlertBanner 
+                alerts={cleaningTimeAlerts}
+                onAlertClick={(scheduleId) => {
+                  const schedule = schedules.find(s => s.id === scheduleId);
+                  if (schedule) onScheduleClick(schedule);
+                }}
+                variant="mobile"
+              />
+            </div>
+          )}
 
           <main className="flex-1 px-6 py-4">
             {/* Period Filter Tabs */}
