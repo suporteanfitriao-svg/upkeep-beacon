@@ -14,9 +14,11 @@ import { AdminInspectionsSection } from '@/components/dashboard/AdminInspections
 import { ScheduleDetail } from '@/components/dashboard/ScheduleDetail';
 import { MobileDashboard } from '@/components/dashboard/MobileDashboard';
 import { UpcomingSchedules } from '@/components/dashboard/UpcomingSchedules';
+import { CleaningTimeAlertBanner } from '@/components/dashboard/CleaningTimeAlertBanner';
 
 import { useSchedules, calculateStats } from '@/hooks/useSchedules';
 import { useAdminInspections } from '@/hooks/useAdminInspections';
+import { useCleaningTimeAlerts } from '@/hooks/useCleaningTimeAlert';
 import { Schedule, ScheduleStatus } from '@/types/scheduling';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { supabase } from '@/integrations/supabase/client';
@@ -142,6 +144,9 @@ const Index = () => {
   }, [lastSyncTime, newReservationsCount]);
 
   const stats = useMemo(() => calculateStats(schedules), [schedules]);
+
+  // Cleaning time alerts
+  const cleaningTimeAlerts = useCleaningTimeAlerts(schedules);
 
   // Apply all filters and sort (completed last)
   const filteredSchedules = useMemo(() => {
@@ -589,6 +594,16 @@ const Index = () => {
               stats={filteredStats}
               onFilterByStatus={handleFilterByStatus}
               activeFilter={activeStatusFilter}
+            />
+
+            {/* Cleaning Time Alerts */}
+            <CleaningTimeAlertBanner 
+              alerts={cleaningTimeAlerts}
+              onAlertClick={(scheduleId) => {
+                const schedule = schedules.find(s => s.id === scheduleId);
+                if (schedule) setSelectedSchedule(schedule);
+              }}
+              variant="admin"
             />
 
             {/* Filters */}
