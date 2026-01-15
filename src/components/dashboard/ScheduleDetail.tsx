@@ -1578,7 +1578,6 @@ export function ScheduleDetail({ schedule, onClose, onUpdateSchedule }: Schedule
       </div>
 
       {/* Location Modal */}
-      {/* Location Modal */}
       {showLocationModal && (
         <LocationModal
           propertyName={schedule.propertyName}
