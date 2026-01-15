@@ -14,6 +14,8 @@ import { useCleanerInspections } from '@/hooks/useCleanerInspections';
 import { AddToHomeScreen } from '@/components/pwa/AddToHomeScreen';
 import { CleaningTimeAlertBanner } from '@/components/dashboard/CleaningTimeAlertBanner';
 import { useCleaningTimeAlerts } from '@/hooks/useCleaningTimeAlert';
+import { useLocationPermission } from '@/hooks/useLocationPermission';
+import LocationPermissionModal from './mobile/LocationPermissionModal';
 
 // Import memoized subcomponents
 import { MobileBottomNav } from './mobile/MobileBottomNav';
@@ -59,6 +61,15 @@ export function MobileDashboard({ schedules, onScheduleClick, onStartCleaning, o
   
   // Cleaning time alerts
   const cleaningTimeAlerts = useCleaningTimeAlerts(schedules);
+
+  // Location permission management
+  const {
+    permissionState: locationPermissionState,
+    showModal: showLocationModal,
+    closeModal: closeLocationModal,
+    requestPermission: requestLocationPermission,
+    dismissAndContinue: dismissLocationModal,
+  } = useLocationPermission({ autoPrompt: true, promptDelay: 2000 });
 
   // Always initialize with the current date from the device
   const [selectedDate, setSelectedDate] = useState(() => startOfDay(new Date()));
@@ -968,6 +979,15 @@ export function MobileDashboard({ schedules, onScheduleClick, onStartCleaning, o
       <MobileBottomNav 
         activeTab={activeTab} 
         onTabChange={handleTabChange} 
+      />
+
+      {/* Location Permission Modal */}
+      <LocationPermissionModal
+        isOpen={showLocationModal}
+        onClose={closeLocationModal}
+        permissionState={locationPermissionState}
+        onRequestPermission={requestLocationPermission}
+        onContinueWithoutLocation={dismissLocationModal}
       />
     </div>
   );
