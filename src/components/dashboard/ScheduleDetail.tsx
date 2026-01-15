@@ -1,4 +1,5 @@
 import { Schedule, ScheduleStatus, ChecklistItem, ChecklistItemStatus, MaintenanceIssue, STATUS_LABELS, STATUS_FLOW, STATUS_ALLOWED_ROLES, AppRole, CategoryPhoto } from '@/types/scheduling';
+import { Json } from '@/integrations/supabase/types';
 import { cn } from '@/lib/utils';
 import { format } from 'date-fns';
 import { useState, useMemo, useEffect, useCallback, useRef } from 'react';
@@ -318,24 +319,51 @@ export function ScheduleDetail({ schedule, onClose, onUpdateSchedule }: Schedule
     setUnsavedCategories(prev => new Set(prev).add(category));
   };
 
-  // Save category changes to database
+  // Save category changes to database - direct update without triggering full reload
   const handleSaveCategory = useCallback(async (category: string) => {
     if (!teamMemberId) return;
     
-    // Update schedule with current checklist state
-    await onUpdateSchedule({ ...schedule, checklist }, undefined, teamMemberId);
-    
-    // Remove category from unsaved set
-    setUnsavedCategories(prev => {
-      const newSet = new Set(prev);
-      newSet.delete(category);
-      return newSet;
-    });
-    
-    toast.success(`Categoria "${category}" salva!`);
-  }, [schedule, checklist, teamMemberId, onUpdateSchedule]);
+    try {
+      // Direct database update to avoid realtime listener causing reload
+      const { error } = await supabase
+        .from('schedules')
+        .update({
+          checklist_state: checklist as unknown as Json,
+          checklists: checklist as unknown as Json,
+        })
+        .eq('id', schedule.id);
 
-  // Handle marking entire category as complete
+      if (error) {
+        console.error('Error saving category:', error);
+        toast.error('Erro ao salvar categoria');
+        return;
+      }
+      
+      // Log the save action in history
+      await supabase.rpc('append_schedule_history', {
+        p_schedule_id: schedule.id,
+        p_team_member_id: teamMemberId,
+        p_action: 'categoria_salva',
+        p_from_status: null,
+        p_to_status: null,
+        p_payload: { category_name: category }
+      });
+      
+      // Remove category from unsaved set
+      setUnsavedCategories(prev => {
+        const newSet = new Set(prev);
+        newSet.delete(category);
+        return newSet;
+      });
+      
+      toast.success(`Categoria "${category}" salva!`);
+    } catch (err) {
+      console.error('Error saving category:', err);
+      toast.error('Erro ao salvar categoria');
+    }
+  }, [schedule.id, checklist, teamMemberId]);
+
+  // Handle marking entire category as complete - direct update without triggering full reload
   const handleMarkCategoryComplete = useCallback(async (category: string) => {
     if (schedule.status !== 'cleaning' || !teamMemberId) return;
     
@@ -348,9 +376,9 @@ export function ScheduleDetail({ schedule, onClose, onUpdateSchedule }: Schedule
       return;
     }
     
-    // Mark all items as completed
+    // Mark all items as completed with proper status
     const updatedChecklist = checklist.map(item => 
-      item.category === category ? { ...item, completed: true } : item
+      item.category === category ? { ...item, completed: true, status: 'ok' as const } : item
     );
     
     const updatedStates = { ...checklistItemStates };
@@ -361,11 +389,23 @@ export function ScheduleDetail({ schedule, onClose, onUpdateSchedule }: Schedule
     setChecklist(updatedChecklist);
     setChecklistItemStates(updatedStates);
     
-    // Update schedule with new checklist
-    await onUpdateSchedule({ ...schedule, checklist: updatedChecklist }, undefined, teamMemberId);
-    
-    // Log audit entry for category complete
     try {
+      // Direct database update to avoid realtime listener causing reload
+      const { error } = await supabase
+        .from('schedules')
+        .update({
+          checklist_state: updatedChecklist as unknown as Json,
+          checklists: updatedChecklist as unknown as Json,
+        })
+        .eq('id', schedule.id);
+
+      if (error) {
+        console.error('Error marking category complete:', error);
+        toast.error('Erro ao marcar categoria');
+        return;
+      }
+      
+      // Log audit entry for category complete
       await supabase.rpc('append_schedule_history', {
         p_schedule_id: schedule.id,
         p_team_member_id: teamMemberId,
@@ -374,13 +414,15 @@ export function ScheduleDetail({ schedule, onClose, onUpdateSchedule }: Schedule
         p_to_status: null,
         p_payload: { category_name: category }
       });
+      
+      toast.success(`Categoria "${category}" marcada como completa!`);
     } catch (error) {
       console.error('Error logging category complete:', error);
+      toast.error('Erro ao marcar categoria');
     }
     
-    toast.success(`Categoria "${category}" marcada como completa!`);
     setConfirmMarkCategory({ open: false, category: null });
-  }, [schedule, checklist, checklistItemStates, teamMemberId, onUpdateSchedule]);
+  }, [schedule.id, schedule.status, checklist, checklistItemStates, teamMemberId]);
 
   // Check if a category has any item marked as DX
   const categoryHasDX = useCallback((category: string) => {
