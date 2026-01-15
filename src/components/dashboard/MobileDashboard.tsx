@@ -445,9 +445,9 @@ export function MobileDashboard({ schedules, onScheduleClick, onStartCleaning, o
             <AddToHomeScreen />
           </div>
 
-          {/* Cleaning Time Alerts */}
+          {/* Cleaning Time Alerts - Only show if there are alerts */}
           {cleaningTimeAlerts.length > 0 && (
-            <div className="px-6 pt-3">
+            <div className="px-6 pt-3 relative z-10">
               <CleaningTimeAlertBanner 
                 alerts={cleaningTimeAlerts}
                 onAlertClick={(scheduleId) => {
@@ -459,13 +459,17 @@ export function MobileDashboard({ schedules, onScheduleClick, onStartCleaning, o
             </div>
           )}
 
-          <main className="flex-1 px-6 py-4">
+          <main className="flex-1 px-6 py-4 relative z-0">
             {/* Period Filter Tabs */}
-            <div className="flex items-center gap-2 mb-4 overflow-x-auto">
+            <div className="flex items-center gap-2 mb-4 overflow-x-auto hide-scrollbar relative z-20">
               <button
-                onClick={() => setPaymentPeriod('today')}
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setPaymentPeriod('today');
+                }}
                 className={cn(
-                  "relative px-4 py-2 rounded-full text-sm font-semibold transition-all whitespace-nowrap",
+                  "relative px-4 py-2 rounded-full text-sm font-semibold transition-all whitespace-nowrap touch-manipulation",
                   paymentPeriod === 'today'
                     ? "bg-primary text-white shadow-md"
                     : "bg-white dark:bg-slate-800 text-muted-foreground border border-slate-200 dark:border-slate-700"
@@ -479,9 +483,13 @@ export function MobileDashboard({ schedules, onScheduleClick, onStartCleaning, o
                 )}
               </button>
               <button
-                onClick={() => setPaymentPeriod('tomorrow')}
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setPaymentPeriod('tomorrow');
+                }}
                 className={cn(
-                  "relative px-4 py-2 rounded-full text-sm font-semibold transition-all whitespace-nowrap",
+                  "relative px-4 py-2 rounded-full text-sm font-semibold transition-all whitespace-nowrap touch-manipulation",
                   paymentPeriod === 'tomorrow'
                     ? "bg-primary text-white shadow-md"
                     : "bg-white dark:bg-slate-800 text-muted-foreground border border-slate-200 dark:border-slate-700"
@@ -495,9 +503,13 @@ export function MobileDashboard({ schedules, onScheduleClick, onStartCleaning, o
                 )}
               </button>
               <button
-                onClick={() => setPaymentPeriod('week')}
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setPaymentPeriod('week');
+                }}
                 className={cn(
-                  "px-4 py-2 rounded-full text-sm font-semibold transition-all whitespace-nowrap",
+                  "px-4 py-2 rounded-full text-sm font-semibold transition-all whitespace-nowrap touch-manipulation",
                   paymentPeriod === 'week'
                     ? "bg-primary text-white shadow-md"
                     : "bg-white dark:bg-slate-800 text-muted-foreground border border-slate-200 dark:border-slate-700"
@@ -506,9 +518,13 @@ export function MobileDashboard({ schedules, onScheduleClick, onStartCleaning, o
                 Semana
               </button>
               <button
-                onClick={() => setPaymentPeriod('month')}
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setPaymentPeriod('month');
+                }}
                 className={cn(
-                  "px-4 py-2 rounded-full text-sm font-semibold transition-all whitespace-nowrap",
+                  "px-4 py-2 rounded-full text-sm font-semibold transition-all whitespace-nowrap touch-manipulation",
                   paymentPeriod === 'month'
                     ? "bg-primary text-white shadow-md"
                     : "bg-white dark:bg-slate-800 text-muted-foreground border border-slate-200 dark:border-slate-700"
@@ -1447,14 +1463,18 @@ export function MobileDashboard({ schedules, onScheduleClick, onStartCleaning, o
         </div>
       )}
 
-      {/* Bottom Navigation */}
-      <nav className="fixed bottom-0 left-0 right-0 z-50">
-        <div className="absolute inset-0 bg-stone-50/80 dark:bg-[#22252a]/80 backdrop-blur-lg border-t border-slate-200/50 dark:border-slate-700/50" />
+      {/* Bottom Navigation - Fixed with highest z-index */}
+      <nav className="fixed bottom-0 left-0 right-0 z-[100] safe-area-inset-bottom">
+        <div className="absolute inset-0 bg-stone-50/95 dark:bg-[#22252a]/95 backdrop-blur-lg border-t border-slate-200/50 dark:border-slate-700/50" />
         <div className="relative flex h-20 items-center justify-around px-2 pb-2">
           <button 
-            onClick={() => setActiveTab('inicio')}
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              setActiveTab('inicio');
+            }}
             className={cn(
-              "group flex flex-col items-center justify-center gap-1 p-2 transition-colors",
+              "group flex flex-col items-center justify-center gap-1 p-3 min-w-[60px] transition-colors touch-manipulation",
               activeTab === 'inicio' ? "text-primary" : "text-[#8A8B88] hover:text-primary"
             )}
           >
@@ -1465,9 +1485,13 @@ export function MobileDashboard({ schedules, onScheduleClick, onStartCleaning, o
             <span className={cn("text-[10px]", activeTab === 'inicio' ? "font-bold" : "font-medium")}>Início</span>
           </button>
           <button 
-            onClick={() => setActiveTab('agenda')}
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              setActiveTab('agenda');
+            }}
             className={cn(
-              "group flex flex-col items-center justify-center gap-1 p-2 transition-colors",
+              "group flex flex-col items-center justify-center gap-1 p-3 min-w-[60px] transition-colors touch-manipulation",
               activeTab === 'agenda' ? "text-primary" : "text-[#8A8B88] hover:text-primary"
             )}
           >
@@ -1475,8 +1499,12 @@ export function MobileDashboard({ schedules, onScheduleClick, onStartCleaning, o
             <span className={cn("text-[10px]", activeTab === 'agenda' ? "font-bold" : "font-medium")}>Agenda</span>
           </button>
           <button 
-            onClick={() => navigate('/mensagens')}
-            className="group flex flex-col items-center justify-center gap-1 p-2 transition-colors text-[#8A8B88] hover:text-primary"
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              navigate('/mensagens');
+            }}
+            className="group flex flex-col items-center justify-center gap-1 p-3 min-w-[60px] transition-colors text-[#8A8B88] hover:text-primary touch-manipulation"
           >
             <div className="relative">
               <span className="material-symbols-outlined text-[28px] transition-transform group-active:scale-90">chat_bubble</span>
@@ -1485,8 +1513,12 @@ export function MobileDashboard({ schedules, onScheduleClick, onStartCleaning, o
             <span className="text-[10px] font-medium">Msgs</span>
           </button>
           <button 
-            onClick={() => navigate('/minha-conta')}
-            className="group flex flex-col items-center justify-center gap-1 p-2 transition-colors text-[#8A8B88] hover:text-primary"
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              navigate('/minha-conta');
+            }}
+            className="group flex flex-col items-center justify-center gap-1 p-3 min-w-[60px] transition-colors text-[#8A8B88] hover:text-primary touch-manipulation"
           >
             <span className="material-symbols-outlined text-[28px] transition-transform group-active:scale-90">menu</span>
             <span className="text-[10px] font-medium">Menu</span>
