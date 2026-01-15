@@ -381,6 +381,21 @@ export function useSchedules() {
         updatePayload.end_at = now;
       }
 
+      // Check if cleaning was completed with delay (after check-in time)
+      let completedWithDelay = false;
+      let delayMinutes = 0;
+      if (updatedSchedule.status === 'completed' && previousStatus !== 'completed') {
+        const checkInTime = updatedSchedule.checkIn instanceof Date 
+          ? updatedSchedule.checkIn 
+          : new Date(updatedSchedule.checkIn);
+        const endTime = new Date(now);
+        
+        if (endTime > checkInTime) {
+          completedWithDelay = true;
+          delayMinutes = Math.round((endTime.getTime() - checkInTime.getTime()) / (1000 * 60));
+        }
+      }
+
       // Update checklist - save to both checklists and checklist_state
       updatePayload.checklists = checklistToUse as unknown as Json;
       // Rule 46.2: Always update checklist_state when checklist changes during cleaning
@@ -407,15 +422,21 @@ export function useSchedules() {
           }
         }
 
+        // Determine action type - include delay info if completed with delay
+        const action = completedWithDelay ? 'completed_with_delay' : 'status_changed';
+        const payload = completedWithDelay 
+          ? { delay_minutes: delayMinutes, completed_after_checkin: true }
+          : {};
+
         const newHistoryEvent = {
           timestamp: now,
           team_member_id: teamMemberId || 'system',
           team_member_name: teamMemberName,
           role: teamMemberRole,
-          action: 'status_changed',
+          action,
           from_status: previousStatus,
           to_status: updatedSchedule.status,
-          payload: {},
+          payload,
         };
         
         // Append to existing history
