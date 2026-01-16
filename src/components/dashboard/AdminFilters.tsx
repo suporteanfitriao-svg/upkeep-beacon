@@ -26,6 +26,7 @@ interface AdminFiltersProps {
   searchQuery: string;
   statusFilter: string;
   responsibleFilter: string;
+  propertyFilter: string;
   filterCounts?: DateFilterCounts;
   onDateFilterChange: (filter: DateFilter) => void;
   onCustomDateChange: (date: Date | undefined) => void;
@@ -33,6 +34,7 @@ interface AdminFiltersProps {
   onSearchChange: (query: string) => void;
   onStatusFilterChange: (status: string) => void;
   onResponsibleFilterChange: (responsible: string) => void;
+  onPropertyFilterChange: (property: string) => void;
 }
 
 const statusOptions = [
@@ -50,6 +52,7 @@ export function AdminFilters({
   searchQuery,
   statusFilter,
   responsibleFilter,
+  propertyFilter,
   filterCounts,
   onDateFilterChange,
   onCustomDateChange,
@@ -57,11 +60,14 @@ export function AdminFilters({
   onSearchChange,
   onStatusFilterChange,
   onResponsibleFilterChange,
+  onPropertyFilterChange,
 }: AdminFiltersProps) {
   const [calendarOpen, setCalendarOpen] = useState(false);
   const [statusOpen, setStatusOpen] = useState(false);
   const [responsibleOpen, setResponsibleOpen] = useState(false);
+  const [propertyOpen, setPropertyOpen] = useState(false);
   const [responsibles, setResponsibles] = useState<string[]>([]);
+  const [properties, setProperties] = useState<{ id: string; name: string }[]>([]);
 
   useEffect(() => {
     const fetchResponsibles = async () => {
@@ -76,6 +82,21 @@ export function AdminFilters({
       }
     };
     fetchResponsibles();
+  }, []);
+
+  useEffect(() => {
+    const fetchProperties = async () => {
+      const { data } = await supabase
+        .from('properties')
+        .select('id, name')
+        .eq('is_active', true)
+        .order('name');
+      
+      if (data) {
+        setProperties(data);
+      }
+    };
+    fetchProperties();
   }, []);
 
   const handleDateSelect = (range: DateRange | undefined) => {
@@ -376,7 +397,47 @@ export function AdminFilters({
       {/* Filters Row */}
       <section className="flex flex-col lg:flex-row gap-4 justify-between items-center">
         <div className="flex flex-col sm:flex-row items-center gap-3 w-full lg:w-auto">
-          <h3 className="text-xl font-bold text-foreground mr-2 whitespace-nowrap">Todos Imóveis</h3>
+          {/* Property Dropdown */}
+          <div className="relative w-full sm:w-auto">
+            <button 
+              onClick={() => setPropertyOpen(!propertyOpen)}
+              className="w-full appearance-none bg-card border-none rounded-xl px-4 py-2 pr-8 text-sm font-bold shadow-sm focus:ring-2 focus:ring-primary cursor-pointer text-foreground flex items-center justify-between gap-2 min-w-[160px]"
+            >
+              {propertyFilter === 'all' ? 'Todos Imóveis' : properties.find(p => p.id === propertyFilter)?.name || 'Todos Imóveis'}
+              <ChevronDown className="w-3 h-3 text-muted-foreground" />
+            </button>
+            {propertyOpen && (
+              <div className="absolute top-full left-0 mt-1 w-full bg-card rounded-xl shadow-lg border z-50 max-h-64 overflow-y-auto">
+                <button
+                  onClick={() => {
+                    onPropertyFilterChange('all');
+                    setPropertyOpen(false);
+                  }}
+                  className={cn(
+                    'w-full text-left px-4 py-2 text-sm hover:bg-muted transition-colors first:rounded-t-xl',
+                    propertyFilter === 'all' && 'bg-muted text-primary font-medium'
+                  )}
+                >
+                  Todos Imóveis
+                </button>
+                {properties.map((property) => (
+                  <button
+                    key={property.id}
+                    onClick={() => {
+                      onPropertyFilterChange(property.id);
+                      setPropertyOpen(false);
+                    }}
+                    className={cn(
+                      'w-full text-left px-4 py-2 text-sm hover:bg-muted transition-colors last:rounded-b-xl',
+                      propertyFilter === property.id && 'bg-muted text-primary font-medium'
+                    )}
+                  >
+                    {property.name}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
           
           {/* Status Dropdown */}
           <div className="relative w-full sm:w-auto">

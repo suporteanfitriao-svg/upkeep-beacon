@@ -133,6 +133,7 @@ const Index = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
   const [responsibleFilter, setResponsibleFilter] = useState('all');
+  const [propertyFilter, setPropertyFilter] = useState('all');
   
   // Pagination for range mode
   const [currentPage, setCurrentPage] = useState(1);
@@ -163,6 +164,11 @@ const Index = () => {
 
       // Responsible filter
       if (responsibleFilter !== 'all' && schedule.cleanerName !== responsibleFilter) {
+        return false;
+      }
+
+      // Property filter
+      if (propertyFilter !== 'all' && schedule.propertyId !== propertyFilter) {
         return false;
       }
 
@@ -673,6 +679,7 @@ const Index = () => {
               searchQuery={searchQuery}
               statusFilter={statusFilter}
               responsibleFilter={responsibleFilter}
+              propertyFilter={propertyFilter}
               filterCounts={dateFilterCounts}
               onDateFilterChange={setDateFilter}
               onCustomDateChange={setCustomDate}
@@ -680,6 +687,7 @@ const Index = () => {
               onSearchChange={setSearchQuery}
               onStatusFilterChange={setStatusFilter}
               onResponsibleFilterChange={setResponsibleFilter}
+              onPropertyFilterChange={setPropertyFilter}
             />
 
             {/* Inspections Section */}
