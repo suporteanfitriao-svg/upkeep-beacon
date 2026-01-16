@@ -435,9 +435,7 @@ const Index = () => {
     
     const success = await updateSchedule(updatedSchedule, previousStatus);
     if (success) {
-      if (updatedSchedule.status === 'cleaning' && previousStatus !== 'cleaning') {
-        await refetch();
-      }
+      // Update selected schedule state without refetching to avoid reload
       setSelectedSchedule(prev => {
         if (prev && prev.id === updatedSchedule.id) {
           return { ...updatedSchedule };
@@ -504,7 +502,7 @@ const Index = () => {
     if (schedule) {
       const success = await updateSchedule({ ...schedule, status: 'cleaning' }, schedule.status);
       if (success) {
-        await refetch();
+        // No refetch to avoid page reload - updateSchedule already updates local state
         toast.success('Limpeza iniciada!');
       } else {
         toast.error('Erro ao iniciar limpeza');
