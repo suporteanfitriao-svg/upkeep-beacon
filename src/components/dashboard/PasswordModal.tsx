@@ -35,6 +35,19 @@ const isScheduleDay = (scheduleDateStr: string): boolean => {
   return todayStr === scheduleDatePart;
 };
 
+// Check if checkout day has PASSED (it's after midnight of the checkout day)
+const hasCheckoutDayPassed = (scheduleDateStr: string): boolean => {
+  const now = new Date();
+  const nowInSaoPaulo = toZonedTime(now, SAO_PAULO_TZ);
+  const todayStr = format(nowInSaoPaulo, 'yyyy-MM-dd', { timeZone: SAO_PAULO_TZ });
+  
+  // Extract date part from schedule date (handles both YYYY-MM-DD and ISO formats)
+  const scheduleDatePart = scheduleDateStr.split('T')[0];
+  
+  // If today is after the schedule date, it has passed
+  return todayStr > scheduleDatePart;
+};
+
 export function PasswordModal({ 
   propertyId,
   propertyName, 
@@ -59,11 +72,15 @@ export function PasswordModal({
   const [hasLoggedView, setHasLoggedView] = useState(false);
 
   // Check if cleaner can view password based on:
-  // 1. Checkout day (from 00:01) OR
+  // 1. Checkout day (from 00:01) OR before checkout day OR
   // 2. Schedule is released/cleaning/completed
-  // Whichever occurs first
+  // 3. ALWAYS allow if status is 'cleaning' (even after checkout day passed)
+  // Only block if: checkout day has PASSED AND status is NOT 'cleaning'
   const isCheckoutDay = isScheduleDay(scheduleDate);
+  const checkoutDayPassed = hasCheckoutDayPassed(scheduleDate);
+  const isCleaningInProgress = scheduleStatus === 'cleaning';
   const isReleasedForCleaning = scheduleStatus === 'released' || scheduleStatus === 'cleaning' || scheduleStatus === 'completed';
+  
   // Fetch property password mode
   useEffect(() => {
     const fetchPasswordMode = async () => {
@@ -90,9 +107,11 @@ export function PasswordModal({
   const displayPassword = passwordMode === 'ical' ? passwordFromIcal : accessPassword;
   const hasPassword = Boolean(displayPassword && displayPassword.trim());
 
-  // Rule: Temporal visibility applies to ALL passwords (both iCal and manual)
-  // Cleaners can view password if: checkout day (from 00:01) OR schedule is released/cleaning/completed
-  const canCleanerViewByRule = isCheckoutDay || isReleasedForCleaning;
+  // Rule: Temporal visibility
+  // - Allow if checkout day OR before checkout day OR schedule is released/cleaning/completed
+  // - Block ONLY if checkout day has PASSED AND status is NOT 'cleaning'
+  // - If status is 'cleaning', ALWAYS allow (even after checkout day)
+  const canCleanerViewByRule = isCheckoutDay || isReleasedForCleaning || !checkoutDayPassed || isCleaningInProgress;
   const isBlockedByTemporalRule = role === 'cleaner' && !canCleanerViewByRule;
 
   // Log view action when password is displayed (only once per modal open) - Rule 13
@@ -173,16 +192,16 @@ export function PasswordModal({
       );
     }
 
-    // Temporal restriction message for cleaner (before checkout day AND not released)
+    // Temporal restriction message for cleaner (checkout day passed AND not in cleaning status)
     if (isBlockedByTemporalRule) {
       return (
         <div className="mt-6 mb-4 flex w-full flex-col items-center justify-center rounded-xl bg-blue-50 border border-blue-200 py-5 dark:bg-blue-900/20 dark:border-blue-800">
           <span className="material-symbols-outlined text-3xl text-blue-600 dark:text-blue-400 mb-2">schedule</span>
           <span className="text-sm font-medium text-blue-700 dark:text-blue-300">
-            Senha disponível no dia do checkout ou após liberação
+            Senha não disponível
           </span>
           <span className="text-xs text-blue-600 dark:text-blue-400 mt-1 text-center px-4">
-            Por segurança, a senha será liberada às 00:01 do dia agendado ou quando a limpeza for liberada
+            O prazo para visualização da senha expirou após a data do checkout
           </span>
         </div>
       );
