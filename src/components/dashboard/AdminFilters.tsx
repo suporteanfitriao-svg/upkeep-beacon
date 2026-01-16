@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { format, addDays, subDays } from 'date-fns';
+import { format, addDays, subDays, startOfWeek, endOfWeek, addWeeks, startOfMonth, endOfMonth } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { Calendar as CalendarIcon, Search, ChevronDown, ChevronLeft, ChevronRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -10,7 +10,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { cn } from '@/lib/utils';
 import type { DateRange } from 'react-day-picker';
 
-export type DateFilter = 'today' | 'tomorrow' | 'custom' | 'range' | 'all';
+export type DateFilter = 'today' | 'tomorrow' | 'week' | 'month' | 'custom' | 'range' | 'all';
 
 interface AdminFiltersProps {
   dateFilter: DateFilter;
@@ -132,6 +132,8 @@ export function AdminFilters({
   const getDateLabel = () => {
     if (dateFilter === 'today') return 'Hoje';
     if (dateFilter === 'tomorrow') return 'Amanhã';
+    if (dateFilter === 'week') return 'Próxima Semana';
+    if (dateFilter === 'month') return 'Mês';
     if (dateFilter === 'custom' && customDate) {
       return format(customDate, "dd 'de' MMM", { locale: ptBR });
     }
@@ -142,6 +144,24 @@ export function AdminFilters({
       return format(dateRange.from, "dd/MM", { locale: ptBR });
     }
     return 'Data';
+  };
+
+  // Handle week filter click
+  const handleWeekClick = () => {
+    const today = new Date();
+    const nextWeekStart = startOfWeek(addWeeks(today, 1), { weekStartsOn: 1 });
+    const nextWeekEnd = endOfWeek(addWeeks(today, 1), { weekStartsOn: 1 });
+    onDateRangeChange?.({ from: nextWeekStart, to: nextWeekEnd });
+    onDateFilterChange('week');
+  };
+
+  // Handle month filter click
+  const handleMonthClick = () => {
+    const today = new Date();
+    const monthStart = startOfMonth(today);
+    const monthEnd = endOfMonth(today);
+    onDateRangeChange?.({ from: monthStart, to: monthEnd });
+    onDateFilterChange('month');
   };
 
   const selectedStatus = statusOptions.find(s => s.value === statusFilter)?.label || 'Todos Status';
@@ -180,13 +200,35 @@ export function AdminFilters({
               onDateRangeChange?.(undefined);
             }}
             className={cn(
-              'px-4 py-1.5 text-sm font-medium transition-colors',
+              'px-4 py-1.5 text-sm font-medium rounded-lg transition-colors',
               dateFilter === 'tomorrow' 
-                ? 'bg-primary text-primary-foreground shadow-sm rounded-lg' 
+                ? 'bg-primary text-primary-foreground shadow-sm' 
                 : 'text-muted-foreground hover:text-primary'
             )}
           >
             Amanhã
+          </button>
+          <button
+            onClick={handleWeekClick}
+            className={cn(
+              'px-4 py-1.5 text-sm font-medium rounded-lg transition-colors whitespace-nowrap',
+              dateFilter === 'week' 
+                ? 'bg-primary text-primary-foreground shadow-sm' 
+                : 'text-muted-foreground hover:text-primary'
+            )}
+          >
+            Próxima Semana
+          </button>
+          <button
+            onClick={handleMonthClick}
+            className={cn(
+              'px-4 py-1.5 text-sm font-medium rounded-lg transition-colors',
+              dateFilter === 'month' 
+                ? 'bg-primary text-primary-foreground shadow-sm' 
+                : 'text-muted-foreground hover:text-primary'
+            )}
+          >
+            Mês
           </button>
           
           {/* Custom date or range indicator */}
