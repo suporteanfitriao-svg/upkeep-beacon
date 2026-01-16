@@ -3,7 +3,7 @@ import { Schedule, ScheduleStatus, STATUS_FLOW, STATUS_LABELS, STATUS_ALLOWED_RO
 import { cn } from '@/lib/utils';
 import { AlertTriangle, Check, Clock, Sparkles, ChevronDown, ChevronUp, ExternalLink, User, Timer, Play, CircleCheck, KeyRound, MessageSquare, Send, AlertCircle } from 'lucide-react';
 import { wasCompletedWithDelay, getDelayMinutes } from '@/hooks/useCleaningTimeAlert';
-import { format } from 'date-fns';
+import { format, isSameDay, isAfter, startOfDay } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { AssignCleanerPopover } from './AssignCleanerPopover';
 import { EditTimesPopover } from './EditTimesPopover';
@@ -115,7 +115,8 @@ export function AdminScheduleRow({ schedule, onClick, onScheduleUpdated }: Admin
     open: boolean;
     targetStatus: ScheduleStatus | null;
     isRelease: boolean;
-  }>({ open: false, targetStatus: null, isRelease: false });
+    isEarlyRelease: boolean;
+  }>({ open: false, targetStatus: null, isRelease: false, isEarlyRelease: false });
   const [passwordMode, setPasswordMode] = useState<'ical' | 'manual' | 'global' | null>(null);
   const [showPasswordModal, setShowPasswordModal] = useState(false);
   const [adminNotes, setAdminNotes] = useState(schedule.notes || '');
@@ -249,7 +250,13 @@ export function AdminScheduleRow({ schedule, onClick, onScheduleUpdated }: Admin
   const handleReleaseClick = (e: React.MouseEvent) => {
     e.stopPropagation();
     if (!teamMemberId || localSchedule.status !== 'waiting') return;
-    setConfirmDialog({ open: true, targetStatus: 'released', isRelease: true });
+    
+    // Check if today is before checkout day
+    const today = startOfDay(new Date());
+    const checkoutDay = startOfDay(localSchedule.checkOut);
+    const isEarlyRelease = !isSameDay(today, checkoutDay) && !isAfter(today, checkoutDay);
+    
+    setConfirmDialog({ open: true, targetStatus: 'released', isRelease: true, isEarlyRelease });
   };
 
   const handleReleaseForCleaning = async () => {
@@ -299,7 +306,7 @@ export function AdminScheduleRow({ schedule, onClick, onScheduleUpdated }: Admin
 
   const handleStatusClick = (status: ScheduleStatus) => {
     if (!teamMemberId || status === localSchedule.status) return;
-    setConfirmDialog({ open: true, targetStatus: status, isRelease: false });
+    setConfirmDialog({ open: true, targetStatus: status, isRelease: false, isEarlyRelease: false });
   };
 
   const handleStatusChange = async (newStatus: ScheduleStatus) => {
@@ -375,7 +382,7 @@ export function AdminScheduleRow({ schedule, onClick, onScheduleUpdated }: Admin
     } else if (confirmDialog.targetStatus) {
       await handleStatusChange(confirmDialog.targetStatus);
     }
-    setConfirmDialog({ open: false, targetStatus: null, isRelease: false });
+    setConfirmDialog({ open: false, targetStatus: null, isRelease: false, isEarlyRelease: false });
   };
 
   const getAvailableTransitions = (): ScheduleStatus[] => {
@@ -393,18 +400,28 @@ export function AdminScheduleRow({ schedule, onClick, onScheduleUpdated }: Admin
 
   const getConfirmationMessage = () => {
     if (confirmDialog.isRelease) {
+      const checkoutDate = format(localSchedule.checkOut, "dd/MM/yyyy");
+      if (confirmDialog.isEarlyRelease) {
+        return {
+          title: '⚠️ Liberação Antecipada',
+          description: `Atenção! O checkout de "${localSchedule.propertyName}" está agendado para ${checkoutDate}. Ainda não é o dia do checkout. Tem certeza que deseja liberar antecipadamente?`,
+          isWarning: true,
+        };
+      }
       return {
         title: 'Liberar para Limpeza',
         description: `Tem certeza que deseja liberar "${localSchedule.propertyName}" para limpeza? Esta ação permitirá que o responsável inicie o serviço.`,
+        isWarning: false,
       };
     }
     if (confirmDialog.targetStatus) {
       return {
         title: `Alterar Status para "${STATUS_LABELS[confirmDialog.targetStatus]}"`,
         description: `Tem certeza que deseja alterar o status de "${localSchedule.propertyName}" de "${STATUS_LABELS[localSchedule.status]}" para "${STATUS_LABELS[confirmDialog.targetStatus]}"?`,
+        isWarning: false,
       };
     }
-    return { title: '', description: '' };
+    return { title: '', description: '', isWarning: false };
   };
 
   return (
@@ -864,18 +881,23 @@ export function AdminScheduleRow({ schedule, onClick, onScheduleUpdated }: Admin
       )}
 
       {/* Confirmation Dialog */}
-      <AlertDialog open={confirmDialog.open} onOpenChange={(open) => !open && setConfirmDialog({ open: false, targetStatus: null, isRelease: false })}>
-        <AlertDialogContent>
+      <AlertDialog open={confirmDialog.open} onOpenChange={(open) => !open && setConfirmDialog({ open: false, targetStatus: null, isRelease: false, isEarlyRelease: false })}>
+        <AlertDialogContent className={confirmDialog.isEarlyRelease ? 'border-amber-500 border-2' : ''}>
           <AlertDialogHeader>
-            <AlertDialogTitle>{getConfirmationMessage().title}</AlertDialogTitle>
-            <AlertDialogDescription>
+            <AlertDialogTitle className={confirmDialog.isEarlyRelease ? 'text-amber-600 dark:text-amber-400' : ''}>
+              {getConfirmationMessage().title}
+            </AlertDialogTitle>
+            <AlertDialogDescription className={confirmDialog.isEarlyRelease ? 'text-amber-700 dark:text-amber-300 font-medium' : ''}>
               {getConfirmationMessage().description}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancelar</AlertDialogCancel>
-            <AlertDialogAction onClick={handleConfirmStatusChange}>
-              Confirmar
+            <AlertDialogAction 
+              onClick={handleConfirmStatusChange}
+              className={confirmDialog.isEarlyRelease ? 'bg-amber-600 hover:bg-amber-700' : ''}
+            >
+              {confirmDialog.isEarlyRelease ? 'Liberar Mesmo Assim' : 'Confirmar'}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
