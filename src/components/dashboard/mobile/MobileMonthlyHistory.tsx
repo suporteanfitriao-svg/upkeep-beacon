@@ -1,7 +1,7 @@
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import { format, subMonths, startOfMonth, endOfMonth, isWithinInterval } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { TrendingUp, TrendingDown, Minus } from 'lucide-react';
+import { TrendingUp, TrendingDown, Minus, ChevronDown, ChevronUp } from 'lucide-react';
 import { Schedule } from '@/types/scheduling';
 import { cn } from '@/lib/utils';
 
@@ -17,6 +17,8 @@ interface MonthData {
 }
 
 export function MobileMonthlyHistory({ schedules }: MobileMonthlyHistoryProps) {
+  const [isExpanded, setIsExpanded] = useState(false);
+
   const monthlyData = useMemo(() => {
     const now = new Date();
     const months: MonthData[] = [];
@@ -62,6 +64,8 @@ export function MobileMonthlyHistory({ schedules }: MobileMonthlyHistoryProps) {
     return Math.max(...monthlyData.map(m => m.count), 1);
   }, [monthlyData]);
 
+  const displayedMonths = isExpanded ? monthlyData : monthlyData.slice(0, 3);
+
   if (monthlyData.every(m => m.count === 0)) {
     return null;
   }
@@ -73,8 +77,14 @@ export function MobileMonthlyHistory({ schedules }: MobileMonthlyHistoryProps) {
       </h4>
       
       <div className="space-y-3">
-        {monthlyData.slice(0, 4).map((data, index) => (
-          <div key={index} className="flex items-center gap-3">
+        {displayedMonths.map((data, index) => (
+          <div 
+            key={index} 
+            className={cn(
+              "flex items-center gap-3 transition-all duration-300",
+              !isExpanded && index >= 3 && "opacity-0 h-0 overflow-hidden"
+            )}
+          >
             {/* Month label */}
             <div className="w-16 shrink-0">
               <p className="text-sm font-medium text-foreground capitalize">
@@ -126,6 +136,24 @@ export function MobileMonthlyHistory({ schedules }: MobileMonthlyHistoryProps) {
           </div>
         ))}
       </div>
+
+      {/* Expand/Collapse button */}
+      <button
+        onClick={() => setIsExpanded(!isExpanded)}
+        className="w-full mt-4 pt-3 border-t border-slate-100 dark:border-slate-700 flex items-center justify-center gap-2 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
+      >
+        {isExpanded ? (
+          <>
+            <span>Ver menos</span>
+            <ChevronUp className="w-4 h-4" />
+          </>
+        ) : (
+          <>
+            <span>Ver 6 meses</span>
+            <ChevronDown className="w-4 h-4" />
+          </>
+        )}
+      </button>
     </div>
   );
 }
