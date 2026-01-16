@@ -49,13 +49,28 @@ export function useStayStatus(schedule: Schedule): StayStatusInfo | null {
     const checkoutInSP = new Date(formatInTimeZone(checkoutTime, TIMEZONE, "yyyy-MM-dd'T'HH:mm:ss"));
     const checkInInSP = new Date(formatInTimeZone(checkInTime, TIMEZONE, "yyyy-MM-dd'T'HH:mm:ss"));
 
-    // Check if checkout is today (in São Paulo timezone)
+    // Check if checkout is today (in São Paulo timezone) or overdue
     const todaySP = formatInTimeZone(now, TIMEZONE, 'yyyy-MM-dd');
     const checkoutDateSP = formatInTimeZone(checkoutTime, TIMEZONE, 'yyyy-MM-dd');
     const isCheckoutToday = todaySP === checkoutDateSP;
+    const isOverdueTask = todaySP > checkoutDateSP;
 
     // 1 hour before checkout
     const oneHourBeforeCheckout = subHours(checkoutInSP, 1);
+
+    // Priority 0: Overdue task (checkout date has passed)
+    if (isOverdueTask) {
+      const diffMs = nowInSP.getTime() - checkoutInSP.getTime();
+      const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+      
+      return {
+        type: 'stay_ending',
+        label: diffDays > 0 ? `${diffDays} DIA${diffDays > 1 ? 'S' : ''} ATRASADO` : 'ATRASADO',
+        description: 'Tarefa em atraso - checkout passou',
+        colorClass: 'text-red-600 dark:text-red-400',
+        bgClass: 'bg-red-100 dark:bg-red-900/30',
+      };
+    }
 
     // Priority 1: Estadia no fim
     // current_date = checkout_date AND current_time >= checkout_time AND cleaning not started
