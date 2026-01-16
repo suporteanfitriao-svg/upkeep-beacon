@@ -70,19 +70,23 @@ export function ScheduleDetail({ schedule, onClose, onUpdateSchedule }: Schedule
   const [localIssues, setLocalIssues] = useState<MaintenanceIssue[]>(schedule.maintenanceIssues);
   const [showIssueForm, setShowIssueForm] = useState(false);
   const [expandedCategories, setExpandedCategories] = useState<Record<string, boolean>>({});
+
+  const deriveChecklistItemStates = useCallback(
+    (items: ChecklistItem[]) => {
+      const initialStates: Record<string, 'yes' | 'no' | null> = {};
+      items.forEach((item) => {
+        if (item.status === 'ok') initialStates[item.id] = 'yes';
+        else if (item.status === 'not_ok') initialStates[item.id] = 'no';
+        else initialStates[item.id] = null;
+      });
+      return initialStates;
+    },
+    []
+  );
+
   // Initialize checklistItemStates from saved checklist status
   const [checklistItemStates, setChecklistItemStates] = useState<Record<string, 'yes' | 'no' | null>>(() => {
-    const initialStates: Record<string, 'yes' | 'no' | null> = {};
-    schedule.checklist.forEach(item => {
-      if (item.status === 'ok') {
-        initialStates[item.id] = 'yes';
-      } else if (item.status === 'not_ok') {
-        initialStates[item.id] = 'no';
-      } else {
-        initialStates[item.id] = null;
-      }
-    });
-    return initialStates;
+    return deriveChecklistItemStates(schedule.checklist);
   });
   const [showLocationModal, setShowLocationModal] = useState(false);
   const [showPasswordModal, setShowPasswordModal] = useState(false);
@@ -104,11 +108,36 @@ export function ScheduleDetail({ schedule, onClose, onUpdateSchedule }: Schedule
   const [hasAcknowledgedNotes, setHasAcknowledgedNotes] = useState(false);
   const cacheInitializedRef = useRef(false);
   const hasUserInteractedRef = useRef(false);
+  const checklistHydratedRef = useRef(false);
   const statusStyle = statusConfig[schedule.status];
+
+  // When switching schedules (or reopening the same component), reset session-only refs
+  useEffect(() => {
+    cacheInitializedRef.current = false;
+    hasUserInteractedRef.current = false;
+    checklistHydratedRef.current = false;
+
+    setNotes(schedule.notes);
+    setCleanerObservations(schedule.cleanerObservations || '');
+    setChecklist(schedule.checklist);
+    setChecklistItemStates(deriveChecklistItemStates(schedule.checklist));
+    setLocalIssues(schedule.maintenanceIssues);
+  }, [schedule.id, deriveChecklistItemStates]);
+
+  // When the backend finishes linking/loading a checklist (after "Iniciar Limpeza"), hydrate local state.
+  useEffect(() => {
+    if (schedule.status !== 'cleaning') return;
+    if (hasUserInteractedRef.current) return;
+
+    if (!checklistHydratedRef.current && schedule.checklist.length > 0) {
+      setChecklist(schedule.checklist);
+      setChecklistItemStates(deriveChecklistItemStates(schedule.checklist));
+      checklistHydratedRef.current = true;
+    }
+  }, [schedule.status, schedule.checklist, deriveChecklistItemStates]);
 
   // Check if admin notes exist
   const hasAdminNotes = Boolean(schedule.notes && schedule.notes.trim().length > 0);
-
   // Checkout day verification for password visibility
   const isCheckoutDay = useCheckoutDayVerification(schedule);
   
