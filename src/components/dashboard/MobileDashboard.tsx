@@ -552,14 +552,16 @@ export function MobileDashboard({ schedules, onScheduleClick, onStartCleaning, o
             </div>
           )}
 
-          <main className="flex-1 px-6 py-4 relative z-0">
+          <main className="flex-1 px-6 py-4">
             {/* Period Filter Tabs - Memoized */}
-            <MobilePeriodFilterTabs
-              paymentPeriod={paymentPeriod}
-              onPeriodChange={handlePeriodChange}
-              todayTasksCount={todayTasksCount}
-              tomorrowTasksCount={tomorrowTasksCount}
-            />
+            <div className="relative z-30">
+              <MobilePeriodFilterTabs
+                paymentPeriod={paymentPeriod}
+                onPeriodChange={handlePeriodChange}
+                todayTasksCount={todayTasksCount}
+                tomorrowTasksCount={tomorrowTasksCount}
+              />
+            </div>
 
             {/* Today Summary */}
             <div className="flex items-center justify-between mb-4">
@@ -744,14 +746,16 @@ export function MobileDashboard({ schedules, onScheduleClick, onStartCleaning, o
             </div>
 
             {/* Filter Tabs: Hoje, Mês, Data */}
-            <MobileAgendaFilterTabs
-              viewMode={agendaViewMode}
-              selectedDate={selectedDate}
-              onViewModeChange={handleAgendaViewModeChange}
-              onDateSelect={handleDateSelect}
-              onMonthChange={setCurrentMonth}
-              dayIndicators={dayIndicators}
-            />
+            <div className="relative z-40">
+              <MobileAgendaFilterTabs
+                viewMode={agendaViewMode}
+                selectedDate={selectedDate}
+                onViewModeChange={handleAgendaViewModeChange}
+                onDateSelect={handleDateSelect}
+                onMonthChange={setCurrentMonth}
+                dayIndicators={dayIndicators}
+              />
+            </div>
           </header>
 
           {/* Infinite Day Strip for "Hoje" or "Data" views */}
