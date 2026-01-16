@@ -12,6 +12,13 @@ import type { DateRange } from 'react-day-picker';
 
 export type DateFilter = 'today' | 'tomorrow' | 'week' | 'month' | 'custom' | 'range' | 'all';
 
+interface DateFilterCounts {
+  today: number;
+  tomorrow: number;
+  week: number;
+  month: number;
+}
+
 interface AdminFiltersProps {
   dateFilter: DateFilter;
   customDate: Date | undefined;
@@ -19,6 +26,7 @@ interface AdminFiltersProps {
   searchQuery: string;
   statusFilter: string;
   responsibleFilter: string;
+  filterCounts?: DateFilterCounts;
   onDateFilterChange: (filter: DateFilter) => void;
   onCustomDateChange: (date: Date | undefined) => void;
   onDateRangeChange?: (range: DateRange | undefined) => void;
@@ -42,6 +50,7 @@ export function AdminFilters({
   searchQuery,
   statusFilter,
   responsibleFilter,
+  filterCounts,
   onDateFilterChange,
   onCustomDateChange,
   onDateRangeChange,
@@ -186,13 +195,23 @@ export function AdminFilters({
               onDateRangeChange?.(undefined);
             }}
             className={cn(
-              'px-4 py-1.5 text-sm font-medium rounded-lg transition-colors',
+              'px-4 py-1.5 text-sm font-medium rounded-lg transition-colors flex items-center gap-1.5',
               dateFilter === 'today' 
                 ? 'bg-primary text-primary-foreground shadow-sm' 
                 : 'text-muted-foreground hover:text-primary'
             )}
           >
             Hoje
+            {filterCounts && filterCounts.today > 0 && (
+              <span className={cn(
+                'min-w-[20px] h-5 px-1.5 rounded-full text-xs font-bold flex items-center justify-center',
+                dateFilter === 'today' 
+                  ? 'bg-primary-foreground/20 text-primary-foreground'
+                  : 'bg-primary/10 text-primary'
+              )}>
+                {filterCounts.today}
+              </span>
+            )}
           </button>
           <button
             onClick={() => {
@@ -200,35 +219,65 @@ export function AdminFilters({
               onDateRangeChange?.(undefined);
             }}
             className={cn(
-              'px-4 py-1.5 text-sm font-medium rounded-lg transition-colors',
+              'px-4 py-1.5 text-sm font-medium rounded-lg transition-colors flex items-center gap-1.5',
               dateFilter === 'tomorrow' 
                 ? 'bg-primary text-primary-foreground shadow-sm' 
                 : 'text-muted-foreground hover:text-primary'
             )}
           >
             Amanhã
+            {filterCounts && filterCounts.tomorrow > 0 && (
+              <span className={cn(
+                'min-w-[20px] h-5 px-1.5 rounded-full text-xs font-bold flex items-center justify-center',
+                dateFilter === 'tomorrow' 
+                  ? 'bg-primary-foreground/20 text-primary-foreground'
+                  : 'bg-primary/10 text-primary'
+              )}>
+                {filterCounts.tomorrow}
+              </span>
+            )}
           </button>
           <button
             onClick={handleWeekClick}
             className={cn(
-              'px-4 py-1.5 text-sm font-medium rounded-lg transition-colors whitespace-nowrap',
+              'px-4 py-1.5 text-sm font-medium rounded-lg transition-colors whitespace-nowrap flex items-center gap-1.5',
               dateFilter === 'week' 
                 ? 'bg-primary text-primary-foreground shadow-sm' 
                 : 'text-muted-foreground hover:text-primary'
             )}
           >
             Próxima Semana
+            {filterCounts && filterCounts.week > 0 && (
+              <span className={cn(
+                'min-w-[20px] h-5 px-1.5 rounded-full text-xs font-bold flex items-center justify-center',
+                dateFilter === 'week' 
+                  ? 'bg-primary-foreground/20 text-primary-foreground'
+                  : 'bg-primary/10 text-primary'
+              )}>
+                {filterCounts.week}
+              </span>
+            )}
           </button>
           <button
             onClick={handleMonthClick}
             className={cn(
-              'px-4 py-1.5 text-sm font-medium rounded-lg transition-colors',
+              'px-4 py-1.5 text-sm font-medium rounded-lg transition-colors flex items-center gap-1.5',
               dateFilter === 'month' 
                 ? 'bg-primary text-primary-foreground shadow-sm' 
                 : 'text-muted-foreground hover:text-primary'
             )}
           >
             Mês
+            {filterCounts && filterCounts.month > 0 && (
+              <span className={cn(
+                'min-w-[20px] h-5 px-1.5 rounded-full text-xs font-bold flex items-center justify-center',
+                dateFilter === 'month' 
+                  ? 'bg-primary-foreground/20 text-primary-foreground'
+                  : 'bg-primary/10 text-primary'
+              )}>
+                {filterCounts.month}
+              </span>
+            )}
           </button>
           
           {/* Custom date or range indicator */}
