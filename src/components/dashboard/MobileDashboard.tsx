@@ -26,6 +26,7 @@ import { MobileWeekStrip } from './mobile/MobileWeekStrip';
 import { MobileInspectionCard } from './mobile/MobileInspectionCard';
 import { MobileInfiniteDayStrip } from './mobile/MobileInfiniteDayStrip';
 import { MobileAgendaFilterTabs, AgendaViewMode } from './mobile/MobileAgendaFilterTabs';
+import { MobileMonthlyHistory } from './mobile/MobileMonthlyHistory';
 
 interface MobileDashboardProps {
   schedules: Schedule[];
@@ -611,6 +612,9 @@ export function MobileDashboard({ schedules, onScheduleClick, onStartCleaning, o
                 </span>
               </div>
             </div>
+
+            {/* Monthly History */}
+            <MobileMonthlyHistory schedules={schedules} />
 
             {/* Payment Cards */}
             <CleanerPaymentCards teamMemberId={teamMemberId} period={paymentPeriod} />
