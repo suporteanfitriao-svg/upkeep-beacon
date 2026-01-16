@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { SidebarProvider, SidebarInset } from '@/components/ui/sidebar';
 import { AppSidebar } from '@/components/dashboard/AppSidebar';
+import { DashboardHeader } from '@/components/dashboard/DashboardHeader';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -567,34 +568,29 @@ export default function Properties() {
       <div className="flex min-h-screen w-full bg-background">
         <AppSidebar />
         <SidebarInset className="flex-1">
-          {/* Header */}
-          <header className="sticky top-0 z-20 flex items-center justify-between bg-background/90 px-4 py-4 backdrop-blur-md border-b border-border md:px-6">
-            <div className="flex items-center gap-3">
-              <div className="flex flex-col">
-                <h1 className="text-lg font-bold tracking-tight text-foreground">Propriedades</h1>
-                <span className="text-xs text-muted-foreground">{properties.length} imóveis cadastrados</span>
-              </div>
-            </div>
-            <div className="flex items-center gap-2">
-              <button
-                onClick={handleSyncAll}
-                disabled={isSyncing !== null}
-                className="flex items-center gap-2 rounded-xl border border-border bg-card px-3 py-2 text-sm font-medium text-foreground shadow-sm transition-all hover:bg-muted active:scale-[0.98] disabled:opacity-50"
-              >
-                <span className={cn("material-symbols-outlined text-[18px]", isSyncing === 'all' && 'animate-spin')}>sync</span>
-                <span className="hidden sm:inline">Sincronizar</span>
-              </button>
-              {canManage && (
-                <Dialog open={dialogOpen} onOpenChange={(open) => {
-                  setDialogOpen(open);
-                  if (!open) resetForm();
-                }}>
-                  <DialogTrigger asChild>
-                    <button className="flex items-center gap-2 rounded-xl bg-primary px-4 py-2 text-sm font-bold text-primary-foreground shadow-sm transition-all hover:bg-primary/90 active:scale-[0.98]">
-                      <span className="material-symbols-outlined text-[18px]">add</span>
-                      <span className="hidden sm:inline">Nova Propriedade</span>
-                    </button>
-                  </DialogTrigger>
+          <DashboardHeader title="Propriedades" subtitle={`${properties.length} imóveis cadastrados`} />
+          
+          {/* Action buttons */}
+          <div className="flex items-center justify-end gap-2 px-8 py-4">
+            <button
+              onClick={handleSyncAll}
+              disabled={isSyncing !== null}
+              className="flex items-center gap-2 rounded-xl border border-border bg-card px-3 py-2 text-sm font-medium text-foreground shadow-sm transition-all hover:bg-muted active:scale-[0.98] disabled:opacity-50"
+            >
+              <span className={cn("material-symbols-outlined text-[18px]", isSyncing === 'all' && 'animate-spin')}>sync</span>
+              <span className="hidden sm:inline">Sincronizar</span>
+            </button>
+            {canManage && (
+              <Dialog open={dialogOpen} onOpenChange={(open) => {
+                setDialogOpen(open);
+                if (!open) resetForm();
+              }}>
+                <DialogTrigger asChild>
+                  <button className="flex items-center gap-2 rounded-xl bg-primary px-4 py-2 text-sm font-bold text-primary-foreground shadow-sm transition-all hover:bg-primary/90 active:scale-[0.98]">
+                    <span className="material-symbols-outlined text-[18px]">add</span>
+                    <span className="hidden sm:inline">Nova Propriedade</span>
+                  </button>
+                </DialogTrigger>
                   <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto">
                     <DialogHeader>
                       <DialogTitle className="text-lg font-bold">
@@ -710,10 +706,9 @@ export default function Properties() {
                       </button>
                     </div>
                   </DialogContent>
-                </Dialog>
-              )}
-            </div>
-          </header>
+              </Dialog>
+            )}
+          </div>
 
           <main className="p-4 md:p-6 space-y-6">
             {/* Stats Cards */}

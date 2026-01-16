@@ -430,13 +430,10 @@ export default function Manutencao() {
       <div className="min-h-screen flex w-full bg-background">
         <AppSidebar />
         
-        <main className="flex-1 px-4 sm:px-6 lg:px-8 py-6">
+        <main className="flex-1">
           <DashboardHeader title="Manutenção" subtitle="Gestão e Relatórios" />
 
-          <div className="mb-6">
-            <h2 className="text-2xl font-bold mb-1">Gestão e Relatórios</h2>
-            <p className="text-muted-foreground">Acompanhe avarias e visualize relatórios de atendimentos</p>
-          </div>
+          <div className="px-8 py-6">
 
           <Tabs value={activeTab} onValueChange={(value) => {
               setActiveTab(value);
@@ -625,6 +622,7 @@ export default function Manutencao() {
               </div>
             </TabsContent>
           </Tabs>
+          </div>
         </main>
       </div>
 
