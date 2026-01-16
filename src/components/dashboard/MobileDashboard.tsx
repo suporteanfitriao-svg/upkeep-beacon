@@ -1,7 +1,7 @@
 import { useState, useMemo, useEffect, useCallback, useRef, memo } from 'react';
 import { format, isSameDay, addDays, startOfWeek, endOfWeek, getWeek, isAfter, startOfDay, endOfDay, isToday as checkIsToday, startOfMonth, endOfMonth, eachDayOfInterval, addMonths, subMonths, getDay, formatDistanceToNow, isWithinInterval, parseISO } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { Calendar, Play, Clock, Check, ChevronRight, RefreshCw, Building2, ClipboardCheck, CheckCircle2 } from 'lucide-react';
+import { Calendar, Play, Clock, Check, ChevronRight, RefreshCw, Building2, ClipboardCheck, CheckCircle2, AlertCircle } from 'lucide-react';
 import { Schedule } from '@/types/scheduling';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
@@ -337,19 +337,34 @@ export function MobileDashboard({ schedules, onScheduleClick, onStartCleaning, o
   const yearNumber = format(viewMode === 'calendario' ? currentMonth : selectedDate, "yyyy");
   const isSelectedToday = isSameDay(selectedDate, new Date());
 
+  // Calculate overdue tasks (past dates with pending status)
+  const overdueSchedules = useMemo(() => {
+    const today = startOfDay(new Date());
+    return schedules.filter(s => 
+      (s.status === 'waiting' || s.status === 'released') &&
+      startOfDay(s.checkOut) < today
+    );
+  }, [schedules]);
+
+  const overdueCount = overdueSchedules.length;
+
   const todayTasksCount = useMemo(() => {
     const today = new Date();
-    return schedules.filter(s => 
+    const todayTasks = schedules.filter(s => 
       isSameDay(s.checkOut, today) && s.status !== 'completed'
     ).length;
-  }, [schedules]);
+    // Add overdue tasks to today's count
+    return todayTasks + overdueCount;
+  }, [schedules, overdueCount]);
 
   const tomorrowTasksCount = useMemo(() => {
     const tomorrow = addDays(new Date(), 1);
-    return schedules.filter(s => 
+    const tomorrowTasks = schedules.filter(s => 
       isSameDay(s.checkOut, tomorrow) && s.status !== 'completed'
     ).length;
-  }, [schedules]);
+    // Add overdue tasks to tomorrow's count as well (they carry over)
+    return tomorrowTasks + overdueCount;
+  }, [schedules, overdueCount]);
 
   const periodStats = useMemo(() => {
     const now = new Date();
@@ -378,15 +393,20 @@ export function MobileDashboard({ schedules, onScheduleClick, onStartCleaning, o
     const completed = periodSchedules.filter(s => s.status === 'completed');
     const pending = periodSchedules.filter(s => s.status !== 'completed');
 
+    // Add overdue count to total and pending for all periods
+    const totalWithOverdue = periodSchedules.length + overdueCount;
+    const pendingWithOverdue = pending.length + overdueCount;
+
     return {
-      total: periodSchedules.length,
+      total: totalWithOverdue,
       completed: completed.length,
-      pending: pending.length,
+      pending: pendingWithOverdue,
+      overdueCount: overdueCount,
       periodLabel: paymentPeriod === 'today' ? 'Hoje' : 
                    paymentPeriod === 'tomorrow' ? 'Amanhã' :
                    paymentPeriod === 'week' ? 'Semana' : 'Mês'
     };
-  }, [schedules, paymentPeriod]);
+  }, [schedules, paymentPeriod, overdueCount]);
 
   const monthCompletedCount = useMemo(() => {
     const now = new Date();
@@ -552,6 +572,29 @@ export function MobileDashboard({ schedules, onScheduleClick, onStartCleaning, o
             </div>
           )}
 
+          {/* Overdue Tasks Alert */}
+          {overdueCount > 0 && (
+            <div className="px-6 pt-3">
+              <button
+                onClick={handleNavigateToAgenda}
+                className="w-full flex items-center gap-3 p-4 rounded-2xl bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 transition-all active:scale-[0.99]"
+              >
+                <div className="h-10 w-10 rounded-xl bg-red-100 dark:bg-red-900/30 flex items-center justify-center shrink-0">
+                  <AlertCircle className="w-5 h-5 text-red-600 dark:text-red-400" />
+                </div>
+                <div className="flex-1 text-left">
+                  <p className="text-sm font-bold text-red-700 dark:text-red-400">
+                    {overdueCount} {overdueCount === 1 ? 'tarefa atrasada' : 'tarefas atrasadas'}
+                  </p>
+                  <p className="text-xs text-red-600/80 dark:text-red-400/70">
+                    Toque para ver e finalizar
+                  </p>
+                </div>
+                <ChevronRight className="w-5 h-5 text-red-400" />
+              </button>
+            </div>
+          )}
+
           <main className="flex-1 px-6 py-4">
             {/* Period Filter Tabs - Memoized */}
             <div className="relative z-30">
@@ -591,7 +634,12 @@ export function MobileDashboard({ schedules, onScheduleClick, onStartCleaning, o
                     <Calendar className="w-6 h-6 text-primary" />
                   </div>
                   <div>
-                    <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Tarefas de {periodStats.periodLabel}</p>
+                    <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+                      Tarefas de {periodStats.periodLabel}
+                      {overdueCount > 0 && (
+                        <span className="ml-1 text-red-600 dark:text-red-400">(+{overdueCount} atrasadas)</span>
+                      )}
+                    </p>
                     <p className="text-3xl font-bold text-foreground">
                       {String(periodStats.total).padStart(2, '0')}
                     </p>
