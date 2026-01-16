@@ -125,11 +125,20 @@ export function ScheduleDetail({ schedule, onClose, onUpdateSchedule }: Schedule
   }, [schedule.id, deriveChecklistItemStates]);
 
   // When the backend finishes linking/loading a checklist (after "Iniciar Limpeza"), hydrate local state.
+  // CRITICAL: Only hydrate ONCE and NEVER if user has already interacted
   useEffect(() => {
+    // Skip if not in cleaning status
     if (schedule.status !== 'cleaning') return;
-    if (hasUserInteractedRef.current) return;
+    
+    // CRITICAL: Never overwrite if user has already started working
+    if (hasUserInteractedRef.current) {
+      console.log('[ScheduleDetail] User has interacted, skipping checklist hydration from prop');
+      return;
+    }
 
+    // Only hydrate once when checklist first becomes available
     if (!checklistHydratedRef.current && schedule.checklist.length > 0) {
+      console.log('[ScheduleDetail] Hydrating checklist from schedule prop:', schedule.checklist.length, 'items');
       setChecklist(schedule.checklist);
       setChecklistItemStates(deriveChecklistItemStates(schedule.checklist));
       checklistHydratedRef.current = true;
@@ -546,6 +555,9 @@ export function ScheduleDetail({ schedule, onClose, onUpdateSchedule }: Schedule
 
     hasUserInteractedRef.current = true;
     
+    // Close confirmation dialog FIRST so user sees the update
+    setConfirmMarkCategory({ open: false, category: null });
+    
     const categoryItems = checklist.filter(item => item.category === category);
     
     // Check if any item is marked as DX (no) - don't allow bulk marking
@@ -560,13 +572,21 @@ export function ScheduleDetail({ schedule, onClose, onUpdateSchedule }: Schedule
       item.category === category ? { ...item, completed: true, status: 'ok' as const } : item
     );
     
-    const updatedStates = { ...checklistItemStates };
+    const updatedStates: Record<string, 'yes' | 'no' | null> = { ...checklistItemStates };
     categoryItems.forEach(item => {
       updatedStates[item.id] = 'yes';
     });
     
+    // Update local state IMMEDIATELY for instant UI feedback
     setChecklist(updatedChecklist);
     setChecklistItemStates(updatedStates);
+    
+    // Remove category from unsaved set immediately
+    setUnsavedCategories(prev => {
+      const newSet = new Set(prev);
+      newSet.delete(category);
+      return newSet;
+    });
     
     setIsSyncing(true);
     setSyncingCategory(category);
@@ -583,7 +603,7 @@ export function ScheduleDetail({ schedule, onClose, onUpdateSchedule }: Schedule
 
       if (error) {
         console.error('Error marking category complete:', error);
-        toast.error('Erro ao marcar categoria');
+        toast.error('Erro ao salvar no servidor, mas alterações locais mantidas');
         return;
       }
       
@@ -597,26 +617,17 @@ export function ScheduleDetail({ schedule, onClose, onUpdateSchedule }: Schedule
         p_payload: { category_name: category }
       });
       
-      // Remove category from unsaved set
-      setUnsavedCategories(prev => {
-        const newSet = new Set(prev);
-        newSet.delete(category);
-        return newSet;
-      });
-      
       // Clear cache after successful DB save - DB is now authoritative
       clearCache();
       
       toast.success(`Categoria "${category}" marcada como completa!`);
     } catch (error) {
       console.error('Error logging category complete:', error);
-      toast.error('Erro ao marcar categoria');
+      toast.error('Erro ao salvar no servidor');
     } finally {
       setIsSyncing(false);
       setSyncingCategory(null);
     }
-    
-    setConfirmMarkCategory({ open: false, category: null });
   }, [schedule.id, schedule.status, checklist, checklistItemStates, teamMemberId, clearCache]);
 
   // Check if a category has any item marked as DX
@@ -854,14 +865,16 @@ export function ScheduleDetail({ schedule, onClose, onUpdateSchedule }: Schedule
   const completedTasks = checklist.filter(item => item.completed).length;
   const totalTasks = checklist.length;
 
-  // Group checklist by category
-  const groupedChecklist = checklist.reduce((acc, item) => {
-    if (!acc[item.category]) {
-      acc[item.category] = [];
-    }
-    acc[item.category].push(item);
-    return acc;
-  }, {} as Record<string, ChecklistItem[]>);
+  // Group checklist by category - useMemo to ensure recalculation on checklist changes
+  const groupedChecklist = useMemo(() => {
+    return checklist.reduce((acc, item) => {
+      if (!acc[item.category]) {
+        acc[item.category] = [];
+      }
+      acc[item.category].push(item);
+      return acc;
+    }, {} as Record<string, ChecklistItem[]>);
+  }, [checklist]);
 
   // Get current time
   const currentTime = format(new Date(), "HH:mm");
