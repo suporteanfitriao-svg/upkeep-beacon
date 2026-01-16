@@ -95,7 +95,7 @@ function SyncOverlayInline({ isSyncing }: { isSyncing: boolean }) {
 
 const Index = () => {
   const isMobile = useIsMobile();
-  const { schedules, loading, error, refetch, updateSchedule, updateScheduleTimes } = useSchedules();
+  const { schedules, loading, error, refetch, updateSchedule, updateScheduleTimes, updateScheduleLocal } = useSchedules();
   const { inspections: adminInspections, loading: inspectionsLoading, refetch: refetchInspections } = useAdminInspections();
   
   // Sync state
@@ -728,6 +728,8 @@ const Index = () => {
                       schedule={schedule}
                       onClick={() => setSelectedSchedule(schedule)}
                       onScheduleUpdated={(updated) => {
+                        // Update locally without refetching to prevent reload
+                        updateScheduleLocal(updated);
                         if (selectedSchedule?.id === updated.id) {
                           setSelectedSchedule(updated);
                         }
