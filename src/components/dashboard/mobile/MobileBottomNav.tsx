@@ -52,20 +52,6 @@ export const MobileBottomNav = memo(function MobileBottomNav({
           type="button"
           onClick={(e) => {
             e.stopPropagation();
-            navigate('/mensagens');
-          }}
-          className="group flex flex-col items-center justify-center gap-1 p-3 min-w-[60px] transition-colors text-[#8A8B88] hover:text-primary touch-manipulation"
-        >
-          <div className="relative">
-            <span className="material-symbols-outlined text-[28px] transition-transform group-active:scale-90">chat_bubble</span>
-            <span className="absolute -right-0.5 -top-0.5 h-2.5 w-2.5 rounded-full bg-red-500 border-2 border-stone-50 dark:border-[#22252a]" />
-          </div>
-          <span className="text-[10px] font-medium">Msgs</span>
-        </button>
-        <button 
-          type="button"
-          onClick={(e) => {
-            e.stopPropagation();
             navigate('/minha-conta');
           }}
           className="group flex flex-col items-center justify-center gap-1 p-3 min-w-[60px] transition-colors text-[#8A8B88] hover:text-primary touch-manipulation"
