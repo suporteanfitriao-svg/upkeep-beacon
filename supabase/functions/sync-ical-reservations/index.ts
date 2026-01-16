@@ -61,14 +61,25 @@ function parseICalEvents(icalData: string): ICalEvent[] {
     
     const summaryMatch = eventBlock.match(summaryRegex);
     const summary = summaryMatch ? summaryMatch[1].trim() : '';
-    
-    // Accept "Reserved", "Reservado", "Blocked", "Bloqueado", or any non-empty summary
-    // Airbnb typically uses "Reserved" but may vary by locale
-    const reservedPatterns = ['reserved', 'reservado', 'blocked', 'bloqueado', 'not available', 'indisponível'];
     const summaryLower = summary.toLowerCase();
-    const isReserved = reservedPatterns.some(pattern => summaryLower.includes(pattern)) || summary !== '';
     
-    if (!isReserved) {
+    // Skip calendar blocks (Not available, Unavailable, Blocked by owner)
+    // These are NOT real reservations - just calendar blocks
+    const blockPatterns = ['not available', 'unavailable', 'indisponível', 'bloqueado pelo proprietário', 'blocked by'];
+    const isBlock = blockPatterns.some(pattern => summaryLower.includes(pattern));
+    
+    if (isBlock) {
+      skippedEvents++;
+      console.log(`Skipping calendar block: "${summary}"`);
+      continue;
+    }
+    
+    // Accept real reservations: "Reserved", "Reservado", or events with description (has guest info)
+    const reservedPatterns = ['reserved', 'reservado'];
+    const isReserved = reservedPatterns.some(pattern => summaryLower.includes(pattern));
+    
+    // Skip if it's not a reservation pattern and has no summary
+    if (!isReserved && summary === '') {
       skippedEvents++;
       console.log(`Skipping event with empty summary`);
       continue;
