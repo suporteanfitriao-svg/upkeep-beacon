@@ -1,7 +1,7 @@
 import { useState, useMemo, useCallback, useEffect, createContext, useContext, useRef } from 'react';
 import { Loader2, CalendarX, ChevronLeft, ChevronRight } from 'lucide-react';
 import { toast } from 'sonner';
-import { isToday, isTomorrow, isSameDay, isWithinInterval, startOfDay, endOfDay, parseISO } from 'date-fns';
+import { isToday, isTomorrow, isSameDay, isWithinInterval, startOfDay, endOfDay, parseISO, startOfWeek, endOfWeek, addWeeks, startOfMonth, endOfMonth } from 'date-fns';
 import type { DateRange } from 'react-day-picker';
 
 import { SidebarProvider } from '@/components/ui/sidebar';
@@ -200,19 +200,41 @@ const Index = () => {
     });
   }, [schedules, activeStatusFilter, statusFilter, responsibleFilter, dateFilter, customDate, dateRange, searchQuery]);
 
-  // Paginated schedules - only for range/week/month mode
+  // Paginated schedules - always apply pagination when more than 10 items
   const paginatedSchedules = useMemo(() => {
-    if (dateFilter !== 'range' && dateFilter !== 'week' && dateFilter !== 'month') {
+    if (filteredSchedules.length <= ITEMS_PER_PAGE) {
       return filteredSchedules;
     }
     const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
     return filteredSchedules.slice(startIndex, startIndex + ITEMS_PER_PAGE);
-  }, [filteredSchedules, dateFilter, currentPage, ITEMS_PER_PAGE]);
+  }, [filteredSchedules, currentPage, ITEMS_PER_PAGE]);
 
   const totalPages = useMemo(() => {
-    if (dateFilter !== 'range' && dateFilter !== 'week' && dateFilter !== 'month') return 1;
+    if (filteredSchedules.length <= ITEMS_PER_PAGE) return 1;
     return Math.ceil(filteredSchedules.length / ITEMS_PER_PAGE);
-  }, [filteredSchedules.length, dateFilter, ITEMS_PER_PAGE]);
+  }, [filteredSchedules.length, ITEMS_PER_PAGE]);
+
+  // Calculate filter counts for date filter buttons
+  const dateFilterCounts = useMemo(() => {
+    const today = new Date();
+    const nextWeekStart = startOfWeek(addWeeks(today, 1), { weekStartsOn: 1 });
+    const nextWeekEnd = endOfWeek(addWeeks(today, 1), { weekStartsOn: 1 });
+    const monthStart = startOfMonth(today);
+    const monthEnd = endOfMonth(today);
+
+    return {
+      today: schedules.filter(s => isToday(s.checkOut)).length,
+      tomorrow: schedules.filter(s => isTomorrow(s.checkOut)).length,
+      week: schedules.filter(s => isWithinInterval(s.checkOut, { 
+        start: startOfDay(nextWeekStart), 
+        end: endOfDay(nextWeekEnd) 
+      })).length,
+      month: schedules.filter(s => isWithinInterval(s.checkOut, { 
+        start: startOfDay(monthStart), 
+        end: endOfDay(monthEnd) 
+      })).length,
+    };
+  }, [schedules]);
 
   // Reset page when filters change
   useEffect(() => {
@@ -651,6 +673,7 @@ const Index = () => {
               searchQuery={searchQuery}
               statusFilter={statusFilter}
               responsibleFilter={responsibleFilter}
+              filterCounts={dateFilterCounts}
               onDateFilterChange={setDateFilter}
               onCustomDateChange={setCustomDate}
               onDateRangeChange={setDateRange}
@@ -690,8 +713,8 @@ const Index = () => {
                 </div>
               ) : (
                 <>
-                  {/* Show count when in range mode */}
-                  {dateFilter === 'range' && (
+                  {/* Show count when there's pagination */}
+                  {totalPages > 1 && (
                     <div className="flex items-center justify-between mb-4">
                       <p className="text-sm text-muted-foreground">
                         Mostrando {paginatedSchedules.length} de {filteredSchedules.length} agendamentos
@@ -712,8 +735,8 @@ const Index = () => {
                     />
                   ))}
 
-                  {/* Pagination for range mode */}
-                  {dateFilter === 'range' && totalPages > 1 && (
+                  {/* Pagination - show when more than 10 items */}
+                  {totalPages > 1 && (
                     <div className="flex items-center justify-center gap-2 pt-6">
                       <button
                         onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}

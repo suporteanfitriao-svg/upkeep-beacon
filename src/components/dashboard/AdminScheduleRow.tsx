@@ -426,7 +426,12 @@ export function AdminScheduleRow({ schedule, onClick, onScheduleUpdated }: Admin
               
               {/* Property Info */}
               <div>
-                <h4 className="font-bold text-foreground">{localSchedule.propertyName}</h4>
+                <div className="flex items-center gap-2">
+                  <h4 className="font-bold text-foreground">{localSchedule.propertyName}</h4>
+                  <span className="text-xs font-bold text-primary bg-primary/10 px-2 py-0.5 rounded-full">
+                    {format(localSchedule.checkOut, "dd/MM/yyyy")}
+                  </span>
+                </div>
                 <div className="flex items-center gap-2">
                   {localSchedule.status === 'cleaning' && (
                     <span className="w-2 h-2 rounded-full bg-primary animate-pulse" />
