@@ -1,9 +1,6 @@
-import { format } from 'date-fns';
-import { ptBR } from 'date-fns/locale';
-import { Calendar, RefreshCw, LogOut } from 'lucide-react';
+import { RefreshCw, LogOut } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import logo from '@/assets/logo.png';
 
 interface DashboardHeaderProps {
   title?: string;
@@ -18,41 +15,31 @@ export function DashboardHeader({
   onRefresh, 
   todayCheckoutsCount 
 }: DashboardHeaderProps) {
-  const today = new Date();
-
   return (
-    <header className="flex items-center justify-between gap-4 mb-6 px-4 md:px-6 pt-4 md:pt-6">
+    <header className="h-20 bg-card border-b border-border flex items-center justify-between px-8">
       <div className="flex items-center gap-4">
-        <div className="flex items-center gap-3">
-          <img src={logo} alt="Super Host Lab" className="w-10 h-10 object-contain" />
-          <div>
-            <div className="flex items-center gap-3">
-              <h1 className="text-xl sm:text-2xl font-bold text-foreground">
-                {title}
-              </h1>
-              {todayCheckoutsCount !== undefined && todayCheckoutsCount > 0 && (
-                <Badge className="bg-primary text-primary-foreground text-sm px-2.5 py-0.5">
-                  <LogOut className="w-3 h-3 mr-1" />
-                  {todayCheckoutsCount} saída{todayCheckoutsCount > 1 ? 's' : ''} hoje
-                </Badge>
-              )}
-            </div>
-            <div className="flex items-center gap-2 text-muted-foreground">
-              <Calendar className="w-3 h-3" />
-              <span className="text-xs">
-                {subtitle || format(today, "EEEE, dd 'de' MMMM", { locale: ptBR })}
-              </span>
-            </div>
-          </div>
+        <div>
+          <h2 className="text-2xl font-bold text-foreground">{title}</h2>
+          {subtitle && (
+            <p className="text-sm text-muted-foreground">{subtitle}</p>
+          )}
         </div>
+        {todayCheckoutsCount !== undefined && todayCheckoutsCount > 0 && (
+          <Badge className="bg-primary text-primary-foreground text-sm px-2.5 py-0.5">
+            <LogOut className="w-3 h-3 mr-1" />
+            {todayCheckoutsCount} saída{todayCheckoutsCount > 1 ? 's' : ''} hoje
+          </Badge>
+        )}
       </div>
       
-      {onRefresh && (
-        <Button variant="outline" size="sm" onClick={onRefresh} className="gap-2">
-          <RefreshCw className="w-4 h-4" />
-          <span className="hidden sm:inline">Atualizar</span>
-        </Button>
-      )}
+      <div className="flex items-center gap-4">
+        {onRefresh && (
+          <Button variant="outline" size="sm" onClick={onRefresh} className="gap-2">
+            <RefreshCw className="w-4 h-4" />
+            <span className="hidden sm:inline">Atualizar</span>
+          </Button>
+        )}
+      </div>
     </header>
   );
 }
