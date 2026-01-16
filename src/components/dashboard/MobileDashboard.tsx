@@ -448,6 +448,17 @@ export function MobileDashboard({ schedules, onScheduleClick, onStartCleaning, o
 
   const handleNavigateToAgenda = useCallback(() => {
     setActiveTab('agenda');
+    
+    // If there are overdue tasks, always navigate to the oldest one first
+    if (overdueSchedules.length > 0) {
+      const oldestOverdue = overdueSchedules.reduce((oldest, current) => 
+        current.checkOut < oldest.checkOut ? current : oldest
+      );
+      setSelectedDate(startOfDay(oldestOverdue.checkOut));
+      return;
+    }
+    
+    // Otherwise, navigate based on selected period
     if (paymentPeriod === 'today') {
       setSelectedDate(startOfDay(new Date()));
     } else if (paymentPeriod === 'tomorrow') {
@@ -479,7 +490,7 @@ export function MobileDashboard({ schedules, onScheduleClick, onStartCleaning, o
         setSelectedDate(startOfDay(new Date()));
       }
     }
-  }, [paymentPeriod, schedules]);
+  }, [paymentPeriod, schedules, overdueSchedules]);
 
   // Vibrate when overdue tasks alert appears
   const hasVibratedForOverdue = useRef(false);
