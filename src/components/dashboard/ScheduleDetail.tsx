@@ -103,6 +103,7 @@ export function ScheduleDetail({ schedule, onClose, onUpdateSchedule }: Schedule
   const [syncingCategory, setSyncingCategory] = useState<string | null>(null);
   const [hasAcknowledgedNotes, setHasAcknowledgedNotes] = useState(false);
   const cacheInitializedRef = useRef(false);
+  const hasUserInteractedRef = useRef(false);
   const statusStyle = statusConfig[schedule.status];
 
   // Check if admin notes exist
@@ -124,6 +125,12 @@ export function ScheduleDetail({ schedule, onClose, onUpdateSchedule }: Schedule
   // Load cache on mount if cleaning (Rule 41.3.3, 44.3.3)
   useEffect(() => {
     if (schedule.status === 'cleaning' && teamMemberId && !cacheInitializedRef.current) {
+      // If the user already started interacting, never override their current progress with cached data.
+      if (hasUserInteractedRef.current) {
+        cacheInitializedRef.current = true;
+        return;
+      }
+
       const cachedData = loadCache();
       if (cachedData) {
         console.log('[ScheduleDetail] Restoring from cache...');
@@ -410,6 +417,8 @@ export function ScheduleDetail({ schedule, onClose, onUpdateSchedule }: Schedule
   };
 
   const handleChecklistItemChange = (itemId: string, value: 'yes' | 'no', category: string) => {
+    hasUserInteractedRef.current = true;
+
     setChecklistItemStates(prev => ({
       ...prev,
       [itemId]: value
@@ -433,7 +442,9 @@ export function ScheduleDetail({ schedule, onClose, onUpdateSchedule }: Schedule
   // Save category changes to database - direct update without triggering full reload
   const handleSaveCategory = useCallback(async (category: string) => {
     if (!teamMemberId) return;
-    
+
+    hasUserInteractedRef.current = true;
+
     setIsSyncing(true);
     setSyncingCategory(category);
     
@@ -483,6 +494,8 @@ export function ScheduleDetail({ schedule, onClose, onUpdateSchedule }: Schedule
   // Handle marking entire category as complete - direct update without triggering full reload
   const handleMarkCategoryComplete = useCallback(async (category: string) => {
     if (schedule.status !== 'cleaning' || !teamMemberId) return;
+
+    hasUserInteractedRef.current = true;
     
     const categoryItems = checklist.filter(item => item.category === category);
     
