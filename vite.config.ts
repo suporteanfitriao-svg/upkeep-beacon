@@ -17,10 +17,31 @@ export default defineConfig(({ mode }) => ({
       registerType: "autoUpdate",
       includeAssets: ["favicon.ico", "icons/*.png"],
       manifest: false, // Use our custom manifest.json
+      devOptions: {
+        enabled: false,
+      },
       workbox: {
         globPatterns: ["**/*.{js,css,html,ico,png,svg,woff2}"],
         maximumFileSizeToCacheInBytes: 5 * 1024 * 1024, // 5MB limit
+        // Skip waiting and claim clients immediately for faster updates
+        skipWaiting: true,
+        clientsClaim: true,
+        // Clean old caches on activation
+        cleanupOutdatedCaches: true,
         runtimeCaching: [
+          {
+            // API calls - always fetch fresh data
+            urlPattern: /^https:\/\/.*\.supabase\.co\/.*/i,
+            handler: "NetworkFirst",
+            options: {
+              cacheName: "api-cache",
+              expiration: {
+                maxEntries: 50,
+                maxAgeSeconds: 60 * 5, // 5 minutes
+              },
+              networkTimeoutSeconds: 10,
+            },
+          },
           {
             urlPattern: /^https:\/\/fonts\.googleapis\.com\/.*/i,
             handler: "CacheFirst",
@@ -56,7 +77,7 @@ export default defineConfig(({ mode }) => ({
               cacheName: "images-cache",
               expiration: {
                 maxEntries: 60,
-                maxAgeSeconds: 60 * 60 * 24 * 30, // 30 days
+                maxAgeSeconds: 60 * 60 * 24 * 7, // 7 days (reduced from 30)
               },
             },
           },
