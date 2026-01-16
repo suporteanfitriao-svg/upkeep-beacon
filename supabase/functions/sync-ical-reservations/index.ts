@@ -52,14 +52,25 @@ function parseICalEvents(icalData: string): ICalEvent[] {
   const descriptionRegex = /DESCRIPTION[^:]*:(.+)/;
   
   let match;
+  let totalEvents = 0;
+  let skippedEvents = 0;
   
   while ((match = eventRegex.exec(unfoldedData)) !== null) {
     const eventBlock = match[1];
+    totalEvents++;
     
     const summaryMatch = eventBlock.match(summaryRegex);
     const summary = summaryMatch ? summaryMatch[1].trim() : '';
     
-    if (summary !== 'Reserved') {
+    // Accept "Reserved", "Reservado", "Blocked", "Bloqueado", or any non-empty summary
+    // Airbnb typically uses "Reserved" but may vary by locale
+    const reservedPatterns = ['reserved', 'reservado', 'blocked', 'bloqueado', 'not available', 'indisponível'];
+    const summaryLower = summary.toLowerCase();
+    const isReserved = reservedPatterns.some(pattern => summaryLower.includes(pattern)) || summary !== '';
+    
+    if (!isReserved) {
+      skippedEvents++;
+      console.log(`Skipping event with empty summary`);
       continue;
     }
     
@@ -76,9 +87,14 @@ function parseICalEvents(icalData: string): ICalEvent[] {
     const description = descriptionMatch ? descriptionMatch[1].trim() : '';
     
     if (uid && dtstart && dtend) {
+      console.log(`Parsed event: UID=${uid.substring(0, 30)}..., start=${dtstart.toISOString()}, end=${dtend.toISOString()}, summary="${summary}"`);
       events.push({ uid, dtstart, dtend, summary, description });
+    } else {
+      console.log(`Skipping invalid event: uid=${!!uid}, dtstart=${!!dtstart}, dtend=${!!dtend}`);
     }
   }
+  
+  console.log(`iCal parsing complete: ${totalEvents} total events, ${events.length} valid reservations, ${skippedEvents} skipped`);
   
   return events;
 }
