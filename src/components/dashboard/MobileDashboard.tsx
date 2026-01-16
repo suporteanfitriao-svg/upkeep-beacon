@@ -24,6 +24,8 @@ import { MobileScheduleCard } from './mobile/MobileScheduleCard';
 import { MobileScheduleList } from './mobile/MobileScheduleList';
 import { MobileWeekStrip } from './mobile/MobileWeekStrip';
 import { MobileInspectionCard } from './mobile/MobileInspectionCard';
+import { MobileInfiniteDayStrip } from './mobile/MobileInfiniteDayStrip';
+import { MobileAgendaFilterTabs, AgendaViewMode } from './mobile/MobileAgendaFilterTabs';
 
 interface MobileDashboardProps {
   schedules: Schedule[];
@@ -79,6 +81,7 @@ export function MobileDashboard({ schedules, onScheduleClick, onStartCleaning, o
     return 'inicio';
   });
   const [viewMode, setViewMode] = useState<'dia' | 'calendario'>('dia');
+  const [agendaViewMode, setAgendaViewMode] = useState<AgendaViewMode>('hoje');
   const [currentMonth, setCurrentMonth] = useState(() => startOfMonth(new Date()));
   const [isSyncing, setIsSyncing] = useState(false);
   const [lastSyncTime, setLastSyncTime] = useState<Date | null>(null);
@@ -392,6 +395,19 @@ export function MobileDashboard({ schedules, onScheduleClick, onStartCleaning, o
     setSelectedDate(date);
   }, []);
 
+  const handleAgendaViewModeChange = useCallback((mode: AgendaViewMode) => {
+    setAgendaViewMode(mode);
+    if (mode === 'hoje') {
+      setViewMode('dia');
+      setSelectedDate(startOfDay(new Date()));
+    } else if (mode === 'mes') {
+      setViewMode('calendario');
+      setCurrentMonth(startOfMonth(new Date()));
+    } else {
+      setViewMode('dia');
+    }
+  }, []);
+
   const handleNavigateToAgenda = useCallback(() => {
     setActiveTab('agenda');
     if (paymentPeriod === 'today') {
@@ -663,12 +679,15 @@ export function MobileDashboard({ schedules, onScheduleClick, onStartCleaning, o
             className="sticky top-0 z-20 bg-stone-50/90 dark:bg-[#22252a]/90 px-6 py-4 backdrop-blur-md transition-all"
             style={{ transform: pullDistance > 0 ? `translateY(${pullDistance * 0.3}px)` : undefined }}
           >
-            {/* Top row with navigation */}
+            {/* Title Row */}
             <div className="flex items-center justify-between mb-3">
               {viewMode === 'calendario' ? (
                 <>
                   <button 
-                    onClick={() => setViewMode('dia')}
+                    onClick={() => {
+                      setViewMode('dia');
+                      setAgendaViewMode('hoje');
+                    }}
                     className="flex items-center justify-center rounded-full p-1 transition-colors hover:bg-slate-200 dark:hover:bg-slate-700"
                   >
                     <span className="material-symbols-outlined text-[#8A8B88] dark:text-slate-400">arrow_back</span>
@@ -692,88 +711,35 @@ export function MobileDashboard({ schedules, onScheduleClick, onStartCleaning, o
                       <span className="material-symbols-outlined text-[20px]">chevron_right</span>
                     </button>
                   </div>
-                  <button 
-                    onClick={() => setViewMode('dia')}
-                    className="flex items-center justify-center rounded-full p-2 transition-colors hover:bg-muted"
-                  >
-                    <span className="material-symbols-outlined text-muted-foreground text-[22px]">view_week</span>
-                  </button>
+                  <div className="w-8" /> {/* Spacer */}
                 </>
               ) : (
-                <>
-                  <button 
-                    onClick={() => setSelectedDate(prev => addDays(prev, -7))}
-                    className="flex items-center justify-center rounded-full p-2 transition-colors hover:bg-muted"
-                  >
-                    <span className="material-symbols-outlined text-muted-foreground text-[20px]">chevron_left</span>
-                  </button>
-                  <div className="flex items-center gap-3">
-                    <button 
-                      onClick={() => setViewMode('calendario')}
-                      className="flex items-center justify-center rounded-full p-1 transition-colors hover:bg-muted"
-                    >
-                      <Calendar className="w-6 h-6 text-muted-foreground" />
-                    </button>
-                    <div className="flex flex-col">
-                      <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Semana {getWeek(selectedDate, { weekStartsOn: 0 })}</span>
-                      <h2 className="text-lg font-extrabold leading-none tracking-tight text-slate-900 dark:text-white">
-                        <span className="capitalize">{monthName}</span> <span className="text-primary">{yearNumber}</span>
-                      </h2>
-                    </div>
-                  </div>
-                  <button 
-                    onClick={() => setSelectedDate(prev => addDays(prev, 7))}
-                    className="flex items-center justify-center rounded-full p-2 transition-colors hover:bg-muted"
-                  >
-                    <span className="material-symbols-outlined text-muted-foreground text-[20px]">chevron_right</span>
-                  </button>
-                </>
+                <div className="w-full">
+                  <h2 className="text-lg font-extrabold leading-none tracking-tight text-slate-900 dark:text-white">
+                    <span className="capitalize">{monthName}</span> <span className="text-primary">{yearNumber}</span>
+                  </h2>
+                </div>
               )}
             </div>
 
-            {/* Quick navigation buttons */}
-            <div className="flex items-center gap-2 overflow-x-auto hide-scrollbar pb-1">
-              <button
-                onClick={() => {
-                  setSelectedDate(startOfDay(new Date()));
-                  setCurrentMonth(startOfMonth(new Date()));
-                }}
-                className={cn(
-                  "px-3 py-1.5 rounded-full text-xs font-semibold transition-all whitespace-nowrap",
-                  isSameDay(selectedDate, new Date())
-                    ? "bg-primary text-white shadow-md"
-                    : "bg-white dark:bg-slate-800 text-muted-foreground border border-slate-200 dark:border-slate-700"
-                )}
-              >
-                Hoje
-              </button>
-              <button
-                onClick={() => {
-                  setViewMode('calendario');
-                  setCurrentMonth(startOfMonth(new Date()));
-                }}
-                className={cn(
-                  "px-3 py-1.5 rounded-full text-xs font-semibold transition-all whitespace-nowrap",
-                  viewMode === 'calendario' && currentMonth.getMonth() === new Date().getMonth() && currentMonth.getFullYear() === new Date().getFullYear()
-                    ? "bg-primary text-white shadow-md"
-                    : "bg-white dark:bg-slate-800 text-muted-foreground border border-slate-200 dark:border-slate-700"
-                )}
-              >
-                Mês Atual
-              </button>
-              <button
-                onClick={() => setViewMode('calendario')}
-                className={cn(
-                  "px-3 py-1.5 rounded-full text-xs font-semibold transition-all whitespace-nowrap",
-                  viewMode === 'calendario'
-                    ? "bg-primary text-white shadow-md"
-                    : "bg-white dark:bg-slate-800 text-muted-foreground border border-slate-200 dark:border-slate-700"
-                )}
-              >
-                Calendário
-              </button>
-            </div>
+            {/* Filter Tabs: Hoje, Mês, Data */}
+            <MobileAgendaFilterTabs
+              viewMode={agendaViewMode}
+              selectedDate={selectedDate}
+              onViewModeChange={handleAgendaViewModeChange}
+              onDateSelect={handleDateSelect}
+              onMonthChange={setCurrentMonth}
+            />
           </header>
+
+          {/* Infinite Day Strip for "Hoje" or "Data" views */}
+          {viewMode === 'dia' && (
+            <MobileInfiniteDayStrip
+              selectedDate={selectedDate}
+              onDateSelect={handleDateSelect}
+              dayIndicators={dayIndicators}
+            />
+          )}
 
           {viewMode === 'calendario' ? (
             // Calendar View
@@ -913,16 +879,8 @@ export function MobileDashboard({ schedules, onScheduleClick, onStartCleaning, o
               </section>
             </main>
           ) : (
-            // Day View
+            // Day View - Day strip is already rendered above
             <>
-              {/* Week Calendar Strip - Memoized */}
-              <MobileWeekStrip
-                weekDays={weekDays}
-                selectedDate={selectedDate}
-                onDateSelect={handleDateSelect}
-                dayIndicators={dayIndicators}
-              />
-
               {/* Main Content */}
               <main className="flex flex-col">
                 <div className="px-6 pt-6 pb-3 flex items-baseline justify-between">
