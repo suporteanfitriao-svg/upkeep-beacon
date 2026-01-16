@@ -122,12 +122,29 @@ export function ScheduleDetail({ schedule, onClose, onUpdateSchedule }: Schedule
     isActive: schedule.status === 'cleaning',
   });
 
+  // Check if schedule already has saved progress in the database (items with ok/not_ok status)
+  const scheduleHasSavedProgress = useMemo(() => {
+    return schedule.checklist.some(item => item.status === 'ok' || item.status === 'not_ok');
+  }, [schedule.checklist]);
+
   // Load cache on mount if cleaning (Rule 41.3.3, 44.3.3)
+  // IMPORTANT: Skip cache restoration if:
+  // 1. User already interacted in this session
+  // 2. Schedule already has saved progress in DB (DB is authoritative)
   useEffect(() => {
     if (schedule.status === 'cleaning' && teamMemberId && !cacheInitializedRef.current) {
       // If the user already started interacting, never override their current progress with cached data.
       if (hasUserInteractedRef.current) {
         cacheInitializedRef.current = true;
+        clearCache(); // Clear stale cache since user is actively working
+        return;
+      }
+
+      // If the schedule already has saved progress in DB, DB is authoritative - don't restore cache
+      if (scheduleHasSavedProgress) {
+        console.log('[ScheduleDetail] Schedule has DB progress, skipping cache restore');
+        cacheInitializedRef.current = true;
+        clearCache(); // Clear potentially stale cache
         return;
       }
 
@@ -156,7 +173,7 @@ export function ScheduleDetail({ schedule, onClose, onUpdateSchedule }: Schedule
       }
       cacheInitializedRef.current = true;
     }
-  }, [schedule.status, schedule.cleanerObservations, teamMemberId, loadCache]);
+  }, [schedule.status, schedule.cleanerObservations, teamMemberId, loadCache, clearCache, scheduleHasSavedProgress]);
 
   // Auto-save to cache on state changes (Rule 41.3.2, 44.3.2)
   useEffect(() => {
@@ -481,6 +498,9 @@ export function ScheduleDetail({ schedule, onClose, onUpdateSchedule }: Schedule
         return newSet;
       });
       
+      // Clear cache after successful DB save - DB is now authoritative
+      clearCache();
+      
       toast.success(`Categoria "${category}" salva!`);
     } catch (err) {
       console.error('Error saving category:', err);
@@ -489,7 +509,7 @@ export function ScheduleDetail({ schedule, onClose, onUpdateSchedule }: Schedule
       setIsSyncing(false);
       setSyncingCategory(null);
     }
-  }, [schedule.id, checklist, teamMemberId]);
+  }, [schedule.id, checklist, teamMemberId, clearCache]);
 
   // Handle marking entire category as complete - direct update without triggering full reload
   const handleMarkCategoryComplete = useCallback(async (category: string) => {
@@ -555,6 +575,9 @@ export function ScheduleDetail({ schedule, onClose, onUpdateSchedule }: Schedule
         return newSet;
       });
       
+      // Clear cache after successful DB save - DB is now authoritative
+      clearCache();
+      
       toast.success(`Categoria "${category}" marcada como completa!`);
     } catch (error) {
       console.error('Error logging category complete:', error);
@@ -565,7 +588,7 @@ export function ScheduleDetail({ schedule, onClose, onUpdateSchedule }: Schedule
     }
     
     setConfirmMarkCategory({ open: false, category: null });
-  }, [schedule.id, schedule.status, checklist, checklistItemStates, teamMemberId]);
+  }, [schedule.id, schedule.status, checklist, checklistItemStates, teamMemberId, clearCache]);
 
   // Check if a category has any item marked as DX
   const categoryHasDX = useCallback((category: string) => {
