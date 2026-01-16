@@ -132,7 +132,7 @@ serve(async (req) => {
     if (isServiceRoleRequest) {
       console.log('Service role authenticated - automatic/cron sync');
     } else {
-      // For user-initiated requests, verify authentication and role
+      // For user-initiated requests, verify authentication only (allow all authenticated users)
       if (!authHeader) {
         return new Response(
           JSON.stringify({ error: 'Não autorizado' }),
@@ -150,21 +150,22 @@ serve(async (req) => {
         );
       }
 
-      // Verify user has admin or manager role
+      // Verify user has any valid role (admin, manager, or cleaner)
       const { data: roleData, error: roleError } = await supabase
         .from('user_roles')
         .select('role')
         .eq('user_id', user.id)
-        .in('role', ['admin', 'manager'])
         .maybeSingle();
 
       if (roleError || !roleData) {
-        console.log(`User ${user.id} attempted sync without proper role`);
+        console.log(`User ${user.id} attempted sync without any role`);
         return new Response(
-          JSON.stringify({ error: 'Acesso negado - apenas administradores e gerentes podem sincronizar' }),
+          JSON.stringify({ error: 'Acesso negado - usuário não tem permissão' }),
           { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         );
       }
+      
+      console.log(`User ${user.id} (${roleData.role}) triggered manual sync`);
     }
 
     let sourceId: string | null = null;
