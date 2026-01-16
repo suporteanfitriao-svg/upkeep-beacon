@@ -16,7 +16,7 @@ export const MobilePeriodFilterTabs = memo(function MobilePeriodFilterTabs({
   tomorrowTasksCount
 }: MobilePeriodFilterTabsProps) {
   return (
-    <div className="flex items-center gap-2 mb-4 overflow-x-auto hide-scrollbar relative z-20">
+    <div className="flex items-center gap-2 mb-4 overflow-x-auto hide-scrollbar relative z-30 pointer-events-auto">
       <button
         type="button"
         onClick={(e) => {

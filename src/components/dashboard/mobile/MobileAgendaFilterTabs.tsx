@@ -160,7 +160,7 @@ export const MobileAgendaFilterTabs = memo(function MobileAgendaFilterTabs({
             )}
           </button>
         </PopoverTrigger>
-        <PopoverContent className="w-auto p-0 z-50" align="end" sideOffset={8}>
+        <PopoverContent className="w-auto p-0 z-[100] bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 shadow-xl" align="end" sideOffset={8}>
           <Calendar
             mode="single"
             selected={selectedDate}
