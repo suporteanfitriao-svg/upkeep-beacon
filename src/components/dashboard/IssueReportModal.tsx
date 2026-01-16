@@ -180,8 +180,8 @@ export function IssueReportModal({ onClose, onSubmit, checklist, isSubmitting = 
   };
 
   return (
-    <div className="fixed inset-0 z-[60] bg-stone-50 dark:bg-[#22252a] font-display text-slate-800 dark:text-slate-100 antialiased overflow-y-auto">
-      <div className="relative flex min-h-full w-full flex-col overflow-x-hidden pb-28">
+    <div className="fixed inset-0 z-[60] bg-stone-50 dark:bg-[#22252a] font-display text-slate-800 dark:text-slate-100 antialiased flex flex-col">
+      <div className="relative flex-1 w-full flex flex-col overflow-x-hidden overflow-y-auto pb-24">
         {/* Header */}
         <header className="sticky top-0 z-20 flex items-center bg-stone-50/90 dark:bg-[#22252a]/90 px-4 py-4 backdrop-blur-md border-b border-slate-100 dark:border-slate-800">
           <button 
@@ -499,8 +499,10 @@ export function IssueReportModal({ onClose, onSubmit, checklist, isSubmitting = 
           </main>
         )}
 
-        {/* Footer Button */}
-        <div className="fixed bottom-0 left-0 right-0 z-50 bg-stone-50/95 dark:bg-[#22252a]/95 backdrop-blur-md border-t border-slate-200/50 dark:border-slate-700/50 p-4">
+      </div>
+      
+      {/* Footer Button - Fixed at bottom, always visible */}
+      <div className="sticky bottom-0 left-0 right-0 z-50 bg-stone-50 dark:bg-[#22252a] border-t border-slate-200 dark:border-slate-700 p-4 safe-area-inset-bottom">
           {step < 3 ? (
             <button 
               onClick={handleNextStep}
@@ -530,7 +532,6 @@ export function IssueReportModal({ onClose, onSubmit, checklist, isSubmitting = 
             </button>
           )}
         </div>
-      </div>
     </div>
   );
 }
