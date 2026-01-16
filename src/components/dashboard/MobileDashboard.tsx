@@ -481,8 +481,19 @@ export function MobileDashboard({ schedules, onScheduleClick, onStartCleaning, o
     }
   }, [paymentPeriod, schedules]);
 
+  // Vibrate when overdue tasks alert appears
+  const hasVibratedForOverdue = useRef(false);
+  useEffect(() => {
+    if (overdueCount > 0 && !hasVibratedForOverdue.current) {
+      vibrate([100, 50, 100]);
+      hasVibratedForOverdue.current = true;
+    } else if (overdueCount === 0) {
+      hasVibratedForOverdue.current = false;
+    }
+  }, [overdueCount]);
+
   return (
-    <div 
+    <div
       ref={containerRef}
       onPointerDown={handlePointerDown}
       onPointerMove={handlePointerMove}
@@ -680,22 +691,6 @@ export function MobileDashboard({ schedules, onScheduleClick, onStartCleaning, o
             {/* Payment Cards */}
             <CleanerPaymentCards teamMemberId={teamMemberId} period={paymentPeriod} />
 
-            {/* Properties Responsibility Card */}
-            <button
-              onClick={() => navigate('/propriedades')}
-              className="w-full rounded-2xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 p-4 mb-6 shadow-sm text-left transition-all hover:shadow-md active:scale-[0.99]"
-            >
-              <div className="flex items-center gap-4">
-                <div className="h-12 w-12 rounded-xl bg-slate-100 dark:bg-slate-700 flex items-center justify-center">
-                  <Building2 className="w-6 h-6 text-slate-600 dark:text-slate-400" />
-                </div>
-                <div className="flex-1">
-                  <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Responsabilidade</p>
-                  <p className="text-lg font-bold text-foreground">Ver Propriedades</p>
-                </div>
-                <ChevronRight className="w-5 h-5 text-muted-foreground" />
-              </div>
-            </button>
 
             {/* Next Task */}
             {nextCheckout && (
