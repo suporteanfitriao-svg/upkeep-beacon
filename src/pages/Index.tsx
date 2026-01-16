@@ -242,10 +242,33 @@ const Index = () => {
     };
   }, [schedules]);
 
-  // Reset page when filters change
+  // Transition state for smooth filter changes
+  const [isFilterTransitioning, setIsFilterTransitioning] = useState(false);
+  const filterTransitionTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+  // Reset page and trigger smooth transition when filters change
   useEffect(() => {
     setCurrentPage(1);
-  }, [dateFilter, customDate, dateRange, statusFilter, responsibleFilter, searchQuery, activeStatusFilter]);
+    
+    // Trigger brief transition for smooth visual update
+    setIsFilterTransitioning(true);
+    
+    // Clear any existing timeout
+    if (filterTransitionTimeoutRef.current) {
+      clearTimeout(filterTransitionTimeoutRef.current);
+    }
+    
+    // End transition after a short delay
+    filterTransitionTimeoutRef.current = setTimeout(() => {
+      setIsFilterTransitioning(false);
+    }, 150);
+    
+    return () => {
+      if (filterTransitionTimeoutRef.current) {
+        clearTimeout(filterTransitionTimeoutRef.current);
+      }
+    };
+  }, [dateFilter, customDate, dateRange, statusFilter, responsibleFilter, searchQuery, activeStatusFilter, propertyFilter]);
 
   // Filtered stats that reflect ALL applied filters (except status, which is what we're counting)
   const filteredStats = useMemo(() => {
@@ -654,24 +677,32 @@ const Index = () => {
           />
 
           <div className="flex-1 overflow-y-auto p-8 scroll-smooth">
-            {/* Status Cards */}
-            <AdminStatusCards 
-              stats={filteredStats}
-              onFilterByStatus={handleFilterByStatus}
-              activeFilter={activeStatusFilter}
-            />
+            {/* Main content with smooth filter transitions */}
+            <div 
+              className={cn(
+                "transition-opacity duration-150 ease-in-out",
+                isFilterTransitioning ? "opacity-60" : "opacity-100"
+              )}
+            >
+              {/* Status Cards */}
+              <AdminStatusCards 
+                stats={filteredStats}
+                onFilterByStatus={handleFilterByStatus}
+                activeFilter={activeStatusFilter}
+              />
 
-            {/* Cleaning Time Alerts */}
-            <CleaningTimeAlertBanner 
-              alerts={cleaningTimeAlerts}
-              onAlertClick={(scheduleId) => {
-                const schedule = schedules.find(s => s.id === scheduleId);
-                if (schedule) setSelectedSchedule(schedule);
-              }}
-              variant="admin"
-            />
+              {/* Cleaning Time Alerts */}
+              <CleaningTimeAlertBanner 
+                alerts={cleaningTimeAlerts}
+                onAlertClick={(scheduleId) => {
+                  const schedule = schedules.find(s => s.id === scheduleId);
+                  if (schedule) setSelectedSchedule(schedule);
+                }}
+                variant="admin"
+              />
+            </div>
 
-            {/* Filters */}
+            {/* Filters - always visible, no transition */}
             <AdminFilters
               dateFilter={dateFilter}
               customDate={customDate}
@@ -691,13 +722,25 @@ const Index = () => {
             />
 
             {/* Inspections Section */}
-            <AdminInspectionsSection 
-              inspections={filteredInspections} 
-              loading={inspectionsLoading} 
-            />
+            <div 
+              className={cn(
+                "transition-opacity duration-150 ease-in-out",
+                isFilterTransitioning ? "opacity-60" : "opacity-100"
+              )}
+            >
+              <AdminInspectionsSection 
+                inspections={filteredInspections} 
+                loading={inspectionsLoading} 
+              />
+            </div>
 
             {/* Schedules List */}
-            <section className="space-y-4">
+            <section 
+              className={cn(
+                "space-y-4 transition-opacity duration-150 ease-in-out",
+                isFilterTransitioning ? "opacity-50" : "opacity-100"
+              )}
+            >
               {filteredSchedules.length === 0 ? (
                 <div className="bg-card dark:bg-slate-800/50 rounded-3xl border border-slate-100 dark:border-slate-800 p-12 flex flex-col items-center justify-center text-center">
                   <div className="w-20 h-20 bg-slate-50 dark:bg-slate-800 rounded-full flex items-center justify-center mb-6">
