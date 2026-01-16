@@ -386,16 +386,6 @@ export function MobileDashboard({ schedules, onScheduleClick, onStartCleaning, o
     ).length;
   }, [schedules]);
 
-  const futurePendingCount = useMemo(() => {
-    const today = startOfDay(new Date());
-    const sevenDaysLater = addDays(today, 7);
-    return schedules.filter(s => 
-      s.status !== 'completed' &&
-      isAfter(s.checkOut, today) &&
-      isWithinInterval(s.checkOut, { start: today, end: sevenDaysLater })
-    ).length;
-  }, [schedules]);
-
   const handlePrevMonth = useCallback(() => setCurrentMonth(prev => subMonths(prev, 1)), []);
   const handleNextMonth = useCallback(() => setCurrentMonth(prev => addMonths(prev, 1)), []);
 
@@ -604,21 +594,21 @@ export function MobileDashboard({ schedules, onScheduleClick, onStartCleaning, o
               <ChevronRight className="w-5 h-5 text-muted-foreground absolute right-4 top-1/2 -translate-y-1/2" />
             </button>
 
-            {/* Stats Cards Row */}
-            <div className="grid grid-cols-2 gap-3 mb-3">
-              <div className="p-4 rounded-2xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 shadow-sm">
-                <div className="h-10 w-10 rounded-xl bg-emerald-100 dark:bg-emerald-900/30 flex items-center justify-center mb-2">
-                  <Check className="w-5 h-5 text-emerald-600" />
+            {/* Completed in Month Card - Fixed value, doesn't change with filters */}
+            <div className="p-4 rounded-2xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 shadow-sm mb-3">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="h-12 w-12 rounded-xl bg-emerald-100 dark:bg-emerald-900/30 flex items-center justify-center">
+                    <Check className="w-6 h-6 text-emerald-600" />
+                  </div>
+                  <div>
+                    <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Concluídas no Mês</p>
+                    <p className="text-3xl font-bold text-foreground">{String(monthCompletedCount).padStart(2, '0')}</p>
+                  </div>
                 </div>
-                <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-1">Concluídas no Mês</p>
-                <p className="text-2xl font-bold text-foreground">{monthCompletedCount}</p>
-              </div>
-              <div className="p-4 rounded-2xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 shadow-sm">
-                <div className="h-10 w-10 rounded-xl bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center mb-2">
-                  <Play className="w-5 h-5 text-blue-600" />
-                </div>
-                <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-1">Próximos 7 dias</p>
-                <p className="text-2xl font-bold text-foreground">{futurePendingCount}</p>
+                <span className="px-3 py-1 rounded-full bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400 text-xs font-bold">
+                  {format(new Date(), 'MMMM', { locale: ptBR })}
+                </span>
               </div>
             </div>
 
