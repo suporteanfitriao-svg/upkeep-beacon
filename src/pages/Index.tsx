@@ -171,7 +171,7 @@ const Index = () => {
       if (dateFilter === 'today' && !isToday(checkOutDate)) return false;
       if (dateFilter === 'tomorrow' && !isTomorrow(checkOutDate)) return false;
       if (dateFilter === 'custom' && customDate && !isSameDay(checkOutDate, customDate)) return false;
-      if (dateFilter === 'range' && dateRange?.from) {
+      if ((dateFilter === 'range' || dateFilter === 'week' || dateFilter === 'month') && dateRange?.from) {
         const rangeEnd = dateRange.to || dateRange.from;
         const isInRange = isWithinInterval(checkOutDate, { 
           start: startOfDay(dateRange.from), 
@@ -200,9 +200,9 @@ const Index = () => {
     });
   }, [schedules, activeStatusFilter, statusFilter, responsibleFilter, dateFilter, customDate, dateRange, searchQuery]);
 
-  // Paginated schedules - only for range mode
+  // Paginated schedules - only for range/week/month mode
   const paginatedSchedules = useMemo(() => {
-    if (dateFilter !== 'range') {
+    if (dateFilter !== 'range' && dateFilter !== 'week' && dateFilter !== 'month') {
       return filteredSchedules;
     }
     const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
@@ -210,7 +210,7 @@ const Index = () => {
   }, [filteredSchedules, dateFilter, currentPage, ITEMS_PER_PAGE]);
 
   const totalPages = useMemo(() => {
-    if (dateFilter !== 'range') return 1;
+    if (dateFilter !== 'range' && dateFilter !== 'week' && dateFilter !== 'month') return 1;
     return Math.ceil(filteredSchedules.length / ITEMS_PER_PAGE);
   }, [filteredSchedules.length, dateFilter, ITEMS_PER_PAGE]);
 
@@ -232,7 +232,7 @@ const Index = () => {
       if (dateFilter === 'today' && !isToday(checkOutDate)) return false;
       if (dateFilter === 'tomorrow' && !isTomorrow(checkOutDate)) return false;
       if (dateFilter === 'custom' && customDate && !isSameDay(checkOutDate, customDate)) return false;
-      if (dateFilter === 'range' && dateRange?.from) {
+      if ((dateFilter === 'range' || dateFilter === 'week' || dateFilter === 'month') && dateRange?.from) {
         const rangeEnd = dateRange.to || dateRange.from;
         const isInRange = isWithinInterval(checkOutDate, { 
           start: startOfDay(dateRange.from), 
@@ -261,7 +261,7 @@ const Index = () => {
       if (dateFilter === 'today') return isToday(inspectionDate);
       if (dateFilter === 'tomorrow') return isTomorrow(inspectionDate);
       if (dateFilter === 'custom' && customDate) return isSameDay(inspectionDate, customDate);
-      if (dateFilter === 'range' && dateRange?.from) {
+      if ((dateFilter === 'range' || dateFilter === 'week' || dateFilter === 'month') && dateRange?.from) {
         const rangeEnd = dateRange.to || dateRange.from;
         return isWithinInterval(inspectionDate, { 
           start: startOfDay(dateRange.from), 
