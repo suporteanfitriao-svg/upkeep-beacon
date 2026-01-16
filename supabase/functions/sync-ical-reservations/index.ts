@@ -63,27 +63,112 @@ function parseICalEvents(icalData: string): ICalEvent[] {
     const summary = summaryMatch ? summaryMatch[1].trim() : '';
     const summaryLower = summary.toLowerCase();
     
-    // Skip calendar blocks (Not available, Unavailable, Blocked by owner)
-    // These are NOT real reservations - just calendar blocks
-    const blockPatterns = ['not available', 'unavailable', 'indisponível', 'bloqueado pelo proprietário', 'blocked by'];
+    // ============================================================
+    // UNIVERSAL BLOCK DETECTION - Works for all iCal sources
+    // ============================================================
+    // 
+    // BLOCK PATTERNS (to IGNORE - these are NOT real reservations):
+    // 
+    // AIRBNB:
+    //   - "Airbnb (Not available)" - Manual block by owner
+    //   - "Not available" - Calendar block
+    //   - "Blocked" - Owner/admin block
+    //
+    // BOOKING.COM:
+    //   - "Not available" - Block
+    //   - "Closed" - Property closed
+    //   - "Closed - Not available" - Combined block
+    //
+    // VRBO / HOMEAWAY:
+    //   - "Blocked" - Manual block
+    //   - "Owner block" - Owner blocked dates
+    //   - "Owner Hold" - Owner reservation
+    //   - "Hold" - General hold
+    //
+    // GENERAL (Multi-platform):
+    //   - "Unavailable" - Generic block
+    //   - "Not available" - Generic block  
+    //   - "Indisponível" - Portuguese block
+    //   - "Bloqueado" - Portuguese block
+    //   - "Bloqueado pelo proprietário" - PT owner block
+    //   - "Maintenance" - Maintenance block
+    //   - "Manutenção" - PT maintenance
+    //   - "Blocked by" - Any "blocked by X" pattern
+    //
+    // ============================================================
+    
+    const blockPatterns = [
+      // English blocks
+      'not available',
+      'unavailable', 
+      'blocked',
+      'owner block',
+      'owner hold',
+      'hold',
+      'closed',
+      'maintenance',
+      // Portuguese blocks
+      'indisponível',
+      'bloqueado',
+      'manutenção',
+      // Partial matches (will match "Blocked by owner", "Airbnb (Not available)", etc.)
+      'blocked by',
+      '(not available)',
+    ];
+    
     const isBlock = blockPatterns.some(pattern => summaryLower.includes(pattern));
     
     if (isBlock) {
       skippedEvents++;
-      console.log(`Skipping calendar block: "${summary}"`);
+      console.log(`[BLOCK SKIPPED] "${summary}" - matches block pattern`);
       continue;
     }
     
-    // Accept real reservations: "Reserved", "Reservado", or events with description (has guest info)
-    const reservedPatterns = ['reserved', 'reservado'];
-    const isReserved = reservedPatterns.some(pattern => summaryLower.includes(pattern));
+    // ============================================================
+    // RESERVATION DETECTION - Accept real bookings
+    // ============================================================
+    //
+    // REAL RESERVATIONS (to IMPORT):
+    //
+    // AIRBNB:
+    //   - "Reserved" - Confirmed reservation
+    //   - "Reservado" - PT confirmed reservation
+    //   - Events with DESCRIPTION containing guest info
+    //
+    // BOOKING.COM:
+    //   - Usually shows guest name in SUMMARY
+    //   - "Booking.com" prefix sometimes
+    //
+    // VRBO:
+    //   - Usually shows guest name in SUMMARY
+    //   - May have "VRBO" or confirmation number
+    //
+    // GENERAL:
+    //   - Any event with non-empty summary that doesn't match block patterns
+    //   - Events with description (contains booking details)
+    //
+    // ============================================================
     
-    // Skip if it's not a reservation pattern and has no summary
-    if (!isReserved && summary === '') {
+    const reservationPatterns = ['reserved', 'reservado', 'booking', 'confirmed', 'confirmado'];
+    const isExplicitReservation = reservationPatterns.some(pattern => summaryLower.includes(pattern));
+    
+    // Get description to check for guest info
+    const descriptionMatch = eventBlock.match(descriptionRegex);
+    const hasDescription = descriptionMatch && descriptionMatch[1].trim().length > 0;
+    
+    // Accept if:
+    // 1. Explicitly marked as reservation, OR
+    // 2. Has a non-empty summary (likely guest name) and didn't match block patterns, OR
+    // 3. Has description with booking details
+    const isValidReservation = isExplicitReservation || (summary !== '' && !isBlock) || hasDescription;
+    
+    if (!isValidReservation) {
       skippedEvents++;
-      console.log(`Skipping event with empty summary`);
+      console.log(`[EMPTY SKIPPED] Event with no summary or description`);
       continue;
     }
+    
+    console.log(`[RESERVATION] "${summary}" - importing as valid reservation`);
     
     const uidMatch = eventBlock.match(uidRegex);
     const uid = uidMatch ? uidMatch[1].trim() : null;
@@ -94,7 +179,7 @@ function parseICalEvents(icalData: string): ICalEvent[] {
     const dtendMatch = eventBlock.match(dtendRegex);
     const dtend = dtendMatch ? parseICalDate(dtendMatch[1]) : null;
     
-    const descriptionMatch = eventBlock.match(descriptionRegex);
+    // descriptionMatch already extracted above for validation
     const description = descriptionMatch ? descriptionMatch[1].trim() : '';
     
     if (uid && dtstart && dtend) {
