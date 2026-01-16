@@ -231,8 +231,15 @@ export function MobileDashboard({ schedules, onScheduleClick, onStartCleaning, o
       .sort((a, b) => a.checkOut.getTime() - b.checkOut.getTime());
   }, [schedules, selectedDate]);
 
+  // Tomorrow schedules - only show when viewing today's date
   const nextDaySchedules = useMemo(() => {
-    const tomorrow = addDays(selectedDate, 1);
+    // Only show tomorrow section if selectedDate is today
+    const today = startOfDay(new Date());
+    if (!isSameDay(selectedDate, today)) {
+      return []; // Don't show tomorrow section for past/future dates
+    }
+    
+    const tomorrow = addDays(today, 1);
     return schedules.filter(s => isSameDay(s.checkOut, tomorrow))
       .sort((a, b) => a.checkOut.getTime() - b.checkOut.getTime());
   }, [schedules, selectedDate]);
@@ -267,10 +274,19 @@ export function MobileDashboard({ schedules, onScheduleClick, onStartCleaning, o
     return indicators;
   }, [schedules, inspections]);
 
-  const pendingSchedules = useMemo(() => 
-    selectedDaySchedules.filter(s => s.status === 'waiting' || s.status === 'released'),
-    [selectedDaySchedules]
-  );
+  // For past dates, only show in-progress (not finished) and completed schedules
+  // For today and future, show all statuses
+  const isPastDate = useMemo(() => {
+    const today = startOfDay(new Date());
+    return selectedDate < today;
+  }, [selectedDate]);
+
+  const pendingSchedules = useMemo(() => {
+    // Don't show pending schedules for past dates
+    if (isPastDate) return [];
+    return selectedDaySchedules.filter(s => s.status === 'waiting' || s.status === 'released');
+  }, [selectedDaySchedules, isPastDate]);
+  
   const inProgressSchedules = useMemo(() => 
     selectedDaySchedules.filter(s => s.status === 'cleaning'),
     [selectedDaySchedules]
