@@ -124,14 +124,13 @@ serve(async (req) => {
     const supabase = createClient(supabaseUrl, supabaseKey);
 
     const authHeader = req.headers.get('Authorization');
-    const cronSecret = req.headers.get('X-Cron-Secret');
-    const expectedCronSecret = Deno.env.get('CRON_SECRET');
+    const token = authHeader?.replace('Bearer ', '') || '';
     
-    // Allow cron jobs with secret key (for automatic sync)
-    const isCronRequest = cronSecret && expectedCronSecret && cronSecret === expectedCronSecret;
+    // Allow requests authenticated with service_role_key (for cron jobs and system calls)
+    const isServiceRoleRequest = token === supabaseKey;
     
-    if (isCronRequest) {
-      console.log('Cron job triggered automatic sync');
+    if (isServiceRoleRequest) {
+      console.log('Service role authenticated - automatic/cron sync');
     } else {
       // For user-initiated requests, verify authentication and role
       if (!authHeader) {
@@ -142,7 +141,6 @@ serve(async (req) => {
       }
 
       // Verify user authentication
-      const token = authHeader.replace('Bearer ', '');
       const { data: { user }, error: userError } = await supabase.auth.getUser(token);
       
       if (userError || !user) {
