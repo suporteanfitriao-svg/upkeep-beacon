@@ -10,6 +10,8 @@ import { AdminDashboardHeader } from '@/components/dashboard/AdminDashboardHeade
 import { AdminStatusCards } from '@/components/dashboard/AdminStatusCards';
 import { AdminFilters, DateFilter } from '@/components/dashboard/AdminFilters';
 import { AdminScheduleRow } from '@/components/dashboard/AdminScheduleRow';
+import { AdminScheduleRowSkeletonList } from '@/components/dashboard/AdminScheduleRowSkeleton';
+import { AdminStatusCardsSkeleton } from '@/components/dashboard/AdminStatusCardsSkeleton';
 import { AdminInspectionsSection } from '@/components/dashboard/AdminInspectionsSection';
 import { ScheduleDetail } from '@/components/dashboard/ScheduleDetail';
 import { MobileDashboard } from '@/components/dashboard/MobileDashboard';
@@ -25,8 +27,33 @@ import { supabase } from '@/integrations/supabase/client';
 import { cn } from '@/lib/utils';
 
 const SYNC_STORAGE_KEY = 'lastSyncData';
+const FILTERS_STORAGE_KEY = 'adminDashboardFilters';
 const SYNC_TIMEOUT_MS = 60000; // 60 seconds
 const AUTO_SYNC_INTERVAL_MS = 10 * 60 * 1000; // 10 minutes
+
+// Helper to safely parse stored filters
+function getStoredFilters() {
+  try {
+    const stored = localStorage.getItem(FILTERS_STORAGE_KEY);
+    if (stored) {
+      const data = JSON.parse(stored);
+      return {
+        dateFilter: data.dateFilter || 'today',
+        customDate: data.customDate ? new Date(data.customDate) : undefined,
+        dateRange: data.dateRange ? {
+          from: data.dateRange.from ? new Date(data.dateRange.from) : undefined,
+          to: data.dateRange.to ? new Date(data.dateRange.to) : undefined,
+        } : undefined,
+        statusFilter: data.statusFilter || 'all',
+        responsibleFilter: data.responsibleFilter || 'all',
+        propertyFilter: data.propertyFilter || 'all',
+      };
+    }
+  } catch (e) {
+    console.warn('Failed to parse stored filters:', e);
+  }
+  return null;
+}
 
 interface SyncLog {
   startTime: Date;
@@ -126,14 +153,15 @@ const Index = () => {
   const [selectedSchedule, setSelectedSchedule] = useState<Schedule | null>(null);
   const [activeStatusFilter, setActiveStatusFilter] = useState<ScheduleStatus | 'all'>('all');
   
-  // Filters
-  const [dateFilter, setDateFilter] = useState<DateFilter>('today');
-  const [customDate, setCustomDate] = useState<Date | undefined>(undefined);
-  const [dateRange, setDateRange] = useState<DateRange | undefined>(undefined);
+  // Filters - initialize from localStorage
+  const storedFilters = useMemo(() => getStoredFilters(), []);
+  const [dateFilter, setDateFilter] = useState<DateFilter>(storedFilters?.dateFilter || 'today');
+  const [customDate, setCustomDate] = useState<Date | undefined>(storedFilters?.customDate);
+  const [dateRange, setDateRange] = useState<DateRange | undefined>(storedFilters?.dateRange);
   const [searchQuery, setSearchQuery] = useState('');
-  const [statusFilter, setStatusFilter] = useState('all');
-  const [responsibleFilter, setResponsibleFilter] = useState('all');
-  const [propertyFilter, setPropertyFilter] = useState('all');
+  const [statusFilter, setStatusFilter] = useState(storedFilters?.statusFilter || 'all');
+  const [responsibleFilter, setResponsibleFilter] = useState(storedFilters?.responsibleFilter || 'all');
+  const [propertyFilter, setPropertyFilter] = useState(storedFilters?.propertyFilter || 'all');
   
   // Pagination for range mode
   const [currentPage, setCurrentPage] = useState(1);
@@ -147,6 +175,23 @@ const Index = () => {
     };
     localStorage.setItem(SYNC_STORAGE_KEY, JSON.stringify(data));
   }, [lastSyncTime, newReservationsCount]);
+
+  // Persist filters to localStorage
+  useEffect(() => {
+    const data = {
+      dateFilter,
+      customDate: customDate?.toISOString() || null,
+      dateRange: dateRange ? {
+        from: dateRange.from?.toISOString() || null,
+        to: dateRange.to?.toISOString() || null,
+      } : null,
+      statusFilter,
+      responsibleFilter,
+      propertyFilter,
+    };
+    localStorage.setItem(FILTERS_STORAGE_KEY, JSON.stringify(data));
+  }, [dateFilter, customDate, dateRange, statusFilter, responsibleFilter, propertyFilter]);
+
 
   const stats = useMemo(() => calculateStats(schedules), [schedules]);
 
@@ -258,10 +303,10 @@ const Index = () => {
       clearTimeout(filterTransitionTimeoutRef.current);
     }
     
-    // End transition after a short delay
+    // End transition after a short delay - enough for skeleton to render smoothly
     filterTransitionTimeoutRef.current = setTimeout(() => {
       setIsFilterTransitioning(false);
-    }, 150);
+    }, 200);
     
     return () => {
       if (filterTransitionTimeoutRef.current) {
@@ -677,21 +722,19 @@ const Index = () => {
           />
 
           <div className="flex-1 overflow-y-auto p-8 scroll-smooth">
-            {/* Main content with smooth filter transitions */}
-            <div 
-              className={cn(
-                "transition-opacity duration-150 ease-in-out",
-                isFilterTransitioning ? "opacity-60" : "opacity-100"
-              )}
-            >
-              {/* Status Cards */}
+            {/* Status Cards with skeleton during transition */}
+            {isFilterTransitioning ? (
+              <AdminStatusCardsSkeleton />
+            ) : (
               <AdminStatusCards 
                 stats={filteredStats}
                 onFilterByStatus={handleFilterByStatus}
                 activeFilter={activeStatusFilter}
               />
+            )}
 
-              {/* Cleaning Time Alerts */}
+            {/* Cleaning Time Alerts - hide during transition */}
+            {!isFilterTransitioning && (
               <CleaningTimeAlertBanner 
                 alerts={cleaningTimeAlerts}
                 onAlertClick={(scheduleId) => {
@@ -700,7 +743,7 @@ const Index = () => {
                 }}
                 variant="admin"
               />
-            </div>
+            )}
 
             {/* Filters - always visible, no transition */}
             <AdminFilters
@@ -722,26 +765,18 @@ const Index = () => {
             />
 
             {/* Inspections Section */}
-            <div 
-              className={cn(
-                "transition-opacity duration-150 ease-in-out",
-                isFilterTransitioning ? "opacity-60" : "opacity-100"
-              )}
-            >
+            {!isFilterTransitioning && (
               <AdminInspectionsSection 
                 inspections={filteredInspections} 
                 loading={inspectionsLoading} 
               />
-            </div>
+            )}
 
             {/* Schedules List */}
-            <section 
-              className={cn(
-                "space-y-4 transition-opacity duration-150 ease-in-out",
-                isFilterTransitioning ? "opacity-50" : "opacity-100"
-              )}
-            >
-              {filteredSchedules.length === 0 ? (
+            <section className="space-y-4">
+              {isFilterTransitioning ? (
+                <AdminScheduleRowSkeletonList count={Math.min(paginatedSchedules.length || 3, 5)} />
+              ) : filteredSchedules.length === 0 ? (
                 <div className="bg-card dark:bg-slate-800/50 rounded-3xl border border-slate-100 dark:border-slate-800 p-12 flex flex-col items-center justify-center text-center">
                   <div className="w-20 h-20 bg-slate-50 dark:bg-slate-800 rounded-full flex items-center justify-center mb-6">
                     <CalendarX className="h-10 w-10 text-slate-300 dark:text-slate-600" />
