@@ -729,6 +729,7 @@ export function MobileDashboard({ schedules, onScheduleClick, onStartCleaning, o
               onViewModeChange={handleAgendaViewModeChange}
               onDateSelect={handleDateSelect}
               onMonthChange={setCurrentMonth}
+              dayIndicators={dayIndicators}
             />
           </header>
 
