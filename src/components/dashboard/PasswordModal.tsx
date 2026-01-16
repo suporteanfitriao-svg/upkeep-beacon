@@ -71,15 +71,14 @@ export function PasswordModal({
   const [isSaving, setIsSaving] = useState(false);
   const [hasLoggedView, setHasLoggedView] = useState(false);
 
-  // Check if cleaner can view password based on:
-  // 1. Checkout day (from 00:01) OR before checkout day OR
-  // 2. Schedule is released/cleaning/completed
-  // 3. ALWAYS allow if status is 'cleaning' (even after checkout day passed)
-  // Only block if: checkout day has PASSED AND status is NOT 'cleaning'
+  // Check if cleaner can view password based on temporal rules
   const isCheckoutDay = isScheduleDay(scheduleDate);
-  const checkoutDayPassed = hasCheckoutDayPassed(scheduleDate);
   const isCleaningInProgress = scheduleStatus === 'cleaning';
-  const isReleasedForCleaning = scheduleStatus === 'released' || scheduleStatus === 'cleaning' || scheduleStatus === 'completed';
+  const isReleased = scheduleStatus === 'released';
+  const isCompleted = scheduleStatus === 'completed';
+  
+  // Password visibility status - released or cleaning (NOT completed)
+  const isActiveForCleaning = isReleased || isCleaningInProgress;
   
   // Fetch property password mode
   useEffect(() => {
@@ -107,12 +106,15 @@ export function PasswordModal({
   const displayPassword = passwordMode === 'ical' ? passwordFromIcal : accessPassword;
   const hasPassword = Boolean(displayPassword && displayPassword.trim());
 
-  // Rule: Temporal visibility applies to ALL passwords (both iCal and manual)
-  // Cleaners can view password if:
-  // 1. It's checkout day (from 00:01) OR
-  // 2. Schedule is released/cleaning/completed
-  // Note: 'cleaning' status is included in isReleasedForCleaning, so password stays visible even after checkout day
-  const canCleanerViewByRule = isCheckoutDay || isReleasedForCleaning;
+  // REGRAS FINAIS DE VISIBILIDADE DA SENHA PARA CLEANERS:
+  // =====================================================
+  // 1. Senha visível SE é o dia do checkout (a partir de 00:01) E status NÃO é 'completed'
+  // 2. Senha visível SE status é 'released' ou 'cleaning'
+  // 3. Senha OCULTA SE status é 'completed' (limpeza finalizada)
+  // 4. Senha OCULTA SE não é o dia do checkout E status é 'pending'
+  // 5. Admin e Manager sempre podem ver a senha
+  // =====================================================
+  const canCleanerViewByRule = (isCheckoutDay && !isCompleted) || isActiveForCleaning;
   const isBlockedByTemporalRule = role === 'cleaner' && !canCleanerViewByRule;
 
   // Log view action when password is displayed (only once per modal open) - Rule 13
