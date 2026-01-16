@@ -1,6 +1,6 @@
 import { memo } from 'react';
-import { format } from 'date-fns';
-import { Clock, Play, Check, ChevronRight, Building2, Loader2, AlertTriangle } from 'lucide-react';
+import { format, startOfDay, isBefore } from 'date-fns';
+import { Clock, Play, Check, ChevronRight, Building2, Loader2, AlertTriangle, AlertCircle } from 'lucide-react';
 import { Schedule } from '@/types/scheduling';
 import { cn } from '@/lib/utils';
 import { useStayStatus } from '@/hooks/useStayStatus';
@@ -11,6 +11,13 @@ interface MobileScheduleCardProps {
   loadingScheduleId?: string | null;
   variant: 'pending' | 'inProgress' | 'completed' | 'tomorrow' | 'calendar';
 }
+
+// Check if schedule is overdue (past date and still pending)
+const isOverdue = (schedule: Schedule): boolean => {
+  const today = startOfDay(new Date());
+  const scheduleDate = startOfDay(schedule.checkOut);
+  return isBefore(scheduleDate, today) && (schedule.status === 'waiting' || schedule.status === 'released');
+};
 
 // Footer for pending cards with stay status
 const PendingCardFooter = memo(function PendingCardFooter({ schedule }: { schedule: Schedule }) {
@@ -149,8 +156,9 @@ export const MobileScheduleCard = memo(function MobileScheduleCard({
   }
 
   const isPending = variant === 'pending';
-  const statusColor = isPending ? 'primary' : '#E0C051';
-  const statusLabel = isPending ? 'Pendente' : 'Em Limpeza';
+  const isTaskOverdue = isOverdue(schedule);
+  const statusColor = isTaskOverdue ? 'red' : isPending ? 'primary' : '#E0C051';
+  const statusLabel = isTaskOverdue ? 'Atrasada' : isPending ? 'Pendente' : 'Em Limpeza';
   const buttonLabel = isPending ? 'Iniciar Limpeza' : 'Continuar Limpeza';
 
   // Check if schedule has important info that requires reading
@@ -158,16 +166,34 @@ export const MobileScheduleCard = memo(function MobileScheduleCard({
 
   return (
     <div 
-      className="overflow-hidden rounded-2xl bg-white dark:bg-[#2d3138] shadow-soft transition-all hover:shadow-md border border-slate-100 dark:border-slate-700"
+      className={cn(
+        "overflow-hidden rounded-2xl bg-white dark:bg-[#2d3138] shadow-soft transition-all hover:shadow-md border",
+        isTaskOverdue 
+          ? "border-red-300 dark:border-red-800 ring-1 ring-red-200 dark:ring-red-900/50" 
+          : "border-slate-100 dark:border-slate-700"
+      )}
     >
       <div className="flex flex-row p-4 gap-4">
         <div className="flex-1 flex flex-col justify-between">
           <div>
-            <div className="mb-1 flex items-center gap-1.5">
-              <span className={cn("inline-flex h-2 w-2 rounded-full animate-pulse", isPending ? "bg-primary" : "bg-[#E0C051]")} />
-              <span className={cn("text-xs font-bold uppercase tracking-wider", isPending ? "text-primary" : "text-[#E0C051]")}>{statusLabel}</span>
+            <div className="mb-1 flex items-center gap-1.5 flex-wrap">
+              <span className={cn(
+                "inline-flex h-2 w-2 rounded-full animate-pulse", 
+                isTaskOverdue ? "bg-red-500" : isPending ? "bg-primary" : "bg-[#E0C051]"
+              )} />
+              <span className={cn(
+                "text-xs font-bold uppercase tracking-wider", 
+                isTaskOverdue ? "text-red-600 dark:text-red-400" : isPending ? "text-primary" : "text-[#E0C051]"
+              )}>{statusLabel}</span>
+              {/* Overdue badge */}
+              {isTaskOverdue && (
+                <div className="flex items-center gap-1 ml-1 px-2 py-0.5 bg-red-100 dark:bg-red-900/30 rounded-full">
+                  <AlertCircle className="w-3 h-3 text-red-600 dark:text-red-400" />
+                  <span className="text-[10px] font-bold text-red-600 dark:text-red-400">Atrasada</span>
+                </div>
+              )}
               {/* Important info indicator */}
-              {hasImportantInfo && isPending && (
+              {hasImportantInfo && isPending && !isTaskOverdue && (
                 <div className="flex items-center gap-1 ml-2 px-2 py-0.5 bg-amber-100 dark:bg-amber-900/30 rounded-full">
                   <AlertTriangle className="w-3 h-3 text-amber-600 dark:text-amber-400" />
                   <span className="text-[10px] font-bold text-amber-600 dark:text-amber-400">Ler obs.</span>
@@ -191,9 +217,11 @@ export const MobileScheduleCard = memo(function MobileScheduleCard({
             disabled={loadingScheduleId === schedule.id}
             className={cn(
               "mt-4 flex w-fit items-center gap-2 rounded-lg px-4 py-2.5 text-sm font-bold text-white transition-colors disabled:opacity-50 disabled:cursor-not-allowed",
-              isPending 
-                ? "bg-primary hover:bg-[#267373] active:bg-[#267373]" 
-                : "bg-[#E0C051] hover:bg-[#c9a844] active:bg-[#c9a844]"
+              isTaskOverdue
+                ? "bg-red-500 hover:bg-red-600 active:bg-red-600"
+                : isPending 
+                  ? "bg-primary hover:bg-[#267373] active:bg-[#267373]" 
+                  : "bg-[#E0C051] hover:bg-[#c9a844] active:bg-[#c9a844]"
             )}
           >
             {loadingScheduleId === schedule.id ? (
