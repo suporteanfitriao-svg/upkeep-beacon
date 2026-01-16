@@ -107,11 +107,12 @@ export function PasswordModal({
   const displayPassword = passwordMode === 'ical' ? passwordFromIcal : accessPassword;
   const hasPassword = Boolean(displayPassword && displayPassword.trim());
 
-  // Rule: Temporal visibility
-  // - Allow if checkout day OR before checkout day OR schedule is released/cleaning/completed
-  // - Block ONLY if checkout day has PASSED AND status is NOT 'cleaning'
-  // - If status is 'cleaning', ALWAYS allow (even after checkout day)
-  const canCleanerViewByRule = isCheckoutDay || isReleasedForCleaning || !checkoutDayPassed || isCleaningInProgress;
+  // Rule: Temporal visibility applies to ALL passwords (both iCal and manual)
+  // Cleaners can view password if:
+  // 1. It's checkout day (from 00:01) OR
+  // 2. Schedule is released/cleaning/completed
+  // Note: 'cleaning' status is included in isReleasedForCleaning, so password stays visible even after checkout day
+  const canCleanerViewByRule = isCheckoutDay || isReleasedForCleaning;
   const isBlockedByTemporalRule = role === 'cleaner' && !canCleanerViewByRule;
 
   // Log view action when password is displayed (only once per modal open) - Rule 13
