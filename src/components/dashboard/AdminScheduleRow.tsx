@@ -138,6 +138,20 @@ export function AdminScheduleRow({ schedule, onClick, onScheduleUpdated }: Admin
 
   // Check if completed with delay
   const completedWithDelay = useMemo(() => wasCompletedWithDelay(localSchedule), [localSchedule]);
+
+  // Check if there are admin notes that haven't been acknowledged by the assigned cleaner
+  const hasUnreadAdminNotes = useMemo(() => {
+    // Only show indicator if there are notes AND there's an assigned cleaner
+    if (!localSchedule.notes || !localSchedule.responsibleTeamMemberId) return false;
+    
+    // Check if the assigned cleaner has acknowledged the notes
+    const acks = localSchedule.ackByTeamMembers || [];
+    const cleanerHasAcked = acks.some(
+      (ack) => ack.team_member_id === localSchedule.responsibleTeamMemberId
+    );
+    
+    return !cleanerHasAcked;
+  }, [localSchedule.notes, localSchedule.responsibleTeamMemberId, localSchedule.ackByTeamMembers]);
   const delayMinutes = useMemo(() => getDelayMinutes(localSchedule), [localSchedule]);
 
   // Fetch property password mode
@@ -501,6 +515,18 @@ export function AdminScheduleRow({ schedule, onClick, onScheduleUpdated }: Admin
                         </span>
                       </button>
                     )
+                  )}
+                  {/* Admin notes pending acknowledgment indicator */}
+                  {hasUnreadAdminNotes && (
+                    <div 
+                      className="flex items-center gap-1 bg-blue-100 dark:bg-blue-900/40 px-2 py-0.5 rounded-full animate-pulse"
+                      title="Observação do admin pendente de leitura pelo cleaner"
+                    >
+                      <MessageSquare className="w-3 h-3 text-blue-500" />
+                      <span className="text-[10px] font-bold text-blue-600 dark:text-blue-400 uppercase tracking-wide">
+                        Obs. Pendente
+                      </span>
+                    </div>
                   )}
                 </div>
               </div>
