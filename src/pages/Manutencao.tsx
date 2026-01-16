@@ -431,7 +431,7 @@ export default function Manutencao() {
         <AppSidebar />
         
         <main className="flex-1 px-4 sm:px-6 lg:px-8 py-6">
-          <DashboardHeader />
+          <DashboardHeader title="Manutenção" subtitle="Gestão e Relatórios" />
 
           <div className="mb-6">
             <h2 className="text-2xl font-bold mb-1">Gestão e Relatórios</h2>

@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { SidebarProvider, SidebarInset, SidebarTrigger } from '@/components/ui/sidebar';
+import { SidebarProvider, SidebarInset } from '@/components/ui/sidebar';
 import { AppSidebar } from '@/components/dashboard/AppSidebar';
 import { useAuth } from '@/hooks/useAuth';
 import { useUserRole } from '@/hooks/useUserRole';
@@ -264,7 +264,6 @@ export default function Profile() {
         {/* Header */}
         <header className="sticky top-0 z-10 h-20 bg-card border-b border-border flex items-center justify-between px-4 md:px-8">
           <div className="flex items-center gap-4">
-            <SidebarTrigger className="md:hidden" />
             <div>
               <h1 className="text-xl md:text-2xl font-bold text-foreground">Minha Conta</h1>
               <p className="text-sm text-muted-foreground hidden sm:block">Gerencie suas informações e segurança</p>

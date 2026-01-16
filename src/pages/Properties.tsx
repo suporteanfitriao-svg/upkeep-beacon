@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { SidebarProvider, SidebarInset, SidebarTrigger } from '@/components/ui/sidebar';
+import { SidebarProvider, SidebarInset } from '@/components/ui/sidebar';
 import { AppSidebar } from '@/components/dashboard/AppSidebar';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -570,7 +570,6 @@ export default function Properties() {
           {/* Header */}
           <header className="sticky top-0 z-20 flex items-center justify-between bg-background/90 px-4 py-4 backdrop-blur-md border-b border-border md:px-6">
             <div className="flex items-center gap-3">
-              <SidebarTrigger className="rounded-full p-2 hover:bg-muted transition-colors" />
               <div className="flex flex-col">
                 <h1 className="text-lg font-bold tracking-tight text-foreground">Propriedades</h1>
                 <span className="text-xs text-muted-foreground">{properties.length} imóveis cadastrados</span>

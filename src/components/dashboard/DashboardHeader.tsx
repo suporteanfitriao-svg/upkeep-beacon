@@ -1,32 +1,34 @@
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { Calendar, RefreshCw, Menu, LogOut } from 'lucide-react';
+import { Calendar, RefreshCw, LogOut } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { SidebarTrigger } from '@/components/ui/sidebar';
 import { Badge } from '@/components/ui/badge';
 import logo from '@/assets/logo.png';
 
 interface DashboardHeaderProps {
+  title?: string;
+  subtitle?: string;
   onRefresh?: () => void;
   todayCheckoutsCount?: number;
 }
 
-export function DashboardHeader({ onRefresh, todayCheckoutsCount }: DashboardHeaderProps) {
+export function DashboardHeader({ 
+  title = 'Dashboard',
+  subtitle,
+  onRefresh, 
+  todayCheckoutsCount 
+}: DashboardHeaderProps) {
   const today = new Date();
 
   return (
-    <header className="flex items-center justify-between gap-4 mb-6">
+    <header className="flex items-center justify-between gap-4 mb-6 px-4 md:px-6 pt-4 md:pt-6">
       <div className="flex items-center gap-4">
-        <SidebarTrigger className="-ml-2">
-          <Menu className="w-5 h-5" />
-        </SidebarTrigger>
-        
         <div className="flex items-center gap-3">
           <img src={logo} alt="Super Host Lab" className="w-10 h-10 object-contain" />
           <div>
             <div className="flex items-center gap-3">
               <h1 className="text-xl sm:text-2xl font-bold text-foreground">
-                Dashboard Operacional
+                {title}
               </h1>
               {todayCheckoutsCount !== undefined && todayCheckoutsCount > 0 && (
                 <Badge className="bg-primary text-primary-foreground text-sm px-2.5 py-0.5">
@@ -38,7 +40,7 @@ export function DashboardHeader({ onRefresh, todayCheckoutsCount }: DashboardHea
             <div className="flex items-center gap-2 text-muted-foreground">
               <Calendar className="w-3 h-3" />
               <span className="text-xs">
-                {format(today, "EEEE, dd 'de' MMMM", { locale: ptBR })}
+                {subtitle || format(today, "EEEE, dd 'de' MMMM", { locale: ptBR })}
               </span>
             </div>
           </div>

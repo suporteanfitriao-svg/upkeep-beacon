@@ -8,7 +8,7 @@ const Help = () => {
     <SidebarProvider>
       <AppSidebar />
       <SidebarInset>
-        <DashboardHeader />
+        <DashboardHeader title="Ajuda" subtitle="Documentação e suporte" />
         <main className="flex-1 p-6">
           <div className="flex flex-col items-center justify-center h-[60vh] text-center">
             <HelpCircle className="h-16 w-16 text-muted-foreground mb-4" />
