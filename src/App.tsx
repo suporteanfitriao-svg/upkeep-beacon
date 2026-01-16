@@ -5,6 +5,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { AuthProvider } from "@/hooks/useAuth";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
+import { AdminRoute } from "@/components/AdminRoute";
 import { InstallPrompt } from "@/components/pwa/InstallPrompt";
 import { usePWAUpdate } from "@/hooks/usePWAUpdate";
 import Index from "./pages/Index";
@@ -66,33 +67,33 @@ const App = () => (
             <Route
               path="/equipe"
               element={
-                <ProtectedRoute>
+                <AdminRoute>
                   <Team />
-                </ProtectedRoute>
+                </AdminRoute>
               }
             />
             <Route
               path="/propriedades"
               element={
-                <ProtectedRoute>
+                <AdminRoute>
                   <Properties />
-                </ProtectedRoute>
+                </AdminRoute>
               }
             />
             <Route
               path="/inspecoes"
               element={
-                <ProtectedRoute>
+                <AdminRoute>
                   <Inspections />
-                </ProtectedRoute>
+                </AdminRoute>
               }
             />
             <Route
               path="/inventario"
               element={
-                <ProtectedRoute>
+                <AdminRoute>
                   <Inventory />
-                </ProtectedRoute>
+                </AdminRoute>
               }
             />
             <Route
@@ -106,9 +107,9 @@ const App = () => (
             <Route
               path="/manutencao"
               element={
-                <ProtectedRoute>
+                <AdminRoute>
                   <Manutencao />
-                </ProtectedRoute>
+                </AdminRoute>
               }
             />
             <Route
@@ -130,17 +131,17 @@ const App = () => (
             <Route
               path="/onboarding"
               element={
-                <ProtectedRoute>
+                <AdminRoute>
                   <Onboarding />
-                </ProtectedRoute>
+                </AdminRoute>
               }
             />
             <Route
               path="/super-admin"
               element={
-                <ProtectedRoute>
+                <AdminRoute>
                   <SuperAdmin />
-                </ProtectedRoute>
+                </AdminRoute>
               }
             />
             <Route
