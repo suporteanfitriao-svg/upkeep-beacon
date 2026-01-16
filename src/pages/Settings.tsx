@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { SidebarProvider, SidebarTrigger } from '@/components/ui/sidebar';
+import { SidebarProvider } from '@/components/ui/sidebar';
 import { AppSidebar } from '@/components/dashboard/AppSidebar';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -357,7 +357,6 @@ export default function Settings() {
         <AppSidebar />
         <main className="flex-1 flex flex-col h-screen overflow-hidden">
           <header className="h-16 border-b border-border flex items-center px-4 lg:px-6 gap-4 shrink-0">
-            <SidebarTrigger />
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center">
                 <SettingsIcon className="h-5 w-5 text-primary" />

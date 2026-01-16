@@ -433,13 +433,9 @@ export default function Team() {
       <div className="min-h-screen flex w-full bg-background">
         <AppSidebar />
         <div className="flex-1 flex flex-col">
-          <DashboardHeader />
+          <DashboardHeader title="Equipe" subtitle="Gerencie os membros da sua equipe" />
           <main className="flex-1 p-4 md:p-6 space-y-6">
             <div className="flex items-center justify-between">
-              <div>
-                <h1 className="text-2xl font-bold text-foreground">Equipe</h1>
-                <p className="text-muted-foreground">Gerencie os membros da sua equipe</p>
-              </div>
 
               <Dialog open={dialogOpen} onOpenChange={(open) => {
                 setDialogOpen(open);

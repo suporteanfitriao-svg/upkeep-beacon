@@ -890,7 +890,7 @@ const Inventory = () => {
       <SidebarProvider>
         <AppSidebar />
         <SidebarInset>
-          <DashboardHeader />
+          <DashboardHeader title="Inventário" subtitle="Gerencie itens e quantidades" />
           <main className="flex-1 p-6 flex items-center justify-center">
             <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
           </main>
@@ -903,7 +903,7 @@ const Inventory = () => {
     <SidebarProvider>
       <AppSidebar />
       <SidebarInset>
-        <DashboardHeader />
+        <DashboardHeader title="Inventário" subtitle="Gerencie itens e quantidades" />
         <main className="flex-1 p-4 sm:p-6">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
             <div>

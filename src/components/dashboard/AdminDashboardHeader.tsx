@@ -1,6 +1,5 @@
 import { Bell, Moon, Sun, RefreshCw, Calendar } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { SidebarTrigger } from '@/components/ui/sidebar';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { useAuth } from '@/hooks/useAuth';
@@ -45,10 +44,8 @@ export function AdminDashboardHeader({ onRefresh, lastSyncTime, newReservationsC
   };
 
   return (
-    <header className="h-20 bg-card border-b border-border flex items-center justify-between px-8 mb-6 -mx-6 -mt-6">
+    <header className="h-20 bg-card border-b border-border flex items-center justify-between px-8">
       <div className="flex items-center gap-4">
-        <SidebarTrigger className="-ml-2 md:hidden" />
-        
         <div>
           <h2 className="text-2xl font-bold text-foreground">Painel Admin</h2>
           <p className="text-sm text-muted-foreground">Gestão Operacional de Imóveis</p>
