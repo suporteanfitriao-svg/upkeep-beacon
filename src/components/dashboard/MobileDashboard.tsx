@@ -283,10 +283,8 @@ export function MobileDashboard({ schedules, onScheduleClick, onStartCleaning, o
   }, [selectedDate]);
 
   const pendingSchedules = useMemo(() => {
-    // Don't show pending schedules for past dates
-    if (isPastDate) return [];
     return selectedDaySchedules.filter(s => s.status === 'waiting' || s.status === 'released');
-  }, [selectedDaySchedules, isPastDate]);
+  }, [selectedDaySchedules]);
   
   const inProgressSchedules = useMemo(() => 
     selectedDaySchedules.filter(s => s.status === 'cleaning'),
