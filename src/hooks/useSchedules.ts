@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { 
   Schedule, 
@@ -276,6 +276,7 @@ export function useSchedules() {
   const [schedules, setSchedules] = useState<Schedule[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const skipNextRealtimeRef = useRef(false);
 
   const fetchSchedules = useCallback(async () => {
     try {
@@ -524,6 +525,11 @@ export function useSchedules() {
         'postgres_changes',
         { event: '*', schema: 'public', table: 'schedules' },
         () => {
+          // Skip refetch if triggered by local update (notes save, etc.)
+          if (skipNextRealtimeRef.current) {
+            skipNextRealtimeRef.current = false;
+            return;
+          }
           fetchSchedules();
         }
       )
@@ -534,6 +540,15 @@ export function useSchedules() {
     };
   }, [fetchSchedules]);
 
+  // Update a schedule locally without refetching from database
+  // Also sets a flag to skip the next realtime update to prevent reload
+  const updateScheduleLocal = useCallback((updatedSchedule: Schedule) => {
+    skipNextRealtimeRef.current = true;
+    setSchedules(prev =>
+      prev.map(s => (s.id === updatedSchedule.id ? updatedSchedule : s))
+    );
+  }, []);
+
   return {
     schedules,
     loading,
@@ -541,6 +556,7 @@ export function useSchedules() {
     refetch: fetchSchedules,
     updateSchedule,
     updateScheduleTimes,
+    updateScheduleLocal,
   };
 }
 
