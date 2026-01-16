@@ -6,6 +6,7 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { AuthProvider } from "@/hooks/useAuth";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
 import { InstallPrompt } from "@/components/pwa/InstallPrompt";
+import { usePWAUpdate } from "@/hooks/usePWAUpdate";
 import Index from "./pages/Index";
 import Auth from "./pages/Auth";
 import Team from "./pages/Team";
@@ -23,7 +24,24 @@ import SuperAdmin from "./pages/SuperAdmin";
 import Settings from "./pages/Settings";
 import Install from "./pages/Install";
 
-const queryClient = new QueryClient();
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      // Refetch data every 30 seconds for near-realtime updates
+      refetchInterval: 30000,
+      // Refetch when window regains focus
+      refetchOnWindowFocus: true,
+      // Keep data fresh
+      staleTime: 10000, // 10 seconds
+    },
+  },
+});
+
+// Component to handle PWA updates
+function PWAUpdateHandler() {
+  usePWAUpdate();
+  return null;
+}
 
 const App = () => (
   <QueryClientProvider client={queryClient}>
@@ -31,6 +49,7 @@ const App = () => (
       <Toaster />
       <Sonner />
       <InstallPrompt />
+      <PWAUpdateHandler />
       <BrowserRouter>
         <AuthProvider>
           <Routes>
