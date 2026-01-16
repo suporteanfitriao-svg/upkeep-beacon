@@ -283,7 +283,20 @@ export function MobileDashboard({ schedules, onScheduleClick, onStartCleaning, o
   }, [selectedDate]);
 
   const pendingSchedules = useMemo(() => {
-    return selectedDaySchedules.filter(s => s.status === 'waiting' || s.status === 'released');
+    const today = startOfDay(new Date());
+    return selectedDaySchedules
+      .filter(s => s.status === 'waiting' || s.status === 'released')
+      .sort((a, b) => {
+        // Sort overdue tasks first (older dates come first)
+        const aIsOverdue = startOfDay(a.checkOut) < today;
+        const bIsOverdue = startOfDay(b.checkOut) < today;
+        
+        if (aIsOverdue && !bIsOverdue) return -1;
+        if (!aIsOverdue && bIsOverdue) return 1;
+        
+        // Within same category, sort by checkout time
+        return a.checkOut.getTime() - b.checkOut.getTime();
+      });
   }, [selectedDaySchedules]);
   
   const inProgressSchedules = useMemo(() => 
