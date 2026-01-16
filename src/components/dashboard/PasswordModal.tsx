@@ -48,6 +48,13 @@ const hasCheckoutDayPassed = (scheduleDateStr: string): boolean => {
   return todayStr > scheduleDatePart;
 };
 
+// Check if task is overdue (checkout date passed but task still pending/in progress)
+const isOverdueTask = (scheduleDateStr: string, status?: string): boolean => {
+  const isPassed = hasCheckoutDayPassed(scheduleDateStr);
+  const isPendingOrInProgress = status === 'waiting' || status === 'released' || status === 'cleaning';
+  return isPassed && isPendingOrInProgress;
+};
+
 export function PasswordModal({ 
   propertyId,
   propertyName, 
@@ -76,6 +83,7 @@ export function PasswordModal({
   const isCleaningInProgress = scheduleStatus === 'cleaning';
   const isReleased = scheduleStatus === 'released';
   const isCompleted = scheduleStatus === 'completed';
+  const isOverdue = isOverdueTask(scheduleDate, scheduleStatus);
   
   // Password visibility status - released or cleaning (NOT completed)
   const isActiveForCleaning = isReleased || isCleaningInProgress;
@@ -110,11 +118,12 @@ export function PasswordModal({
   // =====================================================
   // 1. Senha visível SE é o dia do checkout (a partir de 00:01) E status NÃO é 'completed'
   // 2. Senha visível SE status é 'released' ou 'cleaning'
-  // 3. Senha OCULTA SE status é 'completed' (limpeza finalizada)
-  // 4. Senha OCULTA SE não é o dia do checkout E status é 'pending'
-  // 5. Admin e Manager sempre podem ver a senha
+  // 3. Senha visível SE tarefa está ATRASADA (data passou mas ainda pendente/em andamento)
+  // 4. Senha OCULTA SE status é 'completed' (limpeza finalizada)
+  // 5. Senha OCULTA SE não é o dia do checkout E status é 'pending' E NÃO está atrasada
+  // 6. Admin e Manager sempre podem ver a senha
   // =====================================================
-  const canCleanerViewByRule = (isCheckoutDay && !isCompleted) || isActiveForCleaning;
+  const canCleanerViewByRule = (isCheckoutDay && !isCompleted) || isActiveForCleaning || isOverdue;
   const isBlockedByTemporalRule = role === 'cleaner' && !canCleanerViewByRule;
 
   // Log view action when password is displayed (only once per modal open) - Rule 13
