@@ -42,13 +42,30 @@ export function useReleaseCountdown(schedule: Schedule): ReleaseCountdownInfo | 
     const nowInSP = new Date(formatInTimeZone(now, TIMEZONE, "yyyy-MM-dd'T'HH:mm:ss"));
     const checkoutInSP = new Date(formatInTimeZone(checkoutTime, TIMEZONE, "yyyy-MM-dd'T'HH:mm:ss"));
 
-    // Check if checkout is today
+    // Check if checkout is today OR if it's overdue (past date)
     const todaySP = formatInTimeZone(now, TIMEZONE, 'yyyy-MM-dd');
     const checkoutDateSP = formatInTimeZone(checkoutTime, TIMEZONE, 'yyyy-MM-dd');
     const isCheckoutToday = todaySP === checkoutDateSP;
+    const isOverdueTask = todaySP > checkoutDateSP;
 
-    if (!isCheckoutToday) {
+    // If checkout is not today and not overdue, no countdown
+    if (!isCheckoutToday && !isOverdueTask) {
       return null;
+    }
+
+    // For overdue tasks, calculate days overdue
+    if (isOverdueTask) {
+      const diffMs = nowInSP.getTime() - checkoutInSP.getTime();
+      const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+      const diffHours = Math.floor((diffMs % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+      
+      return {
+        isOverdue: true,
+        overdueMinutes: Math.floor(diffMs / (1000 * 60)),
+        countdownMinutes: 0,
+        countdownLabel: '',
+        overdueLabel: diffDays > 0 ? `${diffDays}d ${diffHours}h atrasado` : `${diffHours}h atrasado`,
+      };
     }
 
     const diffMs = checkoutInSP.getTime() - nowInSP.getTime();

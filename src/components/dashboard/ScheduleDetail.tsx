@@ -1676,34 +1676,8 @@ export function ScheduleDetail({ schedule, onClose, onUpdateSchedule }: Schedule
             
             return (
               <div className="flex flex-col gap-3">
-                {/* Pending Categories Preview */}
-                {hasPendingItems && (
-                  <div className="rounded-xl border border-orange-200 dark:border-orange-800/50 bg-orange-50 dark:bg-orange-900/20 p-4">
-                    <div className="flex items-center gap-2 mb-3">
-                      <span className="material-symbols-outlined text-orange-500 text-[18px]">checklist</span>
-                      <span className="text-sm font-bold text-orange-700 dark:text-orange-400">
-                        {totalPendingItems} {totalPendingItems === 1 ? 'item pendente' : 'itens pendentes'}
-                      </span>
-                    </div>
-                    <div className="flex flex-wrap gap-2">
-                      {pendingCategoriesPreview.map((category) => (
-                        <div 
-                          key={category.name}
-                          className="flex items-center gap-1.5 bg-white dark:bg-slate-800/50 rounded-lg px-3 py-1.5 border border-orange-200 dark:border-orange-700/50"
-                        >
-                          <span className="material-symbols-outlined text-orange-500 text-[14px]">warning</span>
-                          <span className="text-xs font-medium text-slate-700 dark:text-slate-300">{category.name}</span>
-                          <span className="text-[10px] font-bold text-orange-600 dark:text-orange-400 bg-orange-100 dark:bg-orange-900/40 px-1.5 py-0.5 rounded">
-                            {category.pendingCount}/{category.totalCount}
-                          </span>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
-
-                {/* Missing Photos Alert */}
-                {hasMissingPhotos && !hasPendingItems && (
+                {/* Missing Photos Alert - only show this as visual hint */}
+                {hasMissingPhotos && (
                   <div className="flex items-center gap-2 text-amber-600 dark:text-amber-400 text-xs font-medium justify-center bg-amber-50 dark:bg-amber-900/20 rounded-lg py-2 px-3 border border-amber-200 dark:border-amber-700/50">
                     <span className="material-symbols-outlined text-[16px]">photo_camera</span>
                     <span>Fotos pendentes em: {categoriesMissingPhotos.join(', ')}</span>
@@ -1712,10 +1686,10 @@ export function ScheduleDetail({ schedule, onClose, onUpdateSchedule }: Schedule
 
                 <button 
                   onClick={() => handleStatusChange('completed')}
-                  disabled={isBlocked || isCommitting}
+                  disabled={isCommitting}
                   className={cn(
                     "w-full rounded-xl py-4 text-base font-bold text-white shadow-lg shadow-primary/20 transition-all active:scale-[0.98]",
-                    (isBlocked || isCommitting)
+                    isCommitting
                       ? "bg-slate-400 cursor-not-allowed" 
                       : "bg-primary hover:bg-[#267373]"
                   )}
@@ -1724,16 +1698,6 @@ export function ScheduleDetail({ schedule, onClose, onUpdateSchedule }: Schedule
                     <span className="flex items-center justify-center gap-2">
                       <span className="material-symbols-outlined animate-spin text-[18px]">progress_activity</span>
                       Finalizando...
-                    </span>
-                  ) : hasPendingItems ? (
-                    <span className="flex items-center justify-center gap-2">
-                      <span className="material-symbols-outlined text-[18px]">checklist</span>
-                      Complete o Checklist
-                    </span>
-                  ) : hasMissingPhotos ? (
-                    <span className="flex items-center justify-center gap-2">
-                      <span className="material-symbols-outlined text-[18px]">photo_camera</span>
-                      Adicione as Fotos
                     </span>
                   ) : (
                     'Finalizar Limpeza'
