@@ -1,5 +1,5 @@
 import { useState, useMemo, useCallback, useEffect, createContext, useContext, useRef } from 'react';
-import { Loader2, CalendarX } from 'lucide-react';
+import { Loader2, CalendarX, ChevronLeft, ChevronRight } from 'lucide-react';
 import { toast } from 'sonner';
 import { isToday, isTomorrow, isSameDay, isWithinInterval, startOfDay, endOfDay, parseISO } from 'date-fns';
 import type { DateRange } from 'react-day-picker';
@@ -133,6 +133,10 @@ const Index = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
   const [responsibleFilter, setResponsibleFilter] = useState('all');
+  
+  // Pagination for range mode
+  const [currentPage, setCurrentPage] = useState(1);
+  const ITEMS_PER_PAGE = 10;
 
   // Persist sync data to localStorage
   useEffect(() => {
@@ -196,24 +200,59 @@ const Index = () => {
     });
   }, [schedules, activeStatusFilter, statusFilter, responsibleFilter, dateFilter, customDate, dateRange, searchQuery]);
 
-  // Filtered stats for current date filter
+  // Paginated schedules - only for range mode
+  const paginatedSchedules = useMemo(() => {
+    if (dateFilter !== 'range') {
+      return filteredSchedules;
+    }
+    const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
+    return filteredSchedules.slice(startIndex, startIndex + ITEMS_PER_PAGE);
+  }, [filteredSchedules, dateFilter, currentPage, ITEMS_PER_PAGE]);
+
+  const totalPages = useMemo(() => {
+    if (dateFilter !== 'range') return 1;
+    return Math.ceil(filteredSchedules.length / ITEMS_PER_PAGE);
+  }, [filteredSchedules.length, dateFilter, ITEMS_PER_PAGE]);
+
+  // Reset page when filters change
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [dateFilter, customDate, dateRange, statusFilter, responsibleFilter, searchQuery, activeStatusFilter]);
+
+  // Filtered stats that reflect ALL applied filters (except status, which is what we're counting)
   const filteredStats = useMemo(() => {
-    const dateFiltered = schedules.filter(schedule => {
+    const filtered = schedules.filter(schedule => {
+      // Responsible filter
+      if (responsibleFilter !== 'all' && schedule.cleanerName !== responsibleFilter) {
+        return false;
+      }
+
+      // Date filter (by checkout date)
       const checkOutDate = schedule.checkOut;
-      if (dateFilter === 'today') return isToday(checkOutDate);
-      if (dateFilter === 'tomorrow') return isTomorrow(checkOutDate);
-      if (dateFilter === 'custom' && customDate) return isSameDay(checkOutDate, customDate);
+      if (dateFilter === 'today' && !isToday(checkOutDate)) return false;
+      if (dateFilter === 'tomorrow' && !isTomorrow(checkOutDate)) return false;
+      if (dateFilter === 'custom' && customDate && !isSameDay(checkOutDate, customDate)) return false;
       if (dateFilter === 'range' && dateRange?.from) {
         const rangeEnd = dateRange.to || dateRange.from;
-        return isWithinInterval(checkOutDate, { 
+        const isInRange = isWithinInterval(checkOutDate, { 
           start: startOfDay(dateRange.from), 
           end: endOfDay(rangeEnd) 
         });
+        if (!isInRange) return false;
       }
+
+      // Search filter
+      if (searchQuery) {
+        const query = searchQuery.toLowerCase();
+        const matchesProperty = schedule.propertyName.toLowerCase().includes(query);
+        const matchesCleaner = schedule.cleanerName.toLowerCase().includes(query);
+        if (!matchesProperty && !matchesCleaner) return false;
+      }
+
       return true;
     });
-    return calculateStats(dateFiltered);
-  }, [schedules, dateFilter, customDate, dateRange]);
+    return calculateStats(filtered);
+  }, [schedules, dateFilter, customDate, dateRange, responsibleFilter, searchQuery]);
 
   // Filter inspections by date filter (same as schedules)
   const filteredInspections = useMemo(() => {
@@ -650,18 +689,96 @@ const Index = () => {
                   />
                 </div>
               ) : (
-                filteredSchedules.map(schedule => (
-                  <AdminScheduleRow
-                    key={schedule.id}
-                    schedule={schedule}
-                    onClick={() => setSelectedSchedule(schedule)}
-                    onScheduleUpdated={(updated) => {
-                      if (selectedSchedule?.id === updated.id) {
-                        setSelectedSchedule(updated);
-                      }
-                    }}
-                  />
-                ))
+                <>
+                  {/* Show count when in range mode */}
+                  {dateFilter === 'range' && (
+                    <div className="flex items-center justify-between mb-4">
+                      <p className="text-sm text-muted-foreground">
+                        Mostrando {paginatedSchedules.length} de {filteredSchedules.length} agendamentos
+                      </p>
+                    </div>
+                  )}
+                  
+                  {paginatedSchedules.map(schedule => (
+                    <AdminScheduleRow
+                      key={schedule.id}
+                      schedule={schedule}
+                      onClick={() => setSelectedSchedule(schedule)}
+                      onScheduleUpdated={(updated) => {
+                        if (selectedSchedule?.id === updated.id) {
+                          setSelectedSchedule(updated);
+                        }
+                      }}
+                    />
+                  ))}
+
+                  {/* Pagination for range mode */}
+                  {dateFilter === 'range' && totalPages > 1 && (
+                    <div className="flex items-center justify-center gap-2 pt-6">
+                      <button
+                        onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+                        disabled={currentPage === 1}
+                        className={cn(
+                          'flex items-center justify-center w-10 h-10 rounded-lg transition-colors',
+                          currentPage === 1
+                            ? 'text-muted-foreground/50 cursor-not-allowed'
+                            : 'text-muted-foreground hover:bg-muted hover:text-foreground'
+                        )}
+                      >
+                        <ChevronLeft className="w-5 h-5" />
+                      </button>
+                      
+                      <div className="flex items-center gap-1">
+                        {Array.from({ length: totalPages }, (_, i) => i + 1).map(page => {
+                          // Show first, last, current, and neighbors
+                          const showPage = page === 1 || 
+                            page === totalPages || 
+                            Math.abs(page - currentPage) <= 1;
+                          
+                          if (!showPage) {
+                            // Show ellipsis
+                            if (page === 2 || page === totalPages - 1) {
+                              return (
+                                <span key={page} className="px-2 text-muted-foreground">
+                                  ...
+                                </span>
+                              );
+                            }
+                            return null;
+                          }
+                          
+                          return (
+                            <button
+                              key={page}
+                              onClick={() => setCurrentPage(page)}
+                              className={cn(
+                                'flex items-center justify-center w-10 h-10 rounded-lg text-sm font-medium transition-colors',
+                                currentPage === page
+                                  ? 'bg-primary text-primary-foreground'
+                                  : 'text-muted-foreground hover:bg-muted hover:text-foreground'
+                              )}
+                            >
+                              {page}
+                            </button>
+                          );
+                        })}
+                      </div>
+
+                      <button
+                        onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
+                        disabled={currentPage === totalPages}
+                        className={cn(
+                          'flex items-center justify-center w-10 h-10 rounded-lg transition-colors',
+                          currentPage === totalPages
+                            ? 'text-muted-foreground/50 cursor-not-allowed'
+                            : 'text-muted-foreground hover:bg-muted hover:text-foreground'
+                        )}
+                      >
+                        <ChevronRight className="w-5 h-5" />
+                      </button>
+                    </div>
+                  )}
+                </>
               )}
             </section>
             
