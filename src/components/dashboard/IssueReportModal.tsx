@@ -289,64 +289,124 @@ export function IssueReportModal({ onClose, onSubmit, checklist, isSubmitting = 
         )}
 
         {/* Step 2: Select Item */}
-        {step === 2 && selectedCategoryData && (
+        {step === 2 && (
           <main className="flex flex-col gap-6 p-6">
-            <div className="flex items-center gap-4 px-1">
-              <div className="h-12 w-12 rounded-2xl bg-gradient-to-br from-primary to-teal-600 flex items-center justify-center text-white shadow-[0_4px_20px_-2px_rgba(51,153,153,0.3)]">
-                <span className="material-symbols-outlined text-[24px]">{selectedCategoryData.icon}</span>
-              </div>
-              <div>
-                <p className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest mb-0.5">Cômodo</p>
-                <h1 className="text-2xl font-extrabold text-slate-900 dark:text-white leading-none">{selectedCategoryData.name}</h1>
-              </div>
-            </div>
+            {selectedCategoryData ? (
+              <>
+                <div className="flex items-center gap-4 px-1">
+                  <div className="h-12 w-12 rounded-2xl bg-gradient-to-br from-primary to-teal-600 flex items-center justify-center text-white shadow-[0_4px_20px_-2px_rgba(51,153,153,0.3)]">
+                    <span className="material-symbols-outlined text-[24px]">{selectedCategoryData.icon}</span>
+                  </div>
+                  <div>
+                    <p className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest mb-0.5">Cômodo</p>
+                    <h1 className="text-2xl font-extrabold text-slate-900 dark:text-white leading-none">{selectedCategoryData.name}</h1>
+                  </div>
+                </div>
 
-            <div className="flex flex-col gap-2">
-              <h2 className="text-lg font-bold text-slate-900 dark:text-white">Qual item está avariado?</h2>
-              <p className="text-sm text-slate-500 dark:text-slate-400">
-                Selecione o item específico do checklist.
-              </p>
-            </div>
+                <div className="flex flex-col gap-2">
+                  <h2 className="text-lg font-bold text-slate-900 dark:text-white">Qual item está avariado?</h2>
+                  <p className="text-sm text-slate-500 dark:text-slate-400">
+                    Selecione o item específico do checklist.
+                  </p>
+                </div>
 
-            <div className="flex flex-col gap-2">
-              {selectedCategoryData.items.length > 0 ? (
-                selectedCategoryData.items.map((item) => (
-                  <label key={item.id} className="relative cursor-pointer group">
-                    <input 
-                      type="radio" 
-                      name="item" 
-                      value={item.title}
-                      checked={selectedItem === item.title}
-                      onChange={() => setSelectedItem(item.title)}
-                      className="peer sr-only" 
-                    />
-                    <div className={cn(
-                      "flex items-center gap-3 p-4 rounded-xl bg-white dark:bg-[#2d3138] border transition-all",
-                      selectedItem === item.title 
-                        ? "border-primary ring-1 ring-primary" 
-                        : "border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800/50"
-                    )}>
-                      <div className={cn(
-                        "h-6 w-6 rounded-full border-2 flex items-center justify-center transition-all shrink-0",
-                        selectedItem === item.title 
-                          ? "border-primary bg-primary" 
-                          : "border-slate-300 dark:border-slate-600"
-                      )}>
-                        {selectedItem === item.title && (
-                          <div className="h-2.5 w-2.5 rounded-full bg-white" />
-                        )}
-                      </div>
-                      <span className={cn(
-                        "font-medium transition-colors",
-                        selectedItem === item.title 
-                          ? "text-primary" 
-                          : "text-slate-700 dark:text-slate-300"
-                      )}>{item.title}</span>
+                <div className="flex flex-col gap-2">
+                  {selectedCategoryData.items.length > 0 ? (
+                    selectedCategoryData.items.map((item) => (
+                      <label key={item.id} className="relative cursor-pointer group">
+                        <input 
+                          type="radio" 
+                          name="item" 
+                          value={item.title}
+                          checked={selectedItem === item.title}
+                          onChange={() => setSelectedItem(item.title)}
+                          className="peer sr-only" 
+                        />
+                        <div className={cn(
+                          "flex items-center gap-3 p-4 rounded-xl bg-white dark:bg-[#2d3138] border transition-all",
+                          selectedItem === item.title 
+                            ? "border-primary ring-1 ring-primary" 
+                            : "border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800/50"
+                        )}>
+                          <div className={cn(
+                            "h-6 w-6 rounded-full border-2 flex items-center justify-center transition-all shrink-0",
+                            selectedItem === item.title 
+                              ? "border-primary bg-primary" 
+                              : "border-slate-300 dark:border-slate-600"
+                          )}>
+                            {selectedItem === item.title && (
+                              <div className="h-2.5 w-2.5 rounded-full bg-white" />
+                            )}
+                          </div>
+                          <span className={cn(
+                            "font-medium transition-colors",
+                            selectedItem === item.title 
+                              ? "text-primary" 
+                              : "text-slate-700 dark:text-slate-300"
+                          )}>{item.title}</span>
+                        </div>
+                      </label>
+                    ))
+                  ) : (
+                    // Fallback: text input for item when no checklist items
+                    <div className="bg-white dark:bg-[#2d3138] rounded-xl p-4 border border-slate-200 dark:border-slate-700">
+                      <input
+                        type="text"
+                        value={selectedItem}
+                        onChange={(e) => setSelectedItem(e.target.value)}
+                        placeholder="Digite o nome do item..."
+                        className="w-full bg-transparent border-none outline-none text-slate-900 dark:text-white placeholder-slate-400"
+                      />
                     </div>
-                  </label>
-                ))
-              ) : (
-                // Fallback: text input for item
+                  )}
+
+                  {/* Option to add custom item */}
+                  {selectedCategoryData.items.length > 0 && (
+                    <div className="mt-2">
+                      <button
+                        onClick={() => setSelectedItem('outro')}
+                        className={cn(
+                          "w-full flex items-center gap-3 p-4 rounded-xl border transition-all",
+                          selectedItem === 'outro'
+                            ? "border-primary ring-1 ring-primary bg-primary/5"
+                            : "border-dashed border-slate-300 dark:border-slate-600 hover:border-primary"
+                        )}
+                      >
+                        <span className="material-symbols-outlined text-slate-400">add</span>
+                        <span className="text-sm font-medium text-slate-500 dark:text-slate-400">Outro item não listado</span>
+                      </button>
+                      {selectedItem === 'outro' && (
+                        <input
+                          type="text"
+                          placeholder="Descreva o item..."
+                          onChange={(e) => setSelectedItem(e.target.value || 'outro')}
+                          className="mt-2 w-full bg-white dark:bg-[#2d3138] rounded-xl p-4 border border-slate-200 dark:border-slate-700 outline-none focus:ring-2 focus:ring-primary/50"
+                        />
+                      )}
+                    </div>
+                  )}
+                </div>
+              </>
+            ) : (
+              // Fallback when category data is not found - allow manual input
+              <div className="flex flex-col gap-6">
+                <div className="flex items-center gap-4 px-1">
+                  <div className="h-12 w-12 rounded-2xl bg-gradient-to-br from-primary to-teal-600 flex items-center justify-center text-white shadow-[0_4px_20px_-2px_rgba(51,153,153,0.3)]">
+                    <span className="material-symbols-outlined text-[24px]">category</span>
+                  </div>
+                  <div>
+                    <p className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest mb-0.5">Cômodo</p>
+                    <h1 className="text-2xl font-extrabold text-slate-900 dark:text-white leading-none">{selectedCategory || 'Selecionado'}</h1>
+                  </div>
+                </div>
+
+                <div className="flex flex-col gap-2">
+                  <h2 className="text-lg font-bold text-slate-900 dark:text-white">Qual item está avariado?</h2>
+                  <p className="text-sm text-slate-500 dark:text-slate-400">
+                    Digite o nome do item com problema.
+                  </p>
+                </div>
+
                 <div className="bg-white dark:bg-[#2d3138] rounded-xl p-4 border border-slate-200 dark:border-slate-700">
                   <input
                     type="text"
@@ -356,34 +416,8 @@ export function IssueReportModal({ onClose, onSubmit, checklist, isSubmitting = 
                     className="w-full bg-transparent border-none outline-none text-slate-900 dark:text-white placeholder-slate-400"
                   />
                 </div>
-              )}
-
-              {/* Option to add custom item */}
-              {selectedCategoryData.items.length > 0 && (
-                <div className="mt-2">
-                  <button
-                    onClick={() => setSelectedItem('outro')}
-                    className={cn(
-                      "w-full flex items-center gap-3 p-4 rounded-xl border transition-all",
-                      selectedItem === 'outro'
-                        ? "border-primary ring-1 ring-primary bg-primary/5"
-                        : "border-dashed border-slate-300 dark:border-slate-600 hover:border-primary"
-                    )}
-                  >
-                    <span className="material-symbols-outlined text-slate-400">add</span>
-                    <span className="text-sm font-medium text-slate-500 dark:text-slate-400">Outro item não listado</span>
-                  </button>
-                  {selectedItem === 'outro' && (
-                    <input
-                      type="text"
-                      placeholder="Descreva o item..."
-                      onChange={(e) => setSelectedItem(e.target.value || 'outro')}
-                      className="mt-2 w-full bg-white dark:bg-[#2d3138] rounded-xl p-4 border border-slate-200 dark:border-slate-700 outline-none focus:ring-2 focus:ring-primary/50"
-                    />
-                  )}
-                </div>
-              )}
-            </div>
+              </div>
+            )}
           </main>
         )}
 

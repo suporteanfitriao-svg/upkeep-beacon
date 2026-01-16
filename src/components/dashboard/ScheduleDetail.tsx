@@ -880,8 +880,8 @@ export function ScheduleDetail({ schedule, onClose, onUpdateSchedule }: Schedule
   const currentTime = format(new Date(), "HH:mm");
 
   return (
-    <div className="fixed inset-0 z-50 bg-stone-50 dark:bg-[#22252a] font-display text-slate-800 dark:text-slate-100 antialiased">
-      <div className="relative flex min-h-screen w-full flex-col overflow-x-hidden pb-24">
+    <div className="fixed inset-0 z-50 bg-stone-50 dark:bg-[#22252a] font-display text-slate-800 dark:text-slate-100 antialiased flex flex-col">
+      <div className="relative flex-1 w-full flex flex-col overflow-x-hidden overflow-y-auto">
         {/* Header */}
         <header className="sticky top-0 z-20 flex items-center bg-stone-50/90 dark:bg-[#22252a]/90 px-4 py-4 backdrop-blur-md border-b border-slate-100 dark:border-slate-800">
           <button 
@@ -917,7 +917,7 @@ export function ScheduleDetail({ schedule, onClose, onUpdateSchedule }: Schedule
         </header>
 
         {/* Main Content */}
-        <main className="flex flex-col gap-6 p-6 overflow-y-auto" style={{ maxHeight: 'calc(100vh - 180px)' }}>
+        <main className="flex-1 flex flex-col gap-6 p-6 pb-24 overflow-y-auto">
           {/* Waiting Status Alert Card - Rule 41 */}
           {schedule.status === 'waiting' && (
             <div className="rounded-2xl bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800/50 p-4 flex gap-3 items-start">
@@ -1722,9 +1722,10 @@ export function ScheduleDetail({ schedule, onClose, onUpdateSchedule }: Schedule
             </div>
           </section>
         </main>
-
-        {/* Footer Button */}
-        <div className="fixed bottom-0 left-0 right-0 z-50 bg-stone-50/90 dark:bg-[#22252a]/90 backdrop-blur-xl border-t border-slate-200 dark:border-slate-800 p-4">
+      </div>
+      
+      {/* Footer Button - Always visible at bottom */}
+      <div className="sticky bottom-0 left-0 right-0 z-50 bg-stone-50 dark:bg-[#22252a] border-t border-slate-200 dark:border-slate-800 p-4 safe-area-inset-bottom">
           {/* Waiting status - disabled button */}
           {schedule.status === 'waiting' && (
             <button 
@@ -1793,7 +1794,6 @@ export function ScheduleDetail({ schedule, onClose, onUpdateSchedule }: Schedule
             </div>
           )}
         </div>
-      </div>
 
       {/* Location Modal */}
       {showLocationModal && (
