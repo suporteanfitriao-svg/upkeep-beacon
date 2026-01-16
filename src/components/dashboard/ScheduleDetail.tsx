@@ -101,8 +101,12 @@ export function ScheduleDetail({ schedule, onClose, onUpdateSchedule }: Schedule
   const [isCommitting, setIsCommitting] = useState(false);
   const [isSyncing, setIsSyncing] = useState(false);
   const [syncingCategory, setSyncingCategory] = useState<string | null>(null);
+  const [hasAcknowledgedNotes, setHasAcknowledgedNotes] = useState(false);
   const cacheInitializedRef = useRef(false);
   const statusStyle = statusConfig[schedule.status];
+
+  // Check if admin notes exist
+  const hasAdminNotes = Boolean(schedule.notes && schedule.notes.trim().length > 0);
 
   // Checkout day verification for password visibility
   const isCheckoutDay = useCheckoutDayVerification(schedule);
@@ -277,8 +281,13 @@ export function ScheduleDetail({ schedule, onClose, onUpdateSchedule }: Schedule
       return { locked: true, reason: 'Leia e confirme as informações importantes antes de continuar' };
     }
 
+    // Check if admin notes acknowledgment is required
+    if (hasAdminNotes && !hasAcknowledgedNotes && role === 'cleaner') {
+      return { locked: true, reason: 'Leia e confirme a observação do administrador antes de continuar' };
+    }
+
     return { locked: false };
-  }, [schedule.status, role, proximityCheck, hasImportantInfo, hasAcknowledged]);
+  }, [schedule.status, role, proximityCheck, hasImportantInfo, hasAcknowledged, hasAdminNotes, hasAcknowledgedNotes]);
 
   // Check if property has checklist configured (only for released status, to validate before starting)
   const shouldCheckForChecklist = schedule.status === 'released';
@@ -338,6 +347,14 @@ export function ScheduleDetail({ schedule, onClose, onUpdateSchedule }: Schedule
       };
     }
 
+    // Rule 5b: Check admin notes acknowledgment (for starting cleaning)
+    if (nextStatus === 'cleaning' && hasAdminNotes && !hasAcknowledgedNotes) {
+      return { 
+        allowed: false, 
+        reason: 'É necessário confirmar a leitura das observações do administrador' 
+      };
+    }
+
     // Rule 6: Check if property has checklist (for starting cleaning) - only if checklist is required
     if (nextStatus === 'cleaning' && requireChecklist && !hasPropertyChecklist && !isCheckingChecklist) {
       return { 
@@ -383,7 +400,7 @@ export function ScheduleDetail({ schedule, onClose, onUpdateSchedule }: Schedule
     }
 
     return { allowed: true };
-  }, [schedule.status, schedule.responsibleTeamMemberId, role, teamMemberId, hasPropertyAccess, isCheckingAccess, hasImportantInfo, hasAcknowledged, hasPropertyChecklist, isCheckingChecklist, requireChecklist, proximityCheck]);
+  }, [schedule.status, schedule.responsibleTeamMemberId, role, teamMemberId, hasPropertyAccess, isCheckingAccess, hasImportantInfo, hasAcknowledged, hasAdminNotes, hasAcknowledgedNotes, hasPropertyChecklist, isCheckingChecklist, requireChecklist, proximityCheck]);
 
   const toggleCategory = (category: string) => {
     setExpandedCategories(prev => ({
@@ -796,7 +813,12 @@ export function ScheduleDetail({ schedule, onClose, onUpdateSchedule }: Schedule
             <span className="material-symbols-outlined text-slate-900 dark:text-white">arrow_back</span>
           </button>
           <div className="flex flex-col">
-            <h2 className="text-lg font-bold leading-none tracking-tight text-slate-900 dark:text-white">{schedule.propertyName}</h2>
+            <div className="flex items-center gap-2">
+              <h2 className="text-lg font-bold leading-none tracking-tight text-slate-900 dark:text-white">{schedule.propertyName}</h2>
+              <span className="text-xs font-bold text-primary bg-primary/10 px-2 py-0.5 rounded-full">
+                {format(schedule.checkOut, "dd/MM/yyyy")}
+              </span>
+            </div>
             <span className="text-xs font-medium text-[#8A8B88] dark:text-slate-400">{schedule.propertyAddress}</span>
           </div>
           <div className="ml-auto flex items-center gap-2">
@@ -848,6 +870,82 @@ export function ScheduleDetail({ schedule, onClose, onUpdateSchedule }: Schedule
               </div>
             </div>
           </div>
+
+          {/* Admin Notes for Cleaner - with mandatory reading confirmation */}
+          {hasAdminNotes && role === 'cleaner' && (
+            <div className={cn(
+              "rounded-2xl p-4 border-2 transition-all",
+              hasAcknowledgedNotes 
+                ? "bg-emerald-50 dark:bg-emerald-900/20 border-emerald-300 dark:border-emerald-700" 
+                : "bg-amber-50 dark:bg-amber-900/20 border-amber-300 dark:border-amber-700"
+            )}>
+              <div className="flex items-center gap-2 mb-3">
+                <span className={cn(
+                  "material-symbols-outlined text-[20px]",
+                  hasAcknowledgedNotes ? "text-emerald-500" : "text-amber-500"
+                )}>
+                  {hasAcknowledgedNotes ? 'check_circle' : 'campaign'}
+                </span>
+                <h3 className={cn(
+                  "text-xs font-bold uppercase tracking-widest flex-1",
+                  hasAcknowledgedNotes ? "text-emerald-700 dark:text-emerald-300" : "text-amber-700 dark:text-amber-300"
+                )}>
+                  Observação do Administrador
+                </h3>
+                {!hasAcknowledgedNotes && (
+                  <span className="text-[10px] font-bold text-red-600 dark:text-red-400 bg-red-100 dark:bg-red-900/30 px-2 py-0.5 rounded-full">
+                    LEITURA OBRIGATÓRIA
+                  </span>
+                )}
+              </div>
+              
+              <div className={cn(
+                "rounded-xl p-4 border mb-3",
+                hasAcknowledgedNotes 
+                  ? "bg-white dark:bg-slate-800/50 border-emerald-200 dark:border-emerald-800" 
+                  : "bg-white dark:bg-slate-800/50 border-amber-200 dark:border-amber-800"
+              )}>
+                <p className="text-sm text-slate-700 dark:text-slate-300 leading-relaxed whitespace-pre-wrap">
+                  {schedule.notes}
+                </p>
+              </div>
+
+              <label className={cn(
+                "flex items-center gap-3 py-2 cursor-pointer",
+                hasAcknowledgedNotes && "cursor-default"
+              )}>
+                <div className={cn(
+                  "w-6 h-6 border-2 rounded flex items-center justify-center transition-colors",
+                  hasAcknowledgedNotes 
+                    ? "bg-emerald-500 border-emerald-500" 
+                    : "border-amber-400 dark:border-amber-600 bg-white dark:bg-slate-800"
+                )}>
+                  {hasAcknowledgedNotes && (
+                    <span className="material-symbols-outlined text-white text-[16px]">check</span>
+                  )}
+                </div>
+                <input 
+                  type="checkbox"
+                  checked={hasAcknowledgedNotes}
+                  disabled={hasAcknowledgedNotes}
+                  onChange={(e) => {
+                    if (e.target.checked) {
+                      setHasAcknowledgedNotes(true);
+                    }
+                  }}
+                  className="sr-only"
+                />
+                <span className={cn(
+                  "text-sm font-medium transition-colors",
+                  hasAcknowledgedNotes 
+                    ? "text-emerald-700 dark:text-emerald-400" 
+                    : "text-amber-700 dark:text-amber-400"
+                )}>
+                  {hasAcknowledgedNotes ? '✓ Leitura confirmada' : 'Li e compreendi a observação acima'}
+                </span>
+              </label>
+            </div>
+          )}
 
           {/* Info Card with lock overlay for waiting status */}
           <div className="relative group">
@@ -1458,22 +1556,6 @@ export function ScheduleDetail({ schedule, onClose, onUpdateSchedule }: Schedule
                 Reportar Avaria
               </button>
             </section>
-
-            {/* Admin Notes Section - Read Only for Cleaner */}
-            {schedule.notes && schedule.notes.trim().length > 0 && (
-              <section className="flex flex-col gap-3">
-                <div className="flex items-center gap-2">
-                  <span className="material-symbols-outlined text-amber-500 text-[20px]">campaign</span>
-                  <h3 className="text-xs font-bold uppercase tracking-widest text-amber-600 dark:text-amber-400">Observações do Admin</h3>
-                </div>
-                <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-xl p-4">
-                  <p className="text-sm text-amber-800 dark:text-amber-200 whitespace-pre-wrap">
-                    {schedule.notes}
-                  </p>
-                </div>
-              </section>
-            )}
-
             {/* Cleaner Observations Section - Editable during cleaning */}
             <section className="flex flex-col gap-3">
               <div className="flex items-center gap-2">
