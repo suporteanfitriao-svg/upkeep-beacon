@@ -471,28 +471,36 @@ export function ScheduleDetail({ schedule, onClose, onUpdateSchedule }: Schedule
     }));
   };
 
-  const handleChecklistItemChange = (itemId: string, value: 'yes' | 'no', category: string) => {
+  const handleChecklistItemChange = useCallback((itemId: string, value: 'yes' | 'no', category: string) => {
     hasUserInteractedRef.current = true;
 
-    setChecklistItemStates(prev => ({
+    // 1) Update item states (source of truth for category completion UI)
+    setChecklistItemStates((prev) => ({
       ...prev,
-      [itemId]: value
+      [itemId]: value,
     }));
-    
-    // Update local checklist state - include status field to persist the NOT OK state
+
+    // 2) Update checklist using functional set to avoid stale-closure overwrites
     const itemStatus: ChecklistItemStatus = value === 'yes' ? 'ok' : 'not_ok';
-    const updatedChecklist = checklist.map(item =>
-      item.id === itemId ? { 
-        ...item, 
-        completed: value === 'yes',
-        status: itemStatus
-      } : item
+    setChecklist((prev) =>
+      prev.map((item) =>
+        item.id === itemId
+          ? {
+              ...item,
+              completed: value === 'yes',
+              status: itemStatus,
+            }
+          : item
+      )
     );
-    setChecklist(updatedChecklist);
-    
-    // Mark category as having unsaved changes
-    setUnsavedCategories(prev => new Set(prev).add(category));
-  };
+
+    // 3) Mark category as having unsaved changes
+    setUnsavedCategories((prev) => {
+      const next = new Set(prev);
+      next.add(category);
+      return next;
+    });
+  }, []);
 
   // Save category changes to database - direct update without triggering full reload
   const handleSaveCategory = useCallback(async (category: string) => {
