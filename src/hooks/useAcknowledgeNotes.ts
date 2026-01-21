@@ -47,10 +47,24 @@ export function useAcknowledgeNotes({
   
   // Track if we've locally added an acknowledgment to prevent prop override
   const hasLocalAckRef = useRef(false);
+  // Track the schedule ID to reset state when switching schedules
+  const prevScheduleIdRef = useRef(scheduleId);
+
+  // Reset state when schedule changes (prevents stale data across schedules)
+  useEffect(() => {
+    if (prevScheduleIdRef.current !== scheduleId) {
+      hasLocalAckRef.current = false;
+      prevScheduleIdRef.current = scheduleId;
+      setLocalHistory(history);
+    }
+  }, [scheduleId, history]);
 
   // Update local history when prop changes, BUT preserve local acknowledgment
   // This prevents the realtime subscription from overwriting local changes
   useEffect(() => {
+    // Skip if schedule ID changed (handled above)
+    if (prevScheduleIdRef.current !== scheduleId) return;
+    
     // If we've locally acknowledged, check if the new history includes it
     if (hasLocalAckRef.current && teamMemberId) {
       const propHasAck = history.some(event => 
@@ -69,7 +83,7 @@ export function useAcknowledgeNotes({
     
     // No local ack, safe to sync from prop
     setLocalHistory(history);
-  }, [history, teamMemberId]);
+  }, [history, teamMemberId, scheduleId]);
 
   // Check if current team member has already acknowledged the notes
   const hasAcknowledged = useMemo(() => {

@@ -418,8 +418,18 @@ export function IssueReportModal({ onClose, onSubmit, checklist, isSubmitting = 
                           ref={otherInputRef}
                           type="text"
                           value={otherItemText}
-                          onChange={(e) => setOtherItemText(e.target.value)}
+                          onChange={(e) => {
+                            e.stopPropagation();
+                            setOtherItemText(e.target.value);
+                          }}
+                          onPointerDown={(e) => e.stopPropagation()}
+                          onClick={(e) => e.stopPropagation()}
+                          onTouchStart={(e) => e.stopPropagation()}
                           placeholder="Descreva o item avariado..."
+                          autoFocus
+                          autoComplete="off"
+                          autoCapitalize="sentences"
+                          enterKeyHint="next"
                           className="mt-2 w-full bg-white dark:bg-[#2d3138] rounded-xl p-4 border border-slate-200 dark:border-slate-700 outline-none focus:ring-2 focus:ring-primary/50 text-slate-900 dark:text-white placeholder:text-slate-400"
                         />
                       )}
