@@ -27,6 +27,7 @@ import { MobileInspectionCard } from './mobile/MobileInspectionCard';
 import { MobileInfiniteDayStrip } from './mobile/MobileInfiniteDayStrip';
 import { MobileAgendaFilterTabs, AgendaViewMode } from './mobile/MobileAgendaFilterTabs';
 import { MobileMonthlyHistory } from './mobile/MobileMonthlyHistory';
+import { MobileOverdueDrawer } from './mobile/MobileOverdueDrawer';
 
 interface MobileDashboardProps {
   schedules: Schedule[];
@@ -86,6 +87,7 @@ export function MobileDashboard({ schedules, onScheduleClick, onStartCleaning, o
   const [currentMonth, setCurrentMonth] = useState(() => startOfMonth(new Date()));
   const [isSyncing, setIsSyncing] = useState(false);
   const [lastSyncTime, setLastSyncTime] = useState<Date | null>(null);
+  const [showOverdueDrawer, setShowOverdueDrawer] = useState(false);
   
   // Pull-to-refresh state - using Pointer Events for safer interaction
   const [pullDistance, setPullDistance] = useState(0);
@@ -598,7 +600,7 @@ export function MobileDashboard({ schedules, onScheduleClick, onStartCleaning, o
           {overdueCount > 0 && (
             <div className="px-6 pt-3">
               <button
-                onClick={handleNavigateToAgenda}
+                onClick={() => setShowOverdueDrawer(true)}
                 className="w-full flex items-center gap-3 p-4 rounded-2xl bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 transition-all active:scale-[0.99]"
               >
                 <div className="h-10 w-10 rounded-xl bg-red-100 dark:bg-red-900/30 flex items-center justify-center shrink-0">
@@ -609,7 +611,7 @@ export function MobileDashboard({ schedules, onScheduleClick, onStartCleaning, o
                     {overdueCount} {overdueCount === 1 ? 'tarefa atrasada' : 'tarefas atrasadas'}
                   </p>
                   <p className="text-xs text-red-600/80 dark:text-red-400/70">
-                    Toque para ver e finalizar
+                    Toque para ver todas
                   </p>
                 </div>
                 <ChevronRight className="w-5 h-5 text-red-400" />
@@ -1078,6 +1080,14 @@ export function MobileDashboard({ schedules, onScheduleClick, onStartCleaning, o
         permissionState={locationPermissionState}
         onRequestPermission={requestLocationPermission}
         onContinueWithoutLocation={dismissLocationModal}
+      />
+
+      {/* Overdue Tasks Drawer */}
+      <MobileOverdueDrawer
+        isOpen={showOverdueDrawer}
+        onClose={() => setShowOverdueDrawer(false)}
+        overdueSchedules={overdueSchedules}
+        onScheduleClick={onScheduleClick}
       />
     </div>
   );
