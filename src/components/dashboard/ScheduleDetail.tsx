@@ -16,6 +16,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
 import { useCreateMaintenanceIssue } from '@/hooks/useCreateMaintenanceIssue';
 import { useAcknowledgeInfo } from '@/hooks/useAcknowledgeInfo';
+import { useAcknowledgeNotes } from '@/hooks/useAcknowledgeNotes';
 import { usePropertyChecklist } from '@/hooks/usePropertyChecklist';
 import { usePropertyAccess } from '@/hooks/usePropertyAccess';
 import { useCleaningCache } from '@/hooks/useCleaningCache';
@@ -103,7 +104,6 @@ export function ScheduleDetail({ schedule, onClose, onUpdateSchedule }: Schedule
   const [photoUploadModal, setPhotoUploadModal] = useState<{ open: boolean; category: string | null }>({ open: false, category: null });
   const [deleteIssueConfirm, setDeleteIssueConfirm] = useState<{ open: boolean; issueId: string | null }>({ open: false, issueId: null });
   const [isCommitting, setIsCommitting] = useState(false);
-  const [hasAcknowledgedNotes, setHasAcknowledgedNotes] = useState(false);
   // Auto-save state tracking (global for the whole checklist)
   const [isAutoSaving, setIsAutoSaving] = useState(false);
   const [lastAutoSavedAt, setLastAutoSavedAt] = useState<number | null>(null);
@@ -316,7 +316,7 @@ export function ScheduleDetail({ schedule, onClose, onUpdateSchedule }: Schedule
     fetchTeamMemberId();
   }, [user?.id]);
 
-  // Use the acknowledge hook for "Li e Compreendi" functionality
+  // Use the acknowledge hook for "Li e Compreendi" functionality (important info)
   const { 
     hasAcknowledged, 
     isSubmitting: isAckSubmitting, 
@@ -325,6 +325,19 @@ export function ScheduleDetail({ schedule, onClose, onUpdateSchedule }: Schedule
     scheduleId: schedule.id,
     currentAcks: schedule.ackByTeamMembers || [],
     teamMemberId,
+  });
+
+  // Use the acknowledge notes hook for admin notes (saved in history, cannot be undone)
+  const { 
+    hasAcknowledged: hasAcknowledgedNotes, 
+    isSubmitting: isNotesAckSubmitting, 
+    acknowledgeNotes 
+  } = useAcknowledgeNotes({
+    scheduleId: schedule.id,
+    history: schedule.history || [],
+    teamMemberId,
+    notes: schedule.notes,
+    scheduleStatus: schedule.status,
   });
 
   // Check if important info exists
@@ -1003,10 +1016,10 @@ export function ScheduleDetail({ schedule, onClose, onUpdateSchedule }: Schedule
                 <input 
                   type="checkbox"
                   checked={hasAcknowledgedNotes}
-                  disabled={hasAcknowledgedNotes}
-                  onChange={(e) => {
-                    if (e.target.checked) {
-                      setHasAcknowledgedNotes(true);
+                  disabled={hasAcknowledgedNotes || isNotesAckSubmitting}
+                  onChange={async (e) => {
+                    if (e.target.checked && !hasAcknowledgedNotes) {
+                      await acknowledgeNotes();
                     }
                   }}
                   className="sr-only"
