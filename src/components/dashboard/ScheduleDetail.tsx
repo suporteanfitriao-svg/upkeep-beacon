@@ -23,6 +23,7 @@ import { useCleaningCache } from '@/hooks/useCleaningCache';
 import { useCheckoutDayVerification } from '@/hooks/useCheckoutDayVerification';
 import { useCleaningConcurrencyCheck } from '@/hooks/useCleaningConcurrencyCheck';
 import { useProximityCheck, formatDistance } from '@/hooks/useGeolocation';
+import { useIsMobile } from '@/hooks/use-mobile';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { CategoryPhotoUpload } from './CategoryPhotoUpload';
 import { MapPin, Navigation } from 'lucide-react';
@@ -65,6 +66,7 @@ const statusConfig: Record<ScheduleStatus, { label: string; className: string; b
 
 export function ScheduleDetail({ schedule, onClose, onUpdateSchedule }: ScheduleDetailProps) {
   const { role, isAdmin, isManager } = useUserRole();
+  const isMobile = useIsMobile();
   const { user } = useAuth();
   const [notes, setNotes] = useState(schedule.notes);
   const [cleanerObservations, setCleanerObservations] = useState(schedule.cleanerObservations || '');
@@ -208,6 +210,15 @@ export function ScheduleDetail({ schedule, onClose, onUpdateSchedule }: Schedule
       setIsAutoSaving(false);
       if (success) {
         setLastAutoSavedAt(Date.now());
+
+        // Urgent reliability fix for mobile cleaner:
+        // when the full checklist has been saved, force a full reload so the UI
+        // rehydrates from persisted data and the category colors + pending counter
+        // are guaranteed to reflect the saved state.
+        if (role === 'cleaner' && isMobile && isChecklistComplete(checklistItemStatesRef.current)) {
+          setTimeout(() => window.location.reload(), 350);
+          return;
+        }
 
         // After a successful save, do a lightweight reload from the backend to
         // guarantee UI derives from persisted data (mobile race-condition fix).
