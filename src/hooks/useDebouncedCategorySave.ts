@@ -10,15 +10,20 @@ interface UseDebouncedCategorySaveOptions {
   checklist: ChecklistItem[];
   debounceMs?: number;
   enabled?: boolean;
+  /**
+   * Back-compat: previous implementation notified per-category.
+   * New behavior is one debounced save for the whole checklist; we now call with "__all__".
+   */
   onSaveStart?: (category: string) => void;
   onSaveComplete?: (category: string, success: boolean) => void;
   clearCache?: () => void;
 }
 
-interface CategorySaveState {
+interface GlobalSaveState {
   timer: ReturnType<typeof setTimeout> | null;
   lastSavedAt: number | null;
   isSaving: boolean;
+  queued: boolean;
 }
 
 export function useDebouncedCategorySave({
@@ -31,14 +36,15 @@ export function useDebouncedCategorySave({
   onSaveComplete,
   clearCache,
 }: UseDebouncedCategorySaveOptions) {
-  // Track save state per category
-  const categoryStateRef = useRef<Map<string, CategorySaveState>>(new Map());
+  // Single global debounced save for the whole checklist
+  const stateRef = useRef<GlobalSaveState>({
+    timer: null,
+    lastSavedAt: null,
+    isSaving: false,
+    queued: false,
+  });
   // Keep reference to latest checklist to avoid stale closures
   const checklistRef = useRef<ChecklistItem[]>(checklist);
-  // Track if save is globally in progress to prevent concurrent saves
-  const globalSaveInProgressRef = useRef(false);
-  // Queue for pending saves when a save is in progress
-  const pendingSaveQueueRef = useRef<Set<string>>(new Set());
   
   // Update ref whenever checklist changes - use shallow comparison to avoid unnecessary updates
   useEffect(() => {
@@ -48,35 +54,22 @@ export function useDebouncedCategorySave({
   // Cleanup timers on unmount
   useEffect(() => {
     return () => {
-      categoryStateRef.current.forEach((state) => {
-        if (state.timer) clearTimeout(state.timer);
-      });
-      categoryStateRef.current.clear();
-      pendingSaveQueueRef.current.clear();
+      if (stateRef.current.timer) clearTimeout(stateRef.current.timer);
     };
   }, []);
 
-  // Perform the actual save operation - saves ONCE for all pending categories
-  const performSave = useCallback(async (categories: string[]): Promise<boolean> => {
-    if (!teamMemberId || !enabled || categories.length === 0) return false;
-    if (globalSaveInProgressRef.current) {
-      // Queue these categories for later
-      categories.forEach(cat => pendingSaveQueueRef.current.add(cat));
+  // Perform the actual save operation - saves the WHOLE checklist once
+  const performSave = useCallback(async (): Promise<boolean> => {
+    if (!teamMemberId || !enabled) return false;
+
+    // If a save is already in progress, just queue another run.
+    if (stateRef.current.isSaving) {
+      stateRef.current.queued = true;
       return false;
     }
-    
-    globalSaveInProgressRef.current = true;
-    
-    // Mark all as saving
-    categories.forEach(category => {
-      let state = categoryStateRef.current.get(category);
-      if (state) {
-        state.isSaving = true;
-      } else {
-        categoryStateRef.current.set(category, { timer: null, lastSavedAt: null, isSaving: true });
-      }
-      onSaveStart?.(category);
-    });
+
+    stateRef.current.isSaving = true;
+    onSaveStart?.('__all__');
     
     try {
       const currentChecklist = checklistRef.current;
@@ -90,146 +83,81 @@ export function useDebouncedCategorySave({
         .eq('id', scheduleId);
 
       if (error) {
-        console.error('[AutoSave] Error saving categories:', categories, error);
-        categories.forEach(category => onSaveComplete?.(category, false));
+        console.error('[AutoSave] Error saving checklist:', error);
+        onSaveComplete?.('__all__', false);
         return false;
       }
       
-      // Log audit entry for the first category (to avoid spamming)
+      // Log a single audit entry (avoid spamming)
       await supabase.rpc('append_schedule_history', {
         p_schedule_id: scheduleId,
         p_team_member_id: teamMemberId,
-        p_action: 'categoria_salva_auto',
+        p_action: 'checklist_salvo_auto',
         p_from_status: null,
         p_to_status: null,
-        p_payload: { category_names: categories }
+        p_payload: { debounce_ms: debounceMs }
       });
       
       // Clear cache after successful save
       clearCache?.();
       
-      // Update state for all categories
       const now = Date.now();
-      categories.forEach(category => {
-        const updatedState = categoryStateRef.current.get(category);
-        if (updatedState) {
-          updatedState.isSaving = false;
-          updatedState.lastSavedAt = now;
-        }
-        onSaveComplete?.(category, true);
-      });
+      stateRef.current.lastSavedAt = now;
+      onSaveComplete?.('__all__', true);
       
       return true;
     } catch (err) {
-      console.error('[AutoSave] Exception saving categories:', categories, err);
-      categories.forEach(category => onSaveComplete?.(category, false));
+      console.error('[AutoSave] Exception saving checklist:', err);
+      onSaveComplete?.('__all__', false);
       return false;
     } finally {
-      // Mark all as not saving
-      categories.forEach(category => {
-        const finalState = categoryStateRef.current.get(category);
-        if (finalState) {
-          finalState.isSaving = false;
-        }
-      });
-      
-      globalSaveInProgressRef.current = false;
-      
-      // Process any queued saves
-      if (pendingSaveQueueRef.current.size > 0) {
-        const queuedCategories = Array.from(pendingSaveQueueRef.current);
-        pendingSaveQueueRef.current.clear();
-        // Use setTimeout to avoid blocking the current stack
-        setTimeout(() => performSave(queuedCategories), 50);
-      }
-    }
-  }, [scheduleId, teamMemberId, enabled, onSaveStart, onSaveComplete, clearCache]);
+      stateRef.current.isSaving = false;
 
-  // Schedule a debounced save for a category
-  const scheduleSave = useCallback((category: string) => {
-    if (!enabled || !teamMemberId) return;
-    
-    let state = categoryStateRef.current.get(category);
-    
-    // Clear existing timer
-    if (state?.timer) {
-      clearTimeout(state.timer);
-    }
-    
-    // Create new timer - collect all pending categories when timer fires
-    const timer = setTimeout(() => {
-      // Collect all categories that have pending timers
-      const categoriesToSave: string[] = [];
-      categoryStateRef.current.forEach((s, cat) => {
-        if (s.timer !== null) {
-          clearTimeout(s.timer);
-          s.timer = null;
-          categoriesToSave.push(cat);
-        }
-      });
-      
-      // Add current category if not already included
-      if (!categoriesToSave.includes(category)) {
-        categoriesToSave.push(category);
+      // If something changed during save, run once more.
+      if (stateRef.current.queued) {
+        stateRef.current.queued = false;
+        // yield to UI
+        setTimeout(() => performSave(), 50);
       }
-      
-      performSave(categoriesToSave);
-    }, debounceMs);
-    
-    if (state) {
-      state.timer = timer;
-    } else {
-      categoryStateRef.current.set(category, { timer, lastSavedAt: null, isSaving: false });
     }
+  }, [scheduleId, teamMemberId, enabled, onSaveStart, onSaveComplete, clearCache, debounceMs]);
+
+  // Schedule a debounced save for the whole checklist
+  // (kept signature for compatibility; category is ignored)
+  const scheduleSave = useCallback((_category?: string) => {
+    if (!enabled || !teamMemberId) return;
+
+    if (stateRef.current.timer) clearTimeout(stateRef.current.timer);
+    stateRef.current.timer = setTimeout(() => {
+      stateRef.current.timer = null;
+      performSave();
+    }, debounceMs);
   }, [enabled, teamMemberId, debounceMs, performSave]);
 
-  // Force immediate save for a category (used before closing or navigating)
-  const flushCategory = useCallback(async (category: string): Promise<boolean> => {
-    const state = categoryStateRef.current.get(category);
-    if (state?.timer) {
-      clearTimeout(state.timer);
-      state.timer = null;
-    }
-    return performSave([category]);
-  }, [performSave]);
-
-  // Flush all pending saves
+  // Force immediate save
   const flushAll = useCallback(async (): Promise<void> => {
-    const categories: string[] = [];
-    categoryStateRef.current.forEach((state, category) => {
-      if (state.timer !== null) {
-        clearTimeout(state.timer);
-        state.timer = null;
-        categories.push(category);
-      }
-    });
-    
-    if (categories.length > 0) {
-      await performSave(categories);
+    if (stateRef.current.timer) {
+      clearTimeout(stateRef.current.timer);
+      stateRef.current.timer = null;
     }
+    await performSave();
   }, [performSave]);
 
-  // Check if a category has pending save
-  const hasPendingSave = useCallback((category: string): boolean => {
-    const state = categoryStateRef.current.get(category);
-    return state?.timer !== null || false;
+  // Legacy helpers (category-based) now reflect global state
+  const hasPendingSave = useCallback((_category?: string): boolean => {
+    return stateRef.current.timer !== null;
   }, []);
 
-  // Check if a category is currently saving
-  const isSavingCategory = useCallback((category: string): boolean => {
-    const state = categoryStateRef.current.get(category);
-    return state?.isSaving || false;
+  const isSavingCategory = useCallback((_category?: string): boolean => {
+    return stateRef.current.isSaving;
   }, []);
 
-  // Get last saved timestamp for a category
-  const getLastSavedAt = useCallback((category: string): number | null => {
-    const state = categoryStateRef.current.get(category);
-    return state?.lastSavedAt || null;
+  const getLastSavedAt = useCallback((_category?: string): number | null => {
+    return stateRef.current.lastSavedAt;
   }, []);
 
   return {
     scheduleSave,
-    flushCategory,
     flushAll,
     hasPendingSave,
     isSavingCategory,

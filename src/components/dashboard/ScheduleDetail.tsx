@@ -104,9 +104,9 @@ export function ScheduleDetail({ schedule, onClose, onUpdateSchedule }: Schedule
   const [deleteIssueConfirm, setDeleteIssueConfirm] = useState<{ open: boolean; issueId: string | null }>({ open: false, issueId: null });
   const [isCommitting, setIsCommitting] = useState(false);
   const [hasAcknowledgedNotes, setHasAcknowledgedNotes] = useState(false);
-  // Auto-save state tracking per category
-  const [savingCategories, setSavingCategories] = useState<Set<string>>(new Set());
-  const [savedCategories, setSavedCategories] = useState<Map<string, number>>(new Map());
+  // Auto-save state tracking (global for the whole checklist)
+  const [isAutoSaving, setIsAutoSaving] = useState(false);
+  const [lastAutoSavedAt, setLastAutoSavedAt] = useState<number | null>(null);
   const cacheInitializedRef = useRef(false);
   const hasUserInteractedRef = useRef(false);
   const checklistHydratedRef = useRef(false);
@@ -164,25 +164,17 @@ export function ScheduleDetail({ schedule, onClose, onUpdateSchedule }: Schedule
     isActive: schedule.status === 'cleaning',
   });
 
-  // Auto-save hook with debounce per category
-  const { scheduleSave, flushAll, isSavingCategory, getLastSavedAt } = useDebouncedCategorySave({
+  // Auto-save hook with debounce (whole checklist)
+  const { scheduleSave, flushAll } = useDebouncedCategorySave({
     scheduleId: schedule.id,
     teamMemberId,
     checklist,
     debounceMs: 800,
     enabled: schedule.status === 'cleaning',
-    onSaveStart: (category) => {
-      setSavingCategories(prev => new Set(prev).add(category));
-    },
-    onSaveComplete: (category, success) => {
-      setSavingCategories(prev => {
-        const next = new Set(prev);
-        next.delete(category);
-        return next;
-      });
-      if (success) {
-        setSavedCategories(prev => new Map(prev).set(category, Date.now()));
-      }
+    onSaveStart: () => setIsAutoSaving(true),
+    onSaveComplete: (_category, success) => {
+      setIsAutoSaving(false);
+      if (success) setLastAutoSavedAt(Date.now());
     },
     clearCache,
   });
@@ -378,6 +370,9 @@ export function ScheduleDetail({ schedule, onClose, onUpdateSchedule }: Schedule
     return { locked: false };
   }, [schedule.status, role, proximityCheck, hasImportantInfo, hasAcknowledged, hasAdminNotes, hasAcknowledgedNotes]);
 
+  // Checklist is editable ONLY during cleaning (and when not locked)
+  const isChecklistEditable = schedule.status === 'cleaning' && !isContentLocked.locked;
+
   // Check if property has checklist configured (only for released status, to validate before starting)
   const shouldCheckForChecklist = schedule.status === 'released';
   const { 
@@ -498,7 +493,8 @@ export function ScheduleDetail({ schedule, onClose, onUpdateSchedule }: Schedule
     }));
   };
 
-  const handleChecklistItemChange = useCallback((itemId: string, value: 'yes' | 'no', category: string) => {
+  const handleChecklistItemChange = useCallback((itemId: string, value: 'yes' | 'no', _category: string) => {
+    if (!isChecklistEditable) return;
     hasUserInteractedRef.current = true;
 
     // 1) Update item states (source of truth for category completion UI)
@@ -521,14 +517,14 @@ export function ScheduleDetail({ schedule, onClose, onUpdateSchedule }: Schedule
       )
     );
 
-    // 3) Schedule auto-save for this category (debounced)
-    scheduleSave(category);
-  }, [scheduleSave]);
+    // 3) Schedule auto-save for the whole checklist (debounced)
+    scheduleSave();
+  }, [scheduleSave, isChecklistEditable]);
 
   // Handle marking entire category as complete - updates local state and triggers auto-save
   // OPTIMIZED: Uses React.unstable_batchedUpdates pattern to prevent UI freezing on mobile
   const handleMarkCategoryComplete = useCallback((category: string) => {
-    if (schedule.status !== 'cleaning' || !teamMemberId) return;
+    if (!isChecklistEditable || !teamMemberId) return;
 
     hasUserInteractedRef.current = true;
     
@@ -566,12 +562,12 @@ export function ScheduleDetail({ schedule, onClose, onUpdateSchedule }: Schedule
       // Schedule save AFTER state is updated (next tick)
       // Use setTimeout to ensure state updates have been processed
       setTimeout(() => {
-        scheduleSave(category);
+        scheduleSave();
       }, 0);
       
       toast.success(`Categoria "${category}" marcada como completa!`);
     });
-  }, [schedule.status, checklist, checklistItemStates, teamMemberId, scheduleSave]);
+  }, [isChecklistEditable, checklist, checklistItemStates, teamMemberId, scheduleSave]);
 
   // Check if a category has any item marked as DX
   const categoryHasDX = useCallback((category: string) => {
@@ -902,8 +898,8 @@ export function ScheduleDetail({ schedule, onClose, onUpdateSchedule }: Schedule
             <span className="text-xs font-medium text-[#8A8B88] dark:text-slate-400">{schedule.propertyAddress}</span>
           </div>
           <div className="ml-auto flex items-center gap-2">
-            {/* Global sync indicator - shows when any category is saving */}
-            {savingCategories.size > 0 && (
+            {/* Global sync indicator */}
+            {isAutoSaving && (
               <div className="flex items-center gap-1.5 text-primary animate-pulse">
                 <span className="material-symbols-outlined text-[18px] animate-spin">sync</span>
                 <span className="text-xs font-medium">Salvando...</span>
@@ -1450,7 +1446,7 @@ export function ScheduleDetail({ schedule, onClose, onUpdateSchedule }: Schedule
                             e.stopPropagation();
                             setPhotoUploadModal({ open: true, category });
                           }}
-                          disabled={!allSelected}
+                          disabled={!allSelected || !isChecklistEditable}
                           aria-label="Adicionar Foto" 
                           className={cn(
                             "relative rounded-full p-1 transition-colors",
@@ -1458,7 +1454,13 @@ export function ScheduleDetail({ schedule, onClose, onUpdateSchedule }: Schedule
                               ? "text-primary hover:text-[#267373] hover:bg-primary/10" 
                               : "text-slate-300 cursor-not-allowed dark:text-slate-600"
                           )}
-                          title={allSelected ? "Adicionar foto do ambiente" : "Selecione todos os itens para adicionar foto"}
+                          title={
+                            !isChecklistEditable
+                              ? 'Checklist não editável'
+                              : allSelected
+                                ? 'Adicionar foto do ambiente'
+                                : 'Selecione todos os itens para adicionar foto'
+                          }
                         >
                           <span className="material-symbols-outlined text-[20px]">photo_camera</span>
                           {photoCount > 0 && (
@@ -1491,6 +1493,7 @@ export function ScheduleDetail({ schedule, onClose, onUpdateSchedule }: Schedule
                                       name={`item-${item.id}`} 
                                       value="no"
                                       checked={itemState === 'no'}
+                                      disabled={!isChecklistEditable}
                                       onChange={() => handleChecklistItemChange(item.id, 'no', category)}
                                       className="peer sr-only" 
                                     />
@@ -1505,6 +1508,7 @@ export function ScheduleDetail({ schedule, onClose, onUpdateSchedule }: Schedule
                                       name={`item-${item.id}`} 
                                       value="yes"
                                       checked={itemState === 'yes'}
+                                      disabled={!isChecklistEditable}
                                       onChange={() => handleChecklistItemChange(item.id, 'yes', category)}
                                       className="peer sr-only" 
                                     />
@@ -1522,12 +1526,12 @@ export function ScheduleDetail({ schedule, onClose, onUpdateSchedule }: Schedule
                         {/* Auto-save status indicator */}
                         {schedule.status === 'cleaning' && (
                           <div className="px-4 py-2 border-t border-slate-100 dark:border-slate-700/50 bg-slate-50/50 dark:bg-slate-800/30 flex items-center justify-between">
-                            {savingCategories.has(category) ? (
+                            {isAutoSaving ? (
                               <div className="flex items-center gap-2 text-primary">
                                 <span className="material-symbols-outlined text-[16px] animate-spin">sync</span>
                                 <span className="text-xs font-medium">Salvando...</span>
                               </div>
-                            ) : savedCategories.has(category) ? (
+                            ) : lastAutoSavedAt ? (
                               <div className="flex items-center gap-2 text-green-600 dark:text-green-400">
                                 <span className="material-symbols-outlined text-[16px]">check_circle</span>
                                 <span className="text-xs font-medium">Salvo automaticamente</span>
@@ -1538,15 +1542,6 @@ export function ScheduleDetail({ schedule, onClose, onUpdateSchedule }: Schedule
                                 <span className="text-xs font-medium">Auto-save ativo</span>
                               </div>
                             )}
-                          </div>
-                        )}
-                        
-                        {/* Sync overlay indicator when saving this category */}
-                        {savingCategories.has(category) && (
-                          <div className="absolute inset-0 bg-white/30 dark:bg-slate-900/30 backdrop-blur-[1px] flex items-center justify-center rounded-2xl z-10 pointer-events-none">
-                            <div className="flex flex-col items-center gap-2">
-                              <span className="material-symbols-outlined text-[28px] text-primary animate-spin">sync</span>
-                            </div>
                           </div>
                         )}
                       </div>
