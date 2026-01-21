@@ -22,17 +22,33 @@ interface InspectionHistoryEvent {
   user_name?: string;
 }
 
+interface InspectionPhoto {
+  url: string;
+  timestamp: string;
+  uploaded_by?: string;
+}
+
 interface MobileInspectionDetailProps {
   inspection: CleanerInspection & {
     started_at?: string;
     history?: InspectionHistoryEvent[];
     verification_comment?: string;
-    inspection_photos?: string[];
+    inspection_photos?: (string | InspectionPhoto)[];
     property_id?: string | null;
   };
   onClose: () => void;
   onUpdate: () => void;
 }
+
+// Normalize photos to always have timestamp
+const normalizePhotos = (photos: (string | InspectionPhoto)[]): InspectionPhoto[] => {
+  return photos.map(photo => {
+    if (typeof photo === 'string') {
+      return { url: photo, timestamp: new Date().toISOString() };
+    }
+    return photo;
+  });
+};
 
 export function MobileInspectionDetail({
   inspection,
@@ -45,18 +61,19 @@ export function MobileInspectionDetail({
   const [history, setHistory] = useState<InspectionHistoryEvent[]>(
     Array.isArray(inspection.history) ? inspection.history : []
   );
-  const [photos, setPhotos] = useState<string[]>(
-    Array.isArray(inspection.inspection_photos) ? inspection.inspection_photos : []
+  const [photos, setPhotos] = useState<InspectionPhoto[]>(
+    Array.isArray(inspection.inspection_photos) ? normalizePhotos(inspection.inspection_photos) : []
   );
   const [isUploadingPhoto, setIsUploadingPhoto] = useState(false);
   const [requirePhoto, setRequirePhoto] = useState(false);
+  const [userName, setUserName] = useState('Usuário');
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { compressImage } = useImageCompression();
 
   const isInProgress = inspection.status === 'in_progress';
   const isScheduled = inspection.status === 'scheduled';
 
-  // Fetch property rule for photo requirement
+  // Fetch property rule for photo requirement and user name
   useEffect(() => {
     const fetchPropertyRule = async () => {
       if (!inspection.property_id) return;
@@ -71,7 +88,21 @@ export function MobileInspectionDetail({
         setRequirePhoto(data.require_photo_for_inspections ?? false);
       }
     };
+    
+    const fetchUserName = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('name')
+          .eq('id', user.id)
+          .maybeSingle();
+        setUserName(profile?.name || 'Usuário');
+      }
+    };
+
     fetchPropertyRule();
+    fetchUserName();
   }, [inspection.property_id]);
 
   // Check if can finish: must be verified, have comment, and have photo if required
@@ -209,7 +240,12 @@ export function MobileInspectionDetail({
         .from('inspection-photos')
         .getPublicUrl(uploadData.path);
 
-      const newPhotos = [...photos, urlData.publicUrl];
+      const newPhoto: InspectionPhoto = {
+        url: urlData.publicUrl,
+        timestamp: new Date().toISOString(),
+        uploaded_by: userName,
+      };
+      const newPhotos = [...photos, newPhoto];
       setPhotos(newPhotos);
 
       // Save to inspection immediately
@@ -441,13 +477,23 @@ export function MobileInspectionDetail({
                   {/* Photo Grid */}
                   {photos.length > 0 && (
                     <div className="grid grid-cols-3 gap-2">
-                      {photos.map((photoUrl, index) => (
+                      {photos.map((photo, index) => (
                         <div key={index} className="relative aspect-square">
                           <img 
-                            src={photoUrl} 
+                            src={photo.url} 
                             alt={`Foto ${index + 1}`}
                             className="w-full h-full object-cover rounded-lg"
                           />
+                          {photo.timestamp && (
+                            <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/70 to-transparent p-1.5 rounded-b-lg">
+                              <div className="flex items-center gap-1 text-[9px] text-white">
+                                <Clock className="h-2.5 w-2.5" />
+                                <span className="truncate">
+                                  {format(parseISO(photo.timestamp), "dd/MM HH:mm", { locale: ptBR })}
+                                </span>
+                              </div>
+                            </div>
+                          )}
                           <button
                             onClick={() => handleRemovePhoto(index)}
                             className="absolute -top-2 -right-2 h-6 w-6 bg-destructive text-destructive-foreground rounded-full flex items-center justify-center shadow-md"
