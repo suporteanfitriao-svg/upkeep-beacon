@@ -506,15 +506,25 @@ export function ScheduleDetail({ schedule, onClose, onUpdateSchedule }: Schedule
     }));
   };
 
-  const handleChecklistItemChange = useCallback((itemId: string, value: 'yes' | 'no', _category: string) => {
+  // Helper: Check if a category is complete (all items have OK or DX selection)
+  const isCategoryComplete = useCallback((category: string, states: Record<string, 'yes' | 'no' | null>) => {
+    const categoryItems = checklist.filter(item => item.category === category);
+    return categoryItems.every(item => {
+      const state = states[item.id];
+      return state === 'yes' || state === 'no';
+    });
+  }, [checklist]);
+
+  const handleChecklistItemChange = useCallback((itemId: string, value: 'yes' | 'no', category: string) => {
     if (!isChecklistEditable) return;
     hasUserInteractedRef.current = true;
 
     // 1) Update item states (source of truth for category completion UI)
-    setChecklistItemStates((prev) => ({
-      ...prev,
+    const newStates = {
+      ...checklistItemStates,
       [itemId]: value,
-    }));
+    };
+    setChecklistItemStates(newStates);
 
     // 2) Update checklist using functional set to avoid stale-closure overwrites
     const itemStatus: ChecklistItemStatus = value === 'yes' ? 'ok' : 'not_ok';
@@ -530,9 +540,13 @@ export function ScheduleDetail({ schedule, onClose, onUpdateSchedule }: Schedule
       )
     );
 
-    // 3) Schedule auto-save for the whole checklist (debounced)
-    scheduleSave();
-  }, [scheduleSave, isChecklistEditable]);
+    // 3) Auto-save ONLY when category is complete (all items have selection)
+    // This saves on category completion instead of per-item
+    if (isCategoryComplete(category, newStates)) {
+      toast.success(`Categoria "${category}" completa! Salvando...`, { duration: 2000 });
+      scheduleSave();
+    }
+  }, [scheduleSave, isChecklistEditable, checklistItemStates, isCategoryComplete]);
 
   // Handle marking entire category as complete - updates local state and triggers auto-save
   // OPTIMIZED: Uses React.unstable_batchedUpdates pattern to prevent UI freezing on mobile
