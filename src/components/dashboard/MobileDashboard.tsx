@@ -401,20 +401,29 @@ export function MobileDashboard({ schedules, onScheduleClick, onStartCleaning, o
   const periodStats = useMemo(() => {
     const now = new Date();
     let dateRange: { start: Date; end: Date };
+    let dateRangeStr: { start: string; end: string };
     
     switch (paymentPeriod) {
       case 'today':
         dateRange = { start: startOfDay(now), end: endOfDay(now) };
+        dateRangeStr = { start: format(now, 'yyyy-MM-dd'), end: format(now, 'yyyy-MM-dd') };
         break;
       case 'tomorrow':
         const tomorrow = addDays(now, 1);
         dateRange = { start: startOfDay(tomorrow), end: endOfDay(tomorrow) };
+        dateRangeStr = { start: format(tomorrow, 'yyyy-MM-dd'), end: format(tomorrow, 'yyyy-MM-dd') };
         break;
       case 'week':
-        dateRange = { start: startOfWeek(now, { weekStartsOn: 0 }), end: endOfWeek(now, { weekStartsOn: 0 }) };
+        const weekStart = startOfWeek(now, { weekStartsOn: 0 });
+        const weekEnd = endOfWeek(now, { weekStartsOn: 0 });
+        dateRange = { start: weekStart, end: weekEnd };
+        dateRangeStr = { start: format(weekStart, 'yyyy-MM-dd'), end: format(weekEnd, 'yyyy-MM-dd') };
         break;
       case 'month':
-        dateRange = { start: startOfMonth(now), end: endOfMonth(now) };
+        const monthStart = startOfMonth(now);
+        const monthEnd = endOfMonth(now);
+        dateRange = { start: monthStart, end: monthEnd };
+        dateRangeStr = { start: format(monthStart, 'yyyy-MM-dd'), end: format(monthEnd, 'yyyy-MM-dd') };
         break;
     }
 
@@ -422,23 +431,32 @@ export function MobileDashboard({ schedules, onScheduleClick, onStartCleaning, o
       isWithinInterval(s.checkOut, { start: dateRange.start, end: dateRange.end })
     );
 
+    // Count inspections in period (scheduled or in_progress)
+    const periodInspections = inspections.filter(i => {
+      const inspDate = i.scheduled_date;
+      return inspDate >= dateRangeStr.start && 
+             inspDate <= dateRangeStr.end && 
+             (i.status === 'scheduled' || i.status === 'in_progress');
+    });
+
     const completed = periodSchedules.filter(s => s.status === 'completed');
     const pending = periodSchedules.filter(s => s.status !== 'completed');
 
-    // Add overdue count to total and pending for all periods
-    const totalWithOverdue = periodSchedules.length + overdueCount;
-    const pendingWithOverdue = pending.length + overdueCount;
+    // Add overdue count and inspections to total and pending for all periods
+    const totalWithOverdue = periodSchedules.length + overdueCount + periodInspections.length;
+    const pendingWithOverdue = pending.length + overdueCount + periodInspections.length;
 
     return {
       total: totalWithOverdue,
       completed: completed.length,
       pending: pendingWithOverdue,
       overdueCount: overdueCount,
+      inspectionsCount: periodInspections.length,
       periodLabel: paymentPeriod === 'today' ? 'Hoje' : 
                    paymentPeriod === 'tomorrow' ? 'Amanhã' :
                    paymentPeriod === 'week' ? 'Semana' : 'Mês'
     };
-  }, [schedules, paymentPeriod, overdueCount]);
+  }, [schedules, paymentPeriod, overdueCount, inspections]);
 
   const monthCompletedCount = useMemo(() => {
     const now = new Date();
