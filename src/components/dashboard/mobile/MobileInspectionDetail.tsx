@@ -56,7 +56,7 @@ interface MobileInspectionDetailProps {
     property_id?: string | null;
   };
   onClose: () => void;
-  onUpdate: () => void;
+  onUpdate: (shouldClose?: boolean) => void;
 }
 
 // Normalize photos to always have timestamp
@@ -191,7 +191,7 @@ export function MobileInspectionDetail({
       setHistory(newHistory);
       setLocalStatus('in_progress'); // Update local status to keep card open
       setShowStartConfirmation(false);
-      onUpdate();
+      onUpdate(false); // Don't close the detail view
     } catch (error) {
       console.error('Error starting inspection:', error);
       toast.error('Erro ao iniciar inspeção');
