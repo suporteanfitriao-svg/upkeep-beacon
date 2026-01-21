@@ -586,52 +586,56 @@ export function ScheduleDetail({ schedule, onClose, onUpdateSchedule }: Schedule
     if (!isChecklistEditable) return;
     hasUserInteractedRef.current = true;
 
-    // 1) Update item states (source of truth for category completion UI)
-    const newStates = {
-      ...checklistItemStates,
-      [itemId]: value,
-    };
-    setChecklistItemStates(newStates);
-    // Keep ref in sync immediately (avoid races where save completes before effect runs)
-    checklistItemStatesRef.current = newStates;
+    // Use functional update to avoid stale-closure state races (mobile rapid taps).
+    setChecklistItemStates((prev) => {
+      const nextStates: Record<string, 'yes' | 'no' | null> = {
+        ...prev,
+        [itemId]: value,
+      };
 
-    // Any interaction makes the category "dirty" until a save succeeds.
-    setCategorySaveStatus((prev) => ({
-      ...prev,
-      [category]: 'dirty',
-    }));
+      // Keep ref in sync immediately (avoid races where save starts before render commits)
+      checklistItemStatesRef.current = nextStates;
 
-    // 2) Update checklist using functional set to avoid stale-closure overwrites
-    const itemStatus: ChecklistItemStatus = value === 'yes' ? 'ok' : 'not_ok';
-    setChecklist((prev) =>
-      prev.map((item) =>
-        item.id === itemId
-          ? {
-              ...item,
-              completed: value === 'yes',
-              status: itemStatus,
-            }
-          : item
-      )
-    );
+      // Any interaction makes the category "dirty" until a save succeeds.
+      setCategorySaveStatus((prevStatus) => ({
+        ...prevStatus,
+        [category]: 'dirty',
+      }));
 
-    // 3) Auto-save when the CATEGORY is complete (all items marked OK/DX)
-    // This ensures partial progress is persisted even if user doesn't finish all categories
-    const categoryItems = checklist.filter(item => item.category === category);
-    const categoryComplete = categoryItems.every(item => {
-      const state = item.id === itemId ? value : newStates[item.id];
-      return state === 'yes' || state === 'no';
-    });
-    
-    if (categoryComplete) {
-      if (isChecklistComplete(newStates)) {
-        toast.success('Checklist completo! Salvando...', { duration: 2000 });
-      } else {
-        toast.success(`Categoria "${category}" completa! Salvando...`, { duration: 1500 });
+      // Update checklist items (persisted shape)
+      const itemStatus: ChecklistItemStatus = value === 'yes' ? 'ok' : 'not_ok';
+      setChecklist((prevChecklist) =>
+        prevChecklist.map((item) =>
+          item.id === itemId
+            ? {
+                ...item,
+                completed: value === 'yes',
+                status: itemStatus,
+              }
+            : item
+        )
+      );
+
+      // Auto-save when the CATEGORY is complete (all items marked OK/DX)
+      const sourceChecklist = checklistRef.current;
+      const categoryItems = sourceChecklist.filter((item) => item.category === category);
+      const categoryComplete = categoryItems.length > 0 && categoryItems.every((item) => {
+        const state = item.id === itemId ? value : nextStates[item.id];
+        return state === 'yes' || state === 'no';
+      });
+
+      if (categoryComplete) {
+        if (isChecklistComplete(nextStates)) {
+          toast.success('Checklist completo! Salvando...', { duration: 2000 });
+        } else {
+          toast.success(`Categoria "${category}" completa! Salvando...`, { duration: 1500 });
+        }
+        scheduleSave();
       }
-      scheduleSave();
-    }
-  }, [scheduleSave, isChecklistEditable, checklistItemStates, isChecklistComplete, checklist]);
+
+      return nextStates;
+    });
+  }, [scheduleSave, isChecklistEditable, isChecklistComplete]);
 
   // Handle marking entire category as complete - updates local state and triggers auto-save
   // OPTIMIZED: Uses React.unstable_batchedUpdates pattern to prevent UI freezing on mobile

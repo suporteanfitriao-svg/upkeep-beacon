@@ -25,16 +25,20 @@ interface LocationRequiredModalProps {
  * Modal that FORCES location permission before allowing cleaning to start.
  * No option to continue without location - it's mandatory.
  */
-const LocationRequiredModal = memo(function LocationRequiredModal({
-  isOpen,
-  onClose,
-  permissionState,
-  onRequestPermission,
-  distance,
-  isLoading,
-  onRetry,
-  error,
-}: LocationRequiredModalProps) {
+const LocationRequiredModal = memo(
+  React.forwardRef<HTMLDivElement, LocationRequiredModalProps>(function LocationRequiredModal(
+    {
+      isOpen,
+      onClose,
+      permissionState,
+      onRequestPermission,
+      distance,
+      isLoading,
+      onRetry,
+      error,
+    },
+    ref,
+  ) {
   const isDenied = permissionState === 'denied';
   const isUnavailable = permissionState === 'unavailable';
   const isPrompt = permissionState === 'prompt';
@@ -99,7 +103,7 @@ const LocationRequiredModal = memo(function LocationRequiredModal({
   if (isLoading) {
     return (
       <Dialog open={isOpen} onOpenChange={() => {}}>
-        <DialogContent className="sm:max-w-md" onPointerDownOutside={(e) => e.preventDefault()}>
+        <DialogContent ref={ref} className="sm:max-w-md" onPointerDownOutside={(e) => e.preventDefault()}>
           <DialogHeader>
             <div className="flex items-center gap-3">
               <div className="p-3 rounded-full bg-primary/10">
@@ -127,7 +131,7 @@ const LocationRequiredModal = memo(function LocationRequiredModal({
   if (distance !== null && distance !== undefined && distance > 500) {
     return (
       <Dialog open={isOpen} onOpenChange={onClose}>
-        <DialogContent className="sm:max-w-md">
+        <DialogContent ref={ref} className="sm:max-w-md">
           <DialogHeader>
             <div className="flex items-center gap-3">
               <div className="p-3 rounded-full bg-red-500/10">
@@ -188,7 +192,7 @@ const LocationRequiredModal = memo(function LocationRequiredModal({
   if (error) {
     return (
       <Dialog open={isOpen} onOpenChange={onClose}>
-        <DialogContent className="sm:max-w-md">
+        <DialogContent ref={ref} className="sm:max-w-md">
           <DialogHeader>
             <div className="flex items-center gap-3">
               <div className="p-3 rounded-full bg-destructive/10">
@@ -381,6 +385,7 @@ const LocationRequiredModal = memo(function LocationRequiredModal({
       </DialogContent>
     </Dialog>
   );
-});
+  })
+);
 
 export default LocationRequiredModal;
