@@ -107,10 +107,18 @@ export function ScheduleDetail({ schedule, onClose, onUpdateSchedule }: Schedule
   // Auto-save state tracking (global for the whole checklist)
   const [isAutoSaving, setIsAutoSaving] = useState(false);
   const [lastAutoSavedAt, setLastAutoSavedAt] = useState<number | null>(null);
+  // Track per-category save state so UI only turns green/amber AFTER save success
+  const [categorySaveStatus, setCategorySaveStatus] = useState<Record<string, 'idle' | 'dirty' | 'saved'>>({});
   const cacheInitializedRef = useRef(false);
   const hasUserInteractedRef = useRef(false);
   const checklistHydratedRef = useRef(false);
   const statusStyle = statusConfig[schedule.status];
+
+  // Keep ref to latest checklistItemStates for save callbacks
+  const checklistItemStatesRef = useRef(checklistItemStates);
+  useEffect(() => {
+    checklistItemStatesRef.current = checklistItemStates;
+  }, [checklistItemStates]);
 
   // When switching schedules (or reopening the same component), reset session-only refs
   useEffect(() => {
@@ -123,6 +131,7 @@ export function ScheduleDetail({ schedule, onClose, onUpdateSchedule }: Schedule
     setChecklist(schedule.checklist);
     setChecklistItemStates(deriveChecklistItemStates(schedule.checklist));
     setLocalIssues(schedule.maintenanceIssues);
+    setCategorySaveStatus({});
   }, [schedule.id, deriveChecklistItemStates]);
 
   // When the backend finishes linking/loading a checklist (after "Iniciar Limpeza"), hydrate local state.
@@ -164,6 +173,15 @@ export function ScheduleDetail({ schedule, onClose, onUpdateSchedule }: Schedule
     isActive: schedule.status === 'cleaning',
   });
 
+  // Helper: Check if a category is complete (all items have OK or DX selection)
+  const isCategoryComplete = useCallback((category: string, states: Record<string, 'yes' | 'no' | null>) => {
+    const categoryItems = checklist.filter(item => item.category === category);
+    return categoryItems.every(item => {
+      const state = states[item.id];
+      return state === 'yes' || state === 'no';
+    });
+  }, [checklist]);
+
   // Auto-save hook with debounce (whole checklist)
   const { scheduleSave, flushAll } = useDebouncedCategorySave({
     scheduleId: schedule.id,
@@ -174,7 +192,25 @@ export function ScheduleDetail({ schedule, onClose, onUpdateSchedule }: Schedule
     onSaveStart: () => setIsAutoSaving(true),
     onSaveComplete: (_category, success) => {
       setIsAutoSaving(false);
-      if (success) setLastAutoSavedAt(Date.now());
+      if (success) {
+        setLastAutoSavedAt(Date.now());
+        // After a successful save, mark any COMPLETE categories as "saved"
+        // and clear "dirty" state only for those categories.
+        setCategorySaveStatus((prev) => {
+          const next: Record<string, 'idle' | 'dirty' | 'saved'> = { ...prev };
+          const currentStates = checklistItemStatesRef.current;
+          const categories = [...new Set(checklist.map(i => i.category))];
+          categories.forEach((cat) => {
+            if (isCategoryComplete(cat, currentStates)) {
+              next[cat] = 'saved';
+            } else {
+              // if category is incomplete, it can't be "saved"
+              if (next[cat] === 'saved') next[cat] = 'idle';
+            }
+          });
+          return next;
+        });
+      }
     },
     clearCache,
   });
@@ -506,15 +542,6 @@ export function ScheduleDetail({ schedule, onClose, onUpdateSchedule }: Schedule
     }));
   };
 
-  // Helper: Check if a category is complete (all items have OK or DX selection)
-  const isCategoryComplete = useCallback((category: string, states: Record<string, 'yes' | 'no' | null>) => {
-    const categoryItems = checklist.filter(item => item.category === category);
-    return categoryItems.every(item => {
-      const state = states[item.id];
-      return state === 'yes' || state === 'no';
-    });
-  }, [checklist]);
-
   const handleChecklistItemChange = useCallback((itemId: string, value: 'yes' | 'no', category: string) => {
     if (!isChecklistEditable) return;
     hasUserInteractedRef.current = true;
@@ -525,6 +552,12 @@ export function ScheduleDetail({ schedule, onClose, onUpdateSchedule }: Schedule
       [itemId]: value,
     };
     setChecklistItemStates(newStates);
+
+    // Any interaction makes the category "dirty" until a save succeeds.
+    setCategorySaveStatus((prev) => ({
+      ...prev,
+      [category]: 'dirty',
+    }));
 
     // 2) Update checklist using functional set to avoid stale-closure overwrites
     const itemStatus: ChecklistItemStatus = value === 'yes' ? 'ok' : 'not_ok';
@@ -585,6 +618,11 @@ export function ScheduleDetail({ schedule, onClose, onUpdateSchedule }: Schedule
       // Single batched state update - React 18 auto-batches these
       setChecklistItemStates(updatedStates);
       setChecklist(updatedChecklist);
+
+      setCategorySaveStatus((prev) => ({
+        ...prev,
+        [category]: 'dirty',
+      }));
       
       // Schedule save AFTER state is updated (next tick)
       // Use setTimeout to ensure state updates have been processed
@@ -1369,6 +1407,9 @@ export function ScheduleDetail({ schedule, onClose, onUpdateSchedule }: Schedule
               const selectedCount = okCount + dxCount;
               const allSelected = selectedCount === totalInCategory;
               const hasDX = dxCount > 0;
+              const saveStatus = categorySaveStatus[category] ?? (allSelected ? 'saved' : 'idle');
+              const isSaved = allSelected && saveStatus === 'saved';
+              const isDirtyComplete = allSelected && saveStatus === 'dirty';
               const hasPhotosInCategory = categoryPhotosData[category] && categoryPhotosData[category].length > 0;
               const needsPhoto = requirePhotoPerCategory && allSelected && !hasPhotosInCategory;
               const photoCount = categoryPhotosData[category]?.length || 0;
@@ -1376,45 +1417,54 @@ export function ScheduleDetail({ schedule, onClose, onUpdateSchedule }: Schedule
               return (
                 <div key={category} className={cn(
                   "relative overflow-hidden rounded-xl border bg-white dark:bg-[#2d3138]",
-                  allSelected 
-                    ? hasDX 
-                      ? "border-amber-300 dark:border-amber-700" 
-                      : "border-green-300 dark:border-green-700" 
-                    : "border-slate-200 dark:border-slate-700"
+                  isSaved
+                    ? hasDX
+                      ? "border-amber-300 dark:border-amber-700"
+                      : "border-green-300 dark:border-green-700"
+                    : isDirtyComplete
+                      ? "border-primary/30"
+                      : "border-slate-200 dark:border-slate-700"
                 )}>
                   <details open={isExpanded} className="group">
                     <summary 
                       onClick={(e) => { e.preventDefault(); toggleCategory(category); }}
                       className={cn(
                         "flex cursor-pointer items-center justify-between p-4 font-medium",
-                        allSelected 
-                          ? hasDX 
-                            ? "bg-amber-50 dark:bg-amber-900/20" 
-                            : "bg-green-50 dark:bg-green-900/20" 
-                          : "bg-slate-50 dark:bg-slate-800/50"
+                        isSaved
+                          ? hasDX
+                            ? "bg-amber-50 dark:bg-amber-900/20"
+                            : "bg-green-50 dark:bg-green-900/20"
+                          : isDirtyComplete
+                            ? "bg-primary/5 dark:bg-primary/10"
+                            : "bg-slate-50 dark:bg-slate-800/50"
                       )}
                     >
                       <div className="flex items-center gap-3">
                         <div className={cn(
                           "h-4 w-4 rounded-full border-2 flex items-center justify-center",
-                          allSelected 
-                            ? hasDX 
-                              ? "bg-amber-500 border-amber-500" 
-                              : "bg-green-500 border-green-500" 
-                            : "border-slate-300 dark:border-slate-500"
+                          isSaved
+                            ? hasDX
+                              ? "bg-amber-500 border-amber-500"
+                              : "bg-green-500 border-green-500"
+                            : isDirtyComplete
+                              ? "border-primary"
+                              : "border-slate-300 dark:border-slate-500"
                         )}>
-                          {allSelected && (
+                          {isSaved && (
                             <span className="material-symbols-outlined text-white text-[12px]">
                               {hasDX ? 'warning' : 'check'}
                             </span>
                           )}
+                          {!isSaved && isDirtyComplete && (
+                            <span className="material-symbols-outlined text-primary text-[12px] animate-spin">sync</span>
+                          )}
                         </div>
                         <span className={cn(
                           "font-bold",
-                          allSelected 
-                            ? hasDX 
-                              ? "text-amber-700 dark:text-amber-300" 
-                              : "text-green-700 dark:text-green-300" 
+                          isSaved
+                            ? hasDX
+                              ? "text-amber-700 dark:text-amber-300"
+                              : "text-green-700 dark:text-green-300"
                             : "text-slate-900 dark:text-white"
                         )}>{category}</span>
                         {needsPhoto && (
