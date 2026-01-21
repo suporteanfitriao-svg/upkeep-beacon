@@ -16,8 +16,9 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { 
   ClipboardCheck, Plus, Trash2, Loader2, Edit2, Calendar,
   Building2, User, Clock, Play, CheckCircle2, AlertCircle,
-  ChevronRight, Eye, RotateCcw, History
+  ChevronRight, Eye, RotateCcw, History, Camera
 } from 'lucide-react';
+import { PhotoGallery } from '@/components/shared/PhotoGallery';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { format, parseISO, isToday, isPast, isFuture } from 'date-fns';
@@ -54,6 +55,12 @@ interface InspectionHistoryEvent {
   user_name?: string;
 }
 
+interface InspectionPhoto {
+  url: string;
+  timestamp?: string;
+  uploaded_by?: string;
+}
+
 interface Inspection {
   id: string;
   user_id: string;
@@ -77,6 +84,7 @@ interface Inspection {
   started_at?: string;
   history?: InspectionHistoryEvent[];
   verification_comment?: string;
+  inspection_photos?: InspectionPhoto[];
 }
 
 const statusConfig = {
@@ -148,6 +156,9 @@ const Inspections = () => {
           : undefined,
         history: Array.isArray(i.history)
           ? (i.history as unknown as InspectionHistoryEvent[])
+          : [],
+        inspection_photos: Array.isArray(i.inspection_photos)
+          ? (i.inspection_photos as unknown as InspectionPhoto[])
           : [],
       })));
     } catch (error) {
@@ -928,6 +939,21 @@ const Inspections = () => {
                     <p className="text-sm text-muted-foreground bg-muted/50 rounded-lg p-3">
                       {selectedInspection.verification_comment}
                     </p>
+                  </div>
+                )}
+
+                {/* Inspection Photos Gallery */}
+                {selectedInspection.inspection_photos && selectedInspection.inspection_photos.length > 0 && (
+                  <div>
+                    <p className="text-sm font-medium mb-2 flex items-center gap-2">
+                      <Camera className="h-4 w-4" />
+                      Fotos da Inspeção ({selectedInspection.inspection_photos.length})
+                    </p>
+                    <PhotoGallery 
+                      photos={selectedInspection.inspection_photos}
+                      title=""
+                      emptyMessage="Nenhuma foto disponível"
+                    />
                   </div>
                 )}
 
