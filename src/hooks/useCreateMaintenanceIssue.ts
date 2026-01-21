@@ -11,8 +11,14 @@ interface CreateMaintenanceIssueParams {
   itemLabel: string;
   description: string;
   severity: 'low' | 'medium' | 'high';
-  photoFile?: File;
+  photoFiles?: File[];
   reportedByName: string;
+}
+
+interface IssuePhoto {
+  url: string;
+  timestamp: string;
+  uploaded_by?: string;
 }
 
 export function useCreateMaintenanceIssue() {
@@ -42,15 +48,31 @@ export function useCreateMaintenanceIssue() {
 
   const createIssue = useCallback(async (params: CreateMaintenanceIssueParams) => {
     try {
-      let photoUrl: string | null = null;
+      const photos: IssuePhoto[] = [];
+      let legacyPhotoUrl: string | null = null;
 
-      // Upload photo if provided (with timestamp enabled by default)
-      if (params.photoFile) {
-        photoUrl = await compressAndUpload(
-          params.photoFile,
-          uploadPhoto,
-          { maxWidth: 1280, maxSizeKB: 600, addTimestamp: true }
-        );
+      // Upload photos if provided (with timestamp enabled by default)
+      if (params.photoFiles && params.photoFiles.length > 0) {
+        for (const file of params.photoFiles) {
+          const photoUrl = await compressAndUpload(
+            file,
+            uploadPhoto,
+            { maxWidth: 1280, maxSizeKB: 600, addTimestamp: true }
+          );
+          
+          if (photoUrl) {
+            photos.push({
+              url: photoUrl,
+              timestamp: new Date().toISOString(),
+              uploaded_by: params.reportedByName,
+            });
+            
+            // Keep first photo in legacy field for backwards compatibility
+            if (!legacyPhotoUrl) {
+              legacyPhotoUrl = photoUrl;
+            }
+          }
+        }
       }
 
       // Get current user
@@ -67,7 +89,8 @@ export function useCreateMaintenanceIssue() {
           item_label: params.itemLabel,
           description: params.description,
           severity: params.severity,
-          photo_url: photoUrl,
+          photo_url: legacyPhotoUrl,
+          photos: photos as unknown as null, // Cast for type compatibility
           reported_by: user?.id,
           reported_by_name: params.reportedByName,
           status: 'open',

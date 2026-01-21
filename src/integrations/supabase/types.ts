@@ -469,6 +469,7 @@ export type Database = {
           id: string
           item_label: string | null
           photo_url: string | null
+          photos: Json | null
           progress_notes: Json | null
           property_id: string
           property_name: string
@@ -493,6 +494,7 @@ export type Database = {
           id?: string
           item_label?: string | null
           photo_url?: string | null
+          photos?: Json | null
           progress_notes?: Json | null
           property_id: string
           property_name: string
@@ -517,6 +519,7 @@ export type Database = {
           id?: string
           item_label?: string | null
           photo_url?: string | null
+          photos?: Json | null
           progress_notes?: Json | null
           property_id?: string
           property_name?: string

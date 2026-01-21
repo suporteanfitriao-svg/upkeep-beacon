@@ -10,7 +10,7 @@ interface IssueReportModalProps {
     category: string;
     itemLabel: string;
     description: string;
-    photoFile?: File;
+    photoFiles?: File[];
     severity: 'low' | 'medium' | 'high';
   }) => Promise<void>;
   checklist: ChecklistItem[];
@@ -63,8 +63,8 @@ export function IssueReportModal({ onClose, onSubmit, checklist, isSubmitting = 
   const [otherItemText, setOtherItemText] = useState(''); // Custom text for "other" item
   const [description, setDescription] = useState('');
   const [severity, setSeverity] = useState<'low' | 'medium' | 'high'>('medium');
-  const [photoFile, setPhotoFile] = useState<File | null>(null);
-  const [photoPreview, setPhotoPreview] = useState<string | null>(null);
+  const [photoFiles, setPhotoFiles] = useState<File[]>([]);
+  const [photoPreviews, setPhotoPreviews] = useState<string[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const otherInputRef = useRef<HTMLInputElement>(null);
 
@@ -134,38 +134,56 @@ export function IssueReportModal({ onClose, onSubmit, checklist, isSubmitting = 
   };
 
   const handlePhotoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
+    const files = e.target.files;
+    if (!files || files.length === 0) return;
 
-    // Validate file type
+    const newFiles: File[] = [];
+    const newPreviews: string[] = [];
     const validTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp'];
-    if (!validTypes.includes(file.type)) {
-      toast.error('Formato não suportado. Use JPG, PNG ou WebP.');
-      return;
-    }
 
-    // Check file size (max 8MB before compression)
-    if (file.size > 8 * 1024 * 1024) {
-      toast.error('Arquivo muito grande. Máximo de 8MB.');
-      return;
-    }
+    Array.from(files).forEach((file) => {
+      // Validate file type
+      if (!validTypes.includes(file.type)) {
+        toast.error(`Formato não suportado: ${file.name}. Use JPG, PNG ou WebP.`);
+        return;
+      }
 
-    setPhotoFile(file);
+      // Check file size (max 8MB before compression)
+      if (file.size > 8 * 1024 * 1024) {
+        toast.error(`Arquivo muito grande: ${file.name}. Máximo de 8MB.`);
+        return;
+      }
 
-    // Create preview
-    const reader = new FileReader();
-    reader.onloadend = () => {
-      setPhotoPreview(reader.result as string);
-    };
-    reader.readAsDataURL(file);
-  };
+      // Limit to 5 photos total
+      if (photoFiles.length + newFiles.length >= 5) {
+        toast.error('Máximo de 5 fotos por avaria');
+        return;
+      }
 
-  const handleRemovePhoto = () => {
-    setPhotoFile(null);
-    setPhotoPreview(null);
+      newFiles.push(file);
+
+      // Create preview
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        newPreviews.push(reader.result as string);
+        if (newPreviews.length === newFiles.length) {
+          setPhotoPreviews(prev => [...prev, ...newPreviews]);
+        }
+      };
+      reader.readAsDataURL(file);
+    });
+
+    setPhotoFiles(prev => [...prev, ...newFiles]);
+    
+    // Reset input to allow selecting the same file again
     if (fileInputRef.current) {
       fileInputRef.current.value = '';
     }
+  };
+
+  const handleRemovePhoto = (index: number) => {
+    setPhotoFiles(prev => prev.filter((_, i) => i !== index));
+    setPhotoPreviews(prev => prev.filter((_, i) => i !== index));
   };
 
   const handleSubmit = async () => {
@@ -180,7 +198,7 @@ export function IssueReportModal({ onClose, onSubmit, checklist, isSubmitting = 
     }
 
     // Validate photo requirement
-    if (requirePhoto && !photoFile) {
+    if (requirePhoto && photoFiles.length === 0) {
       toast.error('Foto obrigatória para registrar a avaria');
       return;
     }
@@ -190,7 +208,7 @@ export function IssueReportModal({ onClose, onSubmit, checklist, isSubmitting = 
         category: selectedCategory,
         itemLabel: finalItemValue,
         description: description.trim(),
-        photoFile: photoFile || undefined,
+        photoFiles: photoFiles.length > 0 ? photoFiles : undefined,
         severity,
       });
       onClose();
@@ -541,7 +559,7 @@ export function IssueReportModal({ onClose, onSubmit, checklist, isSubmitting = 
                 {!requirePhoto && <span className="text-xs font-medium text-primary bg-primary/10 px-2 py-1 rounded-full">Recomendado</span>}
               </div>
 
-              {!photoPreview ? (
+              {photoPreviews.length === 0 ? (
                 <button 
                   onClick={() => fileInputRef.current?.click()}
                   className="w-full aspect-video flex flex-col items-center justify-center rounded-xl border-2 border-dashed border-primary bg-primary/5 hover:bg-primary/10 active:scale-[0.99] transition-all cursor-pointer"
@@ -550,23 +568,38 @@ export function IssueReportModal({ onClose, onSubmit, checklist, isSubmitting = 
                     <span className="material-symbols-outlined text-[28px]">add_a_photo</span>
                   </div>
                   <span className="text-sm font-bold text-primary">Tirar foto ou selecionar</span>
-                  <span className="text-xs text-slate-500 mt-1">JPG, PNG ou WebP (máx. 8MB)</span>
+                  <span className="text-xs text-slate-500 mt-1">JPG, PNG ou WebP (máx. 8MB cada, até 5 fotos)</span>
                 </button>
               ) : (
-                <div className="relative">
-                  <img 
-                    src={photoPreview} 
-                    alt="Preview" 
-                    className="w-full aspect-video object-cover rounded-xl"
-                  />
-                  <button 
-                    onClick={handleRemovePhoto}
-                    className="absolute top-2 right-2 h-8 w-8 rounded-full bg-red-500 text-white flex items-center justify-center shadow-lg hover:bg-red-600 transition-colors"
-                  >
-                    <span className="material-symbols-outlined text-[18px]">close</span>
-                  </button>
-                  <p className="text-xs text-slate-500 mt-2 text-center">
-                    A imagem será comprimida automaticamente
+                <div className="space-y-3">
+                  <div className="grid grid-cols-3 gap-2">
+                    {photoPreviews.map((preview, index) => (
+                      <div key={index} className="relative aspect-square">
+                        <img 
+                          src={preview} 
+                          alt={`Preview ${index + 1}`} 
+                          className="w-full h-full object-cover rounded-lg"
+                        />
+                        <button 
+                          onClick={() => handleRemovePhoto(index)}
+                          className="absolute -top-1 -right-1 h-6 w-6 rounded-full bg-red-500 text-white flex items-center justify-center shadow-lg hover:bg-red-600 transition-colors"
+                        >
+                          <span className="material-symbols-outlined text-[14px]">close</span>
+                        </button>
+                      </div>
+                    ))}
+                    {photoPreviews.length < 5 && (
+                      <button
+                        onClick={() => fileInputRef.current?.click()}
+                        className="aspect-square flex flex-col items-center justify-center rounded-lg border-2 border-dashed border-slate-300 dark:border-slate-600 hover:border-primary hover:bg-primary/5 transition-all"
+                      >
+                        <span className="material-symbols-outlined text-slate-400 text-[24px]">add_a_photo</span>
+                        <span className="text-[10px] text-slate-400 mt-1">Adicionar</span>
+                      </button>
+                    )}
+                  </div>
+                  <p className="text-xs text-slate-500 text-center">
+                    {photoPreviews.length}/5 fotos • As imagens serão comprimidas automaticamente
                   </p>
                 </div>
               )}
@@ -576,6 +609,7 @@ export function IssueReportModal({ onClose, onSubmit, checklist, isSubmitting = 
                 type="file"
                 accept="image/jpeg,image/jpg,image/png,image/webp"
                 capture="environment"
+                multiple
                 onChange={handlePhotoUpload}
                 className="hidden"
               />
@@ -603,7 +637,7 @@ export function IssueReportModal({ onClose, onSubmit, checklist, isSubmitting = 
           ) : (
             <button 
               onClick={handleSubmit}
-              disabled={isSubmitting || !description.trim() || (requirePhoto && !photoFile)}
+              disabled={isSubmitting || !description.trim() || (requirePhoto && photoFiles.length === 0)}
               className="w-full bg-primary hover:bg-[#267373] text-white font-bold text-lg py-4 rounded-xl shadow-lg shadow-primary/25 flex items-center justify-center gap-2 transition-all active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {isSubmitting ? (
