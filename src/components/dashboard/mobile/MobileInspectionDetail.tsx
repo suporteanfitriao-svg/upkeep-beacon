@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { 
   X, Clock, Building2, Calendar, User, ClipboardCheck, 
   CheckCircle2, Play, Loader2, MessageSquare, History, Camera, ImagePlus, Trash2,
-  AlertTriangle, BookOpen, Shield
+  AlertTriangle, BookOpen, Shield, ListChecks, Check
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
@@ -89,11 +89,16 @@ export function MobileInspectionDetail({
   const [showStartConfirmation, setShowStartConfirmation] = useState(false);
   const [houseRules, setHouseRules] = useState<HouseRule[]>([]);
   const [localStatus, setLocalStatus] = useState(inspection.status);
+  const [checklistState, setChecklistState] = useState(inspection.checklist_state || []);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { compressImage } = useImageCompression();
 
   const isInProgress = localStatus === 'in_progress';
   const isScheduled = localStatus === 'scheduled';
+  const hasChecklist = checklistState.length > 0;
+  const checklistProgress = hasChecklist 
+    ? `${checklistState.filter(i => i.checked).length}/${checklistState.length}`
+    : null;
 
   // Fetch property rule for photo requirement, user name, and house rules
   useEffect(() => {
@@ -327,6 +332,24 @@ export function MobileInspectionDetail({
     }
   };
 
+  // Toggle checklist item and save to database
+  const handleChecklistToggle = async (itemId: string) => {
+    const updatedState = checklistState.map(item =>
+      item.id === itemId ? { ...item, checked: !item.checked } : item
+    );
+    setChecklistState(updatedState);
+
+    try {
+      await supabase
+        .from('inspections')
+        .update({ checklist_state: JSON.parse(JSON.stringify(updatedState)) })
+        .eq('id', inspection.id);
+    } catch (error) {
+      console.error('Error updating checklist:', error);
+      toast.error('Erro ao atualizar checklist');
+    }
+  };
+
   // Save comment as user types (debounced)
   useEffect(() => {
     if (!isInProgress || comment === inspection.verification_comment) return;
@@ -376,6 +399,12 @@ export function MobileInspectionDetail({
                   Requisitos para finalizar:
                 </p>
                 <ul className="text-xs space-y-1 text-muted-foreground ml-6">
+                  {hasChecklist && (
+                    <li className="flex items-center gap-2">
+                      <ListChecks className="h-3 w-3" />
+                      Checklist com {checklistState.length} ite{checklistState.length === 1 ? 'm' : 'ns'} para verificar
+                    </li>
+                  )}
                   <li className="flex items-center gap-2">
                     <CheckCircle2 className="h-3 w-3" />
                     Marcar como verificado
@@ -599,6 +628,60 @@ export function MobileInspectionDetail({
                 )}
               </ul>
             </div>
+          )}
+
+          {/* Checklist Section - Show when in progress and has checklist */}
+          {isInProgress && hasChecklist && (
+            <>
+              <Separator />
+              
+              <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <h3 className="text-base font-semibold flex items-center gap-2">
+                    <ListChecks className="h-5 w-5 text-purple-600" />
+                    Checklist de Verificação
+                  </h3>
+                  <Badge variant="outline" className="bg-purple-50 dark:bg-purple-900/20 text-purple-700 dark:text-purple-300 border-purple-200 dark:border-purple-700">
+                    {checklistProgress}
+                  </Badge>
+                </div>
+                
+                <div className="space-y-2">
+                  {checklistState.map((item) => (
+                    <div 
+                      key={item.id}
+                      onClick={() => handleChecklistToggle(item.id)}
+                      className={`flex items-center gap-3 p-3 rounded-lg border cursor-pointer active:scale-[0.98] transition-all ${
+                        item.checked 
+                          ? 'bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-700' 
+                          : 'bg-muted/30 border-border hover:bg-muted/50'
+                      }`}
+                    >
+                      <div className={`h-6 w-6 rounded-full flex items-center justify-center shrink-0 ${
+                        item.checked 
+                          ? 'bg-green-500 text-white' 
+                          : 'border-2 border-muted-foreground/40'
+                      }`}>
+                        {item.checked && <Check className="h-4 w-4" />}
+                      </div>
+                      <span className={`text-sm flex-1 ${
+                        item.checked ? 'text-green-700 dark:text-green-300 line-through' : 'text-foreground'
+                      }`}>
+                        {item.label}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+                
+                {/* All items checked indicator */}
+                {checklistState.length > 0 && checklistState.every(i => i.checked) && (
+                  <div className="flex items-center gap-2 p-3 bg-green-100 dark:bg-green-900/30 rounded-lg text-green-700 dark:text-green-300">
+                    <CheckCircle2 className="h-5 w-5" />
+                    <span className="text-sm font-medium">Todos os itens verificados!</span>
+                  </div>
+                )}
+              </div>
+            </>
           )}
 
           {/* Verification Section - Only show when in_progress */}
