@@ -1149,9 +1149,11 @@ export function MobileDashboard({ schedules, onScheduleClick, onStartCleaning, o
         <MobileInspectionDetail
           inspection={selectedInspection}
           onClose={() => setSelectedInspection(null)}
-          onUpdate={() => {
+          onUpdate={(shouldClose = true) => {
             refetchInspections();
-            setSelectedInspection(null);
+            if (shouldClose) {
+              setSelectedInspection(null);
+            }
           }}
         />
       )}
