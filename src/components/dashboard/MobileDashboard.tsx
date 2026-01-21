@@ -354,42 +354,48 @@ export function MobileDashboard({ schedules, onScheduleClick, onStartCleaning, o
 
   const overdueCount = overdueSchedules.length;
 
-  const todayTasksCount = useMemo(() => {
+  const todayTasks = useMemo(() => {
     const today = new Date();
     const todayDateStr = format(today, 'yyyy-MM-dd');
     
     // Schedules for today (not completed) + overdue
-    const todaySchedules = schedules.filter(s => 
+    const schedulesCount = schedules.filter(s => 
       isSameDay(s.checkOut, today) && s.status !== 'completed'
-    ).length;
+    ).length + overdueCount;
     
     // Inspections for today (scheduled or in_progress)
-    const todayInspections = inspections.filter(i =>
+    const inspectionsCount = inspections.filter(i =>
       i.scheduled_date === todayDateStr && 
       (i.status === 'scheduled' || i.status === 'in_progress')
     ).length;
     
-    // Add overdue tasks + today's inspections to count
-    return todaySchedules + overdueCount + todayInspections;
+    return {
+      schedules: schedulesCount,
+      inspections: inspectionsCount,
+      total: schedulesCount + inspectionsCount
+    };
   }, [schedules, overdueCount, inspections]);
 
-  const tomorrowTasksCount = useMemo(() => {
+  const tomorrowTasks = useMemo(() => {
     const tomorrow = addDays(new Date(), 1);
     const tomorrowDateStr = format(tomorrow, 'yyyy-MM-dd');
     
     // Schedules for tomorrow (not completed) + overdue
-    const tomorrowSchedules = schedules.filter(s => 
+    const schedulesCount = schedules.filter(s => 
       isSameDay(s.checkOut, tomorrow) && s.status !== 'completed'
-    ).length;
+    ).length + overdueCount;
     
     // Inspections for tomorrow (scheduled or in_progress)
-    const tomorrowInspections = inspections.filter(i =>
+    const inspectionsCount = inspections.filter(i =>
       i.scheduled_date === tomorrowDateStr && 
       (i.status === 'scheduled' || i.status === 'in_progress')
     ).length;
     
-    // Add overdue tasks + tomorrow's inspections to count
-    return tomorrowSchedules + overdueCount + tomorrowInspections;
+    return {
+      schedules: schedulesCount,
+      inspections: inspectionsCount,
+      total: schedulesCount + inspectionsCount
+    };
   }, [schedules, overdueCount, inspections]);
 
   const periodStats = useMemo(() => {
@@ -649,8 +655,8 @@ export function MobileDashboard({ schedules, onScheduleClick, onStartCleaning, o
               <MobilePeriodFilterTabs
                 paymentPeriod={paymentPeriod}
                 onPeriodChange={handlePeriodChange}
-                todayTasksCount={todayTasksCount}
-                tomorrowTasksCount={tomorrowTasksCount}
+                todayTasks={todayTasks}
+                tomorrowTasks={tomorrowTasks}
               />
             </div>
 
