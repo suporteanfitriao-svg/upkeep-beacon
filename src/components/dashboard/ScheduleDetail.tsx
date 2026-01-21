@@ -26,7 +26,7 @@ import { useProximityCheck, formatDistance } from '@/hooks/useGeolocation';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { CategoryPhotoUpload } from './CategoryPhotoUpload';
 import { MapPin, Navigation } from 'lucide-react';
-import { useDebouncedCategorySave } from '@/hooks/useDebouncedCategorySave';
+import { useDebouncedChecklistSave } from '@/hooks/useDebouncedChecklistSave';
 
 interface ScheduleDetailProps {
   schedule: Schedule;
@@ -165,14 +165,14 @@ export function ScheduleDetail({ schedule, onClose, onUpdateSchedule }: Schedule
   });
 
   // Auto-save hook with debounce (whole checklist)
-  const { scheduleSave, flushAll } = useDebouncedCategorySave({
+  const { scheduleSave, flushAll } = useDebouncedChecklistSave({
     scheduleId: schedule.id,
     teamMemberId,
     checklist,
     debounceMs: 800,
     enabled: schedule.status === 'cleaning',
     onSaveStart: () => setIsAutoSaving(true),
-    onSaveComplete: (_category, success) => {
+    onSaveComplete: (success) => {
       setIsAutoSaving(false);
       if (success) setLastAutoSavedAt(Date.now());
     },
