@@ -947,7 +947,7 @@ export function ScheduleDetail({ schedule, onClose, onUpdateSchedule }: Schedule
   const currentTime = format(new Date(), "HH:mm");
 
   return (
-    <div className="fixed inset-0 z-50 bg-stone-50 dark:bg-[#22252a] font-display text-slate-800 dark:text-slate-100 antialiased flex flex-col overflow-hidden">
+    <div className="fixed inset-0 z-[200] bg-stone-50 dark:bg-[#22252a] font-display text-slate-800 dark:text-slate-100 antialiased flex flex-col overflow-hidden">
       <div className="relative flex-1 w-full flex flex-col overflow-x-hidden overflow-y-auto">
         {/* Header */}
         <header className="sticky top-0 z-20 flex items-center bg-stone-50/90 dark:bg-[#22252a]/90 px-4 py-4 backdrop-blur-md border-b border-slate-100 dark:border-slate-800">
