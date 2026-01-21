@@ -15,6 +15,7 @@ import {
   AppRole
 } from '@/types/scheduling';
 import { Json } from '@/integrations/supabase/types';
+import { parseChecklist } from '@/lib/checklist/parseChecklist';
 
 interface ScheduleRow {
   id: string;
@@ -62,20 +63,6 @@ interface ScheduleRow {
     description: string | null;
   } | null;
 }
-
-const parseChecklist = (checklists: Json | null): ChecklistItem[] => {
-  if (!checklists || !Array.isArray(checklists)) return [];
-  return checklists.map((item: unknown, index: number) => {
-    const typedItem = item as Record<string, unknown>;
-    return {
-      id: String(typedItem?.id || index),
-      title: String(typedItem?.title || ''),
-      completed: Boolean(typedItem?.completed),
-      category: String(typedItem?.category || 'Geral'),
-      status: (typedItem?.status as 'pending' | 'ok' | 'not_ok') || 'pending',
-    };
-  });
-};
 
 const parseMaintenanceIssues = (issues: Json | null): MaintenanceIssue[] => {
   if (!issues || !Array.isArray(issues)) return [];
