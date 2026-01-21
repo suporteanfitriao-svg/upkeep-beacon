@@ -1401,16 +1401,27 @@ export function ScheduleDetail({ schedule, onClose, onUpdateSchedule }: Schedule
             {Object.entries(groupedChecklist).map(([category, items]) => {
               const totalInCategory = items.length;
               const isExpanded = expandedCategories[category] ?? false;
+              // Robust selection source:
+              // - Prefer local UI state (checklistItemStates)
+              // - Fallback to persisted item.status on reload/realtime
+              const getSelection = (item: ChecklistItem): 'yes' | 'no' | null => {
+                const local = checklistItemStates[item.id];
+                if (local === 'yes' || local === 'no') return local;
+                if (item.status === 'ok') return 'yes';
+                if (item.status === 'not_ok') return 'no';
+                return null;
+              };
+
               // Count OK (yes) and DX (no) items separately
-              const okCount = items.filter(item => checklistItemStates[item.id] === 'yes').length;
-              const dxCount = items.filter(item => checklistItemStates[item.id] === 'no').length;
+              const okCount = items.filter(item => getSelection(item) === 'yes').length;
+              const dxCount = items.filter(item => getSelection(item) === 'no').length;
               const selectedCount = okCount + dxCount;
               const allSelected = selectedCount === totalInCategory;
               const hasDX = dxCount > 0;
               // A categoria só fica "verde/amarelo" quando temos evidência de persistência:
               // - categorySaveStatus === 'saved' (save callback) OU
               // - todos os itens já estão com status ok/not_ok no checklist (estado vindo do backend após reload/realtime)
-              const isPersistedComplete = allSelected && items.every(it => it.status === 'ok' || it.status === 'not_ok');
+              const isPersistedComplete = totalInCategory > 0 && items.every(it => it.status === 'ok' || it.status === 'not_ok');
               const saveStatus = categorySaveStatus[category] ?? (isPersistedComplete ? 'saved' : allSelected ? 'dirty' : 'idle');
               const isSaved = allSelected && saveStatus === 'saved';
               const isDirtyComplete = allSelected && saveStatus === 'dirty';
