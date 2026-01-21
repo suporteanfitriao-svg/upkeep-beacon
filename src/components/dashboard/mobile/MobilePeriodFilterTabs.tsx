@@ -1,19 +1,78 @@
-import { memo } from 'react';
+import { memo, useState } from 'react';
 import { cn } from '@/lib/utils';
 import { PaymentPeriod } from '@/hooks/useCleanerPayments';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from '@/components/ui/tooltip';
+
+interface TaskBreakdown {
+  schedules: number;
+  inspections: number;
+  total: number;
+}
 
 interface MobilePeriodFilterTabsProps {
   paymentPeriod: PaymentPeriod;
   onPeriodChange: (period: PaymentPeriod) => void;
-  todayTasksCount: number;
-  tomorrowTasksCount: number;
+  todayTasks: TaskBreakdown;
+  tomorrowTasks: TaskBreakdown;
 }
+
+// Badge component with tooltip showing breakdown
+const TaskBadge = memo(function TaskBadge({ 
+  tasks, 
+  className 
+}: { 
+  tasks: TaskBreakdown; 
+  className?: string;
+}) {
+  const [open, setOpen] = useState(false);
+
+  if (tasks.total === 0) return null;
+
+  const hasBreakdown = tasks.schedules > 0 && tasks.inspections > 0;
+  const tooltipContent = hasBreakdown
+    ? `${tasks.schedules} limpeza${tasks.schedules !== 1 ? 's' : ''} + ${tasks.inspections} inspeç${tasks.inspections !== 1 ? 'ões' : 'ão'}`
+    : tasks.schedules > 0
+      ? `${tasks.schedules} limpeza${tasks.schedules !== 1 ? 's' : ''}`
+      : `${tasks.inspections} inspeç${tasks.inspections !== 1 ? 'ões' : 'ão'}`;
+
+  return (
+    <TooltipProvider delayDuration={0}>
+      <Tooltip open={open} onOpenChange={setOpen}>
+        <TooltipTrigger asChild>
+          <span
+            onClick={(e) => {
+              e.stopPropagation();
+              setOpen(!open);
+            }}
+            className={cn(
+              "absolute -top-1 -right-1 h-5 w-5 rounded-full bg-red-500 text-white text-xs font-bold flex items-center justify-center cursor-pointer",
+              className
+            )}
+          >
+            {tasks.total}
+          </span>
+        </TooltipTrigger>
+        <TooltipContent 
+          side="bottom" 
+          className="bg-slate-900 text-white text-xs px-2.5 py-1.5 rounded-lg shadow-lg"
+        >
+          {tooltipContent}
+        </TooltipContent>
+      </Tooltip>
+    </TooltipProvider>
+  );
+});
 
 export const MobilePeriodFilterTabs = memo(function MobilePeriodFilterTabs({
   paymentPeriod,
   onPeriodChange,
-  todayTasksCount,
-  tomorrowTasksCount
+  todayTasks,
+  tomorrowTasks
 }: MobilePeriodFilterTabsProps) {
   return (
     <div className="flex items-center gap-2 mb-4 overflow-x-auto hide-scrollbar relative z-30 pointer-events-auto">
@@ -31,11 +90,7 @@ export const MobilePeriodFilterTabs = memo(function MobilePeriodFilterTabs({
         )}
       >
         Hoje
-        {todayTasksCount > 0 && (
-          <span className="absolute -top-1 -right-1 h-5 w-5 rounded-full bg-red-500 text-white text-xs font-bold flex items-center justify-center">
-            {todayTasksCount}
-          </span>
-        )}
+        <TaskBadge tasks={todayTasks} />
       </button>
       <button
         type="button"
@@ -51,11 +106,7 @@ export const MobilePeriodFilterTabs = memo(function MobilePeriodFilterTabs({
         )}
       >
         Amanhã
-        {tomorrowTasksCount > 0 && (
-          <span className="absolute -top-1 -right-1 h-5 w-5 rounded-full bg-red-500 text-white text-xs font-bold flex items-center justify-center">
-            {tomorrowTasksCount}
-          </span>
-        )}
+        <TaskBadge tasks={tomorrowTasks} />
       </button>
       <button
         type="button"
