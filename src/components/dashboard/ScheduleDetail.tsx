@@ -205,6 +205,18 @@ export function ScheduleDetail({ schedule, onClose, onUpdateSchedule }: Schedule
     checklist,
     debounceMs: 800,
     enabled: schedule.status === 'cleaning',
+    // Mobile reliability: ensure we always persist the latest selection, even if
+    // the save is triggered in the same tick as the last checkbox update.
+    getChecklistToSave: () => {
+      const currentChecklist = checklistRef.current;
+      const currentStates = checklistItemStatesRef.current;
+      return currentChecklist.map((item) => {
+        const state = currentStates[item.id];
+        if (state === 'yes') return { ...item, completed: true, status: 'ok' as const };
+        if (state === 'no') return { ...item, completed: false, status: 'not_ok' as const };
+        return item;
+      });
+    },
     onSaveStart: () => setIsAutoSaving(true),
     onSaveComplete: (_category, success) => {
       setIsAutoSaving(false);
