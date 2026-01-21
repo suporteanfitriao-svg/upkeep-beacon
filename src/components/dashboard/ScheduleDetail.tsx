@@ -25,6 +25,7 @@ import { useProximityCheck, formatDistance } from '@/hooks/useGeolocation';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { CategoryPhotoUpload } from './CategoryPhotoUpload';
 import { MapPin, Navigation } from 'lucide-react';
+import { useDebouncedCategorySave } from '@/hooks/useDebouncedCategorySave';
 
 interface ScheduleDetailProps {
   schedule: Schedule;
@@ -99,13 +100,13 @@ export function ScheduleDetail({ schedule, onClose, onUpdateSchedule }: Schedule
   const [requirePhotoPerCategory, setRequirePhotoPerCategory] = useState(false);
   const [categoryPhotosData, setCategoryPhotosData] = useState<Record<string, CategoryPhoto[]>>({});
   const [confirmMarkCategory, setConfirmMarkCategory] = useState<{ open: boolean; category: string | null }>({ open: false, category: null });
-  const [unsavedCategories, setUnsavedCategories] = useState<Set<string>>(new Set());
   const [photoUploadModal, setPhotoUploadModal] = useState<{ open: boolean; category: string | null }>({ open: false, category: null });
   const [deleteIssueConfirm, setDeleteIssueConfirm] = useState<{ open: boolean; issueId: string | null }>({ open: false, issueId: null });
   const [isCommitting, setIsCommitting] = useState(false);
-  const [isSyncing, setIsSyncing] = useState(false);
-  const [syncingCategory, setSyncingCategory] = useState<string | null>(null);
   const [hasAcknowledgedNotes, setHasAcknowledgedNotes] = useState(false);
+  // Auto-save state tracking per category
+  const [savingCategories, setSavingCategories] = useState<Set<string>>(new Set());
+  const [savedCategories, setSavedCategories] = useState<Map<string, number>>(new Map());
   const cacheInitializedRef = useRef(false);
   const hasUserInteractedRef = useRef(false);
   const checklistHydratedRef = useRef(false);
@@ -161,6 +162,29 @@ export function ScheduleDetail({ schedule, onClose, onUpdateSchedule }: Schedule
     scheduleId: schedule.id,
     teamMemberId,
     isActive: schedule.status === 'cleaning',
+  });
+
+  // Auto-save hook with debounce per category
+  const { scheduleSave, flushAll, isSavingCategory, getLastSavedAt } = useDebouncedCategorySave({
+    scheduleId: schedule.id,
+    teamMemberId,
+    checklist,
+    debounceMs: 800,
+    enabled: schedule.status === 'cleaning',
+    onSaveStart: (category) => {
+      setSavingCategories(prev => new Set(prev).add(category));
+    },
+    onSaveComplete: (category, success) => {
+      setSavingCategories(prev => {
+        const next = new Set(prev);
+        next.delete(category);
+        return next;
+      });
+      if (success) {
+        setSavedCategories(prev => new Map(prev).set(category, Date.now()));
+      }
+    },
+    clearCache,
   });
 
   // Check if schedule already has saved progress in the database (items with ok/not_ok status)
@@ -497,70 +521,11 @@ export function ScheduleDetail({ schedule, onClose, onUpdateSchedule }: Schedule
       )
     );
 
-    // 3) Mark category as having unsaved changes
-    setUnsavedCategories((prev) => {
-      const next = new Set(prev);
-      next.add(category);
-      return next;
-    });
-  }, []);
+    // 3) Schedule auto-save for this category (debounced)
+    scheduleSave(category);
+  }, [scheduleSave]);
 
-  // Save category changes to database - direct update without triggering full reload
-  const handleSaveCategory = useCallback(async (category: string) => {
-    if (!teamMemberId) return;
-
-    hasUserInteractedRef.current = true;
-
-    setIsSyncing(true);
-    setSyncingCategory(category);
-    
-    try {
-      // Direct database update to avoid realtime listener causing reload
-      const { error } = await supabase
-        .from('schedules')
-        .update({
-          checklist_state: checklist as unknown as Json,
-          checklists: checklist as unknown as Json,
-        })
-        .eq('id', schedule.id);
-
-      if (error) {
-        console.error('Error saving category:', error);
-        toast.error('Erro ao salvar categoria');
-        return;
-      }
-      
-      // Log the save action in history
-      await supabase.rpc('append_schedule_history', {
-        p_schedule_id: schedule.id,
-        p_team_member_id: teamMemberId,
-        p_action: 'categoria_salva',
-        p_from_status: null,
-        p_to_status: null,
-        p_payload: { category_name: category }
-      });
-      
-      // Remove category from unsaved set
-      setUnsavedCategories(prev => {
-        const newSet = new Set(prev);
-        newSet.delete(category);
-        return newSet;
-      });
-      
-      // Clear cache after successful DB save - DB is now authoritative
-      clearCache();
-      
-      toast.success(`Categoria "${category}" salva!`);
-    } catch (err) {
-      console.error('Error saving category:', err);
-      toast.error('Erro ao salvar categoria');
-    } finally {
-      setIsSyncing(false);
-      setSyncingCategory(null);
-    }
-  }, [schedule.id, checklist, teamMemberId, clearCache]);
-
-  // Handle marking entire category as complete - direct update without triggering full reload
+  // Handle marking entire category as complete - updates local state and triggers auto-save
   const handleMarkCategoryComplete = useCallback(async (category: string) => {
     if (schedule.status !== 'cleaning' || !teamMemberId) return;
 
@@ -592,54 +557,11 @@ export function ScheduleDetail({ schedule, onClose, onUpdateSchedule }: Schedule
     setChecklist(updatedChecklist);
     setChecklistItemStates(updatedStates);
     
-    // Remove category from unsaved set immediately
-    setUnsavedCategories(prev => {
-      const newSet = new Set(prev);
-      newSet.delete(category);
-      return newSet;
-    });
+    // Trigger auto-save for this category
+    scheduleSave(category);
     
-    setIsSyncing(true);
-    setSyncingCategory(category);
-    
-    try {
-      // Direct database update to avoid realtime listener causing reload
-      const { error } = await supabase
-        .from('schedules')
-        .update({
-          checklist_state: updatedChecklist as unknown as Json,
-          checklists: updatedChecklist as unknown as Json,
-        })
-        .eq('id', schedule.id);
-
-      if (error) {
-        console.error('Error marking category complete:', error);
-        toast.error('Erro ao salvar no servidor, mas alterações locais mantidas');
-        return;
-      }
-      
-      // Log audit entry for category complete
-      await supabase.rpc('append_schedule_history', {
-        p_schedule_id: schedule.id,
-        p_team_member_id: teamMemberId,
-        p_action: 'categoria_checklist_completa',
-        p_from_status: null,
-        p_to_status: null,
-        p_payload: { category_name: category }
-      });
-      
-      // Clear cache after successful DB save - DB is now authoritative
-      clearCache();
-      
-      toast.success(`Categoria "${category}" marcada como completa!`);
-    } catch (error) {
-      console.error('Error logging category complete:', error);
-      toast.error('Erro ao salvar no servidor');
-    } finally {
-      setIsSyncing(false);
-      setSyncingCategory(null);
-    }
-  }, [schedule.id, schedule.status, checklist, checklistItemStates, teamMemberId, clearCache]);
+    toast.success(`Categoria "${category}" marcada como completa!`);
+  }, [schedule.status, checklist, checklistItemStates, teamMemberId, scheduleSave]);
 
   // Check if a category has any item marked as DX
   const categoryHasDX = useCallback((category: string) => {
@@ -970,11 +892,11 @@ export function ScheduleDetail({ schedule, onClose, onUpdateSchedule }: Schedule
             <span className="text-xs font-medium text-[#8A8B88] dark:text-slate-400">{schedule.propertyAddress}</span>
           </div>
           <div className="ml-auto flex items-center gap-2">
-            {/* Global sync indicator */}
-            {isSyncing && (
+            {/* Global sync indicator - shows when any category is saving */}
+            {savingCategories.size > 0 && (
               <div className="flex items-center gap-1.5 text-primary animate-pulse">
                 <span className="material-symbols-outlined text-[18px] animate-spin">sync</span>
-                <span className="text-xs font-medium">Sincronizando...</span>
+                <span className="text-xs font-medium">Salvando...</span>
               </div>
             )}
             <span className={cn(
@@ -1587,36 +1509,33 @@ export function ScheduleDetail({ schedule, onClose, onUpdateSchedule }: Schedule
                           })}
                         </div>
                         
-                        {/* Save button for category - only shows when there are unsaved changes */}
-                        {unsavedCategories.has(category) && schedule.status === 'cleaning' && (
-                          <div className="p-3 border-t border-slate-100 dark:border-slate-700/50 bg-slate-50/50 dark:bg-slate-800/30">
-                            <button
-                              type="button"
-                              onClick={() => handleSaveCategory(category)}
-                              disabled={isSyncing && syncingCategory === category}
-                              className="w-full flex items-center justify-center gap-2 rounded-xl bg-primary py-3 text-base font-bold text-white shadow-sm transition-all hover:bg-primary/90 active:scale-[0.98] touch-manipulation disabled:opacity-70 disabled:cursor-not-allowed"
-                            >
-                              {isSyncing && syncingCategory === category ? (
-                                <>
-                                  <span className="material-symbols-outlined text-[20px] animate-spin">sync</span>
-                                  Sincronizando...
-                                </>
-                              ) : (
-                                <>
-                                  <span className="material-symbols-outlined text-[20px]">save</span>
-                                  Salvar Categoria
-                                </>
-                              )}
-                            </button>
+                        {/* Auto-save status indicator */}
+                        {schedule.status === 'cleaning' && (
+                          <div className="px-4 py-2 border-t border-slate-100 dark:border-slate-700/50 bg-slate-50/50 dark:bg-slate-800/30 flex items-center justify-between">
+                            {savingCategories.has(category) ? (
+                              <div className="flex items-center gap-2 text-primary">
+                                <span className="material-symbols-outlined text-[16px] animate-spin">sync</span>
+                                <span className="text-xs font-medium">Salvando...</span>
+                              </div>
+                            ) : savedCategories.has(category) ? (
+                              <div className="flex items-center gap-2 text-green-600 dark:text-green-400">
+                                <span className="material-symbols-outlined text-[16px]">check_circle</span>
+                                <span className="text-xs font-medium">Salvo automaticamente</span>
+                              </div>
+                            ) : (
+                              <div className="flex items-center gap-2 text-slate-400">
+                                <span className="material-symbols-outlined text-[16px]">cloud_sync</span>
+                                <span className="text-xs font-medium">Auto-save ativo</span>
+                              </div>
+                            )}
                           </div>
                         )}
                         
-                        {/* Sync indicator when saving */}
-                        {isSyncing && syncingCategory === category && (
-                          <div className="absolute inset-0 bg-white/50 dark:bg-slate-900/50 backdrop-blur-sm flex items-center justify-center rounded-2xl z-10">
+                        {/* Sync overlay indicator when saving this category */}
+                        {savingCategories.has(category) && (
+                          <div className="absolute inset-0 bg-white/30 dark:bg-slate-900/30 backdrop-blur-[1px] flex items-center justify-center rounded-2xl z-10 pointer-events-none">
                             <div className="flex flex-col items-center gap-2">
-                              <span className="material-symbols-outlined text-[32px] text-primary animate-spin">sync</span>
-                              <span className="text-sm font-medium text-slate-600 dark:text-slate-300">Salvando...</span>
+                              <span className="material-symbols-outlined text-[28px] text-primary animate-spin">sync</span>
                             </div>
                           </div>
                         )}
