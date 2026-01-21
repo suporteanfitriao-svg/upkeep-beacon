@@ -17,7 +17,8 @@ import {
   MessageSquare,
   FileText,
   Play,
-  Plus
+  Plus,
+  ZoomIn
 } from 'lucide-react';
 import { SidebarProvider } from '@/components/ui/sidebar';
 import { AppSidebar } from '@/components/dashboard/AppSidebar';
@@ -41,6 +42,7 @@ import { ReportStatsCards } from '@/components/reports/ReportStatsCards';
 import { CompletedScheduleRow } from '@/components/reports/CompletedScheduleRow';
 import { ScheduleDetailReadOnly } from '@/components/reports/ScheduleDetailReadOnly';
 import { NokItemsReport } from '@/components/reports/NokItemsReport';
+import { PhotoGallery } from '@/components/shared/PhotoGallery';
 import { Schedule } from '@/types/scheduling';
 
 function MaintenanceStatCard({ 
@@ -167,12 +169,21 @@ function IssueCard({
         {expanded && (
           <div className="border-t bg-muted/30 p-4 space-y-4">
             {issue.photo_url && (
-              <div>
-                <p className="text-sm font-medium mb-2">Foto</p>
-                <img 
-                  src={issue.photo_url} 
-                  alt="Foto da avaria" 
-                  className="rounded-lg max-h-48 object-cover"
+              <div onClick={(e) => e.stopPropagation()}>
+                <p className="text-sm font-medium mb-2 flex items-center gap-2">
+                  Foto
+                  <span className="text-xs text-muted-foreground flex items-center gap-1">
+                    <ZoomIn className="w-3 h-3" />
+                    Clique para ampliar
+                  </span>
+                </p>
+                <PhotoGallery 
+                  photos={[{ 
+                    url: issue.photo_url, 
+                    timestamp: issue.created_at,
+                    uploaded_by: issue.reported_by_name || undefined
+                  }]}
+                  emptyMessage="Nenhuma foto"
                 />
               </div>
             )}
