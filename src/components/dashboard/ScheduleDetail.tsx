@@ -136,12 +136,15 @@ export function ScheduleDetail({ schedule, onClose, onUpdateSchedule }: Schedule
       return;
     }
 
-    // Only hydrate once when checklist first becomes available
-    if (!checklistHydratedRef.current && schedule.checklist.length > 0) {
-      console.log('[ScheduleDetail] Hydrating checklist from schedule prop:', schedule.checklist.length, 'items');
+    // Hydrate when checklist becomes available (either first time or when prop updates with loaded checklist)
+    if (schedule.checklist.length > 0) {
+      // Only log and set hydrated flag on first hydration
+      if (!checklistHydratedRef.current) {
+        console.log('[ScheduleDetail] Hydrating checklist from schedule prop:', schedule.checklist.length, 'items');
+        checklistHydratedRef.current = true;
+      }
       setChecklist(schedule.checklist);
       setChecklistItemStates(deriveChecklistItemStates(schedule.checklist));
-      checklistHydratedRef.current = true;
     }
   }, [schedule.status, schedule.checklist, deriveChecklistItemStates]);
 
