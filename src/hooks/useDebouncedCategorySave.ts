@@ -11,6 +11,12 @@ interface UseDebouncedCategorySaveOptions {
   debounceMs?: number;
   enabled?: boolean;
   /**
+   * Optional escape hatch to guarantee the latest checklist snapshot is saved.
+   * Useful when the caller updates checklist state and triggers save in the same tick
+   * (mobile can hit a race where React state hasn't committed yet).
+   */
+  getChecklistToSave?: () => ChecklistItem[];
+  /**
    * Back-compat: previous implementation notified per-category.
    * New behavior is one debounced save for the whole checklist; we now call with "__all__".
    */
@@ -32,6 +38,7 @@ export function useDebouncedCategorySave({
   checklist,
   debounceMs = 800,
   enabled = true,
+  getChecklistToSave,
   onSaveStart,
   onSaveComplete,
   clearCache,
@@ -72,7 +79,7 @@ export function useDebouncedCategorySave({
     onSaveStart?.('__all__');
     
     try {
-      const currentChecklist = checklistRef.current;
+      const currentChecklist = getChecklistToSave?.() ?? checklistRef.current;
       
       const { error } = await supabase
         .from('schedules')
@@ -120,7 +127,7 @@ export function useDebouncedCategorySave({
         setTimeout(() => performSave(), 50);
       }
     }
-  }, [scheduleId, teamMemberId, enabled, onSaveStart, onSaveComplete, clearCache, debounceMs]);
+  }, [scheduleId, teamMemberId, enabled, getChecklistToSave, onSaveStart, onSaveComplete, clearCache, debounceMs]);
 
   // Schedule a debounced save for the whole checklist
   // (kept signature for compatibility; category is ignored)
