@@ -597,10 +597,6 @@ export default function Profile() {
             <span className="material-symbols-outlined text-xl">calendar_today</span>
             <span>Agenda</span>
           </a>
-          <a href="/mensagens" className="flex flex-col items-center gap-1 hover:text-primary transition-colors">
-            <span className="material-symbols-outlined text-xl">chat_bubble</span>
-            <span>Msgs</span>
-          </a>
           <a href="/minha-conta" className="flex flex-col items-center gap-1 text-primary">
             <span className="material-symbols-outlined text-xl">menu</span>
             <span>Menu</span>
