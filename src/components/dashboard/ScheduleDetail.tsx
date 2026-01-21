@@ -215,7 +215,11 @@ export function ScheduleDetail({ schedule, onClose, onUpdateSchedule }: Schedule
         // when the full checklist has been saved, force a full reload so the UI
         // rehydrates from persisted data and the category colors + pending counter
         // are guaranteed to reflect the saved state.
+        // We persist the schedule ID in the URL so the page can restore the detail view after reload.
         if (role === 'cleaner' && isMobile && isChecklistComplete(checklistItemStatesRef.current)) {
+          const currentUrl = new URL(window.location.href);
+          currentUrl.searchParams.set('scheduleId', schedule.id);
+          window.history.replaceState(null, '', currentUrl.toString());
           setTimeout(() => window.location.reload(), 350);
           return;
         }
