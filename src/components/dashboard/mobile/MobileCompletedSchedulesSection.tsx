@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react';
 import { format, differenceInMinutes, startOfMonth, endOfMonth, isWithinInterval } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { Check, ChevronRight, Clock, MapPin, AlertTriangle, ChevronDown, ChevronUp, Camera } from 'lucide-react';
+import { Check, ChevronRight, Clock, AlertTriangle, ChevronLeft, Camera } from 'lucide-react';
 import { Schedule } from '@/types/scheduling';
 import { cn } from '@/lib/utils';
 
@@ -9,6 +9,8 @@ interface MobileCompletedSchedulesSectionProps {
   schedules: Schedule[];
   onScheduleClick: (schedule: Schedule) => void;
 }
+
+const ITEMS_PER_PAGE = 10;
 
 function formatDuration(startAt: Date | undefined, endAt: Date | undefined): string {
   if (!startAt || !endAt) return '--';
@@ -22,7 +24,7 @@ function formatDuration(startAt: Date | undefined, endAt: Date | undefined): str
 }
 
 export function MobileCompletedSchedulesSection({ schedules, onScheduleClick }: MobileCompletedSchedulesSectionProps) {
-  const [isExpanded, setIsExpanded] = useState(false);
+  const [currentPage, setCurrentPage] = useState(1);
 
   // Get completed schedules from current month
   const completedSchedules = useMemo(() => {
@@ -42,7 +44,9 @@ export function MobileCompletedSchedulesSection({ schedules, onScheduleClick }: 
       });
   }, [schedules]);
 
-  const displayedSchedules = isExpanded ? completedSchedules : completedSchedules.slice(0, 3);
+  const totalPages = Math.ceil(completedSchedules.length / ITEMS_PER_PAGE);
+  const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
+  const displayedSchedules = completedSchedules.slice(startIndex, startIndex + ITEMS_PER_PAGE);
 
   if (completedSchedules.length === 0) {
     return null;
@@ -115,24 +119,41 @@ export function MobileCompletedSchedulesSection({ schedules, onScheduleClick }: 
         })}
       </div>
 
-      {/* Expand/Collapse button */}
-      {completedSchedules.length > 3 && (
-        <button
-          onClick={() => setIsExpanded(!isExpanded)}
-          className="w-full mt-3 pt-3 border-t border-slate-100 dark:border-slate-700 flex items-center justify-center gap-2 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
-        >
-          {isExpanded ? (
-            <>
-              <span>Ver menos</span>
-              <ChevronUp className="w-4 h-4" />
-            </>
-          ) : (
-            <>
-              <span>Ver todas ({completedSchedules.length})</span>
-              <ChevronDown className="w-4 h-4" />
-            </>
-          )}
-        </button>
+      {/* Pagination */}
+      {totalPages > 1 && (
+        <div className="mt-3 pt-3 border-t border-slate-100 dark:border-slate-700 flex items-center justify-between">
+          <button
+            onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+            disabled={currentPage === 1}
+            className={cn(
+              "flex items-center gap-1 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors",
+              currentPage === 1
+                ? "text-muted-foreground/50 cursor-not-allowed"
+                : "text-muted-foreground hover:text-foreground hover:bg-slate-100 dark:hover:bg-slate-700"
+            )}
+          >
+            <ChevronLeft className="w-4 h-4" />
+            <span>Anterior</span>
+          </button>
+          
+          <span className="text-xs text-muted-foreground">
+            {currentPage} de {totalPages}
+          </span>
+          
+          <button
+            onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+            disabled={currentPage === totalPages}
+            className={cn(
+              "flex items-center gap-1 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors",
+              currentPage === totalPages
+                ? "text-muted-foreground/50 cursor-not-allowed"
+                : "text-muted-foreground hover:text-foreground hover:bg-slate-100 dark:hover:bg-slate-700"
+            )}
+          >
+            <span>Próximo</span>
+            <ChevronRight className="w-4 h-4" />
+          </button>
+        </div>
       )}
     </div>
   );
