@@ -76,7 +76,7 @@ export function MobileDashboard({ schedules, onScheduleClick, onStartCleaning, o
 
   // Always initialize with the current date from the device
   const [selectedDate, setSelectedDate] = useState(() => startOfDay(new Date()));
-  const [activeTab, setActiveTab] = useState<'inicio' | 'agenda' | 'msgs' | 'menu'>(() => {
+  const [activeTab, setActiveTab] = useState<'inicio' | 'agenda' | 'menu'>(() => {
     const tabParam = searchParams.get('tab');
     if (tabParam === 'agenda') return 'agenda';
     return 'inicio';
@@ -421,7 +421,7 @@ export function MobileDashboard({ schedules, onScheduleClick, onStartCleaning, o
   const handlePrevMonth = useCallback(() => setCurrentMonth(prev => subMonths(prev, 1)), []);
   const handleNextMonth = useCallback(() => setCurrentMonth(prev => addMonths(prev, 1)), []);
 
-  const handleTabChange = useCallback((tab: 'inicio' | 'agenda' | 'msgs' | 'menu') => {
+  const handleTabChange = useCallback((tab: 'inicio' | 'agenda' | 'menu') => {
     setActiveTab(tab);
   }, []);
 
