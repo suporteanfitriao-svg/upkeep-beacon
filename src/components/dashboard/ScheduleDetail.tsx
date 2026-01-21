@@ -187,6 +187,15 @@ export function ScheduleDetail({ schedule, onClose, onUpdateSchedule }: Schedule
     });
   }, [checklist]);
 
+  // Global rule: only auto-save when the ENTIRE checklist is complete.
+  const isChecklistComplete = useCallback((states: Record<string, 'yes' | 'no' | null>) => {
+    if (checklist.length === 0) return false;
+    return checklist.every((item) => {
+      const state = states[item.id];
+      return state === 'yes' || state === 'no';
+    });
+  }, [checklist]);
+
   // Auto-save hook with debounce (whole checklist)
   const { scheduleSave, flushAll } = useDebouncedCategorySave({
     scheduleId: schedule.id,
@@ -568,6 +577,8 @@ export function ScheduleDetail({ schedule, onClose, onUpdateSchedule }: Schedule
       [itemId]: value,
     };
     setChecklistItemStates(newStates);
+    // Keep ref in sync immediately (avoid races where save completes before effect runs)
+    checklistItemStatesRef.current = newStates;
 
     // Any interaction makes the category "dirty" until a save succeeds.
     setCategorySaveStatus((prev) => ({
@@ -589,13 +600,12 @@ export function ScheduleDetail({ schedule, onClose, onUpdateSchedule }: Schedule
       )
     );
 
-    // 3) Auto-save ONLY when category is complete (all items have selection)
-    // This saves on category completion instead of per-item
-    if (isCategoryComplete(category, newStates)) {
-      toast.success(`Categoria "${category}" completa! Salvando...`, { duration: 2000 });
+    // 3) Auto-save ONLY when the WHOLE checklist is complete (regra global)
+    if (isChecklistComplete(newStates)) {
+      toast.success('Checklist completo! Salvando...', { duration: 2000 });
       scheduleSave();
     }
-  }, [scheduleSave, isChecklistEditable, checklistItemStates, isCategoryComplete]);
+  }, [scheduleSave, isChecklistEditable, checklistItemStates, isChecklistComplete]);
 
   // Handle marking entire category as complete - updates local state and triggers auto-save
   // OPTIMIZED: Uses React.unstable_batchedUpdates pattern to prevent UI freezing on mobile
@@ -633,6 +643,8 @@ export function ScheduleDetail({ schedule, onClose, onUpdateSchedule }: Schedule
     requestAnimationFrame(() => {
       // Single batched state update - React 18 auto-batches these
       setChecklistItemStates(updatedStates);
+      // Keep ref in sync immediately (avoid races where save completes before effect runs)
+      checklistItemStatesRef.current = updatedStates;
       setChecklist(updatedChecklist);
 
       setCategorySaveStatus((prev) => ({
@@ -640,15 +652,17 @@ export function ScheduleDetail({ schedule, onClose, onUpdateSchedule }: Schedule
         [category]: 'dirty',
       }));
       
-      // Schedule save AFTER state is updated (next tick)
-      // Use setTimeout to ensure state updates have been processed
+      // Auto-save ONLY if the WHOLE checklist is complete (regra global)
       setTimeout(() => {
-        scheduleSave();
+        if (isChecklistComplete(updatedStates)) {
+          toast.success('Checklist completo! Salvando...', { duration: 2000 });
+          scheduleSave();
+        }
       }, 0);
       
       toast.success(`Categoria "${category}" marcada como completa!`);
     });
-  }, [isChecklistEditable, checklist, checklistItemStates, teamMemberId, scheduleSave]);
+  }, [isChecklistEditable, checklist, checklistItemStates, teamMemberId, scheduleSave, isChecklistComplete]);
 
   // Check if a category has any item marked as DX
   const categoryHasDX = useCallback((category: string) => {
