@@ -93,9 +93,14 @@ const statusConfig = {
   completed: { label: 'Finalizada', color: 'bg-green-100 text-green-700 border-green-200', icon: CheckCircle2 },
 };
 
+interface TeamMemberWithAccess extends TeamMember {
+  has_all_properties: boolean;
+  property_ids: string[];
+}
+
 const Inspections = () => {
   const [properties, setProperties] = useState<Property[]>([]);
-  const [teamMembers, setTeamMembers] = useState<TeamMember[]>([]);
+  const [allTeamMembers, setAllTeamMembers] = useState<TeamMemberWithAccess[]>([]);
   const [checklists, setChecklists] = useState<Checklist[]>([]);
   const [inspections, setInspections] = useState<Inspection[]>([]);
   const [loading, setLoading] = useState(true);
@@ -123,6 +128,13 @@ const Inspections = () => {
     notes: '',
   });
 
+  // Filter team members based on selected property
+  const availableTeamMembers = form.property_id
+    ? allTeamMembers.filter(member => 
+        member.has_all_properties || member.property_ids.includes(form.property_id)
+      )
+    : [];
+
   useEffect(() => {
     fetchData();
   }, []);
@@ -130,20 +142,34 @@ const Inspections = () => {
   const fetchData = async () => {
     try {
       setLoading(true);
-      const [propertiesRes, teamRes, checklistsRes, inspectionsRes] = await Promise.all([
+      const [propertiesRes, teamRes, teamPropertiesRes, checklistsRes, inspectionsRes] = await Promise.all([
         supabase.from('properties').select('id, name').order('name'),
-        supabase.from('team_members').select('id, name').eq('is_active', true).order('name'),
+        supabase.from('team_members').select('id, name, has_all_properties').eq('is_active', true).order('name'),
+        supabase.from('team_member_properties').select('team_member_id, property_id'),
         supabase.from('property_checklists').select('id, name, items, property_id').eq('is_active', true),
         supabase.from('inspections').select('*').order('scheduled_date', { ascending: true }),
       ]);
 
       if (propertiesRes.error) throw propertiesRes.error;
       if (teamRes.error) throw teamRes.error;
+      if (teamPropertiesRes.error) throw teamPropertiesRes.error;
       if (checklistsRes.error) throw checklistsRes.error;
       if (inspectionsRes.error) throw inspectionsRes.error;
 
       setProperties(propertiesRes.data || []);
-      setTeamMembers(teamRes.data || []);
+      
+      // Map team members with their property access
+      const teamMembersWithAccess: TeamMemberWithAccess[] = (teamRes.data || []).map(member => {
+        const memberProperties = (teamPropertiesRes.data || [])
+          .filter(tp => tp.team_member_id === member.id)
+          .map(tp => tp.property_id);
+        return {
+          ...member,
+          property_ids: memberProperties,
+        };
+      });
+      setAllTeamMembers(teamMembersWithAccess);
+      
       setChecklists(checklistsRes.data || []);
       setInspections((inspectionsRes.data || []).map(i => ({
         ...i,
@@ -213,7 +239,7 @@ const Inspections = () => {
       }
 
       const property = properties.find(p => p.id === form.property_id);
-      const assignedMember = teamMembers.find(m => m.id === form.assigned_to);
+      const assignedMember = allTeamMembers.find(m => m.id === form.assigned_to);
       
       // Get checklist items if a checklist is selected
       let checklistState: ChecklistItem[] = [];
@@ -673,7 +699,15 @@ const Inspections = () => {
               <Select 
                 value={form.property_id} 
                 onValueChange={(value) => {
-                  setForm(prev => ({ ...prev, property_id: value, checklist_id: '' }));
+                  // Reset assigned_to if the member doesn't have access to the new property
+                  const currentAssignee = allTeamMembers.find(m => m.id === form.assigned_to);
+                  const hasAccess = currentAssignee && (currentAssignee.has_all_properties || currentAssignee.property_ids.includes(value));
+                  setForm(prev => ({ 
+                    ...prev, 
+                    property_id: value, 
+                    checklist_id: '',
+                    assigned_to: hasAccess ? prev.assigned_to : ''
+                  }));
                 }}
               >
                 <SelectTrigger>
@@ -732,15 +766,25 @@ const Inspections = () => {
                 onValueChange={(value) => setForm(prev => ({ ...prev, assigned_to: value === "none" ? "" : value }))}
               >
                 <SelectTrigger>
-                  <SelectValue placeholder="Selecione o responsável" />
+                  <SelectValue placeholder={form.property_id ? "Selecione o responsável" : "Selecione uma propriedade primeiro"} />
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="none">Nenhum</SelectItem>
-                  {teamMembers.map(m => (
-                    <SelectItem key={m.id} value={m.id}>{m.name}</SelectItem>
+                  {availableTeamMembers.map(m => (
+                    <SelectItem key={m.id} value={m.id}>
+                      {m.name}
+                      {m.has_all_properties && (
+                        <span className="ml-2 text-xs text-muted-foreground">(Acesso total)</span>
+                      )}
+                    </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
+              {form.property_id && availableTeamMembers.length === 0 && (
+                <p className="text-xs text-muted-foreground">
+                  Nenhum membro da equipe tem acesso a esta propriedade
+                </p>
+              )}
             </div>
 
             {form.property_id && availableChecklists.length > 0 && (
