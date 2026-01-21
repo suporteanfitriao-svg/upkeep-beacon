@@ -58,12 +58,15 @@ const SEVERITY_OPTIONS = [
 export function IssueReportModal({ onClose, onSubmit, checklist, isSubmitting = false, requirePhoto = false }: IssueReportModalProps) {
   const [step, setStep] = useState<1 | 2 | 3>(1);
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
-  const [selectedItem, setSelectedItem] = useState<string>('');
+  const [selectedItem, setSelectedItem] = useState<string>(''); // Selected item from list OR empty if "other"
+  const [isOtherItem, setIsOtherItem] = useState(false); // Track if "other" option is selected
+  const [otherItemText, setOtherItemText] = useState(''); // Custom text for "other" item
   const [description, setDescription] = useState('');
   const [severity, setSeverity] = useState<'low' | 'medium' | 'high'>('medium');
   const [photoFile, setPhotoFile] = useState<File | null>(null);
   const [photoPreview, setPhotoPreview] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const otherInputRef = useRef<HTMLInputElement>(null);
 
   // Group checklist items by category
   const categories = useMemo(() => {
@@ -93,14 +96,31 @@ export function IssueReportModal({ onClose, onSubmit, checklist, isSubmitting = 
 
   const selectedCategoryData = categories.find(c => c.name === selectedCategory);
 
+  // Compute the final item value for submission
+  const finalItemValue = useMemo(() => {
+    if (isOtherItem) {
+      return otherItemText.trim();
+    }
+    return selectedItem;
+  }, [isOtherItem, otherItemText, selectedItem]);
+
   const handleNextStep = () => {
     if (step === 1 && !selectedCategory) {
       toast.error('Selecione um cômodo');
       return;
     }
-    if (step === 2 && !selectedItem) {
-      toast.error('Selecione um item');
-      return;
+    if (step === 2) {
+      // Validate: either a list item is selected OR "other" with text filled
+      if (!isOtherItem && !selectedItem) {
+        toast.error('Selecione um item');
+        return;
+      }
+      if (isOtherItem && !otherItemText.trim()) {
+        toast.error('Descreva o item avariado');
+        // Focus the input
+        otherInputRef.current?.focus();
+        return;
+      }
     }
     setStep(prev => Math.min(prev + 1, 3) as 1 | 2 | 3);
   };
@@ -154,7 +174,7 @@ export function IssueReportModal({ onClose, onSubmit, checklist, isSubmitting = 
       return;
     }
 
-    if (!selectedCategory || !selectedItem) {
+    if (!selectedCategory || !finalItemValue) {
       toast.error('Selecione o cômodo e item');
       return;
     }
@@ -168,7 +188,7 @@ export function IssueReportModal({ onClose, onSubmit, checklist, isSubmitting = 
     try {
       await onSubmit({
         category: selectedCategory,
-        itemLabel: selectedItem,
+        itemLabel: finalItemValue,
         description: description.trim(),
         photoFile: photoFile || undefined,
         severity,
@@ -241,6 +261,8 @@ export function IssueReportModal({ onClose, onSubmit, checklist, isSubmitting = 
                     onChange={() => {
                       setSelectedCategory(category.name);
                       setSelectedItem('');
+                      setIsOtherItem(false);
+                      setOtherItemText('');
                     }}
                     className="peer sr-only" 
                   />
@@ -324,29 +346,33 @@ export function IssueReportModal({ onClose, onSubmit, checklist, isSubmitting = 
                           type="radio" 
                           name="item" 
                           value={item.title}
-                          checked={selectedItem === item.title}
-                          onChange={() => setSelectedItem(item.title)}
+                          checked={!isOtherItem && selectedItem === item.title}
+                          onChange={() => {
+                            setSelectedItem(item.title);
+                            setIsOtherItem(false);
+                            setOtherItemText('');
+                          }}
                           className="peer sr-only" 
                         />
                         <div className={cn(
                           "flex items-center gap-3 p-4 rounded-xl bg-white dark:bg-[#2d3138] border transition-all",
-                          selectedItem === item.title 
+                          !isOtherItem && selectedItem === item.title 
                             ? "border-primary ring-1 ring-primary" 
                             : "border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800/50"
                         )}>
                           <div className={cn(
                             "h-6 w-6 rounded-full border-2 flex items-center justify-center transition-all shrink-0",
-                            selectedItem === item.title 
+                            !isOtherItem && selectedItem === item.title 
                               ? "border-primary bg-primary" 
                               : "border-slate-300 dark:border-slate-600"
                           )}>
-                            {selectedItem === item.title && (
+                            {!isOtherItem && selectedItem === item.title && (
                               <div className="h-2.5 w-2.5 rounded-full bg-white" />
                             )}
                           </div>
                           <span className={cn(
                             "font-medium transition-colors",
-                            selectedItem === item.title 
+                            !isOtherItem && selectedItem === item.title 
                               ? "text-primary" 
                               : "text-slate-700 dark:text-slate-300"
                           )}>{item.title}</span>
@@ -370,10 +396,16 @@ export function IssueReportModal({ onClose, onSubmit, checklist, isSubmitting = 
                   {selectedCategoryData.items.length > 0 && (
                     <div className="mt-2">
                       <button
-                        onClick={() => setSelectedItem('outro')}
+                        type="button"
+                        onClick={() => {
+                          setIsOtherItem(true);
+                          setSelectedItem('');
+                          // Focus the input after render
+                          setTimeout(() => otherInputRef.current?.focus(), 50);
+                        }}
                         className={cn(
                           "w-full flex items-center gap-3 p-4 rounded-xl border transition-all",
-                          selectedItem === 'outro'
+                          isOtherItem
                             ? "border-primary ring-1 ring-primary bg-primary/5"
                             : "border-dashed border-slate-300 dark:border-slate-600 hover:border-primary"
                         )}
@@ -381,12 +413,14 @@ export function IssueReportModal({ onClose, onSubmit, checklist, isSubmitting = 
                         <span className="material-symbols-outlined text-slate-400">add</span>
                         <span className="text-sm font-medium text-slate-500 dark:text-slate-400">Outro item não listado</span>
                       </button>
-                      {selectedItem === 'outro' && (
+                      {isOtherItem && (
                         <input
+                          ref={otherInputRef}
                           type="text"
-                          placeholder="Descreva o item..."
-                          onChange={(e) => setSelectedItem(e.target.value || 'outro')}
-                          className="mt-2 w-full bg-white dark:bg-[#2d3138] rounded-xl p-4 border border-slate-200 dark:border-slate-700 outline-none focus:ring-2 focus:ring-primary/50"
+                          value={otherItemText}
+                          onChange={(e) => setOtherItemText(e.target.value)}
+                          placeholder="Descreva o item avariado..."
+                          className="mt-2 w-full bg-white dark:bg-[#2d3138] rounded-xl p-4 border border-slate-200 dark:border-slate-700 outline-none focus:ring-2 focus:ring-primary/50 text-slate-900 dark:text-white placeholder:text-slate-400"
                         />
                       )}
                     </div>
@@ -437,7 +471,7 @@ export function IssueReportModal({ onClose, onSubmit, checklist, isSubmitting = 
               </div>
               <div>
                 <p className="text-xs font-bold text-slate-500 dark:text-slate-400">{selectedCategory}</p>
-                <p className="font-bold text-slate-900 dark:text-white">{selectedItem}</p>
+                <p className="font-bold text-slate-900 dark:text-white">{finalItemValue}</p>
               </div>
             </div>
 
@@ -546,7 +580,11 @@ export function IssueReportModal({ onClose, onSubmit, checklist, isSubmitting = 
           {step < 3 ? (
             <button 
               onClick={handleNextStep}
-              disabled={(step === 1 && !selectedCategory) || (step === 2 && !selectedItem)}
+              disabled={
+                (step === 1 && !selectedCategory) || 
+                (step === 2 && !isOtherItem && !selectedItem) ||
+                (step === 2 && isOtherItem && !otherItemText.trim())
+              }
               className="flex w-full items-center justify-center gap-2 rounded-xl bg-primary py-4 font-bold text-white shadow-[0_4px_20px_-2px_rgba(51,153,153,0.3)] transition-all hover:bg-[#267373] active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed"
             >
               <span>Avançar</span>

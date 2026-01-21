@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect, useMemo } from 'react';
+import { useState, useCallback, useEffect, useMemo, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { ScheduleHistoryEvent } from '@/types/scheduling';
 import { Json } from '@/integrations/supabase/types';
@@ -44,11 +44,32 @@ export function useAcknowledgeNotes({
 }: UseAcknowledgeNotesProps) {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [localHistory, setLocalHistory] = useState<ScheduleHistoryEvent[]>(history);
+  
+  // Track if we've locally added an acknowledgment to prevent prop override
+  const hasLocalAckRef = useRef(false);
 
-  // Update local history when prop changes
+  // Update local history when prop changes, BUT preserve local acknowledgment
+  // This prevents the realtime subscription from overwriting local changes
   useEffect(() => {
+    // If we've locally acknowledged, check if the new history includes it
+    if (hasLocalAckRef.current && teamMemberId) {
+      const propHasAck = history.some(event => 
+        event.action === 'notes_acknowledged' && 
+        event.team_member_id === teamMemberId
+      );
+      
+      // If the prop now includes our ack, we can sync safely
+      if (propHasAck) {
+        setLocalHistory(history);
+        // Keep the ref true since we're acknowledged
+      }
+      // If prop doesn't have our ack yet, DON'T overwrite - our local state is more recent
+      return;
+    }
+    
+    // No local ack, safe to sync from prop
     setLocalHistory(history);
-  }, [history]);
+  }, [history, teamMemberId]);
 
   // Check if current team member has already acknowledged the notes
   const hasAcknowledged = useMemo(() => {
@@ -91,6 +112,8 @@ export function useAcknowledgeNotes({
 
       if (error) throw error;
 
+      // Mark that we've locally acknowledged to prevent prop override
+      hasLocalAckRef.current = true;
       setLocalHistory(updatedHistory);
       return true;
     } catch (err) {

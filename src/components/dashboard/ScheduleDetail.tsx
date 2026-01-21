@@ -1750,10 +1750,10 @@ export function ScheduleDetail({ schedule, onClose, onUpdateSchedule }: Schedule
 
                 <button 
                   onClick={() => handleStatusChange('completed')}
-                  disabled={isCommitting}
+                  disabled={isCommitting || (requireChecklist && (hasPendingItems || hasMissingPhotos))}
                   className={cn(
                     "w-full rounded-xl py-4 text-base font-bold text-white shadow-lg shadow-primary/20 transition-all active:scale-[0.98]",
-                    isCommitting
+                    isCommitting || (requireChecklist && (hasPendingItems || hasMissingPhotos))
                       ? "bg-slate-400 cursor-not-allowed" 
                       : "bg-primary hover:bg-[#267373]"
                   )}
@@ -1762,6 +1762,16 @@ export function ScheduleDetail({ schedule, onClose, onUpdateSchedule }: Schedule
                     <span className="flex items-center justify-center gap-2">
                       <span className="material-symbols-outlined animate-spin text-[18px]">progress_activity</span>
                       Finalizando...
+                    </span>
+                  ) : requireChecklist && hasPendingItems ? (
+                    <span className="flex items-center justify-center gap-2">
+                      <span className="material-symbols-outlined text-[18px]">checklist</span>
+                      Complete o Checklist ({totalPendingItems} pendentes)
+                    </span>
+                  ) : requireChecklist && hasMissingPhotos ? (
+                    <span className="flex items-center justify-center gap-2">
+                      <span className="material-symbols-outlined text-[18px]">photo_camera</span>
+                      Adicionar Fotos ({categoriesMissingPhotos.length})
                     </span>
                   ) : (
                     'Finalizar Limpeza'
