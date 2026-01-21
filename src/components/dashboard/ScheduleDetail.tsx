@@ -69,6 +69,11 @@ export function ScheduleDetail({ schedule, onClose, onUpdateSchedule }: Schedule
   const [notes, setNotes] = useState(schedule.notes);
   const [cleanerObservations, setCleanerObservations] = useState(schedule.cleanerObservations || '');
   const [checklist, setChecklist] = useState(schedule.checklist);
+  // Keep reference to latest checklist for callbacks to avoid stale closures
+  const checklistRef = useRef<ChecklistItem[]>(schedule.checklist);
+  useEffect(() => {
+    checklistRef.current = checklist;
+  }, [checklist]);
   const [localIssues, setLocalIssues] = useState<MaintenanceIssue[]>(schedule.maintenanceIssues);
   const [showIssueForm, setShowIssueForm] = useState(false);
   const [expandedCategories, setExpandedCategories] = useState<Record<string, boolean>>({});
@@ -194,20 +199,19 @@ export function ScheduleDetail({ schedule, onClose, onUpdateSchedule }: Schedule
       setIsAutoSaving(false);
       if (success) {
         setLastAutoSavedAt(Date.now());
-        // After a successful save, mark any COMPLETE categories as "saved"
-        // and clear "dirty" state only for those categories.
+        // After a successful save, mark categories as "saved" based on persisted item.status.
+        // This avoids race conditions where checklistItemStatesRef may lag one tick behind.
         setCategorySaveStatus((prev) => {
           const next: Record<string, 'idle' | 'dirty' | 'saved'> = { ...prev };
-          const currentStates = checklistItemStatesRef.current;
-          const categories = [...new Set(checklist.map(i => i.category))];
+
+          const currentChecklist = checklistRef.current;
+          const categories = [...new Set(currentChecklist.map((i) => i.category))];
           categories.forEach((cat) => {
-            if (isCategoryComplete(cat, currentStates)) {
-              next[cat] = 'saved';
-            } else {
-              // if category is incomplete, it can't be "saved"
-              if (next[cat] === 'saved') next[cat] = 'idle';
-            }
+            const catItems = currentChecklist.filter((i) => i.category === cat);
+            const persistedComplete = catItems.length > 0 && catItems.every((i) => i.status === 'ok' || i.status === 'not_ok');
+            if (persistedComplete) next[cat] = 'saved';
           });
+
           return next;
         });
       }
@@ -925,7 +929,15 @@ export function ScheduleDetail({ schedule, onClose, onUpdateSchedule }: Schedule
     }
   };
 
-  const completedTasks = checklist.filter(item => item.completed).length;
+  // "Concluídos" = itens com qualquer seleção (OK ou DX), com fallback para status persistido.
+  const completedTasks = useMemo(() => {
+    return checklist.filter((item) => {
+      const local = checklistItemStates[item.id];
+      if (local === 'yes' || local === 'no') return true;
+      return item.status === 'ok' || item.status === 'not_ok';
+    }).length;
+  }, [checklist, checklistItemStates]);
+
   const totalTasks = checklist.length;
 
   // Group checklist by category - useMemo to ensure recalculation on checklist changes
