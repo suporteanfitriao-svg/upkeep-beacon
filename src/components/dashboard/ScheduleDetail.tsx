@@ -1750,8 +1750,8 @@ export function ScheduleDetail({ schedule, onClose, onUpdateSchedule }: Schedule
         </main>
       </div>
       
-      {/* Footer Button - Always visible at bottom */}
-      <div className="shrink-0 bg-stone-50 dark:bg-[#22252a] border-t border-slate-200 dark:border-slate-800 p-4 pb-safe">
+      {/* Footer Button - Always visible at bottom with safe area for notched devices */}
+      <div className="shrink-0 bg-stone-50 dark:bg-[#22252a] border-t border-slate-200 dark:border-slate-800 px-4 pt-4 pb-safe">
           {/* Waiting status - disabled button */}
           {schedule.status === 'waiting' && (
             <button 
