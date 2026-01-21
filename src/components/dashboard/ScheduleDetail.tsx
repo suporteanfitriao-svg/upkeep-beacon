@@ -218,41 +218,10 @@ export function ScheduleDetail({ schedule, onClose, onUpdateSchedule }: Schedule
       });
     },
     onSaveStart: () => setIsAutoSaving(true),
-    onSaveComplete: (_category, success) => {
+     onSaveComplete: (_category, success) => {
       setIsAutoSaving(false);
       if (success) {
         setLastAutoSavedAt(Date.now());
-
-        // After a successful save, do a lightweight reload from the backend to
-        // guarantee UI derives from persisted data (mobile race-condition fix).
-        // This ensures category colors + pending counters reflect the saved state
-        // even if any local state got out of sync.
-        (async () => {
-          try {
-            const { data, error } = await supabase
-              .from('schedules')
-              // checklist_state is authoritative during/after cleaning
-              .select('checklists, checklist_state')
-              .eq('id', schedule.id)
-              .maybeSingle();
-
-            if (error) throw error;
-
-            const candidate = (data?.checklist_state ?? data?.checklists) as unknown;
-            const reloaded = Array.isArray(candidate) ? (candidate as ChecklistItem[]) : null;
-
-            if (reloaded && reloaded.length > 0) {
-              setChecklist(reloaded);
-              setChecklistItemStates(deriveChecklistItemStates(reloaded));
-              checklistRef.current = reloaded;
-
-              // Keep parent list/cards in sync (avoids needing a full page reload).
-              onUpdateSchedule({ ...schedule, checklist: reloaded });
-            }
-          } catch (e) {
-            console.warn('[AutoSave] Reload after save failed:', e);
-          }
-        })();
 
         // CRITICAL: After a successful save, mark ALL completed categories as "saved".
         // Use checklistItemStatesRef (always up-to-date) + checklistRef for complete detection.
