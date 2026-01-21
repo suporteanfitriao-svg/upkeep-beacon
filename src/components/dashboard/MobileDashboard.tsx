@@ -755,7 +755,7 @@ export function MobileDashboard({ schedules, onScheduleClick, onStartCleaning, o
         <div className="animate-fade-in">
           {/* Agenda Header */}
           <header 
-            className="sticky top-0 z-20 bg-stone-50/90 dark:bg-[#22252a]/90 px-6 py-4 backdrop-blur-md transition-all"
+            className="sticky top-0 z-30 bg-stone-50 dark:bg-[#22252a] px-6 py-4 shadow-sm"
             style={{ transform: pullDistance > 0 ? `translateY(${pullDistance * 0.3}px)` : undefined }}
           >
             {/* Title Row */}
@@ -801,8 +801,8 @@ export function MobileDashboard({ schedules, onScheduleClick, onStartCleaning, o
               )}
             </div>
 
-            {/* Filter Tabs: Hoje, Mês, Data */}
-            <div className="relative z-40">
+            {/* Filter Tabs: Hoje, Mês, Data - Always visible */}
+            <div className="flex items-center">
               <MobileAgendaFilterTabs
                 viewMode={agendaViewMode}
                 selectedDate={selectedDate}
