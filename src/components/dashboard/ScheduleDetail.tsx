@@ -1687,13 +1687,60 @@ export function ScheduleDetail({ schedule, onClose, onUpdateSchedule }: Schedule
               <h3 className="text-sm font-bold uppercase tracking-wide text-slate-900 dark:text-white">Histórico</h3>
             </div>
             <div className="relative pl-4 border-l-2 border-slate-100 dark:border-slate-700 ml-2 space-y-6">
-              <div className="relative">
-                <span className="absolute -left-[21px] top-1 h-3 w-3 rounded-full border-2 border-white bg-slate-300 dark:border-[#2d3138] dark:bg-slate-600" />
-                <div className="flex flex-col">
-                  <span className="text-xs font-bold text-slate-900 dark:text-white">Agendamento criado</span>
-                  <span className="text-[10px] text-[#8A8B88] dark:text-slate-500">10/09 às 14:00</span>
-                </div>
-              </div>
+              {/* Agendamento Criado - uses schedule creation from history or fallback */}
+              {(() => {
+                const createdEvent = schedule.history?.find(e => e.action === 'schedule_created');
+                return (
+                  <div className="relative">
+                    <span className="absolute -left-[21px] top-1 h-3 w-3 rounded-full border-2 border-white bg-slate-300 dark:border-[#2d3138] dark:bg-slate-600" />
+                    <div className="flex flex-col">
+                      <span className="text-xs font-bold text-slate-900 dark:text-white">Agendamento criado</span>
+                      <span className="text-[10px] text-[#8A8B88] dark:text-slate-500">
+                        {createdEvent ? format(new Date(createdEvent.timestamp), "dd/MM 'às' HH:mm") : "--/-- às --:--"}
+                      </span>
+                    </div>
+                  </div>
+                );
+              })()}
+              
+              {/* Liberado - shows release time from history */}
+              {(() => {
+                const releaseEvent = schedule.history?.find(e => 
+                  (e.action === 'status_change' && e.to_status === 'released') ||
+                  e.action === 'liberacao_automatica_checkout' ||
+                  e.action === 'liberacao_automatica_antecipada'
+                );
+                const isReleased = schedule.status !== 'waiting';
+                const isAutoRelease = releaseEvent?.action?.startsWith('liberacao_automatica');
+                
+                return (
+                  <div className={cn("relative", !releaseEvent && "opacity-50")}>
+                    <span className={cn(
+                      "absolute -left-[21px] top-1 h-3 w-3 rounded-full border-2 border-white dark:border-[#2d3138]",
+                      isReleased ? "bg-primary" : "bg-slate-200 dark:bg-slate-700"
+                    )} />
+                    <div className="flex flex-col">
+                      <span className={cn(
+                        "text-xs font-bold",
+                        isReleased ? "text-slate-900 dark:text-white" : "text-slate-500 dark:text-slate-400"
+                      )}>
+                        Liberado
+                        {isAutoRelease && (
+                          <span className="ml-1 text-[10px] font-normal text-amber-600 dark:text-amber-400">(automático)</span>
+                        )}
+                      </span>
+                      <span className="text-[10px] text-[#8A8B88] dark:text-slate-600">
+                        {releaseEvent ? format(new Date(releaseEvent.timestamp), "dd/MM 'às' HH:mm") : "--:--"}
+                      </span>
+                      {releaseEvent?.team_member_name && !isAutoRelease && (
+                        <span className="text-[10px] text-muted-foreground">
+                          por {releaseEvent.team_member_name}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                );
+              })()}
               
               <div className={cn("relative", !schedule.teamArrival && "opacity-50")}>
                 <span className={cn(
