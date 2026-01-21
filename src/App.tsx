@@ -7,6 +7,7 @@ import { AuthProvider } from "@/hooks/useAuth";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
 import { AdminRoute } from "@/components/AdminRoute";
 import { InstallPrompt } from "@/components/pwa/InstallPrompt";
+import { PWAUpdateModal } from "@/components/pwa/PWAUpdateModal";
 import { usePWAUpdate } from "@/hooks/usePWAUpdate";
 import Index from "./pages/Index";
 import Auth from "./pages/Auth";
@@ -38,10 +39,17 @@ const queryClient = new QueryClient({
   },
 });
 
-// Component to handle PWA updates
+// Component to handle PWA updates with visual modal
 function PWAUpdateHandler() {
-  usePWAUpdate();
-  return null;
+  const { showUpdateModal, isUpdating, performUpdate } = usePWAUpdate();
+  
+  return (
+    <PWAUpdateModal
+      isOpen={showUpdateModal}
+      onUpdate={performUpdate}
+      isUpdating={isUpdating}
+    />
+  );
 }
 
 const App = () => (
