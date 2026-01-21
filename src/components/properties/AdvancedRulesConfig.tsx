@@ -19,6 +19,7 @@ interface PropertyRules {
   require_checklist: boolean;
   require_photo_per_category: boolean;
   require_photo_for_issues: boolean;
+  require_photo_for_inspections: boolean;
 }
 
 export function AdvancedRulesConfig({ propertyId, propertyName }: AdvancedRulesConfigProps) {
@@ -29,6 +30,7 @@ export function AdvancedRulesConfig({ propertyId, propertyName }: AdvancedRulesC
     require_checklist: true,
     require_photo_per_category: false,
     require_photo_for_issues: false,
+    require_photo_for_inspections: false,
   });
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState<string | null>(null);
@@ -41,7 +43,7 @@ export function AdvancedRulesConfig({ propertyId, propertyName }: AdvancedRulesC
     setIsLoading(true);
     const { data, error } = await supabase
       .from('properties')
-      .select('auto_release_on_checkout, auto_release_before_checkout_enabled, auto_release_before_checkout_minutes, require_checklist, require_photo_per_category, require_photo_for_issues')
+      .select('auto_release_on_checkout, auto_release_before_checkout_enabled, auto_release_before_checkout_minutes, require_checklist, require_photo_per_category, require_photo_for_issues, require_photo_for_inspections')
       .eq('id', propertyId)
       .single();
 
@@ -56,6 +58,7 @@ export function AdvancedRulesConfig({ propertyId, propertyName }: AdvancedRulesC
         require_checklist: data.require_checklist ?? true,
         require_photo_per_category: data.require_photo_per_category ?? false,
         require_photo_for_issues: data.require_photo_for_issues ?? false,
+        require_photo_for_inspections: data.require_photo_for_inspections ?? false,
       });
     }
     setIsLoading(false);
@@ -432,6 +435,48 @@ export function AdvancedRulesConfig({ propertyId, propertyName }: AdvancedRulesC
               id="require-photo-issues"
               checked={rules.require_photo_for_issues}
               onCheckedChange={(checked) => handleToggle('require_photo_for_issues', checked)}
+              disabled={isSaving !== null}
+            />
+          </div>
+        </div>
+      </div>
+
+      {/* Section: Fotos em Inspeções */}
+      <div className="space-y-4">
+        <div className="space-y-1">
+          <h4 className="text-sm font-semibold flex items-center gap-2">
+            <Camera className="h-4 w-4 text-purple-500" />
+            Fotos em Inspeções
+          </h4>
+          <p className="text-xs text-muted-foreground">
+            Configure exigências de fotos ao realizar inspeções.
+          </p>
+        </div>
+
+        {/* Require photo for inspections */}
+        <div className={cn(
+          "flex items-start justify-between gap-4 p-4 rounded-lg border transition-colors",
+          rules.require_photo_for_inspections ? "bg-purple-500/5 border-purple-500/30" : "bg-muted/30"
+        )}>
+          <div className="flex gap-3">
+            <div className="space-y-1">
+              <Label htmlFor="require-photo-inspections" className="text-sm font-medium cursor-pointer">
+                Exigir foto para finalizar inspeção
+              </Label>
+              <p className="text-xs text-muted-foreground">
+                Ao finalizar uma inspeção, o sistema exigirá pelo menos 1 foto. 
+                Não será possível finalizar a inspeção sem anexar uma foto.
+              </p>
+            </div>
+          </div>
+          <div className="flex items-center gap-2">
+            {isSaving === 'require_photo_for_inspections' && (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            )}
+            <Switch
+              id="require-photo-inspections"
+              checked={rules.require_photo_for_inspections}
+              onCheckedChange={(checked) => handleToggle('require_photo_for_inspections', checked)}
               disabled={isSaving !== null}
             />
           </div>

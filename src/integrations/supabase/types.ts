@@ -227,6 +227,7 @@ export type Database = {
           description: string | null
           history: Json | null
           id: string
+          inspection_photos: Json | null
           notes: string | null
           original_checklist_state: Json | null
           property_id: string | null
@@ -252,6 +253,7 @@ export type Database = {
           description?: string | null
           history?: Json | null
           id?: string
+          inspection_photos?: Json | null
           notes?: string | null
           original_checklist_state?: Json | null
           property_id?: string | null
@@ -277,6 +279,7 @@ export type Database = {
           description?: string | null
           history?: Json | null
           id?: string
+          inspection_photos?: Json | null
           notes?: string | null
           original_checklist_state?: Json | null
           property_id?: string | null
@@ -714,6 +717,7 @@ export type Database = {
           password_mode: Database["public"]["Enums"]["property_password_mode"]
           property_code: string | null
           require_checklist: boolean
+          require_photo_for_inspections: boolean
           require_photo_for_issues: boolean
           require_photo_per_category: boolean
           updated_at: string
@@ -737,6 +741,7 @@ export type Database = {
           password_mode?: Database["public"]["Enums"]["property_password_mode"]
           property_code?: string | null
           require_checklist?: boolean
+          require_photo_for_inspections?: boolean
           require_photo_for_issues?: boolean
           require_photo_per_category?: boolean
           updated_at?: string
@@ -760,6 +765,7 @@ export type Database = {
           password_mode?: Database["public"]["Enums"]["property_password_mode"]
           property_code?: string | null
           require_checklist?: boolean
+          require_photo_for_inspections?: boolean
           require_photo_for_issues?: boolean
           require_photo_per_category?: boolean
           updated_at?: string

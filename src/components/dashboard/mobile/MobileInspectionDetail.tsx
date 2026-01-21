@@ -1,7 +1,7 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { 
   X, Clock, Building2, Calendar, User, ClipboardCheck, 
-  CheckCircle2, Play, Loader2, MessageSquare, History
+  CheckCircle2, Play, Loader2, MessageSquare, History, Camera, ImagePlus, Trash2
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
@@ -14,6 +14,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { format, parseISO } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
+import { useImageCompression } from '@/hooks/useImageCompression';
 
 interface InspectionHistoryEvent {
   timestamp: string;
@@ -26,6 +27,8 @@ interface MobileInspectionDetailProps {
     started_at?: string;
     history?: InspectionHistoryEvent[];
     verification_comment?: string;
+    inspection_photos?: string[];
+    property_id?: string | null;
   };
   onClose: () => void;
   onUpdate: () => void;
@@ -42,12 +45,38 @@ export function MobileInspectionDetail({
   const [history, setHistory] = useState<InspectionHistoryEvent[]>(
     Array.isArray(inspection.history) ? inspection.history : []
   );
+  const [photos, setPhotos] = useState<string[]>(
+    Array.isArray(inspection.inspection_photos) ? inspection.inspection_photos : []
+  );
+  const [isUploadingPhoto, setIsUploadingPhoto] = useState(false);
+  const [requirePhoto, setRequirePhoto] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const { compressImage } = useImageCompression();
 
   const isInProgress = inspection.status === 'in_progress';
   const isScheduled = inspection.status === 'scheduled';
 
-  // Check if can finish: must be verified and have comment
-  const canFinish = isVerified && comment.trim().length >= 10;
+  // Fetch property rule for photo requirement
+  useEffect(() => {
+    const fetchPropertyRule = async () => {
+      if (!inspection.property_id) return;
+      
+      const { data } = await supabase
+        .from('properties')
+        .select('require_photo_for_inspections')
+        .eq('id', inspection.property_id)
+        .single();
+      
+      if (data) {
+        setRequirePhoto(data.require_photo_for_inspections ?? false);
+      }
+    };
+    fetchPropertyRule();
+  }, [inspection.property_id]);
+
+  // Check if can finish: must be verified, have comment, and have photo if required
+  const hasRequiredPhotos = !requirePhoto || photos.length > 0;
+  const canFinish = isVerified && comment.trim().length >= 10 && hasRequiredPhotos;
 
   const handleStartInspection = async () => {
     setIsSubmitting(true);
@@ -95,7 +124,13 @@ export function MobileInspectionDetail({
 
   const handleFinishInspection = async () => {
     if (!canFinish) {
-      toast.error('Marque como verificado e adicione um comentário (mínimo 10 caracteres)');
+      if (!isVerified) {
+        toast.error('Marque como verificado para continuar');
+      } else if (comment.trim().length < 10) {
+        toast.error('Adicione um comentário (mínimo 10 caracteres)');
+      } else if (requirePhoto && photos.length === 0) {
+        toast.error('Adicione pelo menos 1 foto para finalizar a inspeção');
+      }
       return;
     }
 
@@ -131,6 +166,7 @@ export function MobileInspectionDetail({
           completed_by: teamMemberId,
           completed_by_name: userName,
           verification_comment: comment.trim(),
+          inspection_photos: JSON.parse(JSON.stringify(photos)),
           history: JSON.parse(JSON.stringify(newHistory))
         })
         .eq('id', inspection.id);
@@ -145,6 +181,67 @@ export function MobileInspectionDetail({
       toast.error('Erro ao finalizar inspeção');
     } finally {
       setIsSubmitting(false);
+    }
+  };
+
+  const handlePhotoUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    setIsUploadingPhoto(true);
+    try {
+      // Compress image
+      const compressedFile = await compressImage(file);
+      
+      // Upload to storage
+      const fileName = `${inspection.id}/${Date.now()}-${file.name}`;
+      const { data: uploadData, error: uploadError } = await supabase.storage
+        .from('inspection-photos')
+        .upload(fileName, compressedFile, {
+          cacheControl: '3600',
+          upsert: false
+        });
+
+      if (uploadError) throw uploadError;
+
+      // Get public URL
+      const { data: urlData } = supabase.storage
+        .from('inspection-photos')
+        .getPublicUrl(uploadData.path);
+
+      const newPhotos = [...photos, urlData.publicUrl];
+      setPhotos(newPhotos);
+
+      // Save to inspection immediately
+      await supabase
+        .from('inspections')
+        .update({ inspection_photos: JSON.parse(JSON.stringify(newPhotos)) })
+        .eq('id', inspection.id);
+
+      toast.success('Foto adicionada!');
+    } catch (error) {
+      console.error('Error uploading photo:', error);
+      toast.error('Erro ao enviar foto');
+    } finally {
+      setIsUploadingPhoto(false);
+      if (fileInputRef.current) {
+        fileInputRef.current.value = '';
+      }
+    }
+  };
+
+  const handleRemovePhoto = async (index: number) => {
+    const newPhotos = photos.filter((_, i) => i !== index);
+    setPhotos(newPhotos);
+
+    try {
+      await supabase
+        .from('inspections')
+        .update({ inspection_photos: JSON.parse(JSON.stringify(newPhotos)) })
+        .eq('id', inspection.id);
+      toast.success('Foto removida');
+    } catch (error) {
+      console.error('Error removing photo:', error);
     }
   };
 
@@ -325,6 +422,71 @@ export function MobileInspectionDetail({
                     {comment.length}/10 caracteres mínimos
                   </p>
                 </div>
+
+                {/* Photo Upload Section */}
+                <div className="space-y-3">
+                  <label className="text-sm font-medium flex items-center gap-2">
+                    <Camera className="h-4 w-4" />
+                    Fotos da Inspeção {requirePhoto && <span className="text-destructive">*</span>}
+                  </label>
+                  
+                  {requirePhoto && photos.length === 0 && (
+                    <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg p-3">
+                      <p className="text-xs text-amber-700 dark:text-amber-300">
+                        ⚠️ Esta propriedade exige pelo menos 1 foto para finalizar a inspeção.
+                      </p>
+                    </div>
+                  )}
+
+                  {/* Photo Grid */}
+                  {photos.length > 0 && (
+                    <div className="grid grid-cols-3 gap-2">
+                      {photos.map((photoUrl, index) => (
+                        <div key={index} className="relative aspect-square">
+                          <img 
+                            src={photoUrl} 
+                            alt={`Foto ${index + 1}`}
+                            className="w-full h-full object-cover rounded-lg"
+                          />
+                          <button
+                            onClick={() => handleRemovePhoto(index)}
+                            className="absolute -top-2 -right-2 h-6 w-6 bg-destructive text-destructive-foreground rounded-full flex items-center justify-center shadow-md"
+                          >
+                            <Trash2 className="h-3 w-3" />
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
+                  {/* Upload Button */}
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept="image/*"
+                    capture="environment"
+                    onChange={handlePhotoUpload}
+                    className="hidden"
+                  />
+                  <Button
+                    variant="outline"
+                    className="w-full h-12 border-dashed border-2"
+                    onClick={() => fileInputRef.current?.click()}
+                    disabled={isUploadingPhoto}
+                  >
+                    {isUploadingPhoto ? (
+                      <>
+                        <Loader2 className="h-5 w-5 animate-spin mr-2" />
+                        Enviando...
+                      </>
+                    ) : (
+                      <>
+                        <ImagePlus className="h-5 w-5 mr-2" />
+                        Adicionar Foto
+                      </>
+                    )}
+                  </Button>
+                </div>
               </div>
             </>
           )}
@@ -400,7 +562,9 @@ export function MobileInspectionDetail({
                 ? 'Marque como Verificado' 
                 : comment.trim().length < 10 
                   ? `Adicione Comentário (${10 - comment.trim().length} car.)`
-                  : 'Finalizar Inspeção'
+                  : requirePhoto && photos.length === 0
+                    ? 'Adicione Foto Obrigatória'
+                    : 'Finalizar Inspeção'
             }
           </Button>
         )}
