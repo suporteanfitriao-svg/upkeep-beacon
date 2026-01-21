@@ -65,6 +65,12 @@ export function useCleanerInspections() {
   const isAdminOrManager = userRole === 'admin' || userRole === 'manager';
 
   const fetchInspections = useCallback(async () => {
+    // Wait until userRole is determined before proceeding
+    if (userRole === null) {
+      // Still loading user role, don't fetch yet
+      return;
+    }
+    
     // For cleaners, require teamMemberId
     if (!isAdminOrManager && !teamMemberId) {
       setInspections([]);
@@ -107,7 +113,7 @@ export function useCleanerInspections() {
     } finally {
       setLoading(false);
     }
-  }, [teamMemberId, isAdminOrManager]);
+  }, [teamMemberId, isAdminOrManager, userRole]);
 
   useEffect(() => {
     fetchInspections();
