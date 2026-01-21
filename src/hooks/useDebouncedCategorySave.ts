@@ -67,7 +67,7 @@ export function useDebouncedCategorySave({
 
   // Perform the actual save operation - saves the WHOLE checklist once
   const performSave = useCallback(async (): Promise<boolean> => {
-    if (!teamMemberId || !enabled) return false;
+    if (!enabled) return false;
 
     // If a save is already in progress, just queue another run.
     if (stateRef.current.isSaving) {
@@ -96,16 +96,24 @@ export function useDebouncedCategorySave({
       }
       
       // Log a single audit entry (avoid spamming)
-      await supabase.rpc('append_schedule_history', {
-        p_schedule_id: scheduleId,
-        p_team_member_id: teamMemberId,
-        p_action: 'checklist_salvo_auto',
-        p_from_status: null,
-        p_to_status: null,
-        p_payload: { debounce_ms: debounceMs }
-      });
+      // NOTE: Don't block save if audit logging fails.
+      if (teamMemberId) {
+        const { error: historyError } = await supabase.rpc('append_schedule_history', {
+          p_schedule_id: scheduleId,
+          p_team_member_id: teamMemberId,
+          p_action: 'checklist_salvo_auto',
+          p_from_status: null,
+          p_to_status: null,
+          p_payload: { debounce_ms: debounceMs },
+        });
+
+        if (historyError) {
+          console.warn('[AutoSave] append_schedule_history failed:', historyError);
+        }
+      }
       
       // Clear cache after successful save
+      // (cache key requires teamMemberId; callers may pass a no-op until available)
       clearCache?.();
       
       const now = Date.now();
@@ -132,14 +140,14 @@ export function useDebouncedCategorySave({
   // Schedule a debounced save for the whole checklist
   // (kept signature for compatibility; category is ignored)
   const scheduleSave = useCallback((_category?: string) => {
-    if (!enabled || !teamMemberId) return;
+    if (!enabled) return;
 
     if (stateRef.current.timer) clearTimeout(stateRef.current.timer);
     stateRef.current.timer = setTimeout(() => {
       stateRef.current.timer = null;
       performSave();
     }, debounceMs);
-  }, [enabled, teamMemberId, debounceMs, performSave]);
+  }, [enabled, debounceMs, performSave]);
 
   // Force immediate save
   const flushAll = useCallback(async (): Promise<void> => {
