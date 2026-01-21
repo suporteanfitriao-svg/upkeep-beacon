@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { SidebarProvider, SidebarInset } from '@/components/ui/sidebar';
 import { AppSidebar } from '@/components/dashboard/AppSidebar';
 import { useAuth } from '@/hooks/useAuth';
@@ -8,7 +9,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { User, MapPin, Shield, Camera, Check, Smartphone, Pencil, X, Loader2 } from 'lucide-react';
+import { User, MapPin, Shield, Camera, Check, Smartphone, Pencil, X, Loader2, LogOut } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -51,7 +52,8 @@ const roleDescriptions: Record<string, string> = {
 };
 
 export default function Profile() {
-  const { user } = useAuth();
+  const navigate = useNavigate();
+  const { user, signOut } = useAuth();
   const { role, isAdmin, isManager, loading: roleLoading } = useUserRole();
   const { fetching: fetchingCep, handleCepChange } = useCepLookup();
   const [teamMember, setTeamMember] = useState<TeamMember | null>(null);
@@ -578,6 +580,26 @@ export default function Profile() {
                       </div>
                     </div>
                     <Switch disabled />
+                  </div>
+
+                  {/* Logout */}
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-5 bg-destructive/5 rounded-2xl border border-destructive/20">
+                    <div>
+                      <h5 className="font-bold text-destructive text-sm">Sair da Conta</h5>
+                      <p className="text-xs text-muted-foreground">Encerre sua sessão de forma segura</p>
+                    </div>
+                    <Button 
+                      variant="destructive" 
+                      className="shrink-0 gap-2"
+                      onClick={async () => {
+                        await signOut();
+                        toast.success('Logout realizado com sucesso');
+                        navigate('/auth');
+                      }}
+                    >
+                      <LogOut className="w-4 h-4" />
+                      Sair
+                    </Button>
                   </div>
                 </CardContent>
               </Card>
