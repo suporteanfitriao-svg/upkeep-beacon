@@ -40,6 +40,7 @@ export function useCleanerInspections() {
   const [inspections, setInspections] = useState<CleanerInspection[]>([]);
   const [loading, setLoading] = useState(true);
   const [userRole, setUserRole] = useState<string | null>(null);
+  const [roleLoaded, setRoleLoaded] = useState(false);
 
   // Fetch user role separately to avoid hook nesting issues
   useEffect(() => {
@@ -47,6 +48,7 @@ export function useCleanerInspections() {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) {
         setUserRole(null);
+        setRoleLoaded(true);
         return;
       }
       
@@ -57,6 +59,7 @@ export function useCleanerInspections() {
         .maybeSingle();
       
       setUserRole(data?.role || null);
+      setRoleLoaded(true);
     }
     
     fetchUserRole();
@@ -65,9 +68,8 @@ export function useCleanerInspections() {
   const isAdminOrManager = userRole === 'admin' || userRole === 'manager';
 
   const fetchInspections = useCallback(async () => {
-    // Wait until userRole is determined before proceeding
-    if (userRole === null) {
-      // Still loading user role, don't fetch yet
+    // Wait until role is loaded before proceeding
+    if (!roleLoaded) {
       return;
     }
     
@@ -113,7 +115,7 @@ export function useCleanerInspections() {
     } finally {
       setLoading(false);
     }
-  }, [teamMemberId, isAdminOrManager, userRole]);
+  }, [teamMemberId, isAdminOrManager, roleLoaded]);
 
   useEffect(() => {
     fetchInspections();
