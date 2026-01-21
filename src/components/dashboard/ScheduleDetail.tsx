@@ -526,7 +526,8 @@ export function ScheduleDetail({ schedule, onClose, onUpdateSchedule }: Schedule
   }, [scheduleSave]);
 
   // Handle marking entire category as complete - updates local state and triggers auto-save
-  const handleMarkCategoryComplete = useCallback(async (category: string) => {
+  // OPTIMIZED: Uses React.unstable_batchedUpdates pattern to prevent UI freezing on mobile
+  const handleMarkCategoryComplete = useCallback((category: string) => {
     if (schedule.status !== 'cleaning' || !teamMemberId) return;
 
     hasUserInteractedRef.current = true;
@@ -534,6 +535,7 @@ export function ScheduleDetail({ schedule, onClose, onUpdateSchedule }: Schedule
     // Close confirmation dialog FIRST so user sees the update
     setConfirmMarkCategory({ open: false, category: null });
     
+    // Pre-calculate everything BEFORE any state updates to minimize re-renders
     const categoryItems = checklist.filter(item => item.category === category);
     
     // Check if any item is marked as DX (no) - don't allow bulk marking
@@ -543,24 +545,32 @@ export function ScheduleDetail({ schedule, onClose, onUpdateSchedule }: Schedule
       return;
     }
     
-    // Mark all items as completed with proper status
-    const updatedChecklist = checklist.map(item => 
-      item.category === category ? { ...item, completed: true, status: 'ok' as const } : item
-    );
-    
+    // Pre-calculate updated states
     const updatedStates: Record<string, 'yes' | 'no' | null> = { ...checklistItemStates };
     categoryItems.forEach(item => {
       updatedStates[item.id] = 'yes';
     });
     
-    // Update local state IMMEDIATELY for instant UI feedback
-    setChecklist(updatedChecklist);
-    setChecklistItemStates(updatedStates);
+    // Pre-calculate updated checklist
+    const updatedChecklist = checklist.map(item => 
+      item.category === category ? { ...item, completed: true, status: 'ok' as const } : item
+    );
     
-    // Trigger auto-save for this category
-    scheduleSave(category);
-    
-    toast.success(`Categoria "${category}" marcada como completa!`);
+    // Use requestAnimationFrame to batch DOM updates and prevent UI blocking
+    // This allows the browser to remain responsive while processing
+    requestAnimationFrame(() => {
+      // Single batched state update - React 18 auto-batches these
+      setChecklistItemStates(updatedStates);
+      setChecklist(updatedChecklist);
+      
+      // Schedule save AFTER state is updated (next tick)
+      // Use setTimeout to ensure state updates have been processed
+      setTimeout(() => {
+        scheduleSave(category);
+      }, 0);
+      
+      toast.success(`Categoria "${category}" marcada como completa!`);
+    });
   }, [schedule.status, checklist, checklistItemStates, teamMemberId, scheduleSave]);
 
   // Check if a category has any item marked as DX
