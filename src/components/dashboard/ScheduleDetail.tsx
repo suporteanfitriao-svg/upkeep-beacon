@@ -199,17 +199,29 @@ export function ScheduleDetail({ schedule, onClose, onUpdateSchedule }: Schedule
       setIsAutoSaving(false);
       if (success) {
         setLastAutoSavedAt(Date.now());
-        // After a successful save, mark categories as "saved" based on persisted item.status.
-        // This avoids race conditions where checklistItemStatesRef may lag one tick behind.
+        // CRITICAL: After a successful save, mark ALL completed categories as "saved".
+        // Use checklistItemStatesRef (always up-to-date) + checklistRef for complete detection.
+        // This ensures immediate UI update after auto-save completes.
         setCategorySaveStatus((prev) => {
           const next: Record<string, 'idle' | 'dirty' | 'saved'> = { ...prev };
-
           const currentChecklist = checklistRef.current;
+          const currentStates = checklistItemStatesRef.current;
           const categories = [...new Set(currentChecklist.map((i) => i.category))];
+          
           categories.forEach((cat) => {
             const catItems = currentChecklist.filter((i) => i.category === cat);
-            const persistedComplete = catItems.length > 0 && catItems.every((i) => i.status === 'ok' || i.status === 'not_ok');
-            if (persistedComplete) next[cat] = 'saved';
+            // Category is complete if ALL items have a selection (yes/no) in UI state
+            // OR have a persisted status (ok/not_ok) - for reload scenarios
+            const allHaveSelection = catItems.length > 0 && catItems.every((item) => {
+              const localState = currentStates[item.id];
+              if (localState === 'yes' || localState === 'no') return true;
+              return item.status === 'ok' || item.status === 'not_ok';
+            });
+            
+            if (allHaveSelection) {
+              // Mark as saved - this triggers immediate color change
+              next[cat] = 'saved';
+            }
           });
 
           return next;
