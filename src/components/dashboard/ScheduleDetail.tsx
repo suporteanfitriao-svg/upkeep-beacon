@@ -1494,12 +1494,16 @@ export function ScheduleDetail({ schedule, onClose, onUpdateSchedule }: Schedule
                         )}
                         {/* Mark category complete button - only when cleaning and no DX */}
                         {schedule.status === 'cleaning' && !allSelected && !hasDX && (
-                          <button 
+                          <button
+                            type="button"
                             onClick={(e) => {
+                              // Prevent any default button behavior (e.g., accidental form submit)
+                              // and avoid <summary>/<details> default toggle side-effects.
+                              e.preventDefault();
                               e.stopPropagation();
                               setConfirmMarkCategory({ open: true, category });
                             }}
-                            aria-label="Marcar categoria completa" 
+                            aria-label="Marcar categoria completa"
                             className="rounded-full p-1 text-green-500 hover:text-green-600 hover:bg-green-50 dark:hover:bg-green-900/20 transition-colors"
                             title="Marcar tudo como OK"
                           >
@@ -1507,8 +1511,10 @@ export function ScheduleDetail({ schedule, onClose, onUpdateSchedule }: Schedule
                           </button>
                         )}
                         {/* Photo button - only enabled when all items selected */}
-                        <button 
+                        <button
+                          type="button"
                           onClick={(e) => {
+                            e.preventDefault();
                             e.stopPropagation();
                             setPhotoUploadModal({ open: true, category });
                           }}
@@ -1585,6 +1591,7 @@ export function ScheduleDetail({ schedule, onClose, onUpdateSchedule }: Schedule
                         {unsavedCategories.has(category) && schedule.status === 'cleaning' && (
                           <div className="p-3 border-t border-slate-100 dark:border-slate-700/50 bg-slate-50/50 dark:bg-slate-800/30">
                             <button
+                              type="button"
                               onClick={() => handleSaveCategory(category)}
                               disabled={isSyncing && syncingCategory === category}
                               className="w-full flex items-center justify-center gap-2 rounded-xl bg-primary py-3 text-base font-bold text-white shadow-sm transition-all hover:bg-primary/90 active:scale-[0.98] touch-manipulation disabled:opacity-70 disabled:cursor-not-allowed"
@@ -1931,8 +1938,9 @@ export function ScheduleDetail({ schedule, onClose, onUpdateSchedule }: Schedule
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Cancelar</AlertDialogCancel>
-            <AlertDialogAction 
+            <AlertDialogCancel type="button">Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              type="button"
               onClick={() => confirmMarkCategory.category && handleMarkCategoryComplete(confirmMarkCategory.category)}
               className="bg-green-600 hover:bg-green-700"
             >
