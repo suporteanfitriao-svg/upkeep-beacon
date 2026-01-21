@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { z } from 'zod';
 import { SidebarProvider, SidebarInset } from '@/components/ui/sidebar';
 import { AppSidebar } from '@/components/dashboard/AppSidebar';
 import { useAuth } from '@/hooks/useAuth';
@@ -9,7 +10,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { User, MapPin, Shield, Camera, Check, Smartphone, Pencil, X, Loader2, LogOut } from 'lucide-react';
+import { User, MapPin, Shield, Camera, Check, Smartphone, Pencil, X, Loader2, LogOut, KeyRound } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -18,7 +19,32 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { APP_VERSION } from '@/components/pwa/PWAUpdateModal';
+
+// Password validation schema
+const passwordSchema = z.string()
+  .min(8, { message: 'Senha deve ter no mínimo 8 caracteres' })
+  .max(72, { message: 'Senha deve ter no máximo 72 caracteres' })
+  .refine((val) => /[A-Z]/.test(val), { message: 'Senha deve conter pelo menos uma letra maiúscula' })
+  .refine((val) => /[a-z]/.test(val), { message: 'Senha deve conter pelo menos uma letra minúscula' })
+  .refine((val) => /[0-9]/.test(val), { message: 'Senha deve conter pelo menos um número' })
+  .refine((val) => /[!@#$%^&*(),.?":{}|<>_\-+=\[\]\\\/`~;']/.test(val), { message: 'Senha deve conter pelo menos um caractere especial' });
+
+// Password strength indicator
+const getPasswordStrength = (password: string): { score: number; label: string; color: string } => {
+  let score = 0;
+  if (password.length >= 8) score++;
+  if (password.length >= 12) score++;
+  if (/[A-Z]/.test(password)) score++;
+  if (/[a-z]/.test(password)) score++;
+  if (/[0-9]/.test(password)) score++;
+  if (/[!@#$%^&*(),.?":{}|<>_\-+=\[\]\\\/`~;']/.test(password)) score++;
+
+  if (score <= 2) return { score, label: 'Fraca', color: 'bg-destructive' };
+  if (score <= 4) return { score, label: 'Média', color: 'bg-yellow-500' };
+  return { score, label: 'Forte', color: 'bg-green-500' };
+};
 
 interface TeamMember {
   id: string;
@@ -53,7 +79,7 @@ const roleDescriptions: Record<string, string> = {
 
 export default function Profile() {
   const navigate = useNavigate();
-  const { user, signOut } = useAuth();
+  const { user, signOut, updatePassword } = useAuth();
   const { role, isAdmin, isManager, loading: roleLoading } = useUserRole();
   const { fetching: fetchingCep, handleCepChange } = useCepLookup();
   const [teamMember, setTeamMember] = useState<TeamMember | null>(null);
@@ -62,6 +88,13 @@ export default function Profile() {
   const [editingAddress, setEditingAddress] = useState(false);
   const [saving, setSaving] = useState(false);
   
+  // Password reset modal state
+  const [showPasswordModal, setShowPasswordModal] = useState(false);
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmNewPassword, setConfirmNewPassword] = useState('');
+  const [passwordError, setPasswordError] = useState<string | null>(null);
+  const [savingPassword, setSavingPassword] = useState(false);
+
   // Form states
   const [formData, setFormData] = useState({
     whatsapp: '',
@@ -223,6 +256,44 @@ export default function Profile() {
       address_state: teamMember?.address_state || '',
     }));
     setEditingAddress(false);
+  };
+
+  const handlePasswordReset = async () => {
+    setPasswordError(null);
+    
+    // Validate password
+    try {
+      passwordSchema.parse(newPassword);
+    } catch (err) {
+      if (err instanceof z.ZodError) {
+        setPasswordError(err.errors[0]?.message || 'Senha inválida');
+        return;
+      }
+    }
+    
+    // Check if passwords match
+    if (newPassword !== confirmNewPassword) {
+      setPasswordError('As senhas não coincidem');
+      return;
+    }
+    
+    setSavingPassword(true);
+    try {
+      const { error } = await updatePassword(newPassword);
+      if (error) {
+        toast.error(error.message);
+      } else {
+        toast.success('Senha atualizada com sucesso!');
+        setShowPasswordModal(false);
+        setNewPassword('');
+        setConfirmNewPassword('');
+      }
+    } catch (error) {
+      console.error('Error updating password:', error);
+      toast.error('Erro ao atualizar senha');
+    } finally {
+      setSavingPassword(false);
+    }
   };
 
   const maskCPF = (cpf: string) => {
@@ -563,7 +634,11 @@ export default function Profile() {
                       <h5 className="font-bold text-foreground text-sm">Senha de Acesso</h5>
                       <p className="text-xs text-muted-foreground">Altere sua senha de acesso ao sistema</p>
                     </div>
-                    <Button className="shrink-0">
+                    <Button 
+                      className="shrink-0 gap-2"
+                      onClick={() => setShowPasswordModal(true)}
+                    >
+                      <KeyRound className="w-4 h-4" />
                       Redefinir Senha
                     </Button>
                   </div>
@@ -632,6 +707,88 @@ export default function Profile() {
             <span>Menu</span>
           </a>
         </nav>
+
+        {/* Password Reset Modal */}
+        <Dialog open={showPasswordModal} onOpenChange={setShowPasswordModal}>
+          <DialogContent className="sm:max-w-md">
+            <DialogHeader>
+              <DialogTitle>Redefinir Senha</DialogTitle>
+              <DialogDescription>
+                Digite sua nova senha. Ela deve ter no mínimo 8 caracteres, incluindo maiúsculas, minúsculas, números e caracteres especiais.
+              </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-4 py-4">
+              <div className="space-y-2">
+                <Label htmlFor="newPassword">Nova Senha</Label>
+                <Input
+                  id="newPassword"
+                  type="password"
+                  placeholder="••••••••"
+                  value={newPassword}
+                  onChange={(e) => setNewPassword(e.target.value)}
+                  disabled={savingPassword}
+                />
+                {newPassword && (
+                  <div className="space-y-1.5">
+                    <div className="flex gap-1">
+                      {[...Array(6)].map((_, i) => (
+                        <div
+                          key={i}
+                          className={`h-1.5 flex-1 rounded-full transition-colors ${
+                            i < getPasswordStrength(newPassword).score
+                              ? getPasswordStrength(newPassword).color
+                              : 'bg-muted'
+                          }`}
+                        />
+                      ))}
+                    </div>
+                    <p className={`text-xs ${
+                      getPasswordStrength(newPassword).score <= 2 ? 'text-destructive' :
+                      getPasswordStrength(newPassword).score <= 4 ? 'text-yellow-600' : 'text-green-600'
+                    }`}>
+                      Força: {getPasswordStrength(newPassword).label}
+                    </p>
+                  </div>
+                )}
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="confirmNewPassword">Confirmar Nova Senha</Label>
+                <Input
+                  id="confirmNewPassword"
+                  type="password"
+                  placeholder="••••••••"
+                  value={confirmNewPassword}
+                  onChange={(e) => setConfirmNewPassword(e.target.value)}
+                  disabled={savingPassword}
+                />
+              </div>
+              {passwordError && (
+                <p className="text-sm text-destructive">{passwordError}</p>
+              )}
+            </div>
+            <DialogFooter>
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setShowPasswordModal(false);
+                  setNewPassword('');
+                  setConfirmNewPassword('');
+                  setPasswordError(null);
+                }}
+                disabled={savingPassword}
+              >
+                Cancelar
+              </Button>
+              <Button
+                onClick={handlePasswordReset}
+                disabled={savingPassword || !newPassword || !confirmNewPassword}
+              >
+                {savingPassword && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                Atualizar Senha
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
       </SidebarInset>
     </SidebarProvider>
   );

@@ -352,21 +352,41 @@ export function MobileDashboard({ schedules, onScheduleClick, onStartCleaning, o
 
   const todayTasksCount = useMemo(() => {
     const today = new Date();
-    const todayTasks = schedules.filter(s => 
+    const todayDateStr = format(today, 'yyyy-MM-dd');
+    
+    // Schedules for today (not completed) + overdue
+    const todaySchedules = schedules.filter(s => 
       isSameDay(s.checkOut, today) && s.status !== 'completed'
     ).length;
-    // Add overdue tasks to today's count
-    return todayTasks + overdueCount;
-  }, [schedules, overdueCount]);
+    
+    // Inspections for today (scheduled or in_progress)
+    const todayInspections = inspections.filter(i =>
+      i.scheduled_date === todayDateStr && 
+      (i.status === 'scheduled' || i.status === 'in_progress')
+    ).length;
+    
+    // Add overdue tasks + today's inspections to count
+    return todaySchedules + overdueCount + todayInspections;
+  }, [schedules, overdueCount, inspections]);
 
   const tomorrowTasksCount = useMemo(() => {
     const tomorrow = addDays(new Date(), 1);
-    const tomorrowTasks = schedules.filter(s => 
+    const tomorrowDateStr = format(tomorrow, 'yyyy-MM-dd');
+    
+    // Schedules for tomorrow (not completed) + overdue
+    const tomorrowSchedules = schedules.filter(s => 
       isSameDay(s.checkOut, tomorrow) && s.status !== 'completed'
     ).length;
-    // Add overdue tasks to tomorrow's count as well (they carry over)
-    return tomorrowTasks + overdueCount;
-  }, [schedules, overdueCount]);
+    
+    // Inspections for tomorrow (scheduled or in_progress)
+    const tomorrowInspections = inspections.filter(i =>
+      i.scheduled_date === tomorrowDateStr && 
+      (i.status === 'scheduled' || i.status === 'in_progress')
+    ).length;
+    
+    // Add overdue tasks + tomorrow's inspections to count
+    return tomorrowSchedules + overdueCount + tomorrowInspections;
+  }, [schedules, overdueCount, inspections]);
 
   const periodStats = useMemo(() => {
     const now = new Date();
