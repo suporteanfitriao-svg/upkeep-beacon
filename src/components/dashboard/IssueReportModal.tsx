@@ -271,6 +271,12 @@ export function IssueReportModal({ onClose, onSubmit, checklist, isSubmitting = 
                         </p>
                       )}
                     </div>
+
+                    {/* Seta para indicar próxima etapa quando selecionado */}
+                    {selectedCategory === category.name && (
+                      <span className="material-symbols-outlined text-primary text-[20px]">arrow_forward</span>
+                    )}
+
                     <div className={cn(
                       "h-6 w-6 rounded-full border-2 flex items-center justify-center transition-all",
                       selectedCategory === category.name 

@@ -797,6 +797,65 @@ export function ScheduleDetail({ schedule, onClose, onUpdateSchedule }: Schedule
     toast.success(`Status atualizado para: ${statusConfig[targetStatus].label}`);
   };
 
+  const handleStartCleaning = useCallback(() => {
+    // First, check if property has coordinates - if it does, location is MANDATORY
+    if (role === 'cleaner' && proximityCheck.propertyHasCoordinates) {
+      // Check location permission state
+      if (proximityCheck.permissionState === 'denied' || proximityCheck.permissionState === 'prompt') {
+        setShowLocationRequiredModal(true);
+        return;
+      }
+
+      // Check if we have an error (GPS off, etc)
+      if (proximityCheck.error) {
+        setShowLocationRequiredModal(true);
+        return;
+      }
+
+      // Check if still loading
+      if (proximityCheck.loading) {
+        toast.info('Aguarde a verificação de localização...');
+        return;
+      }
+
+      // Check if too far from property
+      if (!proximityCheck.isWithinRange && proximityCheck.distance !== null) {
+        setShowLocationRequiredModal(true);
+        return;
+      }
+    }
+
+    if (!canTransition.allowed) {
+      toast.error(canTransition.reason);
+      return;
+    }
+    if (requireChecklist && !hasPropertyChecklist && !isCheckingChecklist) {
+      setShowNoChecklistModal(true);
+      return;
+    }
+    if (hasImportantInfo && !hasAcknowledged) {
+      setShowAttentionModal(true);
+      return;
+    }
+    handleStatusChange('cleaning');
+  }, [
+    canTransition.allowed,
+    canTransition.reason,
+    handleStatusChange,
+    hasAcknowledged,
+    hasImportantInfo,
+    hasPropertyChecklist,
+    isCheckingChecklist,
+    proximityCheck.distance,
+    proximityCheck.error,
+    proximityCheck.isWithinRange,
+    proximityCheck.loading,
+    proximityCheck.permissionState,
+    proximityCheck.propertyHasCoordinates,
+    requireChecklist,
+    role,
+  ]);
+
   const { createIssue, isCompressing } = useCreateMaintenanceIssue();
 
   const handleIssueSubmit = async (issue: { 
@@ -1198,48 +1257,7 @@ export function ScheduleDetail({ schedule, onClose, onUpdateSchedule }: Schedule
               {/* Action button for Iniciar Limpeza - Only when status is released */}
               {schedule.status === 'released' && (
                 <button 
-                  onClick={() => {
-                    // First, check if property has coordinates - if it does, location is MANDATORY
-                    if (role === 'cleaner' && proximityCheck.propertyHasCoordinates) {
-                      // Check location permission state
-                      if (proximityCheck.permissionState === 'denied' || proximityCheck.permissionState === 'prompt') {
-                        setShowLocationRequiredModal(true);
-                        return;
-                      }
-                      
-                      // Check if we have an error (GPS off, etc)
-                      if (proximityCheck.error) {
-                        setShowLocationRequiredModal(true);
-                        return;
-                      }
-                      
-                      // Check if still loading
-                      if (proximityCheck.loading) {
-                        toast.info('Aguarde a verificação de localização...');
-                        return;
-                      }
-                      
-                      // Check if too far from property
-                      if (!proximityCheck.isWithinRange && proximityCheck.distance !== null) {
-                        setShowLocationRequiredModal(true);
-                        return;
-                      }
-                    }
-
-                    if (!canTransition.allowed) {
-                      toast.error(canTransition.reason);
-                      return;
-                    }
-                    if (requireChecklist && !hasPropertyChecklist && !isCheckingChecklist) {
-                      setShowNoChecklistModal(true);
-                      return;
-                    }
-                    if (hasImportantInfo && !hasAcknowledged) {
-                      setShowAttentionModal(true);
-                      return;
-                    }
-                    handleStatusChange('cleaning');
-                  }}
+                  onClick={handleStartCleaning}
                   disabled={isAckSubmitting || isCheckingChecklist || isCheckingAccess || proximityCheck.loading}
                   className={cn(
                     "flex w-full items-center justify-center gap-2 rounded-xl py-4 font-bold text-white shadow-[0_4px_20px_-2px_rgba(51,153,153,0.3)] transition-all active:scale-[0.98]",
@@ -1746,10 +1764,40 @@ export function ScheduleDetail({ schedule, onClose, onUpdateSchedule }: Schedule
 
           {/* Released status - no button shown */}
           {schedule.status === 'released' && (
-            <div className="flex items-center justify-center gap-2 text-slate-400 py-2">
-              <span className="material-symbols-outlined">hourglass_empty</span>
-              <span className="font-medium text-sm">Inicie a limpeza para continuar</span>
-            </div>
+            <button
+              onClick={handleStartCleaning}
+              disabled={isAckSubmitting || isCheckingChecklist || isCheckingAccess || proximityCheck.loading}
+              className={cn(
+                "flex w-full items-center justify-center gap-2 rounded-xl py-4 font-bold text-white shadow-[0_4px_20px_-2px_rgba(51,153,153,0.3)] transition-all active:scale-[0.98]",
+                (role === 'cleaner' && proximityCheck.propertyHasCoordinates && (!proximityCheck.isWithinRange || proximityCheck.permissionState !== 'granted'))
+                  ? "bg-slate-400 hover:bg-slate-500"
+                  : !canTransition.allowed
+                    ? "bg-slate-400 hover:bg-slate-500 cursor-not-allowed"
+                    : "bg-primary hover:bg-[#267373]"
+              )}
+            >
+              {(isCheckingChecklist || isCheckingAccess || proximityCheck.loading) ? (
+                <>
+                  <span className="material-symbols-outlined animate-spin">progress_activity</span>
+                  {proximityCheck.loading ? 'Verificando localização...' : 'Verificando...'}
+                </>
+              ) : (role === 'cleaner' && proximityCheck.propertyHasCoordinates && proximityCheck.permissionState !== 'granted') ? (
+                <>
+                  <span className="material-symbols-outlined">location_off</span>
+                  Permitir Localização
+                </>
+              ) : (role === 'cleaner' && proximityCheck.propertyHasCoordinates && !proximityCheck.isWithinRange && proximityCheck.distance !== null) ? (
+                <>
+                  <span className="material-symbols-outlined">location_off</span>
+                  Aproxime-se ({formatDistance(proximityCheck.distance)})
+                </>
+              ) : (
+                <>
+                  <span className="material-symbols-outlined filled">play_circle</span>
+                  Iniciar Limpeza
+                </>
+              )}
+            </button>
           )}
 
           {/* Cleaning status - Finalizar button */}
