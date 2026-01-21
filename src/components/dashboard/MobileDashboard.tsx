@@ -29,6 +29,7 @@ import { MobileInfiniteDayStrip } from './mobile/MobileInfiniteDayStrip';
 import { MobileAgendaFilterTabs, AgendaViewMode } from './mobile/MobileAgendaFilterTabs';
 import { MobileMonthlyHistory } from './mobile/MobileMonthlyHistory';
 import { MobileOverdueDrawer } from './mobile/MobileOverdueDrawer';
+import { MobileCompletedSchedulesSection } from './mobile/MobileCompletedSchedulesSection';
 import { CleanerInspection } from '@/hooks/useCleanerInspections';
 
 interface MobileDashboardProps {
@@ -723,6 +724,12 @@ export function MobileDashboard({ schedules, onScheduleClick, onStartCleaning, o
 
             {/* Monthly History */}
             <MobileMonthlyHistory schedules={schedules} />
+
+            {/* Completed Schedules Section */}
+            <MobileCompletedSchedulesSection 
+              schedules={schedules} 
+              onScheduleClick={onScheduleClick} 
+            />
 
             {/* Payment Cards */}
             <CleanerPaymentCards teamMemberId={teamMemberId} period={paymentPeriod} />
