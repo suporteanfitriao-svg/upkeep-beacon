@@ -225,6 +225,7 @@ export type Database = {
           completed_by_name: string | null
           created_at: string
           description: string | null
+          history: Json | null
           id: string
           notes: string | null
           original_checklist_state: Json | null
@@ -232,10 +233,12 @@ export type Database = {
           property_name: string
           scheduled_date: string
           scheduled_time: string | null
+          started_at: string | null
           status: string
           title: string
           updated_at: string
           user_id: string
+          verification_comment: string | null
         }
         Insert: {
           assigned_to?: string | null
@@ -247,6 +250,7 @@ export type Database = {
           completed_by_name?: string | null
           created_at?: string
           description?: string | null
+          history?: Json | null
           id?: string
           notes?: string | null
           original_checklist_state?: Json | null
@@ -254,10 +258,12 @@ export type Database = {
           property_name: string
           scheduled_date: string
           scheduled_time?: string | null
+          started_at?: string | null
           status?: string
           title: string
           updated_at?: string
           user_id: string
+          verification_comment?: string | null
         }
         Update: {
           assigned_to?: string | null
@@ -269,6 +275,7 @@ export type Database = {
           completed_by_name?: string | null
           created_at?: string
           description?: string | null
+          history?: Json | null
           id?: string
           notes?: string | null
           original_checklist_state?: Json | null
@@ -276,10 +283,12 @@ export type Database = {
           property_name?: string
           scheduled_date?: string
           scheduled_time?: string | null
+          started_at?: string | null
           status?: string
           title?: string
           updated_at?: string
           user_id?: string
+          verification_comment?: string | null
         }
         Relationships: [
           {

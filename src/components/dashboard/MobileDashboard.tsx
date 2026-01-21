@@ -24,10 +24,12 @@ import { MobileScheduleCard } from './mobile/MobileScheduleCard';
 import { MobileScheduleList } from './mobile/MobileScheduleList';
 import { MobileWeekStrip } from './mobile/MobileWeekStrip';
 import { MobileInspectionCard } from './mobile/MobileInspectionCard';
+import { MobileInspectionDetail } from './mobile/MobileInspectionDetail';
 import { MobileInfiniteDayStrip } from './mobile/MobileInfiniteDayStrip';
 import { MobileAgendaFilterTabs, AgendaViewMode } from './mobile/MobileAgendaFilterTabs';
 import { MobileMonthlyHistory } from './mobile/MobileMonthlyHistory';
 import { MobileOverdueDrawer } from './mobile/MobileOverdueDrawer';
+import { CleanerInspection } from '@/hooks/useCleanerInspections';
 
 interface MobileDashboardProps {
   schedules: Schedule[];
@@ -88,6 +90,7 @@ export function MobileDashboard({ schedules, onScheduleClick, onStartCleaning, o
   const [isSyncing, setIsSyncing] = useState(false);
   const [lastSyncTime, setLastSyncTime] = useState<Date | null>(null);
   const [showOverdueDrawer, setShowOverdueDrawer] = useState(false);
+  const [selectedInspection, setSelectedInspection] = useState<CleanerInspection | null>(null);
   
   // Pull-to-refresh state - using Pointer Events for safer interaction
   const [pullDistance, setPullDistance] = useState(0);
@@ -1016,7 +1019,7 @@ export function MobileDashboard({ schedules, onScheduleClick, onStartCleaning, o
                       key={inspection.id}
                       inspection={inspection}
                       variant="scheduled"
-                      onUpdateStatus={updateInspectionStatus}
+                      onOpenDetail={(i) => setSelectedInspection(i)}
                     />
                   ))}
 
@@ -1026,7 +1029,7 @@ export function MobileDashboard({ schedules, onScheduleClick, onStartCleaning, o
                       key={inspection.id}
                       inspection={inspection}
                       variant="inProgress"
-                      onUpdateStatus={updateInspectionStatus}
+                      onOpenDetail={(i) => setSelectedInspection(i)}
                     />
                   ))}
 
@@ -1109,6 +1112,18 @@ export function MobileDashboard({ schedules, onScheduleClick, onStartCleaning, o
         overdueSchedules={overdueSchedules}
         onScheduleClick={onScheduleClick}
       />
+
+      {/* Inspection Detail View */}
+      {selectedInspection && (
+        <MobileInspectionDetail
+          inspection={selectedInspection}
+          onClose={() => setSelectedInspection(null)}
+          onUpdate={() => {
+            refetchInspections();
+            setSelectedInspection(null);
+          }}
+        />
+      )}
     </div>
   );
 }

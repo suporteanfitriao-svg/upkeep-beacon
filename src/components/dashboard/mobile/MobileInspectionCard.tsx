@@ -1,36 +1,24 @@
 import { memo } from 'react';
-import { Play, Clock, ClipboardCheck, CheckCircle2, Loader2 } from 'lucide-react';
+import { Clock, ClipboardCheck, Play, Eye } from 'lucide-react';
 import { CleanerInspection } from '@/hooks/useCleanerInspections';
-import { toast } from 'sonner';
 
 interface MobileInspectionCardProps {
   inspection: CleanerInspection;
   variant: 'scheduled' | 'inProgress';
-  onUpdateStatus: (id: string, status: 'in_progress' | 'completed') => Promise<boolean>;
-  isLoading?: boolean;
+  onOpenDetail: (inspection: CleanerInspection) => void;
 }
 
 export const MobileInspectionCard = memo(function MobileInspectionCard({
   inspection,
   variant,
-  onUpdateStatus,
-  isLoading
+  onOpenDetail
 }: MobileInspectionCardProps) {
   const isScheduled = variant === 'scheduled';
 
-  const handleAction = async () => {
-    const newStatus = isScheduled ? 'in_progress' : 'completed';
-    const success = await onUpdateStatus(inspection.id, newStatus);
-    if (success) {
-      toast.success(isScheduled ? 'Inspeção iniciada!' : 'Inspeção concluída!');
-    } else {
-      toast.error(isScheduled ? 'Erro ao iniciar inspeção' : 'Erro ao concluir inspeção');
-    }
-  };
-
   return (
     <div 
-      className="overflow-hidden rounded-2xl bg-white dark:bg-[#2d3138] shadow-soft transition-all hover:shadow-md border-2 border-purple-300 dark:border-purple-700"
+      onClick={() => onOpenDetail(inspection)}
+      className="overflow-hidden rounded-2xl bg-white dark:bg-[#2d3138] shadow-soft transition-all hover:shadow-md active:scale-[0.98] border-2 border-purple-300 dark:border-purple-700 cursor-pointer"
     >
       <div className="flex flex-row p-4 gap-4">
         <div className="flex-1 flex flex-col justify-between">
@@ -55,18 +43,23 @@ export const MobileInspectionCard = memo(function MobileInspectionCard({
             </div>
           </div>
           <button 
-            onClick={handleAction}
-            disabled={isLoading}
-            className="mt-4 flex w-fit items-center gap-2 rounded-lg bg-purple-600 px-4 py-2.5 text-sm font-bold text-white transition-colors hover:bg-purple-700 active:bg-purple-700 disabled:opacity-50"
+            onClick={(e) => {
+              e.stopPropagation();
+              onOpenDetail(inspection);
+            }}
+            className="mt-4 flex w-fit items-center gap-2 rounded-lg bg-purple-600 px-4 py-2.5 text-sm font-bold text-white transition-colors hover:bg-purple-700 active:bg-purple-700"
           >
-            {isLoading ? (
-              <Loader2 className="w-5 h-5 animate-spin" />
-            ) : isScheduled ? (
-              <Play className="w-5 h-5" />
+            {isScheduled ? (
+              <>
+                <Play className="w-5 h-5" />
+                Iniciar Inspeção
+              </>
             ) : (
-              <CheckCircle2 className="w-5 h-5" />
+              <>
+                <Eye className="w-5 h-5" />
+                Ver Detalhes
+              </>
             )}
-            {isLoading ? 'Carregando...' : isScheduled ? 'Iniciar Inspeção' : 'Finalizar Inspeção'}
           </button>
         </div>
         {inspection.property_image_url ? (

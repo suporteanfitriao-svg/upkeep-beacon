@@ -8,6 +8,12 @@ interface ChecklistItem {
   checked: boolean;
 }
 
+interface InspectionHistoryEvent {
+  timestamp: string;
+  action: string;
+  user_name?: string;
+}
+
 export interface CleanerInspection {
   id: string;
   property_id: string;
@@ -23,6 +29,10 @@ export interface CleanerInspection {
   checklist_state: ChecklistItem[];
   notes?: string;
   completed_at?: string;
+  started_at?: string;
+  history?: InspectionHistoryEvent[];
+  verification_comment?: string;
+  created_at?: string;
 }
 
 export function useCleanerInspections() {
@@ -86,6 +96,9 @@ export function useCleanerInspections() {
         status: i.status as 'scheduled' | 'in_progress' | 'completed',
         checklist_state: Array.isArray(i.checklist_state) 
           ? (i.checklist_state as unknown as ChecklistItem[]) 
+          : [],
+        history: Array.isArray(i.history)
+          ? (i.history as unknown as InspectionHistoryEvent[])
           : [],
       })));
     } catch (error) {
