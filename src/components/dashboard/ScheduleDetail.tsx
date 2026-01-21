@@ -646,12 +646,23 @@ export function ScheduleDetail({ schedule, onClose, onUpdateSchedule }: Schedule
       )
     );
 
-    // 3) Auto-save ONLY when the WHOLE checklist is complete (regra global)
-    if (isChecklistComplete(newStates)) {
-      toast.success('Checklist completo! Salvando...', { duration: 2000 });
+    // 3) Auto-save when the CATEGORY is complete (all items marked OK/DX)
+    // This ensures partial progress is persisted even if user doesn't finish all categories
+    const categoryItems = checklist.filter(item => item.category === category);
+    const categoryComplete = categoryItems.every(item => {
+      const state = item.id === itemId ? value : newStates[item.id];
+      return state === 'yes' || state === 'no';
+    });
+    
+    if (categoryComplete) {
+      if (isChecklistComplete(newStates)) {
+        toast.success('Checklist completo! Salvando...', { duration: 2000 });
+      } else {
+        toast.success(`Categoria "${category}" completa! Salvando...`, { duration: 1500 });
+      }
       scheduleSave();
     }
-  }, [scheduleSave, isChecklistEditable, checklistItemStates, isChecklistComplete]);
+  }, [scheduleSave, isChecklistEditable, checklistItemStates, isChecklistComplete, checklist]);
 
   // Handle marking entire category as complete - updates local state and triggers auto-save
   // OPTIMIZED: Uses React.unstable_batchedUpdates pattern to prevent UI freezing on mobile
@@ -698,12 +709,14 @@ export function ScheduleDetail({ schedule, onClose, onUpdateSchedule }: Schedule
         [category]: 'dirty',
       }));
       
-      // Auto-save ONLY if the WHOLE checklist is complete (regra global)
+      // Auto-save when category is complete (all items marked OK)
+      // This ensures partial progress is persisted
       setTimeout(() => {
         if (isChecklistComplete(updatedStates)) {
           toast.success('Checklist completo! Salvando...', { duration: 2000 });
-          scheduleSave();
         }
+        // Always save when a category is completed (bulk marking)
+        scheduleSave();
       }, 0);
       
       toast.success(`Categoria "${category}" marcada como completa!`);
