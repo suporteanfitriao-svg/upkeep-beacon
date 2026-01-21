@@ -180,8 +180,8 @@ export function IssueReportModal({ onClose, onSubmit, checklist, isSubmitting = 
   };
 
   return (
-    <div className="fixed inset-0 z-[60] bg-stone-50 dark:bg-[#22252a] font-display text-slate-800 dark:text-slate-100 antialiased flex flex-col overflow-hidden">
-      <div className="relative flex-1 w-full flex flex-col overflow-x-hidden overflow-y-auto">
+    <div className="fixed inset-0 z-[250] bg-stone-50 dark:bg-[#22252a] font-display text-slate-800 dark:text-slate-100 antialiased flex flex-col overflow-hidden">
+      <div className="relative flex-1 w-full flex flex-col overflow-y-auto">
         {/* Header */}
         <header className="sticky top-0 z-20 flex items-center bg-stone-50/90 dark:bg-[#22252a]/90 px-4 py-4 backdrop-blur-md border-b border-slate-100 dark:border-slate-800">
           <button 

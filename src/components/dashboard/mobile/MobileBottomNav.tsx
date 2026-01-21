@@ -3,8 +3,8 @@ import { useNavigate } from 'react-router-dom';
 import { cn } from '@/lib/utils';
 
 interface MobileBottomNavProps {
-  activeTab: 'inicio' | 'agenda' | 'msgs' | 'menu';
-  onTabChange: (tab: 'inicio' | 'agenda' | 'msgs' | 'menu') => void;
+  activeTab: 'inicio' | 'agenda' | 'menu';
+  onTabChange: (tab: 'inicio' | 'agenda' | 'menu') => void;
 }
 
 export const MobileBottomNav = memo(function MobileBottomNav({ 
