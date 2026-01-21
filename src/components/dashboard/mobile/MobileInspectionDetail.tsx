@@ -1,7 +1,8 @@
 import { useState, useEffect, useRef } from 'react';
 import { 
   X, Clock, Building2, Calendar, User, ClipboardCheck, 
-  CheckCircle2, Play, Loader2, MessageSquare, History, Camera, ImagePlus, Trash2
+  CheckCircle2, Play, Loader2, MessageSquare, History, Camera, ImagePlus, Trash2,
+  AlertTriangle, BookOpen, Shield
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
@@ -9,6 +10,16 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import { CleanerInspection } from '@/hooks/useCleanerInspections';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
@@ -26,6 +37,14 @@ interface InspectionPhoto {
   url: string;
   timestamp: string;
   uploaded_by?: string;
+}
+
+interface HouseRule {
+  id: string;
+  title: string;
+  description: string | null;
+  priority: string;
+  is_active: boolean;
 }
 
 interface MobileInspectionDetailProps {
@@ -67,13 +86,16 @@ export function MobileInspectionDetail({
   const [isUploadingPhoto, setIsUploadingPhoto] = useState(false);
   const [requirePhoto, setRequirePhoto] = useState(false);
   const [userName, setUserName] = useState('Usuário');
+  const [showStartConfirmation, setShowStartConfirmation] = useState(false);
+  const [houseRules, setHouseRules] = useState<HouseRule[]>([]);
+  const [localStatus, setLocalStatus] = useState(inspection.status);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { compressImage } = useImageCompression();
 
-  const isInProgress = inspection.status === 'in_progress';
-  const isScheduled = inspection.status === 'scheduled';
+  const isInProgress = localStatus === 'in_progress';
+  const isScheduled = localStatus === 'scheduled';
 
-  // Fetch property rule for photo requirement and user name
+  // Fetch property rule for photo requirement, user name, and house rules
   useEffect(() => {
     const fetchPropertyRule = async () => {
       if (!inspection.property_id) return;
@@ -101,8 +123,26 @@ export function MobileInspectionDetail({
       }
     };
 
+    const fetchHouseRules = async () => {
+      // Get the owner's user_id from properties table to fetch their house rules
+      if (!inspection.property_id) return;
+      
+      // First get the property to find owner (we'll use a simpler approach - get all active rules)
+      const { data: rules } = await supabase
+        .from('house_rules')
+        .select('*')
+        .eq('is_active', true)
+        .order('priority', { ascending: false })
+        .order('sort_order', { ascending: true });
+      
+      if (rules) {
+        setHouseRules(rules);
+      }
+    };
+
     fetchPropertyRule();
     fetchUserName();
+    fetchHouseRules();
   }, [inspection.property_id]);
 
   // Check if can finish: must be verified, have comment, and have photo if required
@@ -116,19 +156,19 @@ export function MobileInspectionDetail({
       
       // Get user name for history
       const { data: { user } } = await supabase.auth.getUser();
-      let userName = 'Usuário';
+      let currentUserName = 'Usuário';
       if (user) {
         const { data: profile } = await supabase
           .from('profiles')
           .select('name')
           .eq('id', user.id)
           .maybeSingle();
-        userName = profile?.name || 'Usuário';
+        currentUserName = profile?.name || 'Usuário';
       }
 
       const newHistory: InspectionHistoryEvent[] = [
         ...history,
-        { timestamp: now, action: 'started', user_name: userName }
+        { timestamp: now, action: 'started', user_name: currentUserName }
       ];
 
       const { error } = await supabase
@@ -144,6 +184,8 @@ export function MobileInspectionDetail({
 
       toast.success('Inspeção iniciada!');
       setHistory(newHistory);
+      setLocalStatus('in_progress'); // Update local status to keep card open
+      setShowStartConfirmation(false);
       onUpdate();
     } catch (error) {
       console.error('Error starting inspection:', error);
@@ -151,6 +193,10 @@ export function MobileInspectionDetail({
     } finally {
       setIsSubmitting(false);
     }
+  };
+
+  const handleStartClick = () => {
+    setShowStartConfirmation(true);
   };
 
   const handleFinishInspection = async () => {
@@ -309,7 +355,62 @@ export function MobileInspectionDetail({
   };
 
   return (
-    <div className="fixed inset-0 z-[200] bg-background flex flex-col">
+    <>
+      {/* Start Confirmation Modal */}
+      <AlertDialog open={showStartConfirmation} onOpenChange={setShowStartConfirmation}>
+        <AlertDialogContent className="max-w-[90vw] rounded-xl">
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2">
+              <Play className="h-5 w-5 text-purple-600" />
+              Iniciar Inspeção?
+            </AlertDialogTitle>
+            <AlertDialogDescription className="text-left">
+              <span className="block mb-3">
+                Você está prestes a iniciar a inspeção de <strong>{inspection.property_name}</strong>.
+              </span>
+              
+              {/* Requirements summary */}
+              <div className="bg-muted/50 rounded-lg p-3 space-y-2">
+                <p className="text-sm font-medium text-foreground flex items-center gap-2">
+                  <Shield className="h-4 w-4 text-purple-600" />
+                  Requisitos para finalizar:
+                </p>
+                <ul className="text-xs space-y-1 text-muted-foreground ml-6">
+                  <li className="flex items-center gap-2">
+                    <CheckCircle2 className="h-3 w-3" />
+                    Marcar como verificado
+                  </li>
+                  <li className="flex items-center gap-2">
+                    <MessageSquare className="h-3 w-3" />
+                    Comentário obrigatório (mín. 10 caracteres)
+                  </li>
+                  {requirePhoto && (
+                    <li className="flex items-center gap-2 text-amber-600">
+                      <Camera className="h-3 w-3" />
+                      Foto obrigatória nesta propriedade
+                    </li>
+                  )}
+                </ul>
+              </div>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter className="flex-row gap-2">
+            <AlertDialogCancel className="flex-1 m-0">Não</AlertDialogCancel>
+            <AlertDialogAction 
+              onClick={handleStartInspection}
+              disabled={isSubmitting}
+              className="flex-1 m-0 bg-purple-600 hover:bg-purple-700"
+            >
+              {isSubmitting ? (
+                <Loader2 className="h-4 w-4 animate-spin mr-2" />
+              ) : null}
+              Sim, Iniciar
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <div className="fixed inset-0 z-[200] bg-background flex flex-col">
       {/* Header */}
       <div className="flex items-center justify-between p-4 border-b bg-purple-600 text-white">
         <div className="flex items-center gap-3">
@@ -408,6 +509,95 @@ export function MobileInspectionDetail({
                 Observações do Gestor
               </h3>
               <p className="text-sm text-blue-600 dark:text-blue-400">{inspection.notes}</p>
+            </div>
+          )}
+
+          {/* House Rules Section - Show when in progress */}
+          {isInProgress && houseRules.length > 0 && (
+            <>
+              <Separator />
+              
+              <div className="space-y-3">
+                <h3 className="text-base font-semibold flex items-center gap-2">
+                  <BookOpen className="h-5 w-5 text-amber-600" />
+                  Regras da Casa
+                </h3>
+                
+                <div className="space-y-2">
+                  {houseRules.map((rule) => (
+                    <div 
+                      key={rule.id}
+                      className={`p-3 rounded-lg border ${
+                        rule.priority === 'high' 
+                          ? 'bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-800' 
+                          : rule.priority === 'medium'
+                            ? 'bg-amber-50 dark:bg-amber-900/20 border-amber-200 dark:border-amber-800'
+                            : 'bg-muted/50 border-border'
+                      }`}
+                    >
+                      <div className="flex items-start gap-2">
+                        {rule.priority === 'high' && (
+                          <AlertTriangle className="h-4 w-4 text-red-600 dark:text-red-400 shrink-0 mt-0.5" />
+                        )}
+                        <div className="flex-1">
+                          <p className={`text-sm font-medium ${
+                            rule.priority === 'high' 
+                              ? 'text-red-700 dark:text-red-300' 
+                              : rule.priority === 'medium'
+                                ? 'text-amber-700 dark:text-amber-300'
+                                : 'text-foreground'
+                          }`}>
+                            {rule.title}
+                          </p>
+                          {rule.description && (
+                            <p className="text-xs text-muted-foreground mt-1">
+                              {rule.description}
+                            </p>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </>
+          )}
+
+          {/* Requirements Card - Show when in progress */}
+          {isInProgress && (
+            <div className="bg-purple-50 dark:bg-purple-900/20 border border-purple-200 dark:border-purple-800 rounded-xl p-4">
+              <h3 className="text-sm font-semibold text-purple-700 dark:text-purple-300 mb-3 flex items-center gap-2">
+                <Shield className="h-4 w-4" />
+                Requisitos para Finalizar
+              </h3>
+              <ul className="space-y-2">
+                <li className={`flex items-center gap-2 text-sm ${isVerified ? 'text-green-600' : 'text-muted-foreground'}`}>
+                  {isVerified ? (
+                    <CheckCircle2 className="h-4 w-4" />
+                  ) : (
+                    <div className="h-4 w-4 rounded-full border-2 border-current" />
+                  )}
+                  Marcar como verificado
+                </li>
+                <li className={`flex items-center gap-2 text-sm ${comment.trim().length >= 10 ? 'text-green-600' : 'text-muted-foreground'}`}>
+                  {comment.trim().length >= 10 ? (
+                    <CheckCircle2 className="h-4 w-4" />
+                  ) : (
+                    <div className="h-4 w-4 rounded-full border-2 border-current" />
+                  )}
+                  Comentário obrigatório ({comment.trim().length}/10 caracteres)
+                </li>
+                {requirePhoto && (
+                  <li className={`flex items-center gap-2 text-sm ${photos.length > 0 ? 'text-green-600' : 'text-amber-600'}`}>
+                    {photos.length > 0 ? (
+                      <CheckCircle2 className="h-4 w-4" />
+                    ) : (
+                      <Camera className="h-4 w-4" />
+                    )}
+                    Foto obrigatória ({photos.length} enviada{photos.length !== 1 ? 's' : ''})
+                  </li>
+                )}
+              </ul>
             </div>
           )}
 
@@ -580,7 +770,7 @@ export function MobileInspectionDetail({
       <div className="absolute bottom-0 left-0 right-0 p-4 bg-background border-t shadow-lg z-10">
         {isScheduled ? (
           <Button 
-            onClick={handleStartInspection}
+            onClick={handleStartClick}
             disabled={isSubmitting}
             className="w-full h-14 text-lg font-bold bg-purple-600 hover:bg-purple-700"
           >
@@ -616,5 +806,6 @@ export function MobileInspectionDetail({
         )}
       </div>
     </div>
+    </>
   );
 }
