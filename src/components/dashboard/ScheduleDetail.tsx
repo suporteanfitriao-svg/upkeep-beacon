@@ -936,7 +936,7 @@ export function ScheduleDetail({ schedule, onClose, onUpdateSchedule }: Schedule
     category: string; 
     itemLabel: string; 
     description: string; 
-    photoFile?: File;
+    photoFiles?: File[];
     severity: 'low' | 'medium' | 'high';
   }) => {
     // Get user profile for reported_by_name
@@ -954,7 +954,7 @@ export function ScheduleDetail({ schedule, onClose, onUpdateSchedule }: Schedule
       itemLabel: issue.itemLabel,
       description: issue.description,
       severity: issue.severity,
-      photoFile: issue.photoFile,
+      photoFiles: issue.photoFiles,
       reportedByName: profile?.name || 'Usuário',
     });
 

@@ -33,7 +33,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '
 import { Label } from '@/components/ui/label';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { useMaintenanceIssues, MaintenanceIssue, ProgressNote } from '@/hooks/useMaintenanceIssues';
+import { useMaintenanceIssues, MaintenanceIssue, ProgressNote, IssuePhoto } from '@/hooks/useMaintenanceIssues';
 import { useCompletedSchedules } from '@/hooks/useCompletedSchedules';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
@@ -91,6 +91,7 @@ function IssueCard({
   onAssign,
   onStart,
   onAddNote,
+  onAddPhoto,
   teamMembers
 }: { 
   issue: MaintenanceIssue; 
@@ -98,6 +99,7 @@ function IssueCard({
   onAssign: (issue: MaintenanceIssue) => void;
   onStart: (issue: MaintenanceIssue) => void;
   onAddNote: (issue: MaintenanceIssue) => void;
+  onAddPhoto: (issue: MaintenanceIssue) => void;
   teamMembers: { id: string; name: string }[];
 }) {
   const [expanded, setExpanded] = useState(false);
@@ -168,21 +170,22 @@ function IssueCard({
         {/* Expanded content */}
         {expanded && (
           <div className="border-t bg-muted/30 p-4 space-y-4">
-            {issue.photo_url && (
+            {/* Photos Gallery */}
+            {issue.photos && issue.photos.length > 0 && (
               <div onClick={(e) => e.stopPropagation()}>
                 <p className="text-sm font-medium mb-2 flex items-center gap-2">
-                  Foto
+                  Fotos ({issue.photos.length})
                   <span className="text-xs text-muted-foreground flex items-center gap-1">
                     <ZoomIn className="w-3 h-3" />
                     Clique para ampliar
                   </span>
                 </p>
                 <PhotoGallery 
-                  photos={[{ 
-                    url: issue.photo_url, 
-                    timestamp: issue.created_at,
-                    uploaded_by: issue.reported_by_name || undefined
-                  }]}
+                  photos={issue.photos.map(p => ({
+                    url: p.url,
+                    timestamp: p.timestamp,
+                    uploaded_by: p.uploaded_by
+                  }))}
                   emptyMessage="Nenhuma foto"
                 />
               </div>
@@ -256,17 +259,30 @@ function IssueCard({
                   {issue.assigned_to ? 'Alterar Responsável' : 'Atribuir Responsável'}
                 </Button>
                 {issue.status === 'in_progress' && (
-                  <Button 
-                    variant="outline" 
-                    size="sm"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      onAddNote(issue);
-                    }}
-                  >
-                    <Plus className="w-4 h-4 mr-1" />
-                    Adicionar Observação
-                  </Button>
+                  <>
+                    <Button 
+                      variant="outline" 
+                      size="sm"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onAddNote(issue);
+                      }}
+                    >
+                      <Plus className="w-4 h-4 mr-1" />
+                      Observação
+                    </Button>
+                    <Button 
+                      variant="outline" 
+                      size="sm"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onAddPhoto(issue);
+                      }}
+                    >
+                      <span className="material-symbols-outlined text-[16px] mr-1">add_a_photo</span>
+                      Foto
+                    </Button>
+                  </>
                 )}
                 <Button 
                   size="sm"
@@ -289,18 +305,20 @@ function IssueCard({
 }
 
 export default function Manutencao() {
-  const { issues, isLoading, stats, resolveIssue, assignIssue, addProgressNote, startIssue } = useMaintenanceIssues();
+  const { issues, isLoading, stats, resolveIssue, assignIssue, addProgressNote, startIssue, addPhoto } = useMaintenanceIssues();
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [severityFilter, setSeverityFilter] = useState<string>('all');
   const [resolveDialogOpen, setResolveDialogOpen] = useState(false);
   const [assignDialogOpen, setAssignDialogOpen] = useState(false);
   const [noteDialogOpen, setNoteDialogOpen] = useState(false);
+  const [photoDialogOpen, setPhotoDialogOpen] = useState(false);
   const [selectedIssue, setSelectedIssue] = useState<MaintenanceIssue | null>(null);
   const [resolutionNotes, setResolutionNotes] = useState('');
   const [progressNote, setProgressNote] = useState('');
   const [selectedTeamMember, setSelectedTeamMember] = useState<string>('');
   const [activeTab, setActiveTab] = useState('avarias');
+  const [uploadingPhoto, setUploadingPhoto] = useState(false);
 
   // Report filters state
   const [reportStartDate, setReportStartDate] = useState<Date | undefined>();
@@ -372,6 +390,68 @@ export default function Manutencao() {
     setSelectedIssue(issue);
     setProgressNote('');
     setNoteDialogOpen(true);
+  };
+
+  const handleAddPhoto = (issue: MaintenanceIssue) => {
+    setSelectedIssue(issue);
+    setPhotoDialogOpen(true);
+  };
+
+  const handlePhotoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !selectedIssue) return;
+
+    const validTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp'];
+    if (!validTypes.includes(file.type)) {
+      return;
+    }
+
+    if (file.size > 8 * 1024 * 1024) {
+      return;
+    }
+
+    setUploadingPhoto(true);
+
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('name')
+        .eq('id', user?.id)
+        .single();
+
+      const fileExt = file.name.split('.').pop();
+      const fileName = `${selectedIssue.id}/${Date.now()}.${fileExt}`;
+      
+      const { error: uploadError } = await supabase.storage
+        .from('issue-photos')
+        .upload(fileName, file);
+
+      if (uploadError) throw uploadError;
+
+      const { data: urlData } = supabase.storage
+        .from('issue-photos')
+        .getPublicUrl(fileName);
+
+      const newPhoto: IssuePhoto = {
+        url: urlData.publicUrl,
+        timestamp: new Date().toISOString(),
+        uploaded_by: profile?.name || 'Usuário',
+      };
+
+      addPhoto({
+        id: selectedIssue.id,
+        photo: newPhoto,
+        currentPhotos: selectedIssue.photos || [],
+      });
+
+      setPhotoDialogOpen(false);
+      setSelectedIssue(null);
+    } catch (error) {
+      console.error('Error uploading photo:', error);
+    } finally {
+      setUploadingPhoto(false);
+    }
   };
 
   const confirmResolve = async () => {
@@ -573,6 +653,7 @@ export default function Manutencao() {
                       onAssign={handleAssign}
                       onStart={handleStart}
                       onAddNote={handleAddNote}
+                      onAddPhoto={handleAddPhoto}
                       teamMembers={teamMembers}
                     />
                   ))
@@ -757,6 +838,68 @@ export default function Manutencao() {
             <Button onClick={confirmAddNote} disabled={!progressNote.trim()}>
               <Plus className="w-4 h-4 mr-1" />
               Adicionar Observação
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Add Photo Dialog */}
+      <Dialog open={photoDialogOpen} onOpenChange={setPhotoDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Adicionar Foto</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="bg-muted/50 rounded-lg p-3">
+              <p className="text-sm font-medium">{selectedIssue?.property_name}</p>
+              <p className="text-xs text-muted-foreground">{selectedIssue?.category}</p>
+              <p className="text-sm mt-1">{selectedIssue?.description}</p>
+            </div>
+            {selectedIssue?.photos && selectedIssue.photos.length > 0 && (
+              <div className="space-y-2">
+                <Label>Fotos existentes ({selectedIssue.photos.length})</Label>
+                <div className="flex gap-2 overflow-x-auto pb-2">
+                  {selectedIssue.photos.map((photo, idx) => (
+                    <img 
+                      key={idx}
+                      src={photo.url} 
+                      alt={`Foto ${idx + 1}`} 
+                      className="h-16 w-16 object-cover rounded flex-shrink-0"
+                    />
+                  ))}
+                </div>
+              </div>
+            )}
+            <div className="space-y-2">
+              <Label>Nova Foto</Label>
+              <label className="flex flex-col items-center justify-center w-full h-32 border-2 border-dashed rounded-lg cursor-pointer hover:bg-muted/50 transition-colors">
+                <div className="flex flex-col items-center justify-center pt-5 pb-6">
+                  {uploadingPhoto ? (
+                    <>
+                      <Clock className="w-8 h-8 mb-2 text-muted-foreground animate-pulse" />
+                      <p className="text-sm text-muted-foreground">Enviando...</p>
+                    </>
+                  ) : (
+                    <>
+                      <Plus className="w-8 h-8 mb-2 text-muted-foreground" />
+                      <p className="text-sm text-muted-foreground">Clique para adicionar foto</p>
+                      <p className="text-xs text-muted-foreground">JPG, PNG ou WebP (máx. 8MB)</p>
+                    </>
+                  )}
+                </div>
+                <input 
+                  type="file" 
+                  className="hidden" 
+                  accept="image/jpeg,image/jpg,image/png,image/webp"
+                  onChange={handlePhotoUpload}
+                  disabled={uploadingPhoto}
+                />
+              </label>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setPhotoDialogOpen(false)} disabled={uploadingPhoto}>
+              Fechar
             </Button>
           </DialogFooter>
         </DialogContent>

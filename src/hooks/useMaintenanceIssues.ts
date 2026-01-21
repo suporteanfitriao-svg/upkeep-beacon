@@ -9,6 +9,12 @@ export interface ProgressNote {
   created_by_name: string;
 }
 
+export interface IssuePhoto {
+  url: string;
+  timestamp: string;
+  uploaded_by?: string;
+}
+
 export interface MaintenanceIssue {
   id: string;
   schedule_id: string | null;
@@ -17,6 +23,7 @@ export interface MaintenanceIssue {
   category: string;
   description: string;
   photo_url: string | null;
+  photos: IssuePhoto[];
   severity: 'low' | 'medium' | 'high';
   status: 'open' | 'in_progress' | 'resolved';
   reported_by: string | null;
@@ -47,6 +54,18 @@ const parseProgressNotes = (notes: Json | null): ProgressNote[] => {
   });
 };
 
+const parsePhotos = (photos: Json | null): IssuePhoto[] => {
+  if (!photos || !Array.isArray(photos)) return [];
+  return photos
+    .filter(photo => typeof photo === 'object' && photo !== null && !Array.isArray(photo))
+    .map(photo => ({
+      url: String((photo as Record<string, unknown>).url || ''),
+      timestamp: String((photo as Record<string, unknown>).timestamp || ''),
+      uploaded_by: (photo as Record<string, unknown>).uploaded_by ? String((photo as Record<string, unknown>).uploaded_by) : undefined,
+    }))
+    .filter(p => p.url); // Only keep photos with valid URLs
+};
+
 export function useMaintenanceIssues() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -63,6 +82,7 @@ export function useMaintenanceIssues() {
       return (data || []).map(item => ({
         ...item,
         progress_notes: parseProgressNotes(item.progress_notes),
+        photos: parsePhotos(item.photos),
       })) as MaintenanceIssue[];
     },
   });
@@ -218,6 +238,35 @@ export function useMaintenanceIssues() {
     },
   });
 
+  const addPhotoMutation = useMutation({
+    mutationFn: async ({ id, photo, currentPhotos }: { id: string; photo: IssuePhoto; currentPhotos: IssuePhoto[] }) => {
+      const updatedPhotos = [...currentPhotos, photo];
+      
+      const { error } = await supabase
+        .from('maintenance_issues')
+        .update({
+          photos: updatedPhotos as unknown as Json,
+        })
+        .eq('id', id);
+
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['maintenance-issues'] });
+      toast({
+        title: 'Foto adicionada',
+        description: 'A foto foi adicionada à avaria.',
+      });
+    },
+    onError: (error) => {
+      toast({
+        title: 'Erro ao adicionar foto',
+        description: error.message,
+        variant: 'destructive',
+      });
+    },
+  });
+
   const stats = {
     open: issues.filter(i => i.status === 'open').length,
     in_progress: issues.filter(i => i.status === 'in_progress').length,
@@ -234,6 +283,7 @@ export function useMaintenanceIssues() {
     assignIssue: assignIssueMutation.mutate,
     addProgressNote: addProgressNoteMutation.mutate,
     startIssue: startIssueMutation.mutate,
+    addPhoto: addPhotoMutation.mutate,
     stats,
   };
 }
