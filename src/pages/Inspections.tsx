@@ -16,7 +16,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { 
   ClipboardCheck, Plus, Trash2, Loader2, Edit2, Calendar,
   Building2, User, Clock, Play, CheckCircle2, AlertCircle,
-  ChevronRight, Eye, RotateCcw
+  ChevronRight, Eye, RotateCcw, History
 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
@@ -48,6 +48,12 @@ interface ChecklistItem {
   [key: string]: string | boolean; // Index signature for Json compatibility
 }
 
+interface InspectionHistoryEvent {
+  timestamp: string;
+  action: string;
+  user_name?: string;
+}
+
 interface Inspection {
   id: string;
   user_id: string;
@@ -68,6 +74,9 @@ interface Inspection {
   completed_by?: string;
   completed_by_name?: string;
   created_at: string;
+  started_at?: string;
+  history?: InspectionHistoryEvent[];
+  verification_comment?: string;
 }
 
 const statusConfig = {
@@ -137,6 +146,9 @@ const Inspections = () => {
         original_checklist_state: Array.isArray(i.original_checklist_state) 
           ? (i.original_checklist_state as unknown as ChecklistItem[]) 
           : undefined,
+        history: Array.isArray(i.history)
+          ? (i.history as unknown as InspectionHistoryEvent[])
+          : [],
       })));
     } catch (error) {
       console.error('Error fetching data:', error);
@@ -206,6 +218,7 @@ const Inspections = () => {
         }
       }
 
+      const now = new Date().toISOString();
       const inspectionData = {
         property_id: form.property_id,
         property_name: property?.name || '',
@@ -229,12 +242,25 @@ const Inspections = () => {
         if (error) throw error;
         toast.success('Inspeção atualizada!');
       } else {
+        // Get user name for history
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('name')
+          .eq('id', user.id)
+          .maybeSingle();
+        const userName = profile?.name || 'Usuário';
+
+        const initialHistory = [
+          { timestamp: now, action: 'created', user_name: userName }
+        ];
+
         const { error } = await supabase
           .from('inspections')
           .insert([{
             ...inspectionData,
             user_id: user.id,
             status: 'scheduled',
+            history: JSON.parse(JSON.stringify(initialHistory)) as Json,
           }]);
 
         if (error) throw error;
@@ -275,30 +301,45 @@ const Inspections = () => {
 
     setUpdatingStatus(true);
     try {
-      const updateData: any = { status: newStatus };
+      const now = new Date().toISOString();
+      const { data: { user } } = await supabase.auth.getUser();
       
-      // When starting inspection, save original checklist state
+      // Get user name for history
+      let userName = 'Usuário';
+      let teamMemberId: string | null = null;
+      if (user) {
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('name, team_member_id')
+          .eq('id', user.id)
+          .maybeSingle();
+        userName = profile?.name || 'Usuário';
+        teamMemberId = profile?.team_member_id || null;
+      }
+
+      const updateData: any = { status: newStatus };
+      const currentHistory = selectedInspection.history || [];
+      
+      // When starting inspection, save original checklist state and started_at
       if (newStatus === 'in_progress' && selectedInspection.status === 'scheduled') {
         updateData.original_checklist_state = JSON.parse(JSON.stringify(selectedInspection.checklist_state));
+        updateData.started_at = now;
+        updateData.history = JSON.parse(JSON.stringify([
+          ...currentHistory,
+          { timestamp: now, action: 'started', user_name: userName }
+        ]));
       }
       
       if (newStatus === 'completed') {
-        const { data: { user } } = await supabase.auth.getUser();
-        updateData.completed_at = new Date().toISOString();
-        
-        // Try to get team member name
-        if (user) {
-          const { data: profile } = await supabase
-            .from('profiles')
-            .select('name, team_member_id')
-            .eq('id', user.id)
-            .maybeSingle();
-          
-          if (profile?.team_member_id) {
-            updateData.completed_by = profile.team_member_id;
-            updateData.completed_by_name = profile.name;
-          }
+        updateData.completed_at = now;
+        if (teamMemberId) {
+          updateData.completed_by = teamMemberId;
+          updateData.completed_by_name = userName;
         }
+        updateData.history = JSON.parse(JSON.stringify([
+          ...currentHistory,
+          { timestamp: now, action: 'completed', user_name: userName }
+        ]));
       }
 
       const { error } = await supabase
@@ -877,6 +918,44 @@ const Inspections = () => {
                     <p className="text-sm text-muted-foreground bg-muted/50 rounded-lg p-3">
                       {selectedInspection.notes}
                     </p>
+                  </div>
+                )}
+
+                {/* Verification Comment */}
+                {selectedInspection.verification_comment && (
+                  <div>
+                    <p className="text-sm font-medium mb-1">Comentário de Verificação</p>
+                    <p className="text-sm text-muted-foreground bg-muted/50 rounded-lg p-3">
+                      {selectedInspection.verification_comment}
+                    </p>
+                  </div>
+                )}
+
+                {/* History Section */}
+                {selectedInspection.history && selectedInspection.history.length > 0 && (
+                  <div>
+                    <p className="text-sm font-medium mb-2 flex items-center gap-2">
+                      <History className="h-4 w-4" />
+                      Histórico
+                    </p>
+                    <div className="space-y-2 bg-muted/30 rounded-lg p-3">
+                      {selectedInspection.history.map((event, idx) => (
+                        <div key={idx} className="flex items-start gap-2 text-sm">
+                          <div className="h-2 w-2 rounded-full bg-primary mt-1.5 shrink-0" />
+                          <div>
+                            <span className="font-medium">
+                              {event.action === 'created' && 'Inspeção criada'}
+                              {event.action === 'started' && 'Inspeção iniciada'}
+                              {event.action === 'completed' && 'Inspeção finalizada'}
+                            </span>
+                            <span className="text-muted-foreground">
+                              {' • '}{format(parseISO(event.timestamp), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}
+                              {event.user_name && ` • ${event.user_name}`}
+                            </span>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
                   </div>
                 )}
 
