@@ -984,7 +984,7 @@ export function ScheduleDetail({ schedule, onClose, onUpdateSchedule }: Schedule
         </header>
 
         {/* Main Content */}
-        <main className="flex-1 flex flex-col gap-6 p-6 pb-24 overflow-y-auto">
+        <main className="flex-1 flex flex-col gap-6 p-6 pb-6">
           {/* Waiting Status Alert Card - Rule 41 */}
           {schedule.status === 'waiting' && (
             <div className="rounded-2xl bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800/50 p-4 flex gap-3 items-start">
