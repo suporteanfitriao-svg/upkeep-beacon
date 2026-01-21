@@ -1420,24 +1420,6 @@ export function ScheduleDetail({ schedule, onClose, onUpdateSchedule }: Schedule
                             )}
                           </div>
                         )}
-                        {/* Mark category complete button - only when cleaning and no DX */}
-                        {schedule.status === 'cleaning' && !allSelected && !hasDX && (
-                          <button
-                            type="button"
-                            onClick={(e) => {
-                              // Prevent any default button behavior (e.g., accidental form submit)
-                              // and avoid <summary>/<details> default toggle side-effects.
-                              e.preventDefault();
-                              e.stopPropagation();
-                              setConfirmMarkCategory({ open: true, category });
-                            }}
-                            aria-label="Marcar categoria completa"
-                            className="rounded-full p-1 text-green-500 hover:text-green-600 hover:bg-green-50 dark:hover:bg-green-900/20 transition-colors"
-                            title="Marcar tudo como OK"
-                          >
-                            <span className="material-symbols-outlined text-[20px]">check_circle</span>
-                          </button>
-                        )}
                         {/* Photo button - only enabled when all items selected */}
                         <button
                           type="button"
@@ -1848,31 +1830,6 @@ export function ScheduleDetail({ schedule, onClose, onUpdateSchedule }: Schedule
         />
       )}
 
-      {/* Confirm Mark Category Complete Dialog */}
-      <AlertDialog 
-        open={confirmMarkCategory.open} 
-        onOpenChange={(open) => !open && setConfirmMarkCategory({ open: false, category: null })}
-      >
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Marcar categoria completa?</AlertDialogTitle>
-            <AlertDialogDescription>
-              Todos os itens de "{confirmMarkCategory.category}" serão marcados como OK (✓). 
-              Esta ação pode ser desfeita manualmente item por item.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel type="button">Cancelar</AlertDialogCancel>
-            <AlertDialogAction
-              type="button"
-              onClick={() => confirmMarkCategory.category && handleMarkCategoryComplete(confirmMarkCategory.category)}
-              className="bg-green-600 hover:bg-green-700"
-            >
-              Confirmar
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
 
       {/* Category Photo Upload Modal */}
       {photoUploadModal.open && photoUploadModal.category && (
