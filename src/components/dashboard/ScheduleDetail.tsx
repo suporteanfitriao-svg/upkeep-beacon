@@ -1407,7 +1407,11 @@ export function ScheduleDetail({ schedule, onClose, onUpdateSchedule }: Schedule
               const selectedCount = okCount + dxCount;
               const allSelected = selectedCount === totalInCategory;
               const hasDX = dxCount > 0;
-              const saveStatus = categorySaveStatus[category] ?? (allSelected ? 'saved' : 'idle');
+              // A categoria só fica "verde/amarelo" quando temos evidência de persistência:
+              // - categorySaveStatus === 'saved' (save callback) OU
+              // - todos os itens já estão com status ok/not_ok no checklist (estado vindo do backend após reload/realtime)
+              const isPersistedComplete = allSelected && items.every(it => it.status === 'ok' || it.status === 'not_ok');
+              const saveStatus = categorySaveStatus[category] ?? (isPersistedComplete ? 'saved' : allSelected ? 'dirty' : 'idle');
               const isSaved = allSelected && saveStatus === 'saved';
               const isDirtyComplete = allSelected && saveStatus === 'dirty';
               const hasPhotosInCategory = categoryPhotosData[category] && categoryPhotosData[category].length > 0;
