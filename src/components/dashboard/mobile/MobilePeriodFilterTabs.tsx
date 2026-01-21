@@ -31,7 +31,7 @@ export const MobilePeriodFilterTabs = memo(function MobilePeriodFilterTabs({
         )}
       >
         Hoje
-        {todayTasksCount > 0 && paymentPeriod !== 'today' && (
+        {todayTasksCount > 0 && (
           <span className="absolute -top-1 -right-1 h-5 w-5 rounded-full bg-red-500 text-white text-xs font-bold flex items-center justify-center">
             {todayTasksCount}
           </span>
@@ -51,7 +51,7 @@ export const MobilePeriodFilterTabs = memo(function MobilePeriodFilterTabs({
         )}
       >
         Amanhã
-        {tomorrowTasksCount > 0 && paymentPeriod !== 'tomorrow' && (
+        {tomorrowTasksCount > 0 && (
           <span className="absolute -top-1 -right-1 h-5 w-5 rounded-full bg-red-500 text-white text-xs font-bold flex items-center justify-center">
             {tomorrowTasksCount}
           </span>
