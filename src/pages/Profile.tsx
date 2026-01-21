@@ -17,6 +17,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
+import { APP_VERSION } from '@/components/pwa/PWAUpdateModal';
 
 interface TeamMember {
   id: string;
@@ -580,6 +581,13 @@ export default function Profile() {
                   </div>
                 </CardContent>
               </Card>
+            </div>
+
+            {/* Version indicator */}
+            <div className="mt-8 text-center pb-4">
+              <p className="text-xs text-muted-foreground">
+                Versão do App: <span className="font-semibold text-foreground">v{APP_VERSION}</span>
+              </p>
             </div>
           </div>
 
