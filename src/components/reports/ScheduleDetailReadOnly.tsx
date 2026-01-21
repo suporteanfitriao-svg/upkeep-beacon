@@ -3,7 +3,7 @@ import { cn } from '@/lib/utils';
 import { format, differenceInMinutes } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { useState, useMemo } from 'react';
-import { Dialog, DialogContent } from '@/components/ui/dialog';
+import { PhotoGallery } from '@/components/shared/PhotoGallery';
 
 interface ScheduleDetailReadOnlyProps {
   schedule: Schedule;
@@ -30,11 +30,24 @@ function formatDuration(startAt: Date | undefined, endAt: Date | undefined): str
 
 export function ScheduleDetailReadOnly({ schedule, onClose }: ScheduleDetailReadOnlyProps) {
   const [expandedCategories, setExpandedCategories] = useState<Record<string, boolean>>({});
-  const [selectedImage, setSelectedImage] = useState<string | null>(null);
   
   const statusStyle = statusConfig[schedule.status];
   const categoryPhotos = schedule.categoryPhotos || {};
 
+  // Convert all category photos to gallery format
+  const allPhotosForGallery = useMemo(() => {
+    const photos: Array<{ url: string; timestamp?: string; uploaded_by?: string }> = [];
+    Object.entries(categoryPhotos).forEach(([category, categoryPhotoList]) => {
+      categoryPhotoList.forEach((photo) => {
+        photos.push({
+          url: photo.url,
+          timestamp: photo.uploadedAt,
+          uploaded_by: photo.uploadedBy,
+        });
+      });
+    });
+    return photos;
+  }, [categoryPhotos]);
   const toggleCategory = (category: string) => {
     setExpandedCategories(prev => ({
       ...prev,
@@ -181,25 +194,17 @@ export function ScheduleDetailReadOnly({ schedule, onClose }: ScheduleDetailRead
                             </div>
                           ))}
 
-                          {/* Category Photos */}
+                          {/* Category Photos with Gallery */}
                           {photos.length > 0 && (
                             <div className="pt-3 border-t border-slate-100 dark:border-slate-700">
                               <p className="text-xs font-medium text-muted-foreground mb-2">Fotos anexadas:</p>
-                              <div className="flex flex-wrap gap-2">
-                                {photos.map((photo, index) => (
-                                  <button
-                                    key={index}
-                                    onClick={() => setSelectedImage(photo.url)}
-                                    className="relative w-16 h-16 rounded-lg overflow-hidden border border-slate-200 dark:border-slate-600 hover:opacity-80 transition-opacity"
-                                  >
-                                    <img 
-                                      src={photo.url} 
-                                      alt={`Foto ${index + 1}`}
-                                      className="w-full h-full object-cover"
-                                    />
-                                  </button>
-                                ))}
-                              </div>
+                              <PhotoGallery 
+                                photos={photos.map(p => ({
+                                  url: p.url,
+                                  timestamp: p.uploadedAt,
+                                  uploaded_by: p.uploadedBy,
+                                }))} 
+                              />
                             </div>
                           )}
                         </div>
@@ -311,18 +316,19 @@ export function ScheduleDetailReadOnly({ schedule, onClose }: ScheduleDetailRead
         </main>
       </div>
 
-      {/* Image Preview Modal */}
-      <Dialog open={!!selectedImage} onOpenChange={() => setSelectedImage(null)}>
-        <DialogContent className="max-w-3xl p-2">
-          {selectedImage && (
-            <img 
-              src={selectedImage} 
-              alt="Foto ampliada"
-              className="w-full h-auto rounded-lg"
-            />
-          )}
-        </DialogContent>
-      </Dialog>
+      {/* All Photos Section */}
+      {allPhotosForGallery.length > 0 && (
+        <section className="mt-6 rounded-2xl bg-white dark:bg-[#2d3138] shadow-sm p-5 border border-slate-100 dark:border-slate-700 mx-6">
+          <h3 className="text-sm font-bold uppercase tracking-wide text-slate-900 dark:text-white mb-4 flex items-center gap-2">
+            <span className="material-symbols-outlined text-primary text-[20px]">photo_library</span>
+            Todas as Fotos ({allPhotosForGallery.length})
+          </h3>
+          <PhotoGallery 
+            photos={allPhotosForGallery} 
+            title=""
+          />
+        </section>
+      )}
     </div>
   );
 }
