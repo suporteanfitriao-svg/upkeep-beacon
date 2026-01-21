@@ -208,6 +208,35 @@ export function ScheduleDetail({ schedule, onClose, onUpdateSchedule }: Schedule
       setIsAutoSaving(false);
       if (success) {
         setLastAutoSavedAt(Date.now());
+
+        // After a successful save, do a lightweight reload from the backend to
+        // guarantee UI derives from persisted data (mobile race-condition fix).
+        // This ensures category colors + pending counters reflect the saved state
+        // even if any local state got out of sync.
+        (async () => {
+          try {
+            const { data, error } = await supabase
+              .from('schedules')
+              .select('checklists')
+              .eq('id', schedule.id)
+              .maybeSingle();
+
+            if (error) throw error;
+
+            const reloaded = Array.isArray(data?.checklists)
+              ? (data?.checklists as unknown as ChecklistItem[])
+              : null;
+
+            if (reloaded && reloaded.length > 0) {
+              setChecklist(reloaded);
+              setChecklistItemStates(deriveChecklistItemStates(reloaded));
+              checklistRef.current = reloaded;
+            }
+          } catch (e) {
+            console.warn('[AutoSave] Reload after save failed:', e);
+          }
+        })();
+
         // CRITICAL: After a successful save, mark ALL completed categories as "saved".
         // Use checklistItemStatesRef (always up-to-date) + checklistRef for complete detection.
         // This ensures immediate UI update after auto-save completes.
@@ -700,7 +729,9 @@ export function ScheduleDetail({ schedule, onClose, onUpdateSchedule }: Schedule
   const isItemSelected = useCallback((item: ChecklistItem) => {
     const state = checklistItemStates[item.id];
     // Item is "selected" if it has OK (yes) or DX (no) - never both, never empty to finalize
-    return state === 'yes' || state === 'no';
+    if (state === 'yes' || state === 'no') return true;
+    // Fallback to persisted status (covers post-save reload and any sync edge cases)
+    return item.status === 'ok' || item.status === 'not_ok';
   }, [checklistItemStates]);
 
   const getPendingCategoriesDetails = () => {
