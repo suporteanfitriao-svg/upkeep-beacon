@@ -456,22 +456,24 @@ export function useSchedules() {
 
       if (updateError) throw updateError;
 
-      const finalSchedule = { 
+      const finalSchedule: Schedule = { 
         ...updatedSchedule, 
         checklist: checklistToUse,
         startAt: updatePayload.start_at ? new Date(updatePayload.start_at as string) : updatedSchedule.startAt,
         endAt: updatePayload.end_at ? new Date(updatePayload.end_at as string) : updatedSchedule.endAt,
         teamArrival: updatePayload.start_at ? new Date(updatePayload.start_at as string) : updatedSchedule.teamArrival,
         teamDeparture: updatePayload.end_at ? new Date(updatePayload.end_at as string) : updatedSchedule.teamDeparture,
+        checklistLoadedAt: updatePayload.checklist_loaded_at ? new Date(updatePayload.checklist_loaded_at as string) : updatedSchedule.checklistLoadedAt,
+        responsibleTeamMemberId: (updatePayload.responsible_team_member_id as string) || updatedSchedule.responsibleTeamMemberId,
       };
       setSchedules(prev =>
         prev.map(s => (s.id === updatedSchedule.id ? finalSchedule : s))
       );
 
-      return true;
+      return finalSchedule;
     } catch (err) {
       console.error('Error updating schedule:', err);
-      return false;
+      return null;
     }
   }, []);
 

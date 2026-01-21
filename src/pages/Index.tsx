@@ -568,12 +568,12 @@ const Index = () => {
       return;
     }
     
-    const success = await updateSchedule(updatedSchedule, previousStatus);
-    if (success) {
-      // Update selected schedule state without refetching to avoid reload
+    const result = await updateSchedule(updatedSchedule, previousStatus);
+    if (result) {
+      // Update selected schedule state with the returned schedule (includes updated checklist)
       setSelectedSchedule(prev => {
-        if (prev && prev.id === updatedSchedule.id) {
-          return { ...updatedSchedule };
+        if (prev && prev.id === result.id) {
+          return result;
         }
         return prev;
       });
@@ -614,15 +614,14 @@ const Index = () => {
     
     const schedule = schedules.find(s => s.id === scheduleId);
     if (schedule) {
-      const success = await updateSchedule({ ...schedule, status: 'released' }, 'waiting');
-      if (success) {
+      const result = await updateSchedule({ ...schedule, status: 'released' }, 'waiting');
+      if (result) {
         toast.success('Liberado para limpeza!');
       } else {
         toast.error('Erro ao liberar agendamento');
       }
     }
   };
-
   // Handler for mobile - start cleaning
   const handleStartCleaning = async (scheduleId: string) => {
     // Block updates during sync (rule 3.2)
@@ -635,9 +634,10 @@ const Index = () => {
     
     const schedule = schedules.find(s => s.id === scheduleId);
     if (schedule) {
-      const success = await updateSchedule({ ...schedule, status: 'cleaning' }, schedule.status);
-      if (success) {
-        // No refetch to avoid page reload - updateSchedule already updates local state
+      const result = await updateSchedule({ ...schedule, status: 'cleaning' }, schedule.status);
+      if (result) {
+        // Update selectedSchedule with the result that includes the checklist
+        setSelectedSchedule(result);
         toast.success('Limpeza iniciada!');
       } else {
         toast.error('Erro ao iniciar limpeza');
