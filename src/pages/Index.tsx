@@ -192,24 +192,6 @@ const Index = () => {
     localStorage.setItem(FILTERS_STORAGE_KEY, JSON.stringify(data));
   }, [dateFilter, customDate, dateRange, statusFilter, responsibleFilter, propertyFilter]);
 
-  // Restore selected schedule from URL after reload (for mobile cleaner auto-save flow)
-  useEffect(() => {
-    if (loading || schedules.length === 0) return;
-    
-    const url = new URL(window.location.href);
-    const scheduleIdFromUrl = url.searchParams.get('scheduleId');
-    
-    if (scheduleIdFromUrl && !selectedSchedule) {
-      const foundSchedule = schedules.find(s => s.id === scheduleIdFromUrl);
-      if (foundSchedule) {
-        setSelectedSchedule(foundSchedule);
-        // Clean up the URL after restoring
-        url.searchParams.delete('scheduleId');
-        window.history.replaceState(null, '', url.toString());
-      }
-    }
-  }, [loading, schedules, selectedSchedule]);
-
   const stats = useMemo(() => calculateStats(schedules), [schedules]);
 
   // Cleaning time alerts

@@ -211,19 +211,6 @@ export function ScheduleDetail({ schedule, onClose, onUpdateSchedule }: Schedule
       if (success) {
         setLastAutoSavedAt(Date.now());
 
-        // Urgent reliability fix for mobile cleaner:
-        // when the full checklist has been saved, force a full reload so the UI
-        // rehydrates from persisted data and the category colors + pending counter
-        // are guaranteed to reflect the saved state.
-        // We persist the schedule ID in the URL so the page can restore the detail view after reload.
-        if (role === 'cleaner' && isMobile && isChecklistComplete(checklistItemStatesRef.current)) {
-          const currentUrl = new URL(window.location.href);
-          currentUrl.searchParams.set('scheduleId', schedule.id);
-          window.history.replaceState(null, '', currentUrl.toString());
-          setTimeout(() => window.location.reload(), 350);
-          return;
-        }
-
         // After a successful save, do a lightweight reload from the backend to
         // guarantee UI derives from persisted data (mobile race-condition fix).
         // This ensures category colors + pending counters reflect the saved state
@@ -232,20 +219,23 @@ export function ScheduleDetail({ schedule, onClose, onUpdateSchedule }: Schedule
           try {
             const { data, error } = await supabase
               .from('schedules')
-              .select('checklists')
+              // checklist_state is authoritative during/after cleaning
+              .select('checklists, checklist_state')
               .eq('id', schedule.id)
               .maybeSingle();
 
             if (error) throw error;
 
-            const reloaded = Array.isArray(data?.checklists)
-              ? (data?.checklists as unknown as ChecklistItem[])
-              : null;
+            const candidate = (data?.checklist_state ?? data?.checklists) as unknown;
+            const reloaded = Array.isArray(candidate) ? (candidate as ChecklistItem[]) : null;
 
             if (reloaded && reloaded.length > 0) {
               setChecklist(reloaded);
               setChecklistItemStates(deriveChecklistItemStates(reloaded));
               checklistRef.current = reloaded;
+
+              // Keep parent list/cards in sync (avoids needing a full page reload).
+              onUpdateSchedule({ ...schedule, checklist: reloaded });
             }
           } catch (e) {
             console.warn('[AutoSave] Reload after save failed:', e);
