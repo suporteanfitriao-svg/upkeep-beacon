@@ -6,7 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { AlertTriangle, Building2, Calendar, User, ChevronDown, ChevronUp } from 'lucide-react';
+import { AlertTriangle, Building2, Calendar, User, ChevronDown, ChevronUp, MessageCircle } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 interface NokItem {
@@ -122,10 +122,18 @@ export function NokItemsReport({ className }: NokItemsReportProps) {
     }
   };
 
-  // Filter schedule groups by property
+  // Filter schedule groups by property and sort by most recent first
   const filteredGroups = useMemo(() => {
-    if (selectedProperty === 'all') return scheduleGroups;
-    return scheduleGroups.filter(group => group.propertyId === selectedProperty);
+    let groups = selectedProperty === 'all' 
+      ? scheduleGroups 
+      : scheduleGroups.filter(group => group.propertyId === selectedProperty);
+    
+    // Sort by completedAt descending (most recent first)
+    return groups.sort((a, b) => {
+      const dateA = a.completedAt ? new Date(a.completedAt).getTime() : 0;
+      const dateB = b.completedAt ? new Date(b.completedAt).getTime() : 0;
+      return dateB - dateA;
+    });
   }, [scheduleGroups, selectedProperty]);
 
   const filteredItems = useMemo(() => {
@@ -273,6 +281,7 @@ export function NokItemsReport({ className }: NokItemsReportProps) {
         <div className="space-y-3">
           {filteredGroups.map((group) => {
             const isExpanded = expandedSchedules.has(group.scheduleId);
+            const hasObservations = !!group.cleanerObservations || group.items.some(item => !!item.observation);
             
             return (
               <Card key={group.scheduleId} className="overflow-hidden">
@@ -285,22 +294,35 @@ export function NokItemsReport({ className }: NokItemsReportProps) {
                       <AlertTriangle className="w-5 h-5 text-red-600 dark:text-red-400" />
                     </div>
                     <div className="text-left">
-                      <h3 className="font-semibold text-foreground">{group.propertyName}</h3>
-                      <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
+                      <div className="flex items-center gap-2">
+                        <h3 className="font-semibold text-foreground">{group.propertyName}</h3>
+                        {hasObservations && (
+                          <Badge variant="outline" className="text-[10px] border-amber-400 text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-900/20">
+                            <MessageCircle className="w-3 h-3 mr-1" />
+                            Obs
+                          </Badge>
+                        )}
+                      </div>
+                      <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground mt-0.5">
                         <span className="flex items-center gap-1">
                           <User className="w-3 h-3" />
                           {group.cleanerName}
                         </span>
-                        {group.completedAt && (
-                          <span className="flex items-center gap-1">
-                            <Calendar className="w-3 h-3" />
-                            {format(new Date(group.completedAt), "dd/MM/yy 'às' HH:mm", { locale: ptBR })}
-                          </span>
-                        )}
                       </div>
                     </div>
                   </div>
                   <div className="flex items-center gap-2">
+                    {group.completedAt && (
+                      <div className="text-right mr-2">
+                        <p className="text-[10px] uppercase font-semibold text-muted-foreground">Limpeza</p>
+                        <p className="text-sm font-bold text-foreground">
+                          {format(new Date(group.completedAt), "dd/MM/yy", { locale: ptBR })}
+                        </p>
+                        <p className="text-xs text-muted-foreground">
+                          {format(new Date(group.completedAt), "HH:mm", { locale: ptBR })}
+                        </p>
+                      </div>
+                    )}
                     <Badge variant="destructive">{group.items.length} NOK</Badge>
                     {isExpanded ? (
                       <ChevronUp className="w-5 h-5 text-muted-foreground" />
