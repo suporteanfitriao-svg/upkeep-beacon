@@ -692,9 +692,58 @@ export function ScheduleDetail({ schedule, onClose, onUpdateSchedule }: Schedule
         scheduleSave();
       }, 0);
       
-      toast.success(`Categoria "${category}" marcada como completa!`);
+    toast.success(`Categoria "${category}" marcada como completa!`);
     });
   }, [isChecklistEditable, checklist, checklistItemStates, teamMemberId, scheduleSave, isChecklistComplete]);
+
+  // Handle clearing a category - reset all items to pending state
+  // Only allowed when status is 'cleaning' (before finalizing)
+  const handleClearCategory = useCallback((category: string) => {
+    if (!isChecklistEditable || !teamMemberId || schedule.status !== 'cleaning') return;
+
+    hasUserInteractedRef.current = true;
+    
+    const categoryItems = checklist.filter(item => item.category === category);
+    
+    // Pre-calculate updated states - reset to null (pending)
+    const updatedStates: Record<string, 'yes' | 'no' | null> = { ...checklistItemStates };
+    categoryItems.forEach(item => {
+      updatedStates[item.id] = null;
+    });
+    
+    // Pre-calculate updated checklist - reset status to pending
+    const updatedChecklist = checklist.map(item => 
+      item.category === category ? { ...item, completed: false, status: 'pending' as const } : item
+    );
+    
+    requestAnimationFrame(() => {
+      setChecklistItemStates(updatedStates);
+      checklistItemStatesRef.current = updatedStates;
+      setChecklist(updatedChecklist);
+      
+      setCategorySaveStatus((prev) => ({
+        ...prev,
+        [category]: 'idle',
+      }));
+      
+      // Clear category photos too
+      setCategoryPhotosData((prev) => {
+        const next = { ...prev };
+        delete next[category];
+        return next;
+      });
+      
+      // Schedule save to persist the reset
+      setTimeout(() => {
+        scheduleSave();
+      }, 0);
+      
+      toast.success(`Categoria "${category}" foi limpa. Refaça o checklist.`);
+    });
+  }, [isChecklistEditable, checklist, checklistItemStates, teamMemberId, schedule.status, scheduleSave]);
+
+  // State for clear category confirmation dialog
+  const [confirmClearCategory, setConfirmClearCategory] = useState<{ open: boolean; category: string | null }>({ open: false, category: null });
 
   // Check if a category has any item marked as DX
   const categoryHasDX = useCallback((category: string) => {
@@ -1671,25 +1720,40 @@ export function ScheduleDetail({ schedule, onClose, onUpdateSchedule }: Schedule
                           })}
                         </div>
                         
-                        {/* Auto-save status indicator */}
+                        {/* Category Actions: Clear and Auto-save indicator */}
                         {schedule.status === 'cleaning' && (
                           <div className="px-4 py-2 border-t border-slate-100 dark:border-slate-700/50 bg-slate-50/50 dark:bg-slate-800/30 flex items-center justify-between">
-                            {isAutoSaving ? (
-                              <div className="flex items-center gap-2 text-primary">
-                                <span className="material-symbols-outlined text-[16px] animate-spin">sync</span>
-                                <span className="text-xs font-medium">Salvando...</span>
-                              </div>
-                            ) : lastAutoSavedAt ? (
-                              <div className="flex items-center gap-2 text-green-600 dark:text-green-400">
-                                <span className="material-symbols-outlined text-[16px]">check_circle</span>
-                                <span className="text-xs font-medium">Salvo automaticamente</span>
-                              </div>
-                            ) : (
-                              <div className="flex items-center gap-2 text-slate-400">
-                                <span className="material-symbols-outlined text-[16px]">cloud_sync</span>
-                                <span className="text-xs font-medium">Auto-save ativo</span>
-                              </div>
+                            {/* Clear Category Button - only when category has any selection */}
+                            {selectedCount > 0 && (
+                              <button
+                                onClick={() => setConfirmClearCategory({ open: true, category })}
+                                className="flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium text-slate-500 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors"
+                                title="Limpar categoria e refazer"
+                              >
+                                <span className="material-symbols-outlined text-[16px]">refresh</span>
+                                Refazer
+                              </button>
                             )}
+                            
+                            {/* Auto-save status indicator */}
+                            <div className="flex items-center gap-2 ml-auto">
+                              {isAutoSaving ? (
+                                <div className="flex items-center gap-2 text-primary">
+                                  <span className="material-symbols-outlined text-[16px] animate-spin">sync</span>
+                                  <span className="text-xs font-medium">Salvando...</span>
+                                </div>
+                              ) : lastAutoSavedAt ? (
+                                <div className="flex items-center gap-2 text-green-600 dark:text-green-400">
+                                  <span className="material-symbols-outlined text-[16px]">check_circle</span>
+                                  <span className="text-xs font-medium">Salvo</span>
+                                </div>
+                              ) : (
+                                <div className="flex items-center gap-2 text-slate-400">
+                                  <span className="material-symbols-outlined text-[16px]">cloud_sync</span>
+                                  <span className="text-xs font-medium">Auto-save</span>
+                                </div>
+                              )}
+                            </div>
                           </div>
                         )}
                       </div>
@@ -2118,6 +2182,27 @@ export function ScheduleDetail({ schedule, onClose, onUpdateSchedule }: Schedule
               className="bg-red-600 hover:bg-red-700"
             >
               Excluir
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Clear Category Confirmation Dialog */}
+      <AlertDialog open={confirmClearCategory.open} onOpenChange={(open) => setConfirmClearCategory({ open, category: open ? confirmClearCategory.category : null })}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Limpar Categoria</AlertDialogTitle>
+            <AlertDialogDescription>
+              Todos os itens da categoria "{confirmClearCategory.category}" serão desmarcados e as fotos removidas. Você precisará refazer o checklist desta categoria.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction 
+              onClick={() => confirmClearCategory.category && handleClearCategory(confirmClearCategory.category)}
+              className="bg-amber-600 hover:bg-amber-700"
+            >
+              Limpar e Refazer
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
