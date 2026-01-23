@@ -3,10 +3,12 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Building2, Plus, ArrowLeft, ArrowRight, Loader2, Check, Trash2 } from 'lucide-react';
+import { Building2, Plus, ArrowLeft, ArrowRight, Loader2, Trash2, MapPin, Search } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { usePropertyGeocoding } from '@/hooks/usePropertyGeocoding';
+import { useCepLookup } from '@/hooks/useCepLookup';
+import { formatCEP } from '@/lib/formatters';
 
 interface PropertiesStepProps {
   onNext: () => void;
@@ -21,12 +23,41 @@ interface Property {
   require_checklist: boolean;
 }
 
+interface PropertyFormData {
+  name: string;
+  address_cep: string;
+  address_street: string;
+  address_number: string;
+  address_complement1: string;
+  address_complement2: string;
+  address_district: string;
+  address_city: string;
+  address_state: string;
+}
+
+const initialFormData: PropertyFormData = {
+  name: '',
+  address_cep: '',
+  address_street: '',
+  address_number: '',
+  address_complement1: '',
+  address_complement2: '',
+  address_district: '',
+  address_city: '',
+  address_state: '',
+};
+
 export function PropertiesStep({ onNext, onBack }: PropertiesStepProps) {
   const [properties, setProperties] = useState<Property[]>([]);
   const [loading, setLoading] = useState(true);
-  const [newProperty, setNewProperty] = useState({ name: '', address: '' });
+  const [formData, setFormData] = useState<PropertyFormData>(initialFormData);
   const [adding, setAdding] = useState(false);
+  const [addressLoaded, setAddressLoaded] = useState(false);
   const { geocodeProperty } = usePropertyGeocoding();
+  const { fetching: fetchingCep, handleCepChange } = useCepLookup({
+    onSuccess: () => setAddressLoaded(true),
+    onError: () => setAddressLoaded(false),
+  });
 
   useEffect(() => {
     fetchProperties();
@@ -49,24 +80,44 @@ export function PropertiesStep({ onNext, onBack }: PropertiesStepProps) {
     }
   };
 
+  const buildFullAddress = (): string => {
+    const parts = [
+      formData.address_street,
+      formData.address_number ? `nº ${formData.address_number}` : '',
+      formData.address_complement1,
+      formData.address_complement2,
+      formData.address_district,
+      `${formData.address_city} - ${formData.address_state}`,
+      formData.address_cep,
+    ].filter(Boolean);
+    return parts.join(', ');
+  };
+
   const handleAddProperty = async () => {
-    if (!newProperty.name.trim()) {
+    if (!formData.name.trim()) {
       toast.error('Nome da propriedade é obrigatório');
+      return;
+    }
+
+    if (!addressLoaded) {
+      toast.error('Por favor, busque o endereço pelo CEP');
       return;
     }
 
     setAdding(true);
     try {
+      const fullAddress = buildFullAddress();
+      
       const { data, error } = await supabase
         .from('properties')
-        .insert({ name: newProperty.name, address: newProperty.address || null })
+        .insert({ name: formData.name, address: fullAddress })
         .select()
         .single();
 
       if (error) throw error;
 
-      // Geocode address automatically if provided
-      if (data && newProperty.address.trim()) {
+      // Geocode address automatically
+      if (data) {
         geocodeProperty(data.id).then(result => {
           if (result.success) {
             console.log('[PropertiesStep] Property geocoded successfully');
@@ -75,7 +126,8 @@ export function PropertiesStep({ onNext, onBack }: PropertiesStepProps) {
       }
 
       setProperties(prev => [...prev, data]);
-      setNewProperty({ name: '', address: '' });
+      setFormData(initialFormData);
+      setAddressLoaded(false);
       toast.success('Propriedade adicionada com sucesso!');
     } catch (error) {
       console.error('Error adding property:', error);
@@ -96,6 +148,30 @@ export function PropertiesStep({ onNext, onBack }: PropertiesStepProps) {
       toast.error('Erro ao remover propriedade');
     }
   };
+
+  const onCepChange = (value: string) => {
+    const formattedCep = formatCEP(value);
+    setFormData(prev => ({ ...prev, address_cep: formattedCep }));
+    
+    // Reset address when CEP changes
+    if (formattedCep.replace(/\D/g, '').length < 8) {
+      setAddressLoaded(false);
+      setFormData(prev => ({
+        ...prev,
+        address_cep: formattedCep,
+        address_street: '',
+        address_district: '',
+        address_city: '',
+        address_state: '',
+      }));
+    }
+  };
+
+  const handleSearchCep = () => {
+    handleCepChange(formData.address_cep, setFormData);
+  };
+
+  const canAddProperty = formData.name.trim() && addressLoaded;
 
   return (
     <div className="max-w-2xl w-full">
@@ -119,27 +195,131 @@ export function PropertiesStep({ onNext, onBack }: PropertiesStepProps) {
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label htmlFor="prop-name">Nome da Propriedade *</Label>
+          {/* Property Name */}
+          <div className="space-y-2">
+            <Label htmlFor="prop-name">Nome da Propriedade *</Label>
+            <Input
+              id="prop-name"
+              placeholder="Ex: Apartamento Centro"
+              value={formData.name}
+              onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))}
+            />
+          </div>
+
+          {/* CEP with Search */}
+          <div className="space-y-2">
+            <Label htmlFor="prop-cep">CEP *</Label>
+            <div className="flex gap-2">
               <Input
-                id="prop-name"
-                placeholder="Ex: Apartamento Centro"
-                value={newProperty.name}
-                onChange={(e) => setNewProperty(prev => ({ ...prev, name: e.target.value }))}
+                id="prop-cep"
+                placeholder="00000-000"
+                value={formData.address_cep}
+                onChange={(e) => onCepChange(e.target.value)}
+                maxLength={9}
+                className="flex-1"
               />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="prop-address">Endereço</Label>
-              <Input
-                id="prop-address"
-                placeholder="Rua, número, bairro"
-                value={newProperty.address}
-                onChange={(e) => setNewProperty(prev => ({ ...prev, address: e.target.value }))}
-              />
+              <Button
+                type="button"
+                variant="outline"
+                onClick={handleSearchCep}
+                disabled={fetchingCep || formData.address_cep.replace(/\D/g, '').length !== 8}
+              >
+                {fetchingCep ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <Search className="h-4 w-4" />
+                )}
+              </Button>
             </div>
           </div>
-          <Button onClick={handleAddProperty} disabled={adding || !newProperty.name.trim()}>
+
+          {/* Address Fields - Only shown after CEP lookup */}
+          {addressLoaded && (
+            <>
+              {/* Street - Read only */}
+              <div className="space-y-2">
+                <Label>Logradouro</Label>
+                <Input
+                  value={formData.address_street}
+                  disabled
+                  className="bg-muted"
+                />
+              </div>
+
+              {/* District - Read only */}
+              <div className="space-y-2">
+                <Label>Bairro</Label>
+                <Input
+                  value={formData.address_district}
+                  disabled
+                  className="bg-muted"
+                />
+              </div>
+
+              {/* Number and Complements */}
+              <div className="grid grid-cols-3 gap-3">
+                <div className="space-y-2">
+                  <Label htmlFor="prop-number">Número</Label>
+                  <Input
+                    id="prop-number"
+                    placeholder="123"
+                    value={formData.address_number}
+                    onChange={(e) => setFormData(prev => ({ ...prev, address_number: e.target.value }))}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="prop-comp1">Complemento 1</Label>
+                  <Input
+                    id="prop-comp1"
+                    placeholder="Apto 101"
+                    value={formData.address_complement1}
+                    onChange={(e) => setFormData(prev => ({ ...prev, address_complement1: e.target.value }))}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="prop-comp2">Complemento 2</Label>
+                  <Input
+                    id="prop-comp2"
+                    placeholder="Bloco A"
+                    value={formData.address_complement2}
+                    onChange={(e) => setFormData(prev => ({ ...prev, address_complement2: e.target.value }))}
+                  />
+                </div>
+              </div>
+
+              {/* City and State - Read only */}
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-2">
+                  <Label>Cidade</Label>
+                  <Input
+                    value={formData.address_city}
+                    disabled
+                    className="bg-muted"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>Estado</Label>
+                  <Input
+                    value={formData.address_state}
+                    disabled
+                    className="bg-muted"
+                  />
+                </div>
+              </div>
+
+              {/* Address Preview */}
+              <div className="p-3 bg-muted/50 rounded-lg border border-border">
+                <div className="flex items-start gap-2">
+                  <MapPin className="h-4 w-4 text-muted-foreground mt-0.5 shrink-0" />
+                  <p className="text-sm text-muted-foreground">
+                    {buildFullAddress()}
+                  </p>
+                </div>
+              </div>
+            </>
+          )}
+
+          <Button onClick={handleAddProperty} disabled={adding || !canAddProperty}>
             {adding ? (
               <Loader2 className="h-4 w-4 mr-2 animate-spin" />
             ) : (

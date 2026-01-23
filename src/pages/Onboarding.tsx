@@ -7,7 +7,6 @@ import { PropertiesStep } from '@/components/onboarding/steps/PropertiesStep';
 import { TeamStep } from '@/components/onboarding/steps/TeamStep';
 import { InventoryStep } from '@/components/onboarding/steps/InventoryStep';
 import { ChecklistsStep } from '@/components/onboarding/steps/ChecklistsStep';
-import { HouseRulesStep } from '@/components/onboarding/steps/HouseRulesStep';
 import { ReviewStep } from '@/components/onboarding/steps/ReviewStep';
 
 export type OnboardingStep = 
@@ -18,7 +17,6 @@ export type OnboardingStep =
   | 'team'
   | 'inventory'
   | 'checklists'
-  | 'rules'
   | 'review';
 
 export const STEPS: { id: OnboardingStep; label: string; number: number }[] = [
@@ -29,8 +27,7 @@ export const STEPS: { id: OnboardingStep; label: string; number: number }[] = [
   { id: 'team', label: 'Equipe', number: 5 },
   { id: 'inventory', label: 'Inventário', number: 6 },
   { id: 'checklists', label: 'Checklists', number: 7 },
-  { id: 'rules', label: 'Regras da Casa', number: 8 },
-  { id: 'review', label: 'Revisão Final', number: 9 },
+  { id: 'review', label: 'Revisão Final', number: 8 },
 ];
 
 export default function Onboarding() {
@@ -80,8 +77,6 @@ export default function Onboarding() {
         return <InventoryStep {...stepProps} />;
       case 'checklists':
         return <ChecklistsStep {...stepProps} />;
-      case 'rules':
-        return <HouseRulesStep {...stepProps} />;
       case 'review':
         return <ReviewStep onBack={handleBack} />;
       default:
