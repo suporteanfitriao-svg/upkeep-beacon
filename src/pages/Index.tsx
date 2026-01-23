@@ -769,6 +769,7 @@ const Index = () => {
             onStatusFilterChange={setStatusFilter}
             searchQuery={searchQuery}
             onSearchChange={setSearchQuery}
+            onUpdateSchedule={handleUpdateSchedule}
           />
           {selectedSchedule && (
             <ScheduleDetail
@@ -801,6 +802,7 @@ const Index = () => {
             onStatusFilterChange={setStatusFilter}
             searchQuery={searchQuery}
             onSearchChange={setSearchQuery}
+            onUpdateSchedule={handleUpdateSchedule}
           />
           {selectedSchedule && (
             <ScheduleDetail

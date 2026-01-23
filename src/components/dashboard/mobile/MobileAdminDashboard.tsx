@@ -1,7 +1,7 @@
-import { useState, useMemo, useCallback, useRef } from 'react';
-import { format, formatDistanceToNow } from 'date-fns';
+import { useState, useMemo, useCallback, useRef, useEffect } from 'react';
+import { format, formatDistanceToNow, isSameDay, startOfDay, addDays, startOfMonth, endOfMonth } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { RefreshCw, ChevronRight, AlertTriangle, Building2, Calendar, Search, Filter, Clock, User, Check, Play, Eye, ChevronLeft } from 'lucide-react';
+import { RefreshCw, ChevronRight, AlertTriangle, Building2, Calendar, Search, Clock, User, Check, Play, Eye, ChevronLeft, Settings, ClipboardList } from 'lucide-react';
 import { Schedule, ScheduleStatus } from '@/types/scheduling';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
@@ -9,7 +9,13 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import { CleaningTimeAlert } from '@/hooks/useCleaningTimeAlert';
 import { useViewMode, ViewMode } from '@/hooks/useViewMode';
-import type { DateRange } from 'react-day-picker';
+import { MobileInfiniteDayStrip } from './MobileInfiniteDayStrip';
+import { MobileAgendaFilterTabs, AgendaViewMode } from './MobileAgendaFilterTabs';
+import { MobileAdminScheduleCard } from './MobileAdminScheduleCard';
+import { Dialog, DialogContent } from '@/components/ui/dialog';
+import { LocationModal } from '../LocationModal';
+import { PasswordModal } from '../PasswordModal';
+import { useTeamMemberId } from '@/hooks/useTeamMemberId';
 
 interface MobileAdminDashboardProps {
   schedules: Schedule[];
@@ -33,34 +39,8 @@ interface MobileAdminDashboardProps {
   onStatusFilterChange: (filter: string) => void;
   searchQuery: string;
   onSearchChange: (query: string) => void;
+  onUpdateSchedule?: (schedule: Schedule) => void;
 }
-
-const STATUS_CONFIG: Record<ScheduleStatus, { label: string; color: string; bgColor: string; icon: React.ReactNode }> = {
-  waiting: { 
-    label: 'Aguardando', 
-    color: 'text-orange-600 dark:text-orange-400',
-    bgColor: 'bg-orange-100 dark:bg-orange-900/30',
-    icon: <Clock className="w-3.5 h-3.5" />
-  },
-  released: { 
-    label: 'Liberado', 
-    color: 'text-primary',
-    bgColor: 'bg-primary/10',
-    icon: <Check className="w-3.5 h-3.5" />
-  },
-  cleaning: { 
-    label: 'Em Limpeza', 
-    color: 'text-blue-600 dark:text-blue-400',
-    bgColor: 'bg-blue-100 dark:bg-blue-900/30',
-    icon: <Play className="w-3.5 h-3.5" />
-  },
-  completed: { 
-    label: 'Finalizado', 
-    color: 'text-emerald-600 dark:text-emerald-400',
-    bgColor: 'bg-emerald-100 dark:bg-emerald-900/30',
-    icon: <Check className="w-3.5 h-3.5" />
-  },
-};
 
 export function MobileAdminDashboard({
   schedules,
@@ -77,6 +57,7 @@ export function MobileAdminDashboard({
   onStatusFilterChange,
   searchQuery,
   onSearchChange,
+  onUpdateSchedule,
 }: MobileAdminDashboardProps) {
   const navigate = useNavigate();
   const { user } = useAuth();
@@ -84,6 +65,16 @@ export function MobileAdminDashboard({
   const [showViewModeMenu, setShowViewModeMenu] = useState(false);
   const [completedPage, setCompletedPage] = useState(1);
   const containerRef = useRef<HTMLDivElement>(null);
+  
+  // Calendar/date state - matching cleaner layout
+  const [selectedDate, setSelectedDate] = useState(() => startOfDay(new Date()));
+  const [agendaViewMode, setAgendaViewMode] = useState<AgendaViewMode>('hoje');
+  const [currentMonth, setCurrentMonth] = useState(() => startOfMonth(new Date()));
+  
+  // Modal states for quick actions
+  const [locationModal, setLocationModal] = useState<{ open: boolean; schedule: Schedule | null }>({ open: false, schedule: null });
+  const [passwordModal, setPasswordModal] = useState<{ open: boolean; schedule: Schedule | null }>({ open: false, schedule: null });
+  const [assignModal, setAssignModal] = useState<{ open: boolean; schedule: Schedule | null }>({ open: false, schedule: null });
   
   const COMPLETED_PER_PAGE = 5;
 
@@ -104,20 +95,121 @@ export function MobileAdminDashboard({
     }
   }, [onRefresh, isSyncing]);
 
-  const dateFilterOptions = [
-    { value: 'today', label: 'Hoje' },
-    { value: 'tomorrow', label: 'Amanhã' },
-    { value: 'week', label: 'Semana' },
-    { value: 'month', label: 'Mês' },
-  ];
+  // Day indicators for calendar strip
+  const dayIndicators = useMemo(() => {
+    const indicators: Record<string, { pending: number; completed: number; gold: number; inspections: number }> = {};
+    
+    schedules.forEach(s => {
+      const dateKey = format(s.checkOut, 'yyyy-MM-dd');
+      if (!indicators[dateKey]) {
+        indicators[dateKey] = { pending: 0, completed: 0, gold: 0, inspections: 0 };
+      }
+      if (s.status === 'completed') {
+        indicators[dateKey].completed++;
+      } else if (s.status === 'waiting' || s.status === 'released') {
+        indicators[dateKey].pending++;
+      } else {
+        indicators[dateKey].gold++;
+      }
+    });
+    
+    return indicators;
+  }, [schedules]);
 
-  const statusFilterOptions = [
-    { value: 'all', label: 'Todos' },
-    { value: 'waiting', label: 'Aguardando' },
-    { value: 'released', label: 'Liberado' },
-    { value: 'cleaning', label: 'Em Limpeza' },
-    { value: 'completed', label: 'Finalizado' },
-  ];
+  // Filter schedules based on selected date and status filter
+  const dateFilteredSchedules = useMemo(() => {
+    let filtered = schedules;
+    
+    // Date filtering based on agendaViewMode
+    if (agendaViewMode === 'hoje' || agendaViewMode === 'data') {
+      filtered = schedules.filter(s => isSameDay(s.checkOut, selectedDate));
+    } else if (agendaViewMode === 'mes') {
+      const monthStart = startOfMonth(currentMonth);
+      const monthEnd = endOfMonth(currentMonth);
+      filtered = schedules.filter(s => s.checkOut >= monthStart && s.checkOut <= monthEnd);
+    }
+    
+    // Status filtering
+    if (statusFilter !== 'all') {
+      filtered = filtered.filter(s => s.status === statusFilter);
+    }
+    
+    // Search filtering
+    if (searchQuery.trim()) {
+      const query = searchQuery.toLowerCase();
+      filtered = filtered.filter(s => 
+        s.propertyName.toLowerCase().includes(query) ||
+        s.cleanerName?.toLowerCase().includes(query)
+      );
+    }
+    
+    return filtered.sort((a, b) => a.checkOut.getTime() - b.checkOut.getTime());
+  }, [schedules, selectedDate, agendaViewMode, currentMonth, statusFilter, searchQuery]);
+
+  // Separate active and completed
+  const activeSchedules = useMemo(() => 
+    dateFilteredSchedules.filter(s => s.status !== 'completed'),
+    [dateFilteredSchedules]
+  );
+  
+  const completedSchedules = useMemo(() => 
+    dateFilteredSchedules.filter(s => s.status === 'completed'),
+    [dateFilteredSchedules]
+  );
+
+  // Pagination for completed
+  const totalCompletedPages = Math.ceil(completedSchedules.length / COMPLETED_PER_PAGE);
+  const paginatedCompleted = completedSchedules.slice(
+    (completedPage - 1) * COMPLETED_PER_PAGE,
+    completedPage * COMPLETED_PER_PAGE
+  );
+
+  // Calculate stats for selected period
+  const periodStats = useMemo(() => {
+    const waiting = dateFilteredSchedules.filter(s => s.status === 'waiting').length;
+    const released = dateFilteredSchedules.filter(s => s.status === 'released').length;
+    const cleaning = dateFilteredSchedules.filter(s => s.status === 'cleaning').length;
+    const completed = dateFilteredSchedules.filter(s => s.status === 'completed').length;
+    return { waiting, released, cleaning, completed, total: dateFilteredSchedules.length };
+  }, [dateFilteredSchedules]);
+
+  // Handle view mode change
+  const handleAgendaViewModeChange = useCallback((mode: AgendaViewMode) => {
+    setAgendaViewMode(mode);
+    if (mode === 'hoje') {
+      setSelectedDate(startOfDay(new Date()));
+    }
+    setCompletedPage(1);
+  }, []);
+
+  const handleDateSelect = useCallback((date: Date) => {
+    setSelectedDate(startOfDay(date));
+    setCompletedPage(1);
+  }, []);
+
+  // Quick actions
+  const handleViewAddress = useCallback((schedule: Schedule) => {
+    setLocationModal({ open: true, schedule });
+  }, []);
+
+  const handleViewPassword = useCallback((schedule: Schedule) => {
+    setPasswordModal({ open: true, schedule });
+  }, []);
+
+  const handleAssignCleaner = useCallback((schedule: Schedule) => {
+    setAssignModal({ open: true, schedule });
+  }, []);
+
+  const handleRelease = useCallback(async (schedule: Schedule) => {
+    if (onUpdateSchedule) {
+      const updated = { ...schedule, status: 'released' as ScheduleStatus };
+      onUpdateSchedule(updated);
+      toast.success('Limpeza liberada!');
+    }
+  }, [onUpdateSchedule]);
+
+  const monthName = format(currentMonth, "MMMM", { locale: ptBR });
+  const yearNumber = format(currentMonth, "yyyy");
 
   return (
     <div 
@@ -125,11 +217,13 @@ export function MobileAdminDashboard({
       className="min-h-screen bg-stone-50 dark:bg-[#1a1d21] flex flex-col"
     >
       {/* Header */}
-      <header className="sticky top-0 z-20 bg-stone-50/95 dark:bg-[#1a1d21]/95 backdrop-blur-md border-b border-slate-200 dark:border-slate-800 px-4 py-3 safe-area-top">
+      <header className="sticky top-0 z-30 bg-stone-50/95 dark:bg-[#1a1d21]/95 backdrop-blur-md border-b border-slate-200 dark:border-slate-800 px-4 py-3 safe-area-top">
         <div className="flex items-center justify-between">
           <div className="flex flex-col">
             <span className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider">Painel</span>
-            <h1 className="text-lg font-bold text-foreground">Administrativo</h1>
+            <h1 className="text-lg font-bold text-foreground">
+              <span className="capitalize">{monthName}</span> <span className="text-primary">{yearNumber}</span>
+            </h1>
           </div>
           <div className="flex items-center gap-2">
             {/* View Mode Switcher for SuperAdmin */}
@@ -211,57 +305,78 @@ export function MobileAdminDashboard({
             Última sincronização {lastSyncText}
           </p>
         )}
+
+        {/* Filter Tabs - Same as cleaner */}
+        <div className="mt-3">
+          <MobileAgendaFilterTabs
+            viewMode={agendaViewMode}
+            selectedDate={selectedDate}
+            onViewModeChange={handleAgendaViewModeChange}
+            onDateSelect={handleDateSelect}
+            onMonthChange={setCurrentMonth}
+            dayIndicators={dayIndicators}
+          />
+        </div>
       </header>
 
-      {/* Status Cards */}
-      <div className="px-4 py-3 grid grid-cols-4 gap-2">
+      {/* Infinite Day Strip - Same as cleaner */}
+      {agendaViewMode !== 'mes' && (
+        <MobileInfiniteDayStrip
+          selectedDate={selectedDate}
+          onDateSelect={handleDateSelect}
+          dayIndicators={dayIndicators}
+        />
+      )}
+
+      {/* Status Cards - Compact */}
+      <div className="px-4 py-2 grid grid-cols-4 gap-2">
         <button
           onClick={() => onStatusFilterChange(statusFilter === 'waiting' ? 'all' : 'waiting')}
           className={cn(
-            "flex flex-col items-center justify-center p-3 rounded-xl transition-all",
+            "flex flex-col items-center justify-center p-2.5 rounded-xl transition-all",
             statusFilter === 'waiting' 
               ? "bg-orange-100 dark:bg-orange-900/30 ring-2 ring-orange-400" 
               : "bg-white dark:bg-slate-800 shadow-sm"
           )}
         >
-          <span className="text-xl font-bold text-orange-600 dark:text-orange-400">{stats.waiting}</span>
-          <span className="text-[10px] text-muted-foreground">Aguardando</span>
+          <span className="text-lg font-bold text-orange-600 dark:text-orange-400">{periodStats.waiting}</span>
+          <span className="text-[9px] text-muted-foreground">Aguardando</span>
         </button>
         <button
           onClick={() => onStatusFilterChange(statusFilter === 'released' ? 'all' : 'released')}
           className={cn(
-            "flex flex-col items-center justify-center p-3 rounded-xl transition-all",
+            "flex flex-col items-center justify-center p-2.5 rounded-xl transition-all",
             statusFilter === 'released' 
               ? "bg-primary/20 ring-2 ring-primary" 
               : "bg-white dark:bg-slate-800 shadow-sm"
           )}
         >
-          <span className="text-xl font-bold text-primary">{stats.released}</span>
-          <span className="text-[10px] text-muted-foreground">Liberado</span>
+          <span className="text-lg font-bold text-primary">{periodStats.released}</span>
+          <span className="text-[9px] text-muted-foreground">Liberado</span>
         </button>
         <button
           onClick={() => onStatusFilterChange(statusFilter === 'cleaning' ? 'all' : 'cleaning')}
           className={cn(
-            "flex flex-col items-center justify-center p-3 rounded-xl transition-all",
+            "flex flex-col items-center justify-center p-2.5 rounded-xl transition-all",
             statusFilter === 'cleaning' 
-              ? "bg-blue-100 dark:bg-blue-900/30 ring-2 ring-blue-400" 
+              ? "bg-[#E0C051]/20 ring-2 ring-[#E0C051]" 
               : "bg-white dark:bg-slate-800 shadow-sm"
           )}
         >
-          <span className="text-xl font-bold text-blue-600 dark:text-blue-400">{stats.cleaning}</span>
-          <span className="text-[10px] text-muted-foreground">Limpando</span>
+          <span className="text-lg font-bold text-[#E0C051]">{periodStats.cleaning}</span>
+          <span className="text-[9px] text-muted-foreground">Limpando</span>
         </button>
         <button
           onClick={() => onStatusFilterChange(statusFilter === 'completed' ? 'all' : 'completed')}
           className={cn(
-            "flex flex-col items-center justify-center p-3 rounded-xl transition-all",
+            "flex flex-col items-center justify-center p-2.5 rounded-xl transition-all",
             statusFilter === 'completed' 
               ? "bg-emerald-100 dark:bg-emerald-900/30 ring-2 ring-emerald-400" 
               : "bg-white dark:bg-slate-800 shadow-sm"
           )}
         >
-          <span className="text-xl font-bold text-emerald-600 dark:text-emerald-400">{stats.completed}</span>
-          <span className="text-[10px] text-muted-foreground">Finalizado</span>
+          <span className="text-lg font-bold text-emerald-600 dark:text-emerald-400">{periodStats.completed}</span>
+          <span className="text-[9px] text-muted-foreground">Finalizado</span>
         </button>
       </div>
 
@@ -271,11 +386,11 @@ export function MobileAdminDashboard({
           <div className="flex items-center gap-2 mb-2">
             <AlertTriangle className="w-4 h-4 text-rose-500" />
             <span className="text-xs font-bold text-rose-600 dark:text-rose-400">
-              ALERTAS DE TEMPO ({cleaningTimeAlerts.length})
+              ALERTAS ({cleaningTimeAlerts.length})
             </span>
           </div>
           <div className="space-y-2">
-            {cleaningTimeAlerts.slice(0, 3).map((alert) => (
+            {cleaningTimeAlerts.slice(0, 2).map((alert) => (
               <button
                 key={alert.schedule.id}
                 onClick={() => onScheduleClick(alert.schedule)}
@@ -290,7 +405,7 @@ export function MobileAdminDashboard({
                   <div className="flex-1 min-w-0">
                     <p className="font-bold text-sm text-foreground truncate">{alert.schedule.propertyName}</p>
                     <p className="text-[10px] text-muted-foreground">
-                      {alert.schedule.cleanerName} • Check-in {format(alert.checkInTime, 'HH:mm')}
+                      {alert.schedule.cleanerName}
                     </p>
                   </div>
                   <div className={cn(
@@ -302,7 +417,6 @@ export function MobileAdminDashboard({
                         ? `+${Math.abs(alert.minutesRemaining)}min` 
                         : `${alert.minutesRemaining}min`}
                     </span>
-                    <p className="text-[10px]">{alert.type === 'exceeding' ? 'excedido' : 'restantes'}</p>
                   </div>
                 </div>
               </button>
@@ -311,27 +425,8 @@ export function MobileAdminDashboard({
         </div>
       )}
 
-      {/* Filters */}
-      <div className="px-4 py-2 space-y-3">
-        {/* Date Filter Tabs */}
-        <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-hide">
-          {dateFilterOptions.map((option) => (
-            <button
-              key={option.value}
-              onClick={() => onDateFilterChange(option.value)}
-              className={cn(
-                "px-4 py-2 rounded-full text-xs font-semibold whitespace-nowrap transition-all",
-                dateFilter === option.value
-                  ? "bg-primary text-primary-foreground shadow-md"
-                  : "bg-white dark:bg-slate-800 text-muted-foreground shadow-sm hover:bg-slate-50 dark:hover:bg-slate-700"
-              )}
-            >
-              {option.label}
-            </button>
-          ))}
-        </div>
-
-        {/* Search Bar */}
+      {/* Search Bar */}
+      <div className="px-4 py-2">
         <div className="relative">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
           <input
@@ -345,144 +440,93 @@ export function MobileAdminDashboard({
       </div>
 
       {/* Schedule List */}
-      <div className="flex-1 px-4 py-2 pb-safe">
-        {(() => {
-          // Separate active and completed schedules
-          const activeSchedules = filteredSchedules.filter(s => s.status !== 'completed');
-          const completedSchedules = filteredSchedules.filter(s => s.status === 'completed');
-          
-          // Pagination for completed
-          const totalCompletedPages = Math.ceil(completedSchedules.length / COMPLETED_PER_PAGE);
-          const paginatedCompleted = completedSchedules.slice(
-            (completedPage - 1) * COMPLETED_PER_PAGE,
-            completedPage * COMPLETED_PER_PAGE
-          );
-          
-          if (filteredSchedules.length === 0) {
-            return (
-              <div className="flex flex-col items-center justify-center py-12 text-center">
-                <Calendar className="w-12 h-12 text-muted-foreground/50 mb-3" />
-                <p className="text-sm font-medium text-muted-foreground">Nenhum agendamento encontrado</p>
-                <p className="text-xs text-muted-foreground/70 mt-1">Ajuste os filtros para ver mais resultados</p>
-              </div>
-            );
-          }
-          
-          const renderScheduleCard = (schedule: Schedule, isCompleted: boolean = false) => {
-            const statusConfig = STATUS_CONFIG[schedule.status];
-            return (
-              <button
+      <div className="flex-1 px-4 py-2 pb-24 overflow-y-auto">
+        {dateFilteredSchedules.length === 0 ? (
+          <div className="flex flex-col items-center justify-center py-12 text-center">
+            <Calendar className="w-12 h-12 text-muted-foreground/50 mb-3" />
+            <p className="text-sm font-medium text-muted-foreground">Nenhum agendamento</p>
+            <p className="text-xs text-muted-foreground/70 mt-1">
+              {agendaViewMode === 'hoje' ? 'para hoje' : agendaViewMode === 'mes' ? 'neste mês' : 'para esta data'}
+            </p>
+          </div>
+        ) : (
+          <div className="space-y-3">
+            {/* Active Schedules */}
+            {activeSchedules.map((schedule) => (
+              <MobileAdminScheduleCard
                 key={schedule.id}
-                onClick={() => onScheduleClick(schedule)}
-                className={cn(
-                  "w-full bg-white dark:bg-slate-800 rounded-xl p-4 shadow-sm border border-slate-200 dark:border-slate-700 text-left transition-all active:scale-[0.99] hover:shadow-md",
-                  isCompleted && "opacity-60"
-                )}
-              >
-                <div className="flex items-start justify-between gap-3">
-                  <div className="flex-1 min-w-0">
-                    <h3 className={cn(
-                      "font-bold text-sm truncate",
-                      isCompleted ? "text-muted-foreground" : "text-foreground"
-                    )}>
-                      {schedule.propertyName}
-                    </h3>
-                    <div className="flex items-center gap-2 mt-1.5">
-                      <Clock className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
-                      <span className="text-xs text-muted-foreground">
-                        {format(schedule.checkOut, "dd/MM 'às' HH:mm")}
-                      </span>
-                      <span className="text-xs text-muted-foreground">→</span>
-                      <span className={cn(
-                        "text-xs font-medium",
-                        isCompleted ? "text-muted-foreground" : "text-foreground"
-                      )}>
-                        {format(schedule.checkIn, "HH:mm")}
-                      </span>
-                    </div>
-                    <div className="flex items-center gap-2 mt-1">
-                      <User className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
-                      <span className="text-xs text-muted-foreground truncate">
-                        {schedule.cleanerName}
-                      </span>
-                    </div>
-                  </div>
-                  <div className="flex flex-col items-end gap-2">
-                    <span className={cn(
-                      "inline-flex items-center gap-1 px-2 py-1 rounded-md text-[10px] font-bold",
-                      statusConfig.bgColor,
-                      statusConfig.color
-                    )}>
-                      {statusConfig.icon}
-                      {statusConfig.label}
-                    </span>
-                    <ChevronRight className="w-4 h-4 text-muted-foreground" />
-                  </div>
-                </div>
-              </button>
-            );
-          };
-          
-          return (
-            <div className="space-y-3">
-              {/* Active Schedules */}
-              {activeSchedules.map((schedule) => renderScheduleCard(schedule, false))}
-              
-              {/* Separator between active and completed */}
-              {activeSchedules.length > 0 && completedSchedules.length > 0 && (
-                <div className="flex items-center gap-3 py-3">
-                  <div className="flex-1 h-px bg-slate-300 dark:bg-slate-600" />
-                  <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">
-                    Finalizados ({completedSchedules.length})
-                  </span>
-                  <div className="flex-1 h-px bg-slate-300 dark:bg-slate-600" />
-                </div>
-              )}
-              
-              {/* Completed Schedules - Paginated */}
-              {paginatedCompleted.map((schedule) => renderScheduleCard(schedule, true))}
-              
-              {/* Pagination Controls for Completed */}
-              {totalCompletedPages > 1 && (
-                <div className="flex items-center justify-center gap-4 py-3">
-                  <button
-                    onClick={() => setCompletedPage(p => Math.max(1, p - 1))}
-                    disabled={completedPage === 1}
-                    className={cn(
-                      "flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors",
-                      completedPage === 1
-                        ? "text-muted-foreground/50 cursor-not-allowed"
-                        : "text-primary hover:bg-primary/10"
-                    )}
-                  >
-                    <ChevronLeft className="w-4 h-4" />
-                    Anterior
-                  </button>
-                  <span className="text-xs text-muted-foreground">
-                    {completedPage} de {totalCompletedPages}
-                  </span>
-                  <button
-                    onClick={() => setCompletedPage(p => Math.min(totalCompletedPages, p + 1))}
-                    disabled={completedPage === totalCompletedPages}
-                    className={cn(
-                      "flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors",
-                      completedPage === totalCompletedPages
-                        ? "text-muted-foreground/50 cursor-not-allowed"
-                        : "text-primary hover:bg-primary/10"
-                    )}
-                  >
-                    Próximo
-                    <ChevronRight className="w-4 h-4" />
-                  </button>
-                </div>
-              )}
-            </div>
-          );
-        })()}
+                schedule={schedule}
+                onScheduleClick={onScheduleClick}
+                onViewAddress={handleViewAddress}
+                onViewPassword={handleViewPassword}
+                onAssignCleaner={handleAssignCleaner}
+                onRelease={handleRelease}
+              />
+            ))}
+            
+            {/* Separator */}
+            {activeSchedules.length > 0 && completedSchedules.length > 0 && (
+              <div className="flex items-center gap-3 py-3">
+                <div className="flex-1 h-px bg-slate-300 dark:bg-slate-600" />
+                <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">
+                  Finalizados ({completedSchedules.length})
+                </span>
+                <div className="flex-1 h-px bg-slate-300 dark:bg-slate-600" />
+              </div>
+            )}
+            
+            {/* Completed Schedules - Paginated */}
+            {paginatedCompleted.map((schedule) => (
+              <MobileAdminScheduleCard
+                key={schedule.id}
+                schedule={schedule}
+                onScheduleClick={onScheduleClick}
+                onViewAddress={handleViewAddress}
+                onViewPassword={handleViewPassword}
+                isCompleted
+              />
+            ))}
+            
+            {/* Pagination Controls */}
+            {totalCompletedPages > 1 && (
+              <div className="flex items-center justify-center gap-4 py-3">
+                <button
+                  onClick={() => setCompletedPage(p => Math.max(1, p - 1))}
+                  disabled={completedPage === 1}
+                  className={cn(
+                    "flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors",
+                    completedPage === 1
+                      ? "text-muted-foreground/50 cursor-not-allowed"
+                      : "text-primary hover:bg-primary/10"
+                  )}
+                >
+                  <ChevronLeft className="w-4 h-4" />
+                  Anterior
+                </button>
+                <span className="text-xs text-muted-foreground">
+                  {completedPage} de {totalCompletedPages}
+                </span>
+                <button
+                  onClick={() => setCompletedPage(p => Math.min(totalCompletedPages, p + 1))}
+                  disabled={completedPage === totalCompletedPages}
+                  className={cn(
+                    "flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors",
+                    completedPage === totalCompletedPages
+                      ? "text-muted-foreground/50 cursor-not-allowed"
+                      : "text-primary hover:bg-primary/10"
+                  )}
+                >
+                  Próximo
+                  <ChevronRight className="w-4 h-4" />
+                </button>
+              </div>
+            )}
+          </div>
+        )}
       </div>
 
       {/* Bottom Navigation */}
-      <nav className="sticky bottom-0 bg-white dark:bg-slate-900 border-t border-slate-200 dark:border-slate-800 px-6 py-3 safe-area-bottom">
+      <nav className="fixed bottom-0 left-0 right-0 bg-white dark:bg-slate-900 border-t border-slate-200 dark:border-slate-800 px-6 py-3 safe-area-bottom z-40">
         <div className="flex items-center justify-around">
           <button
             onClick={() => navigate('/')}
@@ -509,11 +553,41 @@ export function MobileAdminDashboard({
             onClick={() => navigate('/configuracoes')}
             className="flex flex-col items-center gap-1 text-muted-foreground hover:text-foreground transition-colors"
           >
-            <Filter className="w-5 h-5" />
+            <Settings className="w-5 h-5" />
             <span className="text-[10px] font-medium">Config</span>
           </button>
         </div>
       </nav>
+
+      {/* Modals */}
+      <Dialog open={locationModal.open} onOpenChange={(open) => !open && setLocationModal({ open: false, schedule: null })}>
+        <DialogContent className="max-w-md p-0 overflow-hidden">
+          {locationModal.schedule && (
+            <LocationModal
+              onClose={() => setLocationModal({ open: false, schedule: null })}
+              address={locationModal.schedule.propertyAddress || ''}
+              propertyName={locationModal.schedule.propertyName}
+            />
+          )}
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={passwordModal.open} onOpenChange={(open) => !open && setPasswordModal({ open: false, schedule: null })}>
+        <DialogContent className="max-w-md p-0 overflow-hidden">
+          {passwordModal.schedule && (
+            <PasswordModal
+              onClose={() => setPasswordModal({ open: false, schedule: null })}
+              scheduleId={passwordModal.schedule.id}
+              propertyId={passwordModal.schedule.propertyId || ''}
+              propertyName={passwordModal.schedule.propertyName}
+              scheduleDate={format(passwordModal.schedule.checkOut, 'yyyy-MM-dd')}
+              scheduleStatus={passwordModal.schedule.status}
+              accessPassword={passwordModal.schedule.accessPassword}
+              teamMemberId={null}
+            />
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
