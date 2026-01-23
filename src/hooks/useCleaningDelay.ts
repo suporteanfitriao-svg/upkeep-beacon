@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo, useCallback } from 'react';
 import { Schedule } from '@/types/scheduling';
-import { differenceInMinutes, isAfter, isBefore, startOfDay, isSameDay } from 'date-fns';
+import { differenceInMinutes, isAfter } from 'date-fns';
+import { getEffectiveCheckIn } from '@/lib/scheduling/effectiveTimes';
 
 export interface CleaningDelayInfo {
   isDelayed: boolean;
@@ -45,31 +46,8 @@ export function calculateCleaningDelay(schedule: Schedule, now: Date = new Date(
     };
   }
 
-  const checkOutTime = schedule.checkOut instanceof Date 
-    ? schedule.checkOut 
-    : new Date(schedule.checkOut);
-    
-  const checkInTime = schedule.checkIn instanceof Date 
-    ? schedule.checkIn 
-    : new Date(schedule.checkIn);
-
-  // O check-in relevante para atraso é o do MESMO DIA do checkout
-  // Se o check-in armazenado é de um dia anterior, usamos o horário de check-in
-  // aplicado ao dia do checkout (que é quando a limpeza deveria ocorrer)
-  const checkOutDay = startOfDay(checkOutTime);
-  const checkInDay = startOfDay(checkInTime);
-  
-  // Se o check-in é de um dia diferente do checkout, construir o horário de check-in
-  // usando a hora do check-in mas no dia do checkout
-  let effectiveCheckIn = checkInTime;
-  if (!isSameDay(checkOutDay, checkInDay)) {
-    // Extrair apenas a hora/minuto do check-in original
-    const checkInHours = checkInTime.getHours();
-    const checkInMinutes = checkInTime.getMinutes();
-    // Aplicar ao dia do checkout
-    effectiveCheckIn = new Date(checkOutDay);
-    effectiveCheckIn.setHours(checkInHours, checkInMinutes, 0, 0);
-  }
+  const checkOutTime = schedule.checkOut instanceof Date ? schedule.checkOut : new Date(schedule.checkOut);
+  const effectiveCheckIn = getEffectiveCheckIn(schedule);
 
   // Antes do checkout, não existe atraso
   const canBeDelayed = isAfter(now, checkOutTime);
@@ -105,6 +83,7 @@ export function calculateCleaningDelay(schedule: Schedule, now: Date = new Date(
     canBeDelayed: true,
   };
 }
+
 
 /**
  * Hook que calcula e atualiza o atraso de uma limpeza em tempo real

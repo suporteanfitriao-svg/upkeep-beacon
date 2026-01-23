@@ -1,6 +1,7 @@
 import { useMemo } from 'react';
 import { Schedule } from '@/types/scheduling';
-import { differenceInMinutes, isAfter, isBefore, addMinutes, parseISO } from 'date-fns';
+import { differenceInMinutes, isAfter, addMinutes } from 'date-fns';
+import { getEffectiveCheckIn } from '@/lib/scheduling/effectiveTimes';
 
 export interface CleaningTimeAlert {
   schedule: Schedule;
@@ -18,7 +19,7 @@ export function wasCompletedWithDelay(schedule: Schedule): boolean {
   if (schedule.status !== 'completed' || !schedule.endAt) return false;
   
   const endTime = schedule.endAt instanceof Date ? schedule.endAt : new Date(schedule.endAt);
-  const checkInTime = schedule.checkIn instanceof Date ? schedule.checkIn : new Date(schedule.checkIn);
+  const checkInTime = getEffectiveCheckIn(schedule);
   
   return isAfter(endTime, checkInTime);
 }
@@ -30,7 +31,7 @@ export function getDelayMinutes(schedule: Schedule): number {
   if (!schedule.endAt) return 0;
   
   const endTime = schedule.endAt instanceof Date ? schedule.endAt : new Date(schedule.endAt);
-  const checkInTime = schedule.checkIn instanceof Date ? schedule.checkIn : new Date(schedule.checkIn);
+  const checkInTime = getEffectiveCheckIn(schedule);
   
   if (isAfter(endTime, checkInTime)) {
     return differenceInMinutes(endTime, checkInTime);
@@ -47,7 +48,7 @@ export function isCleaningDelayed(schedule: Schedule): { isDelayed: boolean; min
   }
 
   const now = new Date();
-  const checkInTime = schedule.checkIn instanceof Date ? schedule.checkIn : new Date(schedule.checkIn);
+  const checkInTime = getEffectiveCheckIn(schedule);
   
   if (isAfter(now, checkInTime)) {
     return { 
@@ -81,10 +82,8 @@ export function useCleaningTimeAlerts(schedules: Schedule[]): CleaningTimeAlert[
       const startTime = schedule.startAt instanceof Date 
         ? schedule.startAt 
         : new Date(schedule.startAt);
-      
-      const checkInTime = schedule.checkIn instanceof Date 
-        ? schedule.checkIn 
-        : new Date(schedule.checkIn);
+
+      const checkInTime = getEffectiveCheckIn(schedule);
 
       // Duration since cleaning started (always positive)
       const cleaningDuration = differenceInMinutes(now, startTime);
