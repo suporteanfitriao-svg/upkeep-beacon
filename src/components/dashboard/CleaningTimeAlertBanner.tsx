@@ -159,11 +159,8 @@ export function CleaningTimeAlertBanner({
                 "flex-shrink-0 flex flex-col items-end",
                 alert.type === 'exceeding' ? "text-red-600 dark:text-red-400" : "text-amber-600 dark:text-amber-400"
               )}>
-                <span className="text-lg font-bold">
-                  {alert.minutesRemaining < 0 ? '+' : ''}{Math.abs(alert.minutesRemaining)}
-                </span>
-                <span className="text-[10px] uppercase font-medium">
-                  {alert.minutesRemaining < 0 ? 'min atraso' : 'min restantes'}
+                <span className="text-sm font-bold text-right">
+                  {formatMinutes(alert.minutesRemaining)}
                 </span>
               </div>
             </div>
