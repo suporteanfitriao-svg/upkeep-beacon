@@ -351,6 +351,7 @@ export function MobileAdminDashboard({
 
         {/* Filter Tabs - Updated with counters */}
         <div className="mt-3">
+          <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider mb-1.5 block">Filtros</span>
           <MobileAdminFilterTabs
             viewMode={agendaViewMode}
             selectedDate={selectedDate}
@@ -370,6 +371,7 @@ export function MobileAdminDashboard({
 
       {/* Section: Status Counters - Top priority */}
       <section className="px-4 pt-3 pb-2">
+        <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider mb-2 block">Selecione Contadores</span>
         <div className="grid grid-cols-4 gap-2">
           <button
             onClick={() => onStatusFilterChange(statusFilter === 'waiting' ? 'all' : 'waiting')}
@@ -424,7 +426,8 @@ export function MobileAdminDashboard({
 
       {/* Section: Calendar Strip - Show for hoje, amanha modes */}
       {(agendaViewMode === 'hoje' || agendaViewMode === 'amanha') && (
-        <section className="border-t border-b border-slate-200 dark:border-slate-700/50">
+        <section className="border-t border-b border-slate-200 dark:border-slate-700/50 py-2">
+          <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider mb-2 px-4 block">Dia</span>
           <MobileInfiniteDayStrip
             selectedDate={selectedDate}
             onDateSelect={(date) => {
