@@ -69,6 +69,8 @@ export function MobileInspectionDetail({
   onClose,
   onUpdate
 }: MobileInspectionDetailProps) {
+  console.log('[MobileInspectionDetail] Render - inspection:', inspection?.id, 'status:', inspection?.status);
+  
   const isValidInspection = inspection && inspection.id;
   
   const [isVerified, setIsVerified] = useState(false);
@@ -90,13 +92,14 @@ export function MobileInspectionDetail({
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { compressImage } = useImageCompression();
 
-  // Close if inspection is invalid
+  // Close if inspection is invalid - only run once on mount
   useEffect(() => {
     if (!isValidInspection) {
       console.error('[MobileInspectionDetail] Invalid inspection data:', inspection);
       onClose();
     }
-  }, [isValidInspection, onClose]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // Fetch property rule for photo requirement, user name, and house rules
   useEffect(() => {
@@ -209,13 +212,17 @@ export function MobileInspectionDetail({
   const canFinish = isVerified && comment.trim().length >= 10 && hasRequiredPhotos;
 
   const handleStartInspection = async () => {
+    if (isSubmitting) return; // Prevent double clicks
+    
     setIsSubmitting(true);
+    setShowStartConfirmation(false); // Close modal immediately to prevent re-clicks
+    
     try {
       const now = new Date().toISOString();
       
       // Get user name for history
       const { data: { user } } = await supabase.auth.getUser();
-      let currentUserName = 'Usuário';
+      let currentUserName = userName;
       if (user) {
         const { data: profile } = await supabase
           .from('profiles')
@@ -241,14 +248,21 @@ export function MobileInspectionDetail({
 
       if (error) throw error;
 
-      toast.success('Inspeção iniciada!');
+      // Update local state first before any async operations
       setHistory(newHistory);
-      setLocalStatus('in_progress'); // Update local status to keep card open
-      setShowStartConfirmation(false);
-      onUpdate(false); // Don't close the detail view
+      setLocalStatus('in_progress');
+      
+      toast.success('Inspeção iniciada!');
+      
+      // Notify parent to refresh list but don't close this view
+      // Use setTimeout to avoid state update conflicts
+      setTimeout(() => {
+        onUpdate(false);
+      }, 100);
     } catch (error) {
       console.error('Error starting inspection:', error);
       toast.error('Erro ao iniciar inspeção');
+      setShowStartConfirmation(false);
     } finally {
       setIsSubmitting(false);
     }
