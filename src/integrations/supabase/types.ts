@@ -669,6 +669,7 @@ export type Database = {
           is_active: boolean | null
           must_reset_password: boolean | null
           name: string | null
+          onboarding_completed: boolean
           reset_token_expires_at: string | null
           reset_token_hash: string | null
           team_member_id: string | null
@@ -683,6 +684,7 @@ export type Database = {
           is_active?: boolean | null
           must_reset_password?: boolean | null
           name?: string | null
+          onboarding_completed?: boolean
           reset_token_expires_at?: string | null
           reset_token_hash?: string | null
           team_member_id?: string | null
@@ -697,6 +699,7 @@ export type Database = {
           is_active?: boolean | null
           must_reset_password?: boolean | null
           name?: string | null
+          onboarding_completed?: boolean
           reset_token_expires_at?: string | null
           reset_token_hash?: string | null
           team_member_id?: string | null

@@ -23,6 +23,8 @@ import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
+import { CleanerWorkflowPreview } from '@/components/onboarding/CleanerWorkflowPreview';
+import { useOnboardingStatus } from '@/hooks/useOnboardingStatus';
 
 interface ReviewStepProps {
   onBack: () => void;
@@ -71,6 +73,7 @@ const defaultConfig: OnboardingConfig = {
 
 export function ReviewStep({ onBack }: ReviewStepProps) {
   const navigate = useNavigate();
+  const { markAsCompleted } = useOnboardingStatus();
   const [summary, setSummary] = useState<Summary>({ 
     properties: [],
     teamMembersCount: 0, 
@@ -142,6 +145,14 @@ export function ReviewStep({ onBack }: ReviewStepProps) {
     setFinishing(true);
     
     try {
+      // Mark onboarding as completed in the database
+      const success = await markAsCompleted();
+      
+      if (!success) {
+        toast.error('Erro ao finalizar configuração');
+        return;
+      }
+      
       toast.success('Configuração concluída com sucesso!');
       navigate('/');
     } catch (error) {
@@ -375,6 +386,11 @@ export function ReviewStep({ onBack }: ReviewStepProps) {
               </div>
             </CardContent>
           </Card>
+
+          {/* Workflow Preview */}
+          <div className="mb-6">
+            <CleanerWorkflowPreview config={config} />
+          </div>
 
           {/* Status Items */}
           <Card className="mb-6">
