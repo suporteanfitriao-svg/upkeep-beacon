@@ -769,6 +769,8 @@ const Index = () => {
             onStatusFilterChange={setStatusFilter}
             searchQuery={searchQuery}
             onSearchChange={setSearchQuery}
+            propertyFilter={propertyFilter}
+            onPropertyFilterChange={setPropertyFilter}
             onUpdateSchedule={handleUpdateSchedule}
           />
           {selectedSchedule && (
@@ -802,6 +804,8 @@ const Index = () => {
             onStatusFilterChange={setStatusFilter}
             searchQuery={searchQuery}
             onSearchChange={setSearchQuery}
+            propertyFilter={propertyFilter}
+            onPropertyFilterChange={setPropertyFilter}
             onUpdateSchedule={handleUpdateSchedule}
           />
           {selectedSchedule && (
