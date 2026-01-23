@@ -59,7 +59,7 @@ interface TeamMember {
   email: string;
   whatsapp: string;
   cpf: string;
-  role: 'admin' | 'manager' | 'cleaner';
+  role: 'superadmin' | 'admin' | 'manager' | 'cleaner';
   is_active: boolean;
   created_at: string;
   activated_at: string | null;
@@ -78,12 +78,13 @@ interface TeamMemberProperty {
   property_id: string;
 }
 
-type FilterTab = 'all' | 'admin' | 'manager' | 'cleaner' | 'active' | 'inactive';
+type FilterTab = 'all' | 'superadmin' | 'admin' | 'manager' | 'cleaner' | 'active' | 'inactive';
 
 const ITEMS_PER_PAGE = 10;
 
 // Avatar background colors based on role
 const avatarColors: Record<string, string> = {
+  superadmin: 'bg-red-100 dark:bg-red-900/30',
   admin: 'bg-teal-100 dark:bg-teal-900/30',
   manager: 'bg-green-100 dark:bg-green-900/30',
   cleaner: 'bg-amber-100 dark:bg-amber-900/30',
@@ -104,7 +105,7 @@ export function UsersSection() {
     email: '',
     cpf: '',
     whatsapp: '',
-    role: 'cleaner' as 'admin' | 'manager' | 'cleaner',
+    role: 'cleaner' as 'superadmin' | 'admin' | 'manager' | 'cleaner',
   });
 
   // Permissions modal state

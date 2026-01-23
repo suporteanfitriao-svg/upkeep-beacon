@@ -6,6 +6,7 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { AuthProvider } from "@/hooks/useAuth";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
 import { AdminRoute } from "@/components/AdminRoute";
+import { SuperAdminRoute } from "@/components/SuperAdminRoute";
 import { InstallPrompt } from "@/components/pwa/InstallPrompt";
 import { PWAUpdateModal } from "@/components/pwa/PWAUpdateModal";
 import { usePWAUpdate } from "@/hooks/usePWAUpdate";
@@ -147,9 +148,9 @@ const App = () => (
             <Route
               path="/super-admin"
               element={
-                <AdminRoute>
+                <SuperAdminRoute>
                   <SuperAdmin />
-                </AdminRoute>
+                </SuperAdminRoute>
               }
             />
             <Route
