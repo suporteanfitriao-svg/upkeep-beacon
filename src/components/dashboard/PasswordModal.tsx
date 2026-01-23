@@ -198,7 +198,7 @@ export function PasswordModal({
   const renderPasswordContent = () => {
     if (isLoading) {
       return (
-        <div className="mt-6 mb-4 flex w-full flex-col items-center justify-center rounded-xl bg-slate-50 border border-slate-200 py-5 dark:bg-slate-800/80 dark:border-slate-600">
+        <div className="mt-6 mb-4 flex w-full flex-col items-center justify-center rounded-xl bg-muted border border-border py-5">
           <span className="material-symbols-outlined text-2xl animate-spin text-muted-foreground">progress_activity</span>
         </div>
       );
@@ -244,7 +244,7 @@ export function PasswordModal({
             value={newPassword}
             onChange={(e) => setNewPassword(e.target.value)}
             placeholder="Digite a nova senha"
-            className="w-full text-center text-2xl font-bold tracking-widest rounded-xl bg-slate-50 border border-slate-200 py-4 px-4 dark:bg-slate-800/80 dark:border-slate-600 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary"
+            className="w-full text-center text-2xl font-bold tracking-widest rounded-xl bg-muted border border-border py-4 px-4 text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
             autoFocus
           />
           <div className="flex gap-2 mt-3">
@@ -254,14 +254,14 @@ export function PasswordModal({
                 setNewPassword('');
               }}
               disabled={isSaving}
-              className="flex-1 rounded-lg bg-slate-100 py-2.5 text-sm font-medium text-slate-600 transition-colors hover:bg-slate-200 dark:bg-slate-700 dark:text-slate-200 dark:hover:bg-slate-600"
+              className="flex-1 rounded-xl bg-muted py-2.5 text-sm font-medium text-foreground transition-colors hover:bg-accent"
             >
               Cancelar
             </button>
             <button
               onClick={handleSavePassword}
               disabled={isSaving || !newPassword.trim()}
-              className="flex-1 rounded-lg bg-primary py-2.5 text-sm font-bold text-white transition-colors hover:bg-primary/90 disabled:opacity-50"
+              className="flex-1 rounded-xl bg-primary py-2.5 text-sm font-bold text-primary-foreground transition-colors hover:bg-primary/90 disabled:opacity-50"
             >
               {isSaving ? 'Salvando...' : 'Salvar'}
             </button>
@@ -274,8 +274,8 @@ export function PasswordModal({
     if (hasPassword) {
       return (
         <>
-          <div className="mt-6 mb-4 flex w-full flex-col items-center justify-center rounded-xl bg-slate-50 border border-slate-200 py-5 dark:bg-slate-800/80 dark:border-slate-600">
-            <span className="font-display text-4xl font-extrabold tracking-widest text-slate-900 dark:text-white">
+          <div className="mt-6 mb-4 flex w-full flex-col items-center justify-center rounded-xl bg-muted border border-border py-5">
+            <span className="font-display text-4xl font-extrabold tracking-widest text-foreground">
               {displayPassword}
             </span>
           </div>
@@ -324,7 +324,7 @@ export function PasswordModal({
           </div>
           <button
             onClick={() => setIsEditing(true)}
-            className="w-full rounded-lg bg-primary py-3 text-sm font-bold text-white transition-colors hover:bg-primary/90"
+            className="w-full rounded-xl bg-primary py-3 text-sm font-bold text-primary-foreground transition-colors hover:bg-primary/90"
           >
             Definir Senha
           </button>
@@ -354,16 +354,16 @@ export function PasswordModal({
     >
       {/* Backdrop */}
       <div 
-        className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm transition-opacity"
+        className="absolute inset-0 bg-foreground/60 backdrop-blur-sm transition-opacity"
         onClick={onClose}
       />
       
       {/* Modal */}
-      <div className="relative w-full max-w-xs transform overflow-hidden rounded-2xl bg-white p-6 shadow-2xl transition-all dark:bg-[#2d3138] dark:border dark:border-slate-700">
+      <div className="relative w-full max-w-xs sm:max-w-sm transform overflow-hidden rounded-2xl bg-card p-6 shadow-2xl transition-all border border-border">
         {/* Close button */}
         <button 
           onClick={onClose}
-          className="absolute right-3 top-3 flex h-8 w-8 items-center justify-center rounded-full text-slate-400 transition-colors hover:bg-slate-100 hover:text-slate-600 dark:hover:bg-slate-800 dark:hover:text-slate-200"
+          className="absolute right-3 top-3 flex h-8 w-8 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
         >
           <span className="material-symbols-outlined text-xl">close</span>
         </button>
@@ -371,13 +371,13 @@ export function PasswordModal({
         {/* Content */}
         <div className="flex flex-col items-center text-center mt-2">
           {/* Icon */}
-          <div className="mb-5 flex h-16 w-16 items-center justify-center rounded-full bg-slate-50 border border-slate-100 dark:bg-slate-800 dark:border-slate-700 shadow-sm">
+          <div className="mb-5 flex h-16 w-16 items-center justify-center rounded-full bg-muted border border-border shadow-sm">
             <span className="material-symbols-outlined text-3xl text-primary">vpn_key</span>
           </div>
           
           {/* Title */}
-          <h3 className="text-lg font-bold text-slate-900 dark:text-white">Senha de Acesso</h3>
-          <p className="mt-1 text-xs font-medium text-slate-500 dark:text-slate-400 max-w-[200px]">
+          <h3 className="text-lg font-bold text-foreground">Senha de Acesso</h3>
+          <p className="mt-1 text-xs font-medium text-muted-foreground max-w-[200px]">
             Utilize o código abaixo para destravar a porta principal
           </p>
           
@@ -387,7 +387,7 @@ export function PasswordModal({
           {!isEditing && (
             <button 
               onClick={onClose}
-              className="mt-2 w-full rounded-lg bg-slate-100 py-3 text-sm font-bold text-slate-600 transition-colors hover:bg-slate-200 dark:bg-slate-700 dark:text-slate-200 dark:hover:bg-slate-600"
+              className="mt-2 w-full rounded-xl bg-muted py-3 text-sm font-bold text-foreground transition-colors hover:bg-accent"
             >
               Fechar Visualização
             </button>
