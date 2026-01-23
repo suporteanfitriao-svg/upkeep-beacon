@@ -8,6 +8,7 @@ import { toast } from 'sonner';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import { useTeamMemberId } from '@/hooks/useTeamMemberId';
+import { useUserRole } from '@/hooks/useUserRole';
 import { useCleanerPayments, PaymentPeriod } from '@/hooks/useCleanerPayments';
 import { CleanerPaymentCards } from './CleanerPaymentCards';
 import { useCleanerInspections } from '@/hooks/useCleanerInspections';
@@ -56,6 +57,7 @@ export function MobileDashboard({ schedules, onScheduleClick, onStartCleaning, o
   const [searchParams] = useSearchParams();
   const { user } = useAuth();
   const { teamMemberId } = useTeamMemberId();
+  const { isCleaner } = useUserRole();
   const [paymentPeriod, setPaymentPeriod] = useState<PaymentPeriod>('today');
   
   // Cleaner inspections
@@ -68,6 +70,13 @@ export function MobileDashboard({ schedules, onScheduleClick, onStartCleaning, o
   
   // Cleaning time alerts
   const cleaningTimeAlerts = useCleaningTimeAlerts(schedules);
+
+  // Regra: o perfil cleaner não deve ver "TEMPO EXCEDIDO" (atraso grande) no dashboard.
+  // Mantemos apenas os alertas preventivos (at_risk) quando aplicável.
+  const visibleCleaningTimeAlerts = useMemo(() => {
+    if (!isCleaner) return cleaningTimeAlerts;
+    return cleaningTimeAlerts.filter(a => a.type !== 'exceeding');
+  }, [cleaningTimeAlerts, isCleaner]);
 
   // Location permission management
   const {
@@ -634,10 +643,10 @@ export function MobileDashboard({ schedules, onScheduleClick, onStartCleaning, o
           </div>
 
           {/* Cleaning Time Alerts */}
-          {cleaningTimeAlerts.length > 0 && (
+          {visibleCleaningTimeAlerts.length > 0 && (
             <div className="px-6 pt-3 relative z-10">
               <CleaningTimeAlertBanner 
-                alerts={cleaningTimeAlerts}
+                alerts={visibleCleaningTimeAlerts}
                 onAlertClick={(scheduleId) => {
                   const schedule = schedules.find(s => s.id === scheduleId);
                   if (schedule) onScheduleClick(schedule);

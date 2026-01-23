@@ -32,8 +32,8 @@ const queryClient = new QueryClient({
     queries: {
       // Disable automatic refetch interval - use realtime subscriptions instead
       refetchInterval: false,
-      // Only refetch on window focus if data is stale
-      refetchOnWindowFocus: 'always',
+      // Refetch on window focus only when stale (TanStack Query v5: boolean=true behaves as "if stale")
+      refetchOnWindowFocus: true,
       // Keep data fresh for 2 minutes before considering stale
       staleTime: 2 * 60 * 1000, // 2 minutes
       // Cache data for 5 minutes

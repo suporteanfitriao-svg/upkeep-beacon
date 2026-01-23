@@ -386,7 +386,9 @@ const Index = () => {
   }, [adminInspections, dateFilter, customDate, dateRange, propertyFilter]);
 
   // Sync function with all rules implemented
-  const startSync = useCallback(async (): Promise<{ synced: number } | null> => {
+  const startSync = useCallback(async (options?: { silent?: boolean }): Promise<{ synced: number } | null> => {
+    const silent = options?.silent ?? false;
+
     // Prevent concurrent syncs (rule 7.1)
     if (syncInProgressRef.current) {
       console.log('[Sync] Sync already in progress, ignoring request');
@@ -394,11 +396,15 @@ const Index = () => {
     }
 
     syncInProgressRef.current = true;
-    setIsSyncing(true);
-    setSyncError(null);
 
-    // Close any open schedule detail panel during sync (rule 6.1)
-    if (selectedSchedule) {
+    // When running in the background, don't block the UI with the full-screen overlay.
+    if (!silent) {
+      setIsSyncing(true);
+      setSyncError(null);
+    }
+
+    // Close any open schedule detail panel during *manual* sync (rule 6.1)
+    if (!silent && selectedSchedule) {
       toast.info('Atualização em andamento', {
         description: 'Detalhes do agendamento fechados para sincronização.',
         duration: 3000,
@@ -504,7 +510,9 @@ const Index = () => {
       const duration = endTime.getTime() - startTime.getTime();
       
       console.error('[Sync] Sync failed:', err);
-      setSyncError('Falha ao sincronizar. Tente atualizar novamente.');
+      if (!silent) {
+        setSyncError('Falha ao sincronizar. Tente atualizar novamente.');
+      }
       
       setSyncLogs(prev => {
         const updated = [...prev];
@@ -517,10 +525,12 @@ const Index = () => {
         return updated;
       });
 
-      toast.error('Falha ao sincronizar', {
-        description: 'Tente atualizar novamente.',
-        duration: 5000,
-      });
+      if (!silent) {
+        toast.error('Falha ao sincronizar', {
+          description: 'Tente atualizar novamente.',
+          duration: 5000,
+        });
+      }
 
       // Still try to refetch even on error
       try {
@@ -529,7 +539,9 @@ const Index = () => {
 
       return null;
     } finally {
-      setIsSyncing(false);
+      if (!silent) {
+        setIsSyncing(false);
+      }
       syncInProgressRef.current = false;
     }
   }, [refetch, selectedSchedule]);
@@ -542,7 +554,7 @@ const Index = () => {
     
     const autoSync = async () => {
       console.log('[Sync] Auto-sync triggered at', new Date().toISOString());
-      const result = await startSync();
+      const result = await startSync({ silent: true });
       
       if (result?.synced && result.synced > 0) {
         toast.success(`${result.synced} nova${result.synced > 1 ? 's' : ''} reserva${result.synced > 1 ? 's' : ''} sincronizada${result.synced > 1 ? 's' : ''}!`, {
