@@ -1,7 +1,7 @@
-import { useState, useMemo, useCallback, useRef, useEffect } from 'react';
-import { format, isToday, isTomorrow, isSameDay, isWithinInterval, startOfDay, endOfDay, startOfWeek, endOfWeek, addWeeks, startOfMonth, endOfMonth, formatDistanceToNow } from 'date-fns';
+import { useState, useMemo, useCallback, useRef } from 'react';
+import { format, formatDistanceToNow } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { RefreshCw, ChevronRight, AlertTriangle, Building2, Calendar, Search, Filter, Clock, User, Check, Play, Loader2, Eye } from 'lucide-react';
+import { RefreshCw, ChevronRight, AlertTriangle, Building2, Calendar, Search, Filter, Clock, User, Check, Play, Eye, ChevronLeft } from 'lucide-react';
 import { Schedule, ScheduleStatus } from '@/types/scheduling';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
@@ -81,9 +81,11 @@ export function MobileAdminDashboard({
   const navigate = useNavigate();
   const { user } = useAuth();
   const { viewMode, setViewMode, canSwitchView, getViewLabel } = useViewMode();
-  const [showFilters, setShowFilters] = useState(false);
   const [showViewModeMenu, setShowViewModeMenu] = useState(false);
+  const [completedPage, setCompletedPage] = useState(1);
   const containerRef = useRef<HTMLDivElement>(null);
+  
+  const COMPLETED_PER_PAGE = 5;
 
   const lastSyncText = useMemo(() => {
     if (!lastSyncTime) return null;
@@ -343,25 +345,46 @@ export function MobileAdminDashboard({
       </div>
 
       {/* Schedule List */}
-      <div className="flex-1 px-4 py-2 space-y-3 pb-safe">
-        {filteredSchedules.length === 0 ? (
-          <div className="flex flex-col items-center justify-center py-12 text-center">
-            <Calendar className="w-12 h-12 text-muted-foreground/50 mb-3" />
-            <p className="text-sm font-medium text-muted-foreground">Nenhum agendamento encontrado</p>
-            <p className="text-xs text-muted-foreground/70 mt-1">Ajuste os filtros para ver mais resultados</p>
-          </div>
-        ) : (
-          filteredSchedules.map((schedule) => {
+      <div className="flex-1 px-4 py-2 pb-safe">
+        {(() => {
+          // Separate active and completed schedules
+          const activeSchedules = filteredSchedules.filter(s => s.status !== 'completed');
+          const completedSchedules = filteredSchedules.filter(s => s.status === 'completed');
+          
+          // Pagination for completed
+          const totalCompletedPages = Math.ceil(completedSchedules.length / COMPLETED_PER_PAGE);
+          const paginatedCompleted = completedSchedules.slice(
+            (completedPage - 1) * COMPLETED_PER_PAGE,
+            completedPage * COMPLETED_PER_PAGE
+          );
+          
+          if (filteredSchedules.length === 0) {
+            return (
+              <div className="flex flex-col items-center justify-center py-12 text-center">
+                <Calendar className="w-12 h-12 text-muted-foreground/50 mb-3" />
+                <p className="text-sm font-medium text-muted-foreground">Nenhum agendamento encontrado</p>
+                <p className="text-xs text-muted-foreground/70 mt-1">Ajuste os filtros para ver mais resultados</p>
+              </div>
+            );
+          }
+          
+          const renderScheduleCard = (schedule: Schedule, isCompleted: boolean = false) => {
             const statusConfig = STATUS_CONFIG[schedule.status];
             return (
               <button
                 key={schedule.id}
                 onClick={() => onScheduleClick(schedule)}
-                className="w-full bg-white dark:bg-slate-800 rounded-xl p-4 shadow-sm border border-slate-200 dark:border-slate-700 text-left transition-all active:scale-[0.99] hover:shadow-md"
+                className={cn(
+                  "w-full bg-white dark:bg-slate-800 rounded-xl p-4 shadow-sm border border-slate-200 dark:border-slate-700 text-left transition-all active:scale-[0.99] hover:shadow-md",
+                  isCompleted && "opacity-60"
+                )}
               >
                 <div className="flex items-start justify-between gap-3">
                   <div className="flex-1 min-w-0">
-                    <h3 className="font-bold text-sm text-foreground truncate">
+                    <h3 className={cn(
+                      "font-bold text-sm truncate",
+                      isCompleted ? "text-muted-foreground" : "text-foreground"
+                    )}>
                       {schedule.propertyName}
                     </h3>
                     <div className="flex items-center gap-2 mt-1.5">
@@ -370,7 +393,10 @@ export function MobileAdminDashboard({
                         {format(schedule.checkOut, "dd/MM 'às' HH:mm")}
                       </span>
                       <span className="text-xs text-muted-foreground">→</span>
-                      <span className="text-xs font-medium text-foreground">
+                      <span className={cn(
+                        "text-xs font-medium",
+                        isCompleted ? "text-muted-foreground" : "text-foreground"
+                      )}>
                         {format(schedule.checkIn, "HH:mm")}
                       </span>
                     </div>
@@ -395,8 +421,64 @@ export function MobileAdminDashboard({
                 </div>
               </button>
             );
-          })
-        )}
+          };
+          
+          return (
+            <div className="space-y-3">
+              {/* Active Schedules */}
+              {activeSchedules.map((schedule) => renderScheduleCard(schedule, false))}
+              
+              {/* Separator between active and completed */}
+              {activeSchedules.length > 0 && completedSchedules.length > 0 && (
+                <div className="flex items-center gap-3 py-3">
+                  <div className="flex-1 h-px bg-slate-300 dark:bg-slate-600" />
+                  <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">
+                    Finalizados ({completedSchedules.length})
+                  </span>
+                  <div className="flex-1 h-px bg-slate-300 dark:bg-slate-600" />
+                </div>
+              )}
+              
+              {/* Completed Schedules - Paginated */}
+              {paginatedCompleted.map((schedule) => renderScheduleCard(schedule, true))}
+              
+              {/* Pagination Controls for Completed */}
+              {totalCompletedPages > 1 && (
+                <div className="flex items-center justify-center gap-4 py-3">
+                  <button
+                    onClick={() => setCompletedPage(p => Math.max(1, p - 1))}
+                    disabled={completedPage === 1}
+                    className={cn(
+                      "flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors",
+                      completedPage === 1
+                        ? "text-muted-foreground/50 cursor-not-allowed"
+                        : "text-primary hover:bg-primary/10"
+                    )}
+                  >
+                    <ChevronLeft className="w-4 h-4" />
+                    Anterior
+                  </button>
+                  <span className="text-xs text-muted-foreground">
+                    {completedPage} de {totalCompletedPages}
+                  </span>
+                  <button
+                    onClick={() => setCompletedPage(p => Math.min(totalCompletedPages, p + 1))}
+                    disabled={completedPage === totalCompletedPages}
+                    className={cn(
+                      "flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors",
+                      completedPage === totalCompletedPages
+                        ? "text-muted-foreground/50 cursor-not-allowed"
+                        : "text-primary hover:bg-primary/10"
+                    )}
+                  >
+                    Próximo
+                    <ChevronRight className="w-4 h-4" />
+                  </button>
+                </div>
+              )}
+            </div>
+          );
+        })()}
       </div>
 
       {/* Bottom Navigation */}
