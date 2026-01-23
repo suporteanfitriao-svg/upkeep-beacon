@@ -1,13 +1,14 @@
 import { useState, useMemo, useCallback, useRef, useEffect } from 'react';
 import { format, isToday, isTomorrow, isSameDay, isWithinInterval, startOfDay, endOfDay, startOfWeek, endOfWeek, addWeeks, startOfMonth, endOfMonth, formatDistanceToNow } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { RefreshCw, ChevronRight, AlertTriangle, Building2, Calendar, Search, Filter, Clock, User, Check, Play, Loader2 } from 'lucide-react';
+import { RefreshCw, ChevronRight, AlertTriangle, Building2, Calendar, Search, Filter, Clock, User, Check, Play, Loader2, Eye } from 'lucide-react';
 import { Schedule, ScheduleStatus } from '@/types/scheduling';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import { CleaningTimeAlert } from '@/hooks/useCleaningTimeAlert';
+import { useViewMode, ViewMode } from '@/hooks/useViewMode';
 import type { DateRange } from 'react-day-picker';
 
 interface MobileAdminDashboardProps {
@@ -79,7 +80,9 @@ export function MobileAdminDashboard({
 }: MobileAdminDashboardProps) {
   const navigate = useNavigate();
   const { user } = useAuth();
+  const { viewMode, setViewMode, canSwitchView, getViewLabel } = useViewMode();
   const [showFilters, setShowFilters] = useState(false);
+  const [showViewModeMenu, setShowViewModeMenu] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
 
   const lastSyncText = useMemo(() => {
@@ -127,6 +130,59 @@ export function MobileAdminDashboard({
             <h1 className="text-lg font-bold text-foreground">Administrativo</h1>
           </div>
           <div className="flex items-center gap-2">
+            {/* View Mode Switcher for SuperAdmin */}
+            {canSwitchView && (
+              <div className="relative">
+                <button 
+                  onClick={() => setShowViewModeMenu(!showViewModeMenu)}
+                  className="flex h-10 items-center gap-2 px-3 rounded-full bg-amber-100 dark:bg-amber-900/30 border border-amber-300 dark:border-amber-700 transition-colors"
+                >
+                  <Eye className="w-4 h-4 text-amber-600 dark:text-amber-400" />
+                  <span className="text-xs font-semibold text-amber-700 dark:text-amber-300">
+                    {getViewLabel(viewMode)}
+                  </span>
+                </button>
+                
+                {showViewModeMenu && (
+                  <>
+                    <div 
+                      className="fixed inset-0 z-40" 
+                      onClick={() => setShowViewModeMenu(false)} 
+                    />
+                    <div className="absolute right-0 top-12 z-50 w-48 bg-card border border-border rounded-xl shadow-xl overflow-hidden">
+                      <div className="p-2 border-b border-border bg-amber-50 dark:bg-amber-900/20">
+                        <span className="text-xs font-bold text-amber-700 dark:text-amber-300 flex items-center gap-2">
+                          <Eye className="w-3 h-3" />
+                          Alternar Visão
+                        </span>
+                      </div>
+                      {(['owner', 'manager', 'cleaner'] as ViewMode[]).map((mode) => (
+                        <button
+                          key={mode}
+                          onClick={() => {
+                            setViewMode(mode);
+                            setShowViewModeMenu(false);
+                          }}
+                          className={cn(
+                            "w-full text-left px-4 py-3 text-sm font-medium transition-colors flex items-center gap-3",
+                            viewMode === mode 
+                              ? "bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300" 
+                              : "hover:bg-muted text-foreground"
+                          )}
+                        >
+                          <div className={cn(
+                            "h-2 w-2 rounded-full",
+                            viewMode === mode ? "bg-amber-500" : "bg-muted-foreground/30"
+                          )} />
+                          {getViewLabel(mode)}
+                        </button>
+                      ))}
+                    </div>
+                  </>
+                )}
+              </div>
+            )}
+            
             {onRefresh && (
               <button 
                 onClick={handleRefresh}
