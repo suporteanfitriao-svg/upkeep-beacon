@@ -13,6 +13,8 @@ import {
   MapPin,
   ChevronDown,
   ChevronUp,
+  ChevronLeft,
+  ChevronRight,
   X,
   MessageSquare,
   FileText,
@@ -356,8 +358,12 @@ export default function Manutencao() {
     },
   });
 
+  // Pagination state for issues
+  const [issuesPage, setIssuesPage] = useState(1);
+  const ISSUES_PER_PAGE = 10;
+
   const filteredIssues = useMemo(() => {
-    return issues.filter(issue => {
+    const filtered = issues.filter(issue => {
       const matchesSearch = 
         issue.property_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
         issue.description.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -368,7 +374,29 @@ export default function Manutencao() {
 
       return matchesSearch && matchesStatus && matchesSeverity;
     });
+
+    // Sort: resolved issues go to the end
+    return filtered.sort((a, b) => {
+      if (a.status === 'resolved' && b.status !== 'resolved') return 1;
+      if (a.status !== 'resolved' && b.status === 'resolved') return -1;
+      // Then sort by created_at descending (newest first)
+      return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+    });
   }, [issues, searchQuery, statusFilter, severityFilter]);
+
+  // Separate active and resolved issues
+  const activeIssues = useMemo(() => filteredIssues.filter(i => i.status !== 'resolved'), [filteredIssues]);
+  const resolvedIssues = useMemo(() => filteredIssues.filter(i => i.status === 'resolved'), [filteredIssues]);
+
+  // Paginated resolved issues
+  const paginatedResolvedIssues = useMemo(() => {
+    const startIndex = (issuesPage - 1) * ISSUES_PER_PAGE;
+    return resolvedIssues.slice(startIndex, startIndex + ISSUES_PER_PAGE);
+  }, [resolvedIssues, issuesPage]);
+
+  const totalResolvedPages = useMemo(() => {
+    return Math.ceil(resolvedIssues.length / ISSUES_PER_PAGE);
+  }, [resolvedIssues.length]);
 
   const handleResolve = (issue: MaintenanceIssue) => {
     setSelectedIssue(issue);
@@ -645,18 +673,75 @@ export default function Manutencao() {
                     </CardContent>
                   </Card>
                 ) : (
-                  filteredIssues.map(issue => (
-                    <IssueCard 
-                      key={issue.id} 
-                      issue={issue}
-                      onResolve={handleResolve}
-                      onAssign={handleAssign}
-                      onStart={handleStart}
-                      onAddNote={handleAddNote}
-                      onAddPhoto={handleAddPhoto}
-                      teamMembers={teamMembers}
-                    />
-                  ))
+                  <>
+                    {/* Active issues (open + in_progress) */}
+                    {activeIssues.map(issue => (
+                      <IssueCard 
+                        key={issue.id} 
+                        issue={issue}
+                        onResolve={handleResolve}
+                        onAssign={handleAssign}
+                        onStart={handleStart}
+                        onAddNote={handleAddNote}
+                        onAddPhoto={handleAddPhoto}
+                        teamMembers={teamMembers}
+                      />
+                    ))}
+
+                    {/* Resolved separator */}
+                    {resolvedIssues.length > 0 && (
+                      <div className="relative py-6">
+                        <div className="absolute inset-0 flex items-center">
+                          <div className="w-full border-t border-border/60" />
+                        </div>
+                        <div className="relative flex justify-center">
+                          <span className="bg-slate-100 dark:bg-slate-900 px-4 text-sm text-muted-foreground font-medium">
+                            Resolvidas ({resolvedIssues.length})
+                          </span>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Resolved issues - faded style with pagination */}
+                    {paginatedResolvedIssues.map(issue => (
+                      <div key={issue.id} className="opacity-60 hover:opacity-80 transition-opacity">
+                        <IssueCard 
+                          issue={issue}
+                          onResolve={handleResolve}
+                          onAssign={handleAssign}
+                          onStart={handleStart}
+                          onAddNote={handleAddNote}
+                          onAddPhoto={handleAddPhoto}
+                          teamMembers={teamMembers}
+                        />
+                      </div>
+                    ))}
+
+                    {/* Pagination for resolved issues */}
+                    {totalResolvedPages > 1 && (
+                      <div className="flex items-center justify-center gap-2 pt-4">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setIssuesPage(prev => Math.max(1, prev - 1))}
+                          disabled={issuesPage === 1}
+                        >
+                          <ChevronLeft className="w-4 h-4" />
+                        </Button>
+                        <span className="text-sm text-muted-foreground px-3">
+                          {issuesPage} de {totalResolvedPages}
+                        </span>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setIssuesPage(prev => Math.min(totalResolvedPages, prev + 1))}
+                          disabled={issuesPage === totalResolvedPages}
+                        >
+                          <ChevronRight className="w-4 h-4" />
+                        </Button>
+                      </div>
+                    )}
+                  </>
                 )}
               </div>
             </TabsContent>
