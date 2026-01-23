@@ -362,6 +362,10 @@ export default function Manutencao() {
   const [issuesPage, setIssuesPage] = useState(1);
   const ISSUES_PER_PAGE = 10;
 
+  // Pagination state for reports
+  const [reportsPage, setReportsPage] = useState(1);
+  const REPORTS_PER_PAGE = 10;
+
   const filteredIssues = useMemo(() => {
     const filtered = issues.filter(issue => {
       const matchesSearch = 
@@ -769,7 +773,7 @@ export default function Manutencao() {
                 }}
               />
 
-              {/* Completed Schedules List */}
+              {/* Completed Schedules List with Pagination */}
               <div className="space-y-3">
                 {reportsLoading ? (
                   <>
@@ -788,13 +792,42 @@ export default function Manutencao() {
                     </CardContent>
                   </Card>
                 ) : (
-                  completedSchedules.map(schedule => (
-                    <CompletedScheduleRow
-                      key={schedule.id}
-                      schedule={schedule}
-                      onClick={() => setSelectedSchedule(schedule)}
-                    />
-                  ))
+                  <>
+                    {completedSchedules
+                      .slice((reportsPage - 1) * REPORTS_PER_PAGE, reportsPage * REPORTS_PER_PAGE)
+                      .map(schedule => (
+                        <CompletedScheduleRow
+                          key={schedule.id}
+                          schedule={schedule}
+                          onClick={() => setSelectedSchedule(schedule)}
+                        />
+                      ))}
+                    
+                    {/* Pagination controls */}
+                    {completedSchedules.length > REPORTS_PER_PAGE && (
+                      <div className="flex items-center justify-center gap-2 pt-4">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setReportsPage(prev => Math.max(1, prev - 1))}
+                          disabled={reportsPage === 1}
+                        >
+                          <ChevronLeft className="w-4 h-4" />
+                        </Button>
+                        <span className="text-sm text-muted-foreground px-3">
+                          {reportsPage} de {Math.ceil(completedSchedules.length / REPORTS_PER_PAGE)}
+                        </span>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setReportsPage(prev => Math.min(Math.ceil(completedSchedules.length / REPORTS_PER_PAGE), prev + 1))}
+                          disabled={reportsPage === Math.ceil(completedSchedules.length / REPORTS_PER_PAGE)}
+                        >
+                          <ChevronRight className="w-4 h-4" />
+                        </Button>
+                      </div>
+                    )}
+                  </>
                 )}
               </div>
             </TabsContent>
