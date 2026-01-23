@@ -264,7 +264,7 @@ const Index = () => {
     return Math.ceil(filteredSchedules.length / ITEMS_PER_PAGE);
   }, [filteredSchedules.length, ITEMS_PER_PAGE]);
 
-  // Calculate filter counts for date filter buttons
+  // Calculate filter counts for date filter buttons - respecting property filter
   const dateFilterCounts = useMemo(() => {
     const today = new Date();
     const nextWeekStart = startOfWeek(addWeeks(today, 1), { weekStartsOn: 1 });
@@ -272,19 +272,27 @@ const Index = () => {
     const monthStart = startOfMonth(today);
     const monthEnd = endOfMonth(today);
 
+    // Apply property filter to counts
+    const baseSchedules = schedules.filter(s => {
+      if (propertyFilter !== 'all' && s.propertyId !== propertyFilter) {
+        return false;
+      }
+      return true;
+    });
+
     return {
-      today: schedules.filter(s => isToday(s.checkOut)).length,
-      tomorrow: schedules.filter(s => isTomorrow(s.checkOut)).length,
-      week: schedules.filter(s => isWithinInterval(s.checkOut, { 
+      today: baseSchedules.filter(s => isToday(s.checkOut)).length,
+      tomorrow: baseSchedules.filter(s => isTomorrow(s.checkOut)).length,
+      week: baseSchedules.filter(s => isWithinInterval(s.checkOut, { 
         start: startOfDay(nextWeekStart), 
         end: endOfDay(nextWeekEnd) 
       })).length,
-      month: schedules.filter(s => isWithinInterval(s.checkOut, { 
+      month: baseSchedules.filter(s => isWithinInterval(s.checkOut, { 
         start: startOfDay(monthStart), 
         end: endOfDay(monthEnd) 
       })).length,
     };
-  }, [schedules]);
+  }, [schedules, propertyFilter]);
 
   // Transition state for smooth filter changes
   const [isFilterTransitioning, setIsFilterTransitioning] = useState(false);
@@ -317,6 +325,11 @@ const Index = () => {
   // Filtered stats that reflect ALL applied filters (except status, which is what we're counting)
   const filteredStats = useMemo(() => {
     const filtered = schedules.filter(schedule => {
+      // Property filter
+      if (propertyFilter !== 'all' && schedule.propertyId !== propertyFilter) {
+        return false;
+      }
+
       // Responsible filter
       if (responsibleFilter !== 'all' && schedule.cleanerName !== responsibleFilter) {
         return false;
@@ -347,11 +360,16 @@ const Index = () => {
       return true;
     });
     return calculateStats(filtered);
-  }, [schedules, dateFilter, customDate, dateRange, responsibleFilter, searchQuery]);
+  }, [schedules, dateFilter, customDate, dateRange, responsibleFilter, propertyFilter, searchQuery]);
 
-  // Filter inspections by date filter (same as schedules)
+  // Filter inspections by date filter and property filter (same as schedules)
   const filteredInspections = useMemo(() => {
     return adminInspections.filter(inspection => {
+      // Property filter
+      if (propertyFilter !== 'all' && inspection.property_id !== propertyFilter) {
+        return false;
+      }
+
       const inspectionDate = parseISO(inspection.scheduled_date);
       if (dateFilter === 'today') return isToday(inspectionDate);
       if (dateFilter === 'tomorrow') return isTomorrow(inspectionDate);
@@ -365,7 +383,7 @@ const Index = () => {
       }
       return true;
     });
-  }, [adminInspections, dateFilter, customDate, dateRange]);
+  }, [adminInspections, dateFilter, customDate, dateRange, propertyFilter]);
 
   // Sync function with all rules implemented
   const startSync = useCallback(async (): Promise<{ synced: number } | null> => {
@@ -721,6 +739,25 @@ const Index = () => {
           />
 
           <div className="flex-1 overflow-y-auto p-8 scroll-smooth">
+            {/* Filters - ABOVE status cards for clarity */}
+            <AdminFilters
+              dateFilter={dateFilter}
+              customDate={customDate}
+              dateRange={dateRange}
+              searchQuery={searchQuery}
+              statusFilter={statusFilter}
+              responsibleFilter={responsibleFilter}
+              propertyFilter={propertyFilter}
+              filterCounts={dateFilterCounts}
+              onDateFilterChange={setDateFilter}
+              onCustomDateChange={setCustomDate}
+              onDateRangeChange={setDateRange}
+              onSearchChange={setSearchQuery}
+              onStatusFilterChange={setStatusFilter}
+              onResponsibleFilterChange={setResponsibleFilter}
+              onPropertyFilterChange={setPropertyFilter}
+            />
+
             {/* Status Cards with skeleton during transition */}
             {isFilterTransitioning ? (
               <AdminStatusCardsSkeleton />
@@ -743,25 +780,6 @@ const Index = () => {
                 variant="admin"
               />
             )}
-
-            {/* Filters - always visible, no transition */}
-            <AdminFilters
-              dateFilter={dateFilter}
-              customDate={customDate}
-              dateRange={dateRange}
-              searchQuery={searchQuery}
-              statusFilter={statusFilter}
-              responsibleFilter={responsibleFilter}
-              propertyFilter={propertyFilter}
-              filterCounts={dateFilterCounts}
-              onDateFilterChange={setDateFilter}
-              onCustomDateChange={setCustomDate}
-              onDateRangeChange={setDateRange}
-              onSearchChange={setSearchQuery}
-              onStatusFilterChange={setStatusFilter}
-              onResponsibleFilterChange={setResponsibleFilter}
-              onPropertyFilterChange={setPropertyFilter}
-            />
 
             {/* Inspections Section */}
             {!isFilterTransitioning && (
