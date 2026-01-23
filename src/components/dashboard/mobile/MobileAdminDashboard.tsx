@@ -1,7 +1,7 @@
 import { useState, useMemo, useCallback, useRef, useEffect } from 'react';
 import { format, formatDistanceToNow, isSameDay, startOfDay, addDays, startOfMonth, endOfMonth, isWithinInterval } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { RefreshCw, ChevronRight, AlertTriangle, Building2, Calendar, Search, Clock, User, Check, Play, Eye, ChevronLeft, Settings, ClipboardList } from 'lucide-react';
+import { RefreshCw, ChevronRight, AlertTriangle, Building2, Calendar, Search, Clock, User, Check, Play, Eye, ChevronLeft, Settings, ClipboardList, X, ChevronDown } from 'lucide-react';
 import { Schedule, ScheduleStatus } from '@/types/scheduling';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
@@ -16,6 +16,7 @@ import { Dialog, DialogContent } from '@/components/ui/dialog';
 import { LocationModal } from '../LocationModal';
 import { PasswordModal } from '../PasswordModal';
 import { useTeamMemberId } from '@/hooks/useTeamMemberId';
+import { supabase } from '@/integrations/supabase/client';
 
 interface MobileAdminDashboardProps {
   schedules: Schedule[];
@@ -39,6 +40,8 @@ interface MobileAdminDashboardProps {
   onStatusFilterChange: (filter: string) => void;
   searchQuery: string;
   onSearchChange: (query: string) => void;
+  propertyFilter?: string;
+  onPropertyFilterChange?: (property: string) => void;
   onUpdateSchedule?: (schedule: Schedule) => void;
 }
 
@@ -57,6 +60,8 @@ export function MobileAdminDashboard({
   onStatusFilterChange,
   searchQuery,
   onSearchChange,
+  propertyFilter = 'all',
+  onPropertyFilterChange,
   onUpdateSchedule,
 }: MobileAdminDashboardProps) {
   const navigate = useNavigate();
@@ -65,6 +70,12 @@ export function MobileAdminDashboard({
   const [showViewModeMenu, setShowViewModeMenu] = useState(false);
   const [completedPage, setCompletedPage] = useState(1);
   const containerRef = useRef<HTMLDivElement>(null);
+  
+  // Search and property filter states
+  const [isSearchOpen, setIsSearchOpen] = useState(false);
+  const [isPropertyFilterOpen, setIsPropertyFilterOpen] = useState(false);
+  const [properties, setProperties] = useState<{ id: string; name: string }[]>([]);
+  const searchInputRef = useRef<HTMLInputElement>(null);
   
   // Calendar/date state - matching cleaner layout
   const [selectedDate, setSelectedDate] = useState(() => startOfDay(new Date()));
@@ -78,6 +89,29 @@ export function MobileAdminDashboard({
   const [assignModal, setAssignModal] = useState<{ open: boolean; schedule: Schedule | null }>({ open: false, schedule: null });
   
   const COMPLETED_PER_PAGE = 5;
+
+  // Fetch properties for filter
+  useEffect(() => {
+    const fetchProperties = async () => {
+      const { data } = await supabase
+        .from('properties')
+        .select('id, name')
+        .eq('is_active', true)
+        .order('name');
+      
+      if (data) {
+        setProperties(data);
+      }
+    };
+    fetchProperties();
+  }, []);
+
+  // Focus search input when opened
+  useEffect(() => {
+    if (isSearchOpen && searchInputRef.current) {
+      searchInputRef.current.focus();
+    }
+  }, [isSearchOpen]);
 
   const lastSyncText = useMemo(() => {
     if (!lastSyncTime) return null;
@@ -143,6 +177,7 @@ export function MobileAdminDashboard({
     }
     
     // Search filtering
+    // Search filtering
     if (searchQuery.trim()) {
       const query = searchQuery.toLowerCase();
       filtered = filtered.filter(s => 
@@ -151,8 +186,13 @@ export function MobileAdminDashboard({
       );
     }
     
+    // Property filtering
+    if (propertyFilter !== 'all') {
+      filtered = filtered.filter(s => s.propertyId === propertyFilter);
+    }
+    
     return filtered.sort((a, b) => a.checkOut.getTime() - b.checkOut.getTime());
-  }, [schedules, agendaViewMode, selectedDate, currentMonth, dateRange, statusFilter, searchQuery]);
+  }, [schedules, agendaViewMode, selectedDate, currentMonth, dateRange, statusFilter, searchQuery, propertyFilter]);
 
   // Separate active and completed
   const activeSchedules = useMemo(() => 
@@ -347,6 +387,152 @@ export function MobileAdminDashboard({
           <p className="text-[10px] text-muted-foreground mt-1">
             Última sincronização {lastSyncText}
           </p>
+        )}
+
+        {/* Search and Property Filter Row */}
+        <div className="mt-3 flex items-center gap-2">
+          {/* Property Filter Dropdown */}
+          <div className="relative flex-1">
+            <button 
+              onClick={() => setIsPropertyFilterOpen(!isPropertyFilterOpen)}
+              className={cn(
+                "w-full flex items-center gap-2 px-3 py-2.5 rounded-xl text-sm font-medium transition-all",
+                propertyFilter !== 'all'
+                  ? "bg-primary/10 text-primary border border-primary/30"
+                  : "bg-card border border-border text-muted-foreground"
+              )}
+            >
+              <Building2 className="w-4 h-4 shrink-0" />
+              <span className="truncate flex-1 text-left">
+                {propertyFilter === 'all' 
+                  ? 'Todos Imóveis' 
+                  : properties.find(p => p.id === propertyFilter)?.name || 'Selecionar'}
+              </span>
+              <ChevronDown className={cn("w-4 h-4 shrink-0 transition-transform", isPropertyFilterOpen && "rotate-180")} />
+            </button>
+            
+            {isPropertyFilterOpen && (
+              <>
+                <div 
+                  className="fixed inset-0 z-40" 
+                  onClick={() => setIsPropertyFilterOpen(false)} 
+                />
+                <div className="absolute top-full left-0 right-0 mt-1 z-50 bg-card border border-border rounded-xl shadow-xl max-h-64 overflow-y-auto">
+                  <button
+                    onClick={() => {
+                      onPropertyFilterChange?.('all');
+                      setIsPropertyFilterOpen(false);
+                    }}
+                    className={cn(
+                      "w-full text-left px-4 py-3 text-sm font-medium transition-colors flex items-center gap-2",
+                      propertyFilter === 'all' 
+                        ? "bg-primary/10 text-primary" 
+                        : "hover:bg-muted text-foreground"
+                    )}
+                  >
+                    <Building2 className="w-4 h-4" />
+                    Todos Imóveis
+                    {propertyFilter === 'all' && <Check className="w-4 h-4 ml-auto" />}
+                  </button>
+                  <div className="border-t border-border" />
+                  {properties.map((property) => (
+                    <button
+                      key={property.id}
+                      onClick={() => {
+                        onPropertyFilterChange?.(property.id);
+                        setIsPropertyFilterOpen(false);
+                      }}
+                      className={cn(
+                        "w-full text-left px-4 py-3 text-sm transition-colors flex items-center gap-2",
+                        propertyFilter === property.id 
+                          ? "bg-primary/10 text-primary font-medium" 
+                          : "hover:bg-muted text-foreground"
+                      )}
+                    >
+                      {property.name}
+                      {propertyFilter === property.id && <Check className="w-4 h-4 ml-auto" />}
+                    </button>
+                  ))}
+                </div>
+              </>
+            )}
+          </div>
+          
+          {/* Search Toggle */}
+          {isSearchOpen ? (
+            <div className="flex items-center gap-2 flex-1 animate-in slide-in-from-right-4">
+              <div className="relative flex-1">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                <input
+                  ref={searchInputRef}
+                  type="text"
+                  value={searchQuery}
+                  onChange={(e) => onSearchChange(e.target.value)}
+                  placeholder="Buscar imóvel ou responsável..."
+                  className="w-full pl-9 pr-8 py-2.5 rounded-xl text-sm bg-card border border-border focus:border-primary focus:ring-1 focus:ring-primary outline-none"
+                />
+                {searchQuery && (
+                  <button
+                    onClick={() => onSearchChange('')}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
+                )}
+              </div>
+              <button
+                onClick={() => {
+                  setIsSearchOpen(false);
+                  onSearchChange('');
+                }}
+                className="flex h-10 w-10 items-center justify-center rounded-xl bg-muted text-muted-foreground hover:text-foreground transition-colors"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+          ) : (
+            <button
+              onClick={() => setIsSearchOpen(true)}
+              className={cn(
+                "flex h-10 w-10 items-center justify-center rounded-xl transition-colors shrink-0",
+                searchQuery 
+                  ? "bg-primary text-primary-foreground" 
+                  : "bg-card border border-border text-muted-foreground hover:text-foreground"
+              )}
+            >
+              <Search className="w-5 h-5" />
+            </button>
+          )}
+        </div>
+
+        {/* Active Filters Indicator */}
+        {(propertyFilter !== 'all' || searchQuery) && (
+          <div className="mt-2 flex items-center gap-2 flex-wrap">
+            {propertyFilter !== 'all' && (
+              <span className="inline-flex items-center gap-1 px-2 py-1 rounded-lg bg-primary/10 text-primary text-xs font-medium">
+                <Building2 className="w-3 h-3" />
+                {properties.find(p => p.id === propertyFilter)?.name}
+                <button 
+                  onClick={() => onPropertyFilterChange?.('all')}
+                  className="ml-1 hover:bg-primary/20 rounded p-0.5"
+                >
+                  <X className="w-3 h-3" />
+                </button>
+              </span>
+            )}
+            {searchQuery && (
+              <span className="inline-flex items-center gap-1 px-2 py-1 rounded-lg bg-primary/10 text-primary text-xs font-medium">
+                <Search className="w-3 h-3" />
+                "{searchQuery}"
+                <button 
+                  onClick={() => onSearchChange('')}
+                  className="ml-1 hover:bg-primary/20 rounded p-0.5"
+                >
+                  <X className="w-3 h-3" />
+                </button>
+              </span>
+            )}
+          </div>
         )}
 
         {/* Filter Tabs - Updated with counters */}
