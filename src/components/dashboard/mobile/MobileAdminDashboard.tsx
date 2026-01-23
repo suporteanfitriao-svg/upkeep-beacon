@@ -1,5 +1,5 @@
 import { useState, useMemo, useCallback, useRef, useEffect } from 'react';
-import { format, formatDistanceToNow, isSameDay, startOfDay, addDays, startOfMonth, endOfMonth } from 'date-fns';
+import { format, formatDistanceToNow, isSameDay, startOfDay, addDays, startOfMonth, endOfMonth, isWithinInterval } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { RefreshCw, ChevronRight, AlertTriangle, Building2, Calendar, Search, Clock, User, Check, Play, Eye, ChevronLeft, Settings, ClipboardList } from 'lucide-react';
 import { Schedule, ScheduleStatus } from '@/types/scheduling';
@@ -10,7 +10,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { CleaningTimeAlert } from '@/hooks/useCleaningTimeAlert';
 import { useViewMode, ViewMode } from '@/hooks/useViewMode';
 import { MobileInfiniteDayStrip } from './MobileInfiniteDayStrip';
-import { MobileAgendaFilterTabs, AgendaViewMode } from './MobileAgendaFilterTabs';
+import { MobileAdminFilterTabs, AdminAgendaViewMode } from './MobileAdminFilterTabs';
 import { MobileAdminScheduleCard } from './MobileAdminScheduleCard';
 import { Dialog, DialogContent } from '@/components/ui/dialog';
 import { LocationModal } from '../LocationModal';
@@ -68,8 +68,9 @@ export function MobileAdminDashboard({
   
   // Calendar/date state - matching cleaner layout
   const [selectedDate, setSelectedDate] = useState(() => startOfDay(new Date()));
-  const [agendaViewMode, setAgendaViewMode] = useState<AgendaViewMode>('hoje');
+  const [agendaViewMode, setAgendaViewMode] = useState<AdminAgendaViewMode>('hoje');
   const [currentMonth, setCurrentMonth] = useState(() => startOfMonth(new Date()));
+  const [dateRange, setDateRange] = useState<{ from: Date; to: Date } | null>(null);
   
   // Modal states for quick actions
   const [locationModal, setLocationModal] = useState<{ open: boolean; schedule: Schedule | null }>({ open: false, schedule: null });
@@ -121,12 +122,19 @@ export function MobileAdminDashboard({
     let filtered = schedules;
     
     // Date filtering based on agendaViewMode
-    if (agendaViewMode === 'hoje' || agendaViewMode === 'data') {
-      filtered = schedules.filter(s => isSameDay(s.checkOut, selectedDate));
+    if (agendaViewMode === 'hoje') {
+      filtered = schedules.filter(s => isSameDay(s.checkOut, startOfDay(new Date())));
+    } else if (agendaViewMode === 'amanha') {
+      const tomorrow = startOfDay(addDays(new Date(), 1));
+      filtered = schedules.filter(s => isSameDay(s.checkOut, tomorrow));
     } else if (agendaViewMode === 'mes') {
       const monthStart = startOfMonth(currentMonth);
       const monthEnd = endOfMonth(currentMonth);
       filtered = schedules.filter(s => s.checkOut >= monthStart && s.checkOut <= monthEnd);
+    } else if (agendaViewMode === 'range' && dateRange) {
+      filtered = schedules.filter(s => 
+        isWithinInterval(s.checkOut, { start: startOfDay(dateRange.from), end: startOfDay(addDays(dateRange.to, 1)) })
+      );
     }
     
     // Status filtering
@@ -144,7 +152,7 @@ export function MobileAdminDashboard({
     }
     
     return filtered.sort((a, b) => a.checkOut.getTime() - b.checkOut.getTime());
-  }, [schedules, selectedDate, agendaViewMode, currentMonth, statusFilter, searchQuery]);
+  }, [schedules, agendaViewMode, selectedDate, currentMonth, dateRange, statusFilter, searchQuery]);
 
   // Separate active and completed
   const activeSchedules = useMemo(() => 
@@ -174,11 +182,46 @@ export function MobileAdminDashboard({
   }, [dateFilteredSchedules]);
 
   // Handle view mode change
-  const handleAgendaViewModeChange = useCallback((mode: AgendaViewMode) => {
+  const handleAgendaViewModeChange = useCallback((mode: AdminAgendaViewMode) => {
     setAgendaViewMode(mode);
     if (mode === 'hoje') {
       setSelectedDate(startOfDay(new Date()));
+    } else if (mode === 'amanha') {
+      setSelectedDate(startOfDay(addDays(new Date(), 1)));
     }
+    setCompletedPage(1);
+  }, []);
+
+  // Calculate counts for each filter
+  const filterCounts = useMemo(() => {
+    const today = startOfDay(new Date());
+    const tomorrow = startOfDay(addDays(new Date(), 1));
+    const monthStart = startOfMonth(currentMonth);
+    const monthEnd = endOfMonth(currentMonth);
+    
+    const getCount = (filtered: Schedule[]) => ({
+      total: filtered.length,
+      schedules: filtered.length,
+      inspections: 0
+    });
+    
+    const todaySchedules = schedules.filter(s => isSameDay(s.checkOut, today));
+    const tomorrowSchedules = schedules.filter(s => isSameDay(s.checkOut, tomorrow));
+    const monthSchedules = schedules.filter(s => s.checkOut >= monthStart && s.checkOut <= monthEnd);
+    const rangeSchedules = dateRange 
+      ? schedules.filter(s => isWithinInterval(s.checkOut, { start: startOfDay(dateRange.from), end: startOfDay(addDays(dateRange.to, 1)) }))
+      : [];
+    
+    return {
+      today: getCount(todaySchedules),
+      tomorrow: getCount(tomorrowSchedules),
+      month: getCount(monthSchedules),
+      range: getCount(rangeSchedules)
+    };
+  }, [schedules, currentMonth, dateRange]);
+
+  const handleDateRangeSelect = useCallback((range: { from: Date; to: Date } | null) => {
+    setDateRange(range);
     setCompletedPage(1);
   }, []);
 
@@ -306,14 +349,20 @@ export function MobileAdminDashboard({
           </p>
         )}
 
-        {/* Filter Tabs - Same as cleaner */}
+        {/* Filter Tabs - Updated with counters */}
         <div className="mt-3">
-          <MobileAgendaFilterTabs
+          <MobileAdminFilterTabs
             viewMode={agendaViewMode}
             selectedDate={selectedDate}
+            dateRange={dateRange}
             onViewModeChange={handleAgendaViewModeChange}
             onDateSelect={handleDateSelect}
+            onDateRangeSelect={handleDateRangeSelect}
             onMonthChange={setCurrentMonth}
+            todayCount={filterCounts.today}
+            tomorrowCount={filterCounts.tomorrow}
+            monthCount={filterCounts.month}
+            rangeCount={filterCounts.range}
             dayIndicators={dayIndicators}
           />
         </div>
@@ -373,12 +422,22 @@ export function MobileAdminDashboard({
         </div>
       </section>
 
-      {/* Section: Calendar Strip */}
-      {agendaViewMode !== 'mes' && (
+      {/* Section: Calendar Strip - Show for hoje, amanha modes */}
+      {(agendaViewMode === 'hoje' || agendaViewMode === 'amanha') && (
         <section className="border-t border-b border-slate-200 dark:border-slate-700/50">
           <MobileInfiniteDayStrip
             selectedDate={selectedDate}
-            onDateSelect={handleDateSelect}
+            onDateSelect={(date) => {
+              handleDateSelect(date);
+              // Auto-switch to 'hoje' if picking today, or 'amanha' if picking tomorrow
+              const today = startOfDay(new Date());
+              const tomorrow = startOfDay(addDays(new Date(), 1));
+              if (isSameDay(date, today)) {
+                setAgendaViewMode('hoje');
+              } else if (isSameDay(date, tomorrow)) {
+                setAgendaViewMode('amanha');
+              }
+            }}
             dayIndicators={dayIndicators}
           />
         </section>
@@ -469,7 +528,13 @@ export function MobileAdminDashboard({
             <Calendar className="w-12 h-12 text-muted-foreground/50 mb-3" />
             <p className="text-sm font-medium text-muted-foreground">Nenhum agendamento</p>
             <p className="text-xs text-muted-foreground/70 mt-1">
-              {agendaViewMode === 'hoje' ? 'para hoje' : agendaViewMode === 'mes' ? 'neste mês' : 'para esta data'}
+              {agendaViewMode === 'hoje' 
+                ? 'para hoje' 
+                : agendaViewMode === 'amanha' 
+                  ? 'para amanhã' 
+                  : agendaViewMode === 'mes' 
+                    ? 'neste mês' 
+                    : 'neste período'}
             </p>
           </div>
         ) : (
