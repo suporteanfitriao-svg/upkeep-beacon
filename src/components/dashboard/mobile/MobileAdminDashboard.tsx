@@ -319,66 +319,70 @@ export function MobileAdminDashboard({
         </div>
       </header>
 
-      {/* Infinite Day Strip - Same as cleaner */}
-      {agendaViewMode !== 'mes' && (
-        <MobileInfiniteDayStrip
-          selectedDate={selectedDate}
-          onDateSelect={handleDateSelect}
-          dayIndicators={dayIndicators}
-        />
-      )}
+      {/* Section: Status Counters - Top priority */}
+      <section className="px-4 pt-3 pb-2">
+        <div className="grid grid-cols-4 gap-2">
+          <button
+            onClick={() => onStatusFilterChange(statusFilter === 'waiting' ? 'all' : 'waiting')}
+            className={cn(
+              "flex flex-col items-center justify-center p-2.5 rounded-xl transition-all",
+              statusFilter === 'waiting' 
+                ? "bg-orange-100 dark:bg-orange-900/30 ring-2 ring-orange-400" 
+                : "bg-white dark:bg-slate-800 shadow-sm"
+            )}
+          >
+            <span className="text-lg font-bold text-orange-600 dark:text-orange-400">{periodStats.waiting}</span>
+            <span className="text-[9px] text-muted-foreground">Aguardando</span>
+          </button>
+          <button
+            onClick={() => onStatusFilterChange(statusFilter === 'released' ? 'all' : 'released')}
+            className={cn(
+              "flex flex-col items-center justify-center p-2.5 rounded-xl transition-all",
+              statusFilter === 'released' 
+                ? "bg-primary/20 ring-2 ring-primary" 
+                : "bg-white dark:bg-slate-800 shadow-sm"
+            )}
+          >
+            <span className="text-lg font-bold text-primary">{periodStats.released}</span>
+            <span className="text-[9px] text-muted-foreground">Liberado</span>
+          </button>
+          <button
+            onClick={() => onStatusFilterChange(statusFilter === 'cleaning' ? 'all' : 'cleaning')}
+            className={cn(
+              "flex flex-col items-center justify-center p-2.5 rounded-xl transition-all",
+              statusFilter === 'cleaning' 
+                ? "bg-[#E0C051]/20 ring-2 ring-[#E0C051]" 
+                : "bg-white dark:bg-slate-800 shadow-sm"
+            )}
+          >
+            <span className="text-lg font-bold text-[#E0C051]">{periodStats.cleaning}</span>
+            <span className="text-[9px] text-muted-foreground">Limpando</span>
+          </button>
+          <button
+            onClick={() => onStatusFilterChange(statusFilter === 'completed' ? 'all' : 'completed')}
+            className={cn(
+              "flex flex-col items-center justify-center p-2.5 rounded-xl transition-all",
+              statusFilter === 'completed' 
+                ? "bg-emerald-100 dark:bg-emerald-900/30 ring-2 ring-emerald-400" 
+                : "bg-white dark:bg-slate-800 shadow-sm"
+            )}
+          >
+            <span className="text-lg font-bold text-emerald-600 dark:text-emerald-400">{periodStats.completed}</span>
+            <span className="text-[9px] text-muted-foreground">Finalizado</span>
+          </button>
+        </div>
+      </section>
 
-      {/* Status Cards - Compact */}
-      <div className="px-4 py-2 grid grid-cols-4 gap-2">
-        <button
-          onClick={() => onStatusFilterChange(statusFilter === 'waiting' ? 'all' : 'waiting')}
-          className={cn(
-            "flex flex-col items-center justify-center p-2.5 rounded-xl transition-all",
-            statusFilter === 'waiting' 
-              ? "bg-orange-100 dark:bg-orange-900/30 ring-2 ring-orange-400" 
-              : "bg-white dark:bg-slate-800 shadow-sm"
-          )}
-        >
-          <span className="text-lg font-bold text-orange-600 dark:text-orange-400">{periodStats.waiting}</span>
-          <span className="text-[9px] text-muted-foreground">Aguardando</span>
-        </button>
-        <button
-          onClick={() => onStatusFilterChange(statusFilter === 'released' ? 'all' : 'released')}
-          className={cn(
-            "flex flex-col items-center justify-center p-2.5 rounded-xl transition-all",
-            statusFilter === 'released' 
-              ? "bg-primary/20 ring-2 ring-primary" 
-              : "bg-white dark:bg-slate-800 shadow-sm"
-          )}
-        >
-          <span className="text-lg font-bold text-primary">{periodStats.released}</span>
-          <span className="text-[9px] text-muted-foreground">Liberado</span>
-        </button>
-        <button
-          onClick={() => onStatusFilterChange(statusFilter === 'cleaning' ? 'all' : 'cleaning')}
-          className={cn(
-            "flex flex-col items-center justify-center p-2.5 rounded-xl transition-all",
-            statusFilter === 'cleaning' 
-              ? "bg-[#E0C051]/20 ring-2 ring-[#E0C051]" 
-              : "bg-white dark:bg-slate-800 shadow-sm"
-          )}
-        >
-          <span className="text-lg font-bold text-[#E0C051]">{periodStats.cleaning}</span>
-          <span className="text-[9px] text-muted-foreground">Limpando</span>
-        </button>
-        <button
-          onClick={() => onStatusFilterChange(statusFilter === 'completed' ? 'all' : 'completed')}
-          className={cn(
-            "flex flex-col items-center justify-center p-2.5 rounded-xl transition-all",
-            statusFilter === 'completed' 
-              ? "bg-emerald-100 dark:bg-emerald-900/30 ring-2 ring-emerald-400" 
-              : "bg-white dark:bg-slate-800 shadow-sm"
-          )}
-        >
-          <span className="text-lg font-bold text-emerald-600 dark:text-emerald-400">{periodStats.completed}</span>
-          <span className="text-[9px] text-muted-foreground">Finalizado</span>
-        </button>
-      </div>
+      {/* Section: Calendar Strip */}
+      {agendaViewMode !== 'mes' && (
+        <section className="border-t border-b border-slate-200 dark:border-slate-700/50">
+          <MobileInfiniteDayStrip
+            selectedDate={selectedDate}
+            onDateSelect={handleDateSelect}
+            dayIndicators={dayIndicators}
+          />
+        </section>
+      )}
 
       {/* Cleaning Time Alerts */}
       {cleaningTimeAlerts.length > 0 && (
@@ -386,41 +390,60 @@ export function MobileAdminDashboard({
           <div className="flex items-center gap-2 mb-2">
             <AlertTriangle className="w-4 h-4 text-rose-500" />
             <span className="text-xs font-bold text-rose-600 dark:text-rose-400">
-              ALERTAS ({cleaningTimeAlerts.length})
+              ALERTAS DE TEMPO ({cleaningTimeAlerts.length})
             </span>
           </div>
           <div className="space-y-2">
-            {cleaningTimeAlerts.slice(0, 2).map((alert) => (
-              <button
-                key={alert.schedule.id}
-                onClick={() => onScheduleClick(alert.schedule)}
-                className={cn(
-                  "w-full p-3 rounded-xl text-left transition-all active:scale-[0.99]",
-                  alert.type === 'exceeding' 
-                    ? "bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800" 
-                    : "bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800"
-                )}
-              >
-                <div className="flex items-center justify-between">
-                  <div className="flex-1 min-w-0">
-                    <p className="font-bold text-sm text-foreground truncate">{alert.schedule.propertyName}</p>
-                    <p className="text-[10px] text-muted-foreground">
-                      {alert.schedule.cleanerName}
-                    </p>
+            {cleaningTimeAlerts.slice(0, 2).map((alert) => {
+              // Format minutes to hours - same logic as CleaningTimeAlertBanner
+              const formatAlertTime = (minutes: number) => {
+                if (minutes < 0) {
+                  const absMinutes = Math.abs(minutes);
+                  const hours = Math.floor(absMinutes / 60);
+                  const mins = absMinutes % 60;
+                  if (hours > 0) {
+                    return `+${hours}h ${mins > 0 ? `${mins}min ` : ''}excedido`;
+                  }
+                  return `+${mins}min excedido`;
+                }
+                const hours = Math.floor(minutes / 60);
+                const mins = minutes % 60;
+                if (hours > 0) {
+                  return `${hours}h${mins > 0 ? ` ${mins}min` : ''} restantes`;
+                }
+                return `${mins}min restantes`;
+              };
+
+              return (
+                <button
+                  key={alert.schedule.id}
+                  onClick={() => onScheduleClick(alert.schedule)}
+                  className={cn(
+                    "w-full p-3 rounded-xl text-left transition-all active:scale-[0.99]",
+                    alert.type === 'exceeding' 
+                      ? "bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800" 
+                      : "bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800"
+                  )}
+                >
+                  <div className="flex items-center justify-between">
+                    <div className="flex-1 min-w-0">
+                      <p className="font-bold text-sm text-foreground truncate">{alert.schedule.propertyName}</p>
+                      <p className="text-[10px] text-muted-foreground">
+                        {alert.schedule.cleanerName || 'Não atribuído'} • Check-in {format(alert.checkInTime, 'HH:mm')}
+                      </p>
+                    </div>
+                    <div className={cn(
+                      "text-right flex-shrink-0 ml-2",
+                      alert.type === 'exceeding' ? "text-red-600 dark:text-red-400" : "text-amber-600 dark:text-amber-400"
+                    )}>
+                      <span className="text-xs font-bold whitespace-nowrap">
+                        {formatAlertTime(alert.minutesRemaining)}
+                      </span>
+                    </div>
                   </div>
-                  <div className={cn(
-                    "text-right",
-                    alert.type === 'exceeding' ? "text-red-600 dark:text-red-400" : "text-amber-600 dark:text-amber-400"
-                  )}>
-                    <span className="text-sm font-bold">
-                      {alert.minutesRemaining < 0 
-                        ? `+${Math.abs(alert.minutesRemaining)}min` 
-                        : `${alert.minutesRemaining}min`}
-                    </span>
-                  </div>
-                </div>
-              </button>
-            ))}
+                </button>
+              );
+            })}
           </div>
         </div>
       )}
