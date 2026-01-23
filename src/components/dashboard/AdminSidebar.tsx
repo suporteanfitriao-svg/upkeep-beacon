@@ -27,6 +27,7 @@ import {
   SidebarFooter,
   useSidebar,
 } from '@/components/ui/sidebar';
+import { ViewModeSwitcher } from './ViewModeSwitcher';
 import logo from '@/assets/logo.png';
 
 const menuItems = [
@@ -65,6 +66,11 @@ export function AdminSidebar() {
       </SidebarHeader>
 
       <SidebarContent className="px-4 py-6">
+        {/* View Mode Switcher for SuperAdmin */}
+        <div className="mb-4">
+          <ViewModeSwitcher collapsed={collapsed} />
+        </div>
+
         <SidebarGroup>
           <SidebarGroupContent>
             <SidebarMenu className="space-y-2">

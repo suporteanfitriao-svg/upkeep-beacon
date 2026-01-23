@@ -27,6 +27,7 @@ import { useIsMobile } from '@/hooks/use-mobile';
 import { supabase } from '@/integrations/supabase/client';
 import { cn } from '@/lib/utils';
 import { useUserRole } from '@/hooks/useUserRole';
+import { useViewMode } from '@/hooks/useViewMode';
 
 const SYNC_STORAGE_KEY = 'lastSyncData';
 const FILTERS_STORAGE_KEY = 'adminDashboardFilters';
@@ -124,7 +125,8 @@ function SyncOverlayInline({ isSyncing }: { isSyncing: boolean }) {
 
 const Index = () => {
   const isMobile = useIsMobile();
-  const { isCleaner, hasManagerAccess, loading: roleLoading } = useUserRole();
+  const { isCleaner, hasManagerAccess, isSuperAdmin, loading: roleLoading } = useUserRole();
+  const { viewMode, canSwitchView } = useViewMode();
   const { schedules, loading, error, refetch, updateSchedule, updateScheduleTimes, updateScheduleLocal } = useSchedules();
   const { inspections: adminInspections, loading: inspectionsLoading, refetch: refetchInspections } = useAdminInspections();
   
@@ -721,6 +723,61 @@ const Index = () => {
 
   // Mobile layout
   if (isMobile) {
+    // SuperAdmin with view mode override
+    if (canSwitchView) {
+      // If superadmin chose cleaner view, show cleaner dashboard
+      if (viewMode === 'cleaner') {
+        return (
+          <>
+            <MobileDashboard
+              schedules={schedules}
+              onScheduleClick={setSelectedSchedule}
+              onStartCleaning={handleStartCleaning}
+              onRefresh={syncAndRefresh}
+            />
+            {selectedSchedule && (
+              <ScheduleDetail
+                schedule={selectedSchedule}
+                onClose={() => setSelectedSchedule(null)}
+                onUpdateSchedule={handleUpdateSchedule}
+              />
+            )}
+            <SyncOverlayInline isSyncing={isSyncing} />
+          </>
+        );
+      }
+      
+      // Owner or manager view for superadmin
+      return (
+        <>
+          <MobileAdminDashboard
+            schedules={schedules}
+            filteredSchedules={filteredSchedules}
+            stats={filteredStats}
+            cleaningTimeAlerts={cleaningTimeAlerts}
+            onScheduleClick={setSelectedSchedule}
+            onRefresh={syncAndRefresh}
+            lastSyncTime={lastSyncTime}
+            isSyncing={isSyncing}
+            dateFilter={dateFilter}
+            onDateFilterChange={(filter) => setDateFilter(filter as DateFilter)}
+            statusFilter={statusFilter}
+            onStatusFilterChange={setStatusFilter}
+            searchQuery={searchQuery}
+            onSearchChange={setSearchQuery}
+          />
+          {selectedSchedule && (
+            <ScheduleDetail
+              schedule={selectedSchedule}
+              onClose={() => setSelectedSchedule(null)}
+              onUpdateSchedule={handleUpdateSchedule}
+            />
+          )}
+          <SyncOverlayInline isSyncing={isSyncing} />
+        </>
+      );
+    }
+
     // Admins and managers see the admin dashboard on mobile
     if (hasManagerAccess && !isCleaner) {
       return (

@@ -4,6 +4,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { AuthProvider } from "@/hooks/useAuth";
+import { ViewModeProvider } from "@/hooks/useViewMode";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
 import { AdminRoute } from "@/components/AdminRoute";
 import { SuperAdminRoute } from "@/components/SuperAdminRoute";
@@ -64,109 +65,111 @@ const App = () => (
       <PWAUpdateHandler />
       <BrowserRouter>
         <AuthProvider>
-          <Routes>
-            <Route path="/landing" element={<Landing />} />
-            <Route path="/auth" element={<Auth />} />
-            <Route
-              path="/"
-              element={
-                <ProtectedRoute>
-                  <Index />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/equipe"
-              element={
-                <AdminRoute>
-                  <Team />
-                </AdminRoute>
-              }
-            />
-            <Route
-              path="/propriedades"
-              element={
-                <AdminRoute>
-                  <Properties />
-                </AdminRoute>
-              }
-            />
-            <Route
-              path="/inspecoes"
-              element={
-                <AdminRoute>
-                  <Inspections />
-                </AdminRoute>
-              }
-            />
-            <Route
-              path="/inventario"
-              element={
-                <AdminRoute>
-                  <Inventory />
-                </AdminRoute>
-              }
-            />
-            <Route
-              path="/ajuda"
-              element={
-                <ProtectedRoute>
-                  <Help />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/manutencao"
-              element={
-                <AdminRoute>
-                  <Manutencao />
-                </AdminRoute>
-              }
-            />
-            <Route
-              path="/minha-conta"
-              element={
-                <ProtectedRoute>
-                  <Profile />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/mensagens"
-              element={
-                <ProtectedRoute>
-                  <Messages />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/onboarding"
-              element={
-                <AdminRoute>
-                  <Onboarding />
-                </AdminRoute>
-              }
-            />
-            <Route
-              path="/super-admin"
-              element={
-                <SuperAdminRoute>
-                  <SuperAdmin />
-                </SuperAdminRoute>
-              }
-            />
-            <Route
-              path="/configuracoes"
-              element={
-                <ProtectedRoute>
-                  <Settings />
-                </ProtectedRoute>
-              }
-            />
-            <Route path="/install" element={<Install />} />
-            {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
-            <Route path="*" element={<NotFound />} />
-          </Routes>
+          <ViewModeProvider>
+            <Routes>
+              <Route path="/landing" element={<Landing />} />
+              <Route path="/auth" element={<Auth />} />
+              <Route
+                path="/"
+                element={
+                  <ProtectedRoute>
+                    <Index />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/equipe"
+                element={
+                  <AdminRoute>
+                    <Team />
+                  </AdminRoute>
+                }
+              />
+              <Route
+                path="/propriedades"
+                element={
+                  <AdminRoute>
+                    <Properties />
+                  </AdminRoute>
+                }
+              />
+              <Route
+                path="/inspecoes"
+                element={
+                  <AdminRoute>
+                    <Inspections />
+                  </AdminRoute>
+                }
+              />
+              <Route
+                path="/inventario"
+                element={
+                  <AdminRoute>
+                    <Inventory />
+                  </AdminRoute>
+                }
+              />
+              <Route
+                path="/ajuda"
+                element={
+                  <ProtectedRoute>
+                    <Help />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/manutencao"
+                element={
+                  <AdminRoute>
+                    <Manutencao />
+                  </AdminRoute>
+                }
+              />
+              <Route
+                path="/minha-conta"
+                element={
+                  <ProtectedRoute>
+                    <Profile />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/mensagens"
+                element={
+                  <ProtectedRoute>
+                    <Messages />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/onboarding"
+                element={
+                  <AdminRoute>
+                    <Onboarding />
+                  </AdminRoute>
+                }
+              />
+              <Route
+                path="/super-admin"
+                element={
+                  <SuperAdminRoute>
+                    <SuperAdmin />
+                  </SuperAdminRoute>
+                }
+              />
+              <Route
+                path="/configuracoes"
+                element={
+                  <ProtectedRoute>
+                    <Settings />
+                  </ProtectedRoute>
+                }
+              />
+              <Route path="/install" element={<Install />} />
+              {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
+              <Route path="*" element={<NotFound />} />
+            </Routes>
+          </ViewModeProvider>
         </AuthProvider>
       </BrowserRouter>
     </TooltipProvider>
