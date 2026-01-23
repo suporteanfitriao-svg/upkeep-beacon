@@ -38,11 +38,15 @@ export function AppSidebar() {
   const { state } = useSidebar();
   const collapsed = state === 'collapsed';
   const { signOut } = useAuth();
-  const { isCleaner } = useUserRole();
+  const { isCleaner, hasManagerAccess } = useUserRole();
   const navigate = useNavigate();
 
-  // Filter menu items based on role
-  const menuItems = allMenuItems.filter(item => !item.adminOnly || !isCleaner);
+  // Filter menu items based on role - cleaners only see non-admin items
+  const menuItems = allMenuItems.filter(item => {
+    if (item.adminOnly && isCleaner) return false;
+    if (item.adminOnly && !hasManagerAccess) return false;
+    return true;
+  });
 
   const handleSignOut = async () => {
     await signOut();
