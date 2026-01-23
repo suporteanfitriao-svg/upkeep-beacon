@@ -17,6 +17,7 @@ import { toast } from 'sonner';
 import { useUserRole } from '@/hooks/useUserRole';
 import { useAuth } from '@/hooks/useAuth';
 import { wasCompletedWithDelay, getDelayMinutes } from '@/hooks/useCleaningTimeAlert';
+import { useCleaningDelay } from '@/hooks/useCleaningDelay';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -125,17 +126,20 @@ export const MobileAdminScheduleCard = memo(function MobileAdminScheduleCard({
   const canManage = isAdmin || isManager;
   const StatusIcon = statusConfig.icon;
   
+  // Real-time cleaning delay tracking
+  const { isDelayed, delayMinutes: liveDelayMinutes, formattedDelay, canBeDelayed } = useCleaningDelay(localSchedule);
+  
   // Calculate NOK items count
   const nokItemsCount = useMemo(() => {
     return localSchedule.checklist?.filter(item => item.status === 'not_ok').length || 0;
   }, [localSchedule.checklist]);
 
-  // Check if completed with delay
+  // Check if completed with delay (for historical display on completed cards)
   const completedWithDelay = useMemo(() => wasCompletedWithDelay(localSchedule), [localSchedule]);
-  const delayMinutes = useMemo(() => getDelayMinutes(localSchedule), [localSchedule]);
+  const historicalDelayMinutes = useMemo(() => getDelayMinutes(localSchedule), [localSchedule]);
   
-  // Format delay time
-  const formatDelayTime = (minutes: number) => {
+  // Format delay time for historical display
+  const formatHistoricalDelayTime = (minutes: number) => {
     const hours = Math.floor(minutes / 60);
     const mins = minutes % 60;
     if (hours > 0) {
@@ -336,14 +340,30 @@ export const MobileAdminScheduleCard = memo(function MobileAdminScheduleCard({
     <Collapsible open={isExpanded} onOpenChange={setIsExpanded}>
       <article
         className={cn(
-          "relative overflow-hidden rounded-2xl bg-white dark:bg-[#2d3138] shadow-soft transition-all border",
+          "relative overflow-hidden rounded-2xl shadow-soft transition-all border",
           isCompleted && "opacity-60",
-          taskOverdue 
+          // Alert state: cleaning delay (past check-in, not completed)
+          isDelayed 
+            ? "bg-red-50 dark:bg-red-900/20 border-red-400 dark:border-red-700 ring-2 ring-red-300 dark:ring-red-800/50" 
+            : "bg-white dark:bg-[#2d3138]",
+          // Overdue state (past checkout date, waiting/released)
+          !isDelayed && taskOverdue 
             ? "border-red-300 dark:border-red-800 ring-1 ring-red-200 dark:ring-red-900/50" 
-            : "border-slate-100 dark:border-slate-700",
+            : !isDelayed && "border-slate-100 dark:border-slate-700",
           isExpanded && "shadow-md"
         )}
       >
+        {/* Live Delay Alert Banner */}
+        {isDelayed && (
+          <div className="bg-red-500 text-white px-4 py-2 flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <AlertTriangle className="w-4 h-4 animate-pulse" />
+              <span className="text-xs font-bold uppercase tracking-wider">LIMPEZA EM ATRASO</span>
+            </div>
+            <span className="text-sm font-bold">Atraso: {formattedDelay}</span>
+          </div>
+        )}
+        
         {/* Main Row - Collapsible Trigger */}
         <CollapsibleTrigger asChild>
           <button className="w-full text-left p-4">
@@ -424,10 +444,18 @@ export const MobileAdminScheduleCard = memo(function MobileAdminScheduleCard({
                       {nokItemsCount} NOK
                     </span>
                   )}
-                  {completedWithDelay && (
+                  {/* Live delay alert - shows when cleaning is in progress and past check-in */}
+                  {isDelayed && (
+                    <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-full bg-red-100 dark:bg-red-900/40 text-[9px] font-bold text-red-600 dark:text-red-400 animate-pulse">
+                      <AlertCircle className="w-2.5 h-2.5" />
+                      Atraso: {formattedDelay}
+                    </span>
+                  )}
+                  {/* Historical delay - shows on completed cards that finished late */}
+                  {completedWithDelay && !isDelayed && (
                     <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-full bg-orange-100 dark:bg-orange-900/40 text-[9px] font-bold text-orange-600 dark:text-orange-400">
                       <AlertCircle className="w-2.5 h-2.5" />
-                      {formatDelayTime(delayMinutes)} atraso
+                      {formatHistoricalDelayTime(historicalDelayMinutes)} atraso
                     </span>
                   )}
                 </div>
