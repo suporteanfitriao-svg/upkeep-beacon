@@ -63,6 +63,9 @@ export function isCleaningDelayed(schedule: Schedule): { isDelayed: boolean; min
  * Hook to detect cleanings that are at risk of exceeding check-in time
  * - 'exceeding': Cleaning has already exceeded check-in time
  * - 'at_risk': Cleaning is in progress and estimated to exceed check-in time (< 30 min remaining)
+ * 
+ * IMPORTANT: minutesRemaining represents time until check-in (negative = exceeded)
+ * This is calculated as: checkInTime - now
  */
 export function useCleaningTimeAlerts(schedules: Schedule[]): CleaningTimeAlert[] {
   return useMemo(() => {
@@ -83,28 +86,34 @@ export function useCleaningTimeAlerts(schedules: Schedule[]): CleaningTimeAlert[
         ? schedule.checkIn 
         : new Date(schedule.checkIn);
 
+      // Duration since cleaning started (always positive)
       const cleaningDuration = differenceInMinutes(now, startTime);
+      
+      // Time remaining until check-in (negative if exceeded)
+      // This is the key calculation: checkIn - now
+      const minutesUntilCheckIn = differenceInMinutes(checkInTime, now);
+      
       const estimatedDuration = schedule.estimatedDuration || 90; // default 90 min
       const estimatedEndTime = addMinutes(startTime, estimatedDuration);
-      const minutesRemaining = differenceInMinutes(checkInTime, now);
 
-      // Check if already exceeding check-in time
+      // Check if already exceeding check-in time (now > checkIn)
       if (isAfter(now, checkInTime)) {
+        // minutesUntilCheckIn will be negative here
         alerts.push({
           schedule,
           type: 'exceeding',
-          minutesRemaining: minutesRemaining, // will be negative
+          minutesRemaining: minutesUntilCheckIn, // negative value = exceeded
           checkInTime,
           estimatedEndTime,
           cleaningDuration,
         });
       } 
       // Check if at risk (less than 30 min remaining and cleaning started)
-      else if (minutesRemaining <= 30 && cleaningDuration > 0) {
+      else if (minutesUntilCheckIn <= 30 && cleaningDuration > 0) {
         alerts.push({
           schedule,
           type: 'at_risk',
-          minutesRemaining,
+          minutesRemaining: minutesUntilCheckIn,
           checkInTime,
           estimatedEndTime,
           cleaningDuration,
@@ -115,7 +124,7 @@ export function useCleaningTimeAlerts(schedules: Schedule[]): CleaningTimeAlert[
         alerts.push({
           schedule,
           type: 'at_risk',
-          minutesRemaining,
+          minutesRemaining: minutesUntilCheckIn,
           checkInTime,
           estimatedEndTime,
           cleaningDuration,
