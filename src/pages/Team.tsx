@@ -29,7 +29,7 @@ interface TeamMember {
   email: string;
   cpf: string;
   whatsapp: string;
-  role: 'admin' | 'manager' | 'cleaner';
+  role: 'superadmin' | 'admin' | 'manager' | 'cleaner';
   is_active: boolean;
   has_all_properties: boolean;
   created_at: string;
@@ -49,19 +49,21 @@ interface Property {
 }
 
 const roleLabels: Record<string, string> = {
-  admin: 'Administrador',
-  manager: 'Gerente',
-  cleaner: 'Limpeza',
+  superadmin: 'Super Admin',
+  admin: 'Proprietário',
+  manager: 'Anfitrião',
+  cleaner: 'Cleaner',
 };
 
 const roleColors: Record<string, string> = {
+  superadmin: 'bg-destructive text-destructive-foreground',
   admin: 'bg-primary text-primary-foreground',
   manager: 'bg-secondary text-secondary-foreground',
   cleaner: 'bg-muted text-muted-foreground',
 };
 
 export default function Team() {
-  const { isAdmin, role, loading: roleLoading } = useUserRole();
+  const { isAdmin, isSuperAdmin, hasAdminAccess, role, loading: roleLoading } = useUserRole();
   const { fetching: fetchingCep, handleCepChange } = useCepLookup();
   const [members, setMembers] = useState<TeamMember[]>([]);
   const [properties, setProperties] = useState<Property[]>([]);
@@ -76,7 +78,7 @@ export default function Team() {
     email: '',
     cpf: '',
     whatsapp: '',
-    role: 'cleaner' as 'admin' | 'manager' | 'cleaner',
+    role: 'cleaner' as 'superadmin' | 'admin' | 'manager' | 'cleaner',
     hasAllProperties: true,
     selectedProperties: [] as string[],
     // Address fields
@@ -89,14 +91,14 @@ export default function Team() {
     address_state: '',
   });
 
-  const canManage = role === 'admin' || role === 'manager';
+  const canManage = hasAdminAccess;
 
   useEffect(() => {
-    if (isAdmin) {
+    if (hasAdminAccess) {
       fetchMembers();
       fetchProperties();
     }
-  }, [isAdmin]);
+  }, [hasAdminAccess]);
 
   async function fetchMembers() {
     try {
@@ -520,7 +522,7 @@ export default function Team() {
                       <Label htmlFor="role">Função</Label>
                       <Select
                         value={formData.role}
-                        onValueChange={(value: 'admin' | 'manager' | 'cleaner') =>
+                        onValueChange={(value: 'superadmin' | 'admin' | 'manager' | 'cleaner') =>
                           setFormData({ ...formData, role: value })
                         }
                       >
@@ -528,9 +530,9 @@ export default function Team() {
                           <SelectValue />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="admin">Administrador</SelectItem>
-                          <SelectItem value="manager">Gerente (visualiza sem modificar)</SelectItem>
-                          <SelectItem value="cleaner">Limpeza (visualiza mobile)</SelectItem>
+                          <SelectItem value="admin">Proprietário</SelectItem>
+                          <SelectItem value="manager">Anfitrião</SelectItem>
+                          <SelectItem value="cleaner">Cleaner</SelectItem>
                         </SelectContent>
                       </Select>
                     </div>

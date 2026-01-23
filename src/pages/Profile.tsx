@@ -66,12 +66,14 @@ interface TeamMember {
 }
 
 const roleLabels: Record<string, string> = {
-  admin: 'Administrador',
-  manager: 'Gerente',
-  cleaner: 'Limpeza',
+  superadmin: 'Super Admin',
+  admin: 'Proprietário',
+  manager: 'Anfitrião',
+  cleaner: 'Cleaner',
 };
 
 const roleDescriptions: Record<string, string> = {
+  superadmin: 'Você tem acesso total ao sistema, incluindo gestão de todos os proprietários e configurações globais.',
   admin: 'Você tem acesso total às configurações do sistema, gestão de equipe e relatórios.',
   manager: 'Você pode gerenciar propriedades, agendar limpezas e supervisionar a equipe.',
   cleaner: 'Você pode visualizar e executar suas tarefas atribuídas.',

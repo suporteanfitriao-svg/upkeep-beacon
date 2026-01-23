@@ -2,14 +2,19 @@ import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from './useAuth';
 
-type AppRole = 'admin' | 'manager' | 'cleaner';
+type AppRole = 'superadmin' | 'admin' | 'manager' | 'cleaner';
 
 interface UserRoleState {
   role: AppRole | null;
   loading: boolean;
+  isSuperAdmin: boolean;
   isAdmin: boolean;
   isManager: boolean;
   isCleaner: boolean;
+  /** Returns true if user is superadmin or admin */
+  hasAdminAccess: boolean;
+  /** Returns true if user is superadmin, admin or manager */
+  hasManagerAccess: boolean;
 }
 
 export function useUserRole(): UserRoleState {
@@ -49,11 +54,19 @@ export function useUserRole(): UserRoleState {
     fetchRole();
   }, [user]);
 
+  const isSuperAdmin = role === 'superadmin';
+  const isAdmin = role === 'admin';
+  const isManager = role === 'manager';
+  const isCleaner = role === 'cleaner';
+
   return {
     role,
     loading,
-    isAdmin: role === 'admin',
-    isManager: role === 'manager',
-    isCleaner: role === 'cleaner',
+    isSuperAdmin,
+    isAdmin,
+    isManager,
+    isCleaner,
+    hasAdminAccess: isSuperAdmin || isAdmin,
+    hasManagerAccess: isSuperAdmin || isAdmin || isManager,
   };
 }

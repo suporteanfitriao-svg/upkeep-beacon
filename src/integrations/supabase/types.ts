@@ -1355,6 +1355,7 @@ export type Database = {
         Args: { p_schedule_id: string }
         Returns: boolean
       }
+      is_superadmin: { Args: { _user_id: string }; Returns: boolean }
       log_password_action: {
         Args: {
           p_action: string
@@ -1375,7 +1376,7 @@ export type Database = {
       }
     }
     Enums: {
-      app_role: "admin" | "manager" | "cleaner"
+      app_role: "admin" | "manager" | "cleaner" | "superadmin"
       property_password_mode: "ical" | "manual" | "global"
     }
     CompositeTypes: {
@@ -1504,7 +1505,7 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
-      app_role: ["admin", "manager", "cleaner"],
+      app_role: ["admin", "manager", "cleaner", "superadmin"],
       property_password_mode: ["ical", "manual", "global"],
     },
   },

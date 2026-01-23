@@ -130,9 +130,10 @@ export function TeamStep({ onNext, onBack }: TeamStepProps) {
 
   const getRoleLabel = (role: string) => {
     switch (role) {
-      case 'admin': return 'Administrador';
-      case 'manager': return 'Gerente';
-      case 'cleaner': return 'Limpeza';
+      case 'superadmin': return 'Super Admin';
+      case 'admin': return 'Proprietário';
+      case 'manager': return 'Anfitrião';
+      case 'cleaner': return 'Cleaner';
       default: return role;
     }
   };
@@ -205,9 +206,9 @@ export function TeamStep({ onNext, onBack }: TeamStepProps) {
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="cleaner">Limpeza</SelectItem>
-                <SelectItem value="manager">Gerente</SelectItem>
-                <SelectItem value="admin">Administrador</SelectItem>
+                <SelectItem value="cleaner">Cleaner</SelectItem>
+                <SelectItem value="manager">Anfitrião</SelectItem>
+                <SelectItem value="admin">Proprietário</SelectItem>
               </SelectContent>
             </Select>
           </div>

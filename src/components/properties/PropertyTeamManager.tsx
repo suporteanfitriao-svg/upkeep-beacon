@@ -8,7 +8,7 @@ interface TeamMember {
   id: string;
   name: string;
   email: string;
-  role: 'admin' | 'manager' | 'cleaner';
+  role: 'superadmin' | 'admin' | 'manager' | 'cleaner';
   is_active: boolean;
   has_all_properties: boolean;
 }
