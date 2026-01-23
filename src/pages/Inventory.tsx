@@ -888,8 +888,10 @@ const Inventory = () => {
   if (loading && categories.length === 0) {
     return (
       <SidebarProvider>
-        <AppSidebar />
-        <SidebarInset>
+        <div className="hidden md:block">
+          <AppSidebar />
+        </div>
+        <SidebarInset className="w-full">
           <DashboardHeader title="Inventário" subtitle="Gerencie itens e quantidades" />
           <main className="flex-1 p-6 flex items-center justify-center">
             <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
@@ -901,8 +903,10 @@ const Inventory = () => {
 
   return (
     <SidebarProvider>
-      <AppSidebar />
-      <SidebarInset>
+      <div className="hidden md:block">
+        <AppSidebar />
+      </div>
+      <SidebarInset className="w-full">
         <DashboardHeader title="Inventário" subtitle="Gerencie itens e quantidades" />
         <main className="flex-1 p-4 sm:p-6">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">

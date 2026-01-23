@@ -566,16 +566,18 @@ export default function Properties() {
   return (
     <SidebarProvider>
       <div className="flex min-h-screen w-full bg-background">
-        <AppSidebar />
-        <SidebarInset className="flex-1">
+        <div className="hidden md:block">
+          <AppSidebar />
+        </div>
+        <SidebarInset className="flex-1 w-full">
           <DashboardHeader title="Propriedades" subtitle={`${properties.length} imóveis cadastrados`} />
           
-          {/* Action buttons */}
-          <div className="flex items-center justify-end gap-2 px-8 py-4">
+          {/* Action buttons - Mobile optimized */}
+          <div className="flex items-center justify-end gap-2 px-4 md:px-8 py-3 md:py-4">
             <button
               onClick={handleSyncAll}
               disabled={isSyncing !== null}
-              className="flex items-center gap-2 rounded-xl border border-border bg-card px-3 py-2 text-sm font-medium text-foreground shadow-sm transition-all hover:bg-muted active:scale-[0.98] disabled:opacity-50"
+              className="flex items-center gap-2 rounded-xl border border-border bg-card px-3 py-2.5 text-sm font-medium text-foreground shadow-sm transition-all hover:bg-muted active:scale-[0.98] disabled:opacity-50 touch-manipulation"
             >
               <span className={cn("material-symbols-outlined text-[18px]", isSyncing === 'all' && 'animate-spin')}>sync</span>
               <span className="hidden sm:inline">Sincronizar</span>
@@ -586,12 +588,13 @@ export default function Properties() {
                 if (!open) resetForm();
               }}>
                 <DialogTrigger asChild>
-                  <button className="flex items-center gap-2 rounded-xl bg-primary px-4 py-2 text-sm font-bold text-primary-foreground shadow-sm transition-all hover:bg-primary/90 active:scale-[0.98]">
+                  <button className="flex items-center gap-2 rounded-xl bg-primary px-4 py-2.5 text-sm font-bold text-primary-foreground shadow-sm transition-all hover:bg-primary/90 active:scale-[0.98] touch-manipulation">
                     <span className="material-symbols-outlined text-[18px]">add</span>
                     <span className="hidden sm:inline">Nova Propriedade</span>
+                    <span className="sm:hidden">Nova</span>
                   </button>
                 </DialogTrigger>
-                  <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto">
+                  <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto mx-4">
                     <DialogHeader>
                       <DialogTitle className="text-lg font-bold">
                         {editingProperty ? 'Editar Propriedade' : 'Nova Propriedade'}
