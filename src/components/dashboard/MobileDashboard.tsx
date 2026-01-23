@@ -9,6 +9,7 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import { useTeamMemberId } from '@/hooks/useTeamMemberId';
 import { useUserRole } from '@/hooks/useUserRole';
+import { useViewMode } from '@/hooks/useViewMode';
 import { useCleanerPayments, PaymentPeriod } from '@/hooks/useCleanerPayments';
 import { CleanerPaymentCards } from './CleanerPaymentCards';
 import { useCleanerInspections } from '@/hooks/useCleanerInspections';
@@ -17,6 +18,7 @@ import { CleaningTimeAlertBanner } from '@/components/dashboard/CleaningTimeAler
 import { useCleaningTimeAlerts } from '@/hooks/useCleaningTimeAlert';
 import { useLocationPermission } from '@/hooks/useLocationPermission';
 import LocationPermissionModal from './mobile/LocationPermissionModal';
+import { ViewModeSwitcher } from './ViewModeSwitcher';
 
 // Import memoized subcomponents
 import { MobileBottomNav } from './mobile/MobileBottomNav';
@@ -58,6 +60,7 @@ export function MobileDashboard({ schedules, onScheduleClick, onStartCleaning, o
   const { user } = useAuth();
   const { teamMemberId } = useTeamMemberId();
   const { isCleaner } = useUserRole();
+  const { canSwitchView } = useViewMode();
   const [paymentPeriod, setPaymentPeriod] = useState<PaymentPeriod>('today');
   
   // Cleaner inspections
@@ -607,33 +610,41 @@ export function MobileDashboard({ schedules, onScheduleClick, onStartCleaning, o
       {activeTab === 'inicio' && (
         <div className="animate-fade-in">
           {/* Home Header */}
-          <header className="sticky top-0 z-20 flex items-center justify-between bg-stone-50/90 dark:bg-[#22252a]/90 px-6 py-4 backdrop-blur-md">
-            <div className="flex flex-col">
-              <span className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Bem-vindo(a)</span>
-              <h1 className="text-xl font-bold text-foreground">
-                Dashboard <span className="text-primary">Geral</span>
-              </h1>
-            </div>
-            <div className="flex items-center gap-2">
-              {onRefresh && (
+          <header className="sticky top-0 z-20 bg-stone-50/90 dark:bg-[#22252a]/90 px-6 py-4 backdrop-blur-md">
+            {/* View Mode Switcher for SuperAdmin */}
+            {canSwitchView && (
+              <div className="mb-3">
+                <ViewModeSwitcher />
+              </div>
+            )}
+            <div className="flex items-center justify-between">
+              <div className="flex flex-col">
+                <span className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Bem-vindo(a)</span>
+                <h1 className="text-xl font-bold text-foreground">
+                  Dashboard <span className="text-primary">Geral</span>
+                </h1>
+              </div>
+              <div className="flex items-center gap-2">
+                {onRefresh && (
+                  <button 
+                    onClick={() => handleRefresh(false)}
+                    disabled={isSyncing}
+                    className="relative flex h-10 w-10 items-center justify-center rounded-full transition-colors hover:bg-muted disabled:opacity-50"
+                  >
+                    <RefreshCw className={cn("w-5 h-5 text-muted-foreground", isSyncing && "animate-spin")} />
+                  </button>
+                )}
                 <button 
-                  onClick={() => handleRefresh(false)}
-                  disabled={isSyncing}
-                  className="relative flex h-10 w-10 items-center justify-center rounded-full transition-colors hover:bg-muted disabled:opacity-50"
+                  onClick={() => navigate('/minha-conta')}
+                  className="relative flex h-10 w-10 overflow-hidden rounded-full border-2 border-white shadow-sm dark:border-slate-600"
                 >
-                  <RefreshCw className={cn("w-5 h-5 text-muted-foreground", isSyncing && "animate-spin")} />
+                  <div className="h-full w-full bg-primary/10 flex items-center justify-center">
+                    <span className="text-primary font-bold text-sm">
+                      {user?.email?.substring(0, 2).toUpperCase() || 'U'}
+                    </span>
+                  </div>
                 </button>
-              )}
-              <button 
-                onClick={() => navigate('/minha-conta')}
-                className="relative flex h-10 w-10 overflow-hidden rounded-full border-2 border-white shadow-sm dark:border-slate-600"
-              >
-                <div className="h-full w-full bg-primary/10 flex items-center justify-center">
-                  <span className="text-primary font-bold text-sm">
-                    {user?.email?.substring(0, 2).toUpperCase() || 'U'}
-                  </span>
-                </div>
-              </button>
+              </div>
             </div>
           </header>
 
