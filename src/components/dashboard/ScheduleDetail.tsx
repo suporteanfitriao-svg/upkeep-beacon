@@ -1209,11 +1209,19 @@ export function ScheduleDetail({ schedule, onClose, onUpdateSchedule }: Schedule
             </div>
           )}
 
-          {/* Info Card with lock overlay for waiting status */}
+          {/* Info Card with lock overlay for waiting status - only show if there's content */}
+          {/* Content: Important Info (any status), Proximity Check (released+cleaner), Action Buttons (released/waiting) */}
+          {/* This section should NOT render if empty (no importantInfo and not released/waiting) */}
+          {((hasImportantInfo || schedule.importantInfo) || 
+            schedule.status === 'released' || 
+            schedule.status === 'waiting'
+          ) && (
           <div className="relative group">
             <section className={cn(
               "rounded-2xl bg-white dark:bg-[#2d3138] shadow-lg p-5 border border-slate-100 dark:border-slate-700 space-y-4",
-              schedule.status === 'waiting' && "opacity-50 grayscale-[0.5]"
+              schedule.status === 'waiting' && "opacity-50 grayscale-[0.5]",
+              // Hide empty space-y-4 if no children
+              "empty:hidden"
             )}>
               {/* Important Info - ALWAYS visible and required, even when content is locked */}
               {(hasImportantInfo || schedule.importantInfo) && (
@@ -1430,6 +1438,7 @@ export function ScheduleDetail({ schedule, onClose, onUpdateSchedule }: Schedule
               </div>
             )}
           </div>
+          )}
 
           {/* Liberar para Limpeza Button - Only for waiting status and admin/manager */}
           {schedule.status === 'waiting' && (isAdmin || isManager) && (
