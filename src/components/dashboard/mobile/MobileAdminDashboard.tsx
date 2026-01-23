@@ -350,22 +350,24 @@ export function MobileAdminDashboard({
         )}
 
         {/* Filter Tabs - Updated with counters */}
-        <div className="mt-3">
+        <div className="mt-3 overflow-visible">
           <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider mb-1.5 block">Filtros</span>
-          <MobileAdminFilterTabs
-            viewMode={agendaViewMode}
-            selectedDate={selectedDate}
-            dateRange={dateRange}
-            onViewModeChange={handleAgendaViewModeChange}
-            onDateSelect={handleDateSelect}
-            onDateRangeSelect={handleDateRangeSelect}
-            onMonthChange={setCurrentMonth}
-            todayCount={filterCounts.today}
-            tomorrowCount={filterCounts.tomorrow}
-            monthCount={filterCounts.month}
-            rangeCount={filterCounts.range}
-            dayIndicators={dayIndicators}
-          />
+          <div className="pt-2 overflow-visible">
+            <MobileAdminFilterTabs
+              viewMode={agendaViewMode}
+              selectedDate={selectedDate}
+              dateRange={dateRange}
+              onViewModeChange={handleAgendaViewModeChange}
+              onDateSelect={handleDateSelect}
+              onDateRangeSelect={handleDateRangeSelect}
+              onMonthChange={setCurrentMonth}
+              todayCount={filterCounts.today}
+              tomorrowCount={filterCounts.tomorrow}
+              monthCount={filterCounts.month}
+              rangeCount={filterCounts.range}
+              dayIndicators={dayIndicators}
+            />
+          </div>
         </div>
       </header>
 

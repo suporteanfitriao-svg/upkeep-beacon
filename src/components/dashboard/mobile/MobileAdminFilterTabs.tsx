@@ -188,7 +188,7 @@ export const MobileAdminFilterTabs = memo(function MobileAdminFilterTabs({
   };
 
   return (
-    <div className="flex items-center gap-2 overflow-x-auto hide-scrollbar pb-1">
+    <div className="flex items-center gap-2 overflow-x-auto overflow-y-visible hide-scrollbar pb-1 pt-2">
       {/* Hoje Button */}
       <button
         onClick={handleTodayClick}
