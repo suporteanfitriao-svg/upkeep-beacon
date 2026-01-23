@@ -18,6 +18,7 @@ import { useUserRole } from '@/hooks/useUserRole';
 import { useAuth } from '@/hooks/useAuth';
 import { wasCompletedWithDelay, getDelayMinutes } from '@/hooks/useCleaningTimeAlert';
 import { useCleaningDelay } from '@/hooks/useCleaningDelay';
+import { AssignCleanerSheet } from '@/components/dashboard/AssignCleanerSheet';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -120,6 +121,9 @@ export const MobileAdminScheduleCard = memo(function MobileAdminScheduleCard({
     isRelease: boolean;
     isEarlyRelease: boolean;
   }>({ open: false, targetStatus: null, isRelease: false, isEarlyRelease: false });
+
+  // Assign cleaner sheet
+  const [isAssignSheetOpen, setIsAssignSheetOpen] = useState(false);
 
   const statusConfig = STATUS_CONFIG[localSchedule.status];
   const taskOverdue = isOverdue(localSchedule);
@@ -473,13 +477,13 @@ export const MobileAdminScheduleCard = memo(function MobileAdminScheduleCard({
             
             {/* Action Buttons Row */}
             <div className="flex flex-wrap gap-2 pt-2">
-              {/* Responsável Button */}
-              {onAssignCleaner && localSchedule.status !== 'completed' && (
+              {/* Responsável Button - Internal Sheet */}
+              {canManage && localSchedule.status !== 'completed' && localSchedule.propertyId && (
                 <Button
                   variant="outline"
                   size="sm"
                   className="flex-1 min-w-[140px] h-11 gap-2 rounded-xl border-border bg-card hover:bg-accent"
-                  onClick={() => onAssignCleaner(localSchedule)}
+                  onClick={() => setIsAssignSheetOpen(true)}
                 >
                   <UserPlus className="w-4 h-4" />
                   Responsável
@@ -714,6 +718,29 @@ export const MobileAdminScheduleCard = memo(function MobileAdminScheduleCard({
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Assign Cleaner Sheet */}
+      {localSchedule.propertyId && (
+        <AssignCleanerSheet
+          open={isAssignSheetOpen}
+          onOpenChange={setIsAssignSheetOpen}
+          scheduleId={localSchedule.id}
+          propertyId={localSchedule.propertyId}
+          propertyName={localSchedule.propertyName}
+          currentCleanerName={localSchedule.cleanerName}
+          responsibleTeamMemberId={localSchedule.responsibleTeamMemberId || null}
+          status={localSchedule.status}
+          onAssigned={(cleanerName, teamMemberId) => {
+            const updated = { 
+              ...localSchedule, 
+              cleanerName: cleanerName || null, 
+              responsibleTeamMemberId: teamMemberId || null 
+            };
+            setLocalSchedule(updated);
+            onScheduleUpdated?.(updated);
+          }}
+        />
+      )}
     </Collapsible>
   );
 });
