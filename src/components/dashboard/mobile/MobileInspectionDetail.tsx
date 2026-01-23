@@ -48,19 +48,14 @@ interface HouseRule {
 }
 
 interface MobileInspectionDetailProps {
-  inspection: CleanerInspection & {
-    started_at?: string;
-    history?: InspectionHistoryEvent[];
-    verification_comment?: string;
-    inspection_photos?: (string | InspectionPhoto)[];
-    property_id?: string | null;
-  };
+  inspection: CleanerInspection;
   onClose: () => void;
   onUpdate: (shouldClose?: boolean) => void;
 }
 
 // Normalize photos to always have timestamp
-const normalizePhotos = (photos: (string | InspectionPhoto)[]): InspectionPhoto[] => {
+const normalizePhotos = (photos: (string | InspectionPhoto)[] | undefined): InspectionPhoto[] => {
+  if (!photos || !Array.isArray(photos)) return [];
   return photos.map(photo => {
     if (typeof photo === 'string') {
       return { url: photo, timestamp: new Date().toISOString() };
@@ -74,24 +69,133 @@ export function MobileInspectionDetail({
   onClose,
   onUpdate
 }: MobileInspectionDetailProps) {
+  const isValidInspection = inspection && inspection.id;
+  
   const [isVerified, setIsVerified] = useState(false);
-  const [comment, setComment] = useState(inspection.verification_comment || '');
+  const [comment, setComment] = useState(inspection?.verification_comment || '');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [history, setHistory] = useState<InspectionHistoryEvent[]>(
-    Array.isArray(inspection.history) ? inspection.history : []
+    Array.isArray(inspection?.history) ? inspection.history : []
   );
-  const [photos, setPhotos] = useState<InspectionPhoto[]>(
-    Array.isArray(inspection.inspection_photos) ? normalizePhotos(inspection.inspection_photos) : []
+  const [photos, setPhotos] = useState<InspectionPhoto[]>(() => 
+    normalizePhotos(inspection?.inspection_photos as (string | InspectionPhoto)[] | undefined)
   );
   const [isUploadingPhoto, setIsUploadingPhoto] = useState(false);
   const [requirePhoto, setRequirePhoto] = useState(false);
   const [userName, setUserName] = useState('Usuário');
   const [showStartConfirmation, setShowStartConfirmation] = useState(false);
   const [houseRules, setHouseRules] = useState<HouseRule[]>([]);
-  const [localStatus, setLocalStatus] = useState(inspection.status);
-  const [checklistState, setChecklistState] = useState(inspection.checklist_state || []);
+  const [localStatus, setLocalStatus] = useState(inspection?.status || 'scheduled');
+  const [checklistState, setChecklistState] = useState(inspection?.checklist_state || []);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { compressImage } = useImageCompression();
+
+  // Close if inspection is invalid
+  useEffect(() => {
+    if (!isValidInspection) {
+      console.error('[MobileInspectionDetail] Invalid inspection data:', inspection);
+      onClose();
+    }
+  }, [isValidInspection, onClose]);
+
+  // Fetch property rule for photo requirement, user name, and house rules
+  useEffect(() => {
+    if (!isValidInspection) return;
+    
+    const fetchPropertyRule = async () => {
+      if (!inspection.property_id) {
+        setRequirePhoto(false);
+        return;
+      }
+      
+      try {
+        const { data, error } = await supabase
+          .from('properties')
+          .select('require_photo_for_inspections')
+          .eq('id', inspection.property_id)
+          .single();
+        
+        if (error) {
+          console.error('[MobileInspectionDetail] Error fetching property rule:', error);
+          return;
+        }
+        
+        if (data) {
+          setRequirePhoto(data.require_photo_for_inspections ?? false);
+        }
+      } catch (error) {
+        console.error('[MobileInspectionDetail] Error in fetchPropertyRule:', error);
+      }
+    };
+    
+    const fetchUserName = async () => {
+      try {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (user) {
+          const { data: profile } = await supabase
+            .from('profiles')
+            .select('name')
+            .eq('id', user.id)
+            .maybeSingle();
+          setUserName(profile?.name || 'Usuário');
+        }
+      } catch (error) {
+        console.error('[MobileInspectionDetail] Error fetching user name:', error);
+      }
+    };
+
+    const fetchHouseRules = async () => {
+      if (!inspection.property_id) return;
+      
+      try {
+        const { data: rules, error } = await supabase
+          .from('house_rules')
+          .select('*')
+          .eq('is_active', true)
+          .order('priority', { ascending: false })
+          .order('sort_order', { ascending: true });
+        
+        if (error) {
+          console.error('[MobileInspectionDetail] Error fetching house rules:', error);
+          return;
+        }
+        
+        if (rules) {
+          setHouseRules(rules);
+        }
+      } catch (error) {
+        console.error('[MobileInspectionDetail] Error in fetchHouseRules:', error);
+      }
+    };
+
+    fetchPropertyRule();
+    fetchUserName();
+    fetchHouseRules();
+  }, [isValidInspection, inspection?.property_id]);
+
+  // Save comment as user types (debounced)
+  useEffect(() => {
+    if (!isValidInspection) return;
+    if (localStatus !== 'in_progress' || comment === inspection?.verification_comment) return;
+    
+    const timeout = setTimeout(async () => {
+      try {
+        await supabase
+          .from('inspections')
+          .update({ verification_comment: comment.trim() })
+          .eq('id', inspection.id);
+      } catch (error) {
+        console.error('Error saving comment:', error);
+      }
+    }, 1000);
+
+    return () => clearTimeout(timeout);
+  }, [comment, inspection?.id, localStatus, inspection?.verification_comment, isValidInspection]);
+
+  // Return null early if invalid, but after all hooks
+  if (!isValidInspection) {
+    return null;
+  }
 
   const isInProgress = localStatus === 'in_progress';
   const isScheduled = localStatus === 'scheduled';
@@ -99,56 +203,6 @@ export function MobileInspectionDetail({
   const checklistProgress = hasChecklist 
     ? `${checklistState.filter(i => i.checked).length}/${checklistState.length}`
     : null;
-
-  // Fetch property rule for photo requirement, user name, and house rules
-  useEffect(() => {
-    const fetchPropertyRule = async () => {
-      if (!inspection.property_id) return;
-      
-      const { data } = await supabase
-        .from('properties')
-        .select('require_photo_for_inspections')
-        .eq('id', inspection.property_id)
-        .single();
-      
-      if (data) {
-        setRequirePhoto(data.require_photo_for_inspections ?? false);
-      }
-    };
-    
-    const fetchUserName = async () => {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (user) {
-        const { data: profile } = await supabase
-          .from('profiles')
-          .select('name')
-          .eq('id', user.id)
-          .maybeSingle();
-        setUserName(profile?.name || 'Usuário');
-      }
-    };
-
-    const fetchHouseRules = async () => {
-      // Get the owner's user_id from properties table to fetch their house rules
-      if (!inspection.property_id) return;
-      
-      // First get the property to find owner (we'll use a simpler approach - get all active rules)
-      const { data: rules } = await supabase
-        .from('house_rules')
-        .select('*')
-        .eq('is_active', true)
-        .order('priority', { ascending: false })
-        .order('sort_order', { ascending: true });
-      
-      if (rules) {
-        setHouseRules(rules);
-      }
-    };
-
-    fetchPropertyRule();
-    fetchUserName();
-    fetchHouseRules();
-  }, [inspection.property_id]);
 
   // Check if can finish: must be verified, have comment, and have photo if required
   const hasRequiredPhotos = !requirePhoto || photos.length > 0;
@@ -349,24 +403,6 @@ export function MobileInspectionDetail({
       toast.error('Erro ao atualizar checklist');
     }
   };
-
-  // Save comment as user types (debounced)
-  useEffect(() => {
-    if (!isInProgress || comment === inspection.verification_comment) return;
-    
-    const timeout = setTimeout(async () => {
-      try {
-        await supabase
-          .from('inspections')
-          .update({ verification_comment: comment.trim() })
-          .eq('id', inspection.id);
-      } catch (error) {
-        console.error('Error saving comment:', error);
-      }
-    }, 1000);
-
-    return () => clearTimeout(timeout);
-  }, [comment, inspection.id, isInProgress, inspection.verification_comment]);
 
   const formatHistoryAction = (action: string) => {
     switch (action) {

@@ -14,9 +14,15 @@ interface InspectionHistoryEvent {
   user_name?: string;
 }
 
+interface InspectionPhoto {
+  url: string;
+  timestamp: string;
+  uploaded_by?: string;
+}
+
 export interface CleanerInspection {
   id: string;
-  property_id: string;
+  property_id: string | null;
   property_name: string;
   property_image_url?: string;
   title: string;
@@ -33,6 +39,7 @@ export interface CleanerInspection {
   history?: InspectionHistoryEvent[];
   verification_comment?: string;
   created_at?: string;
+  inspection_photos?: InspectionPhoto[];
 }
 
 export function useCleanerInspections() {
@@ -100,6 +107,7 @@ export function useCleanerInspections() {
 
       setInspections((data || []).map(i => ({
         ...i,
+        property_id: i.property_id || null,
         property_image_url: (i.properties as any)?.image_url || undefined,
         status: i.status as 'scheduled' | 'in_progress' | 'completed',
         checklist_state: Array.isArray(i.checklist_state) 
@@ -107,6 +115,9 @@ export function useCleanerInspections() {
           : [],
         history: Array.isArray(i.history)
           ? (i.history as unknown as InspectionHistoryEvent[])
+          : [],
+        inspection_photos: Array.isArray(i.inspection_photos)
+          ? (i.inspection_photos as unknown as InspectionPhoto[])
           : [],
       })));
     } catch (error) {
