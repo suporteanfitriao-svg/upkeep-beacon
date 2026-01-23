@@ -4,6 +4,7 @@ import { Clock, Play, Check, ChevronRight, Building2, Loader2, AlertTriangle, Al
 import { Schedule } from '@/types/scheduling';
 import { cn } from '@/lib/utils';
 import { useStayStatus } from '@/hooks/useStayStatus';
+import { useCleaningDelay } from '@/hooks/useCleaningDelay';
 
 interface MobileScheduleCardProps {
   schedule: Schedule;
@@ -49,6 +50,8 @@ export const MobileScheduleCard = memo(function MobileScheduleCard({
   loadingScheduleId,
   variant
 }: MobileScheduleCardProps) {
+  // Real-time delay tracking - must be called unconditionally
+  const { isDelayed, formattedDelay } = useCleaningDelay(schedule);
   
   if (variant === 'completed') {
     return (
@@ -156,9 +159,11 @@ export const MobileScheduleCard = memo(function MobileScheduleCard({
   }
 
   const isPending = variant === 'pending';
+  const isInProgress = variant === 'inProgress';
   const isTaskOverdue = isOverdue(schedule);
-  const statusColor = isTaskOverdue ? 'red' : isPending ? 'primary' : '#E0C051';
-  const statusLabel = isTaskOverdue ? 'Atrasada' : isPending ? 'Pendente' : 'Em Limpeza';
+  
+  const statusColor = isDelayed ? 'red' : isTaskOverdue ? 'red' : isPending ? 'primary' : '#E0C051';
+  const statusLabel = isDelayed ? 'Em Atraso' : isTaskOverdue ? 'Atrasada' : isPending ? 'Pendente' : 'Em Limpeza';
   const buttonLabel = isPending ? 'Iniciar Limpeza' : 'Continuar Limpeza';
 
   // Check if schedule has important info that requires reading
@@ -167,12 +172,28 @@ export const MobileScheduleCard = memo(function MobileScheduleCard({
   return (
     <div 
       className={cn(
-        "overflow-hidden rounded-2xl bg-white dark:bg-[#2d3138] shadow-soft transition-all hover:shadow-md border",
-        isTaskOverdue 
+        "overflow-hidden rounded-2xl shadow-soft transition-all hover:shadow-md border",
+        // Live delay alert state - highest priority
+        isDelayed
+          ? "bg-red-50 dark:bg-red-900/20 border-red-400 dark:border-red-700 ring-2 ring-red-300 dark:ring-red-800/50"
+          : "bg-white dark:bg-[#2d3138]",
+        // Overdue state (past checkout date, waiting/released)
+        !isDelayed && isTaskOverdue 
           ? "border-red-300 dark:border-red-800 ring-1 ring-red-200 dark:ring-red-900/50" 
-          : "border-slate-100 dark:border-slate-700"
+          : !isDelayed && "border-slate-100 dark:border-slate-700"
       )}
     >
+      {/* Live Delay Alert Banner */}
+      {isDelayed && (
+        <div className="bg-red-500 text-white px-4 py-2 flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <AlertTriangle className="w-4 h-4 animate-pulse" />
+            <span className="text-xs font-bold uppercase tracking-wider">LIMPEZA EM ATRASO</span>
+          </div>
+          <span className="text-sm font-bold">Atraso: {formattedDelay}</span>
+        </div>
+      )}
+      
       <div className="flex flex-row p-4 gap-4">
         <div className="flex-1 flex flex-col justify-between">
           <div>
