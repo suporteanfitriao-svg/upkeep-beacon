@@ -825,20 +825,79 @@ const Index = () => {
                     </div>
                   )}
                   
-                  {paginatedSchedules.map(schedule => (
-                    <AdminScheduleRow
-                      key={schedule.id}
-                      schedule={schedule}
-                      onClick={() => setSelectedSchedule(schedule)}
-                      onScheduleUpdated={(updated) => {
-                        // Update locally without refetching to prevent reload
-                        updateScheduleLocal(updated);
-                        if (selectedSchedule?.id === updated.id) {
-                          setSelectedSchedule(updated);
-                        }
-                      }}
-                    />
-                  ))}
+                  {(() => {
+                    // Check if we should show the completed separator
+                    const showCompletedSection = (dateFilter === 'month' || dateFilter === 'week' || dateFilter === 'range');
+                    const activeSchedules = paginatedSchedules.filter(s => s.status !== 'completed');
+                    const completedSchedules = paginatedSchedules.filter(s => s.status === 'completed');
+                    const hasCompletedSchedules = completedSchedules.length > 0 && showCompletedSection;
+
+                    return (
+                      <>
+                        {/* Active schedules */}
+                        {activeSchedules.map(schedule => (
+                          <AdminScheduleRow
+                            key={schedule.id}
+                            schedule={schedule}
+                            onClick={() => setSelectedSchedule(schedule)}
+                            onScheduleUpdated={(updated) => {
+                              updateScheduleLocal(updated);
+                              if (selectedSchedule?.id === updated.id) {
+                                setSelectedSchedule(updated);
+                              }
+                            }}
+                          />
+                        ))}
+
+                        {/* Completed separator */}
+                        {hasCompletedSchedules && (
+                          <div className="relative py-6">
+                            <div className="absolute inset-0 flex items-center">
+                              <div className="w-full border-t border-border/60" />
+                            </div>
+                            <div className="relative flex justify-center">
+                              <span className="bg-slate-100 dark:bg-slate-900 px-4 text-sm text-muted-foreground font-medium">
+                                Concluídos ({completedSchedules.length})
+                              </span>
+                            </div>
+                          </div>
+                        )}
+
+                        {/* Completed schedules - faded style */}
+                        {showCompletedSection ? (
+                          completedSchedules.map(schedule => (
+                            <div key={schedule.id} className="opacity-60 hover:opacity-80 transition-opacity">
+                              <AdminScheduleRow
+                                schedule={schedule}
+                                onClick={() => setSelectedSchedule(schedule)}
+                                onScheduleUpdated={(updated) => {
+                                  updateScheduleLocal(updated);
+                                  if (selectedSchedule?.id === updated.id) {
+                                    setSelectedSchedule(updated);
+                                  }
+                                }}
+                              />
+                            </div>
+                          ))
+                        ) : (
+                          /* For today/tomorrow/custom, render completed without special styling */
+                          completedSchedules.map(schedule => (
+                            <AdminScheduleRow
+                              key={schedule.id}
+                              schedule={schedule}
+                              onClick={() => setSelectedSchedule(schedule)}
+                              onScheduleUpdated={(updated) => {
+                                updateScheduleLocal(updated);
+                                if (selectedSchedule?.id === updated.id) {
+                                  setSelectedSchedule(updated);
+                                }
+                              }}
+                            />
+                          ))
+                        )}
+                      </>
+                    );
+                  })()}
 
                   {/* Pagination - show when more than 10 items */}
                   {totalPages > 1 && (
