@@ -551,12 +551,14 @@ export default function Manutencao() {
   return (
     <SidebarProvider>
       <div className="min-h-screen flex w-full bg-background">
-        <AppSidebar />
+        <div className="hidden md:block">
+          <AppSidebar />
+        </div>
         
-        <main className="flex-1">
+        <main className="flex-1 w-full">
           <DashboardHeader title="Relatórios" subtitle="Gestão e Análises" />
 
-          <div className="px-8 py-6">
+          <div className="px-4 md:px-8 py-4 md:py-6">
 
           <Tabs value={activeTab} onValueChange={(value) => {
               setActiveTab(value);
@@ -564,19 +566,22 @@ export default function Manutencao() {
               if (value === 'relatorios') {
                 refetchReports();
               }
-            }} className="space-y-6">
-            <TabsList className="grid w-full max-w-lg grid-cols-3">
-              <TabsTrigger value="avarias" className="gap-2">
-                <Wrench className="w-4 h-4" />
-                Avarias
+            }} className="space-y-4 md:space-y-6">
+            <TabsList className="w-full max-w-lg grid grid-cols-3 h-auto">
+              <TabsTrigger value="avarias" className="gap-1 md:gap-2 text-xs md:text-sm py-2.5 touch-manipulation">
+                <Wrench className="w-3.5 h-3.5 md:w-4 md:h-4" />
+                <span className="hidden sm:inline">Avarias</span>
+                <span className="sm:hidden">Avarias</span>
               </TabsTrigger>
-              <TabsTrigger value="nok" className="gap-2">
-                <AlertTriangle className="w-4 h-4" />
-                Itens NOK
+              <TabsTrigger value="nok" className="gap-1 md:gap-2 text-xs md:text-sm py-2.5 touch-manipulation">
+                <AlertTriangle className="w-3.5 h-3.5 md:w-4 md:h-4" />
+                <span className="hidden sm:inline">Itens NOK</span>
+                <span className="sm:hidden">NOK</span>
               </TabsTrigger>
-              <TabsTrigger value="relatorios" className="gap-2">
-                <FileText className="w-4 h-4" />
-                Tarefas finalizadas
+              <TabsTrigger value="relatorios" className="gap-1 md:gap-2 text-xs md:text-sm py-2.5 touch-manipulation">
+                <FileText className="w-3.5 h-3.5 md:w-4 md:h-4" />
+                <span className="hidden sm:inline">Tarefas</span>
+                <span className="sm:hidden">Tarefas</span>
               </TabsTrigger>
             </TabsList>
 
@@ -615,43 +620,45 @@ export default function Manutencao() {
                 />
               </div>
 
-              {/* Filters */}
+              {/* Filters - Mobile optimized */}
               <Card>
-                <CardContent className="p-4">
-                  <div className="flex flex-wrap gap-4">
-                    <div className="flex-1 min-w-[200px]">
+                <CardContent className="p-3 md:p-4">
+                  <div className="flex flex-col sm:flex-row gap-3 md:gap-4">
+                    <div className="flex-1 min-w-0">
                       <div className="relative">
                         <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                         <Input
-                          placeholder="Buscar por propriedade, descrição..."
+                          placeholder="Buscar..."
                           value={searchQuery}
                           onChange={(e) => setSearchQuery(e.target.value)}
-                          className="pl-9"
+                          className="pl-9 h-11 touch-manipulation"
                         />
                       </div>
                     </div>
-                    <Select value={statusFilter} onValueChange={setStatusFilter}>
-                      <SelectTrigger className="w-[160px]">
-                        <SelectValue placeholder="Status" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="all">Todos Status</SelectItem>
-                        <SelectItem value="open">Abertas</SelectItem>
-                        <SelectItem value="in_progress">Em Andamento</SelectItem>
-                        <SelectItem value="resolved">Resolvidas</SelectItem>
-                      </SelectContent>
-                    </Select>
-                    <Select value={severityFilter} onValueChange={setSeverityFilter}>
-                      <SelectTrigger className="w-[160px]">
-                        <SelectValue placeholder="Severidade" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="all">Todas</SelectItem>
-                        <SelectItem value="high">Alta</SelectItem>
-                        <SelectItem value="medium">Média</SelectItem>
-                        <SelectItem value="low">Baixa</SelectItem>
-                      </SelectContent>
-                    </Select>
+                    <div className="flex gap-2">
+                      <Select value={statusFilter} onValueChange={setStatusFilter}>
+                        <SelectTrigger className="w-full sm:w-[140px] h-11 touch-manipulation">
+                          <SelectValue placeholder="Status" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="all">Todos Status</SelectItem>
+                          <SelectItem value="open">Abertas</SelectItem>
+                          <SelectItem value="in_progress">Em Andamento</SelectItem>
+                          <SelectItem value="resolved">Resolvidas</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <Select value={severityFilter} onValueChange={setSeverityFilter}>
+                        <SelectTrigger className="w-full sm:w-[140px] h-11 touch-manipulation">
+                          <SelectValue placeholder="Severidade" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="all">Todas</SelectItem>
+                          <SelectItem value="high">Alta</SelectItem>
+                          <SelectItem value="medium">Média</SelectItem>
+                          <SelectItem value="low">Baixa</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
                   </div>
                 </CardContent>
               </Card>

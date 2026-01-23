@@ -433,8 +433,10 @@ export default function Team() {
   return (
     <SidebarProvider>
       <div className="min-h-screen flex w-full bg-background">
-        <AppSidebar />
-        <div className="flex-1 flex flex-col">
+        <div className="hidden md:block">
+          <AppSidebar />
+        </div>
+        <div className="flex-1 flex flex-col w-full">
           <DashboardHeader title="Equipe" subtitle="Gerencie os membros da sua equipe" />
           <main className="flex-1 p-4 md:p-6 space-y-6">
             <div className="flex items-center justify-between">

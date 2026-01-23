@@ -483,8 +483,10 @@ const Inspections = () => {
   if (loading) {
     return (
       <SidebarProvider>
-        <AppSidebar />
-        <SidebarInset>
+        <div className="hidden md:block">
+          <AppSidebar />
+        </div>
+        <SidebarInset className="w-full">
           <DashboardHeader title="Inspeção" subtitle="Agende e gerencie inspeções" />
           <main className="flex-1 p-6 flex items-center justify-center">
             <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
@@ -496,8 +498,10 @@ const Inspections = () => {
 
   return (
     <SidebarProvider>
-      <AppSidebar />
-      <SidebarInset>
+      <div className="hidden md:block">
+        <AppSidebar />
+      </div>
+      <SidebarInset className="w-full">
         <DashboardHeader title="Inspeção" subtitle="Agende e gerencie inspeções" />
         <main className="flex-1 p-4 sm:p-6">
           {/* Header - Mobile optimized */}
