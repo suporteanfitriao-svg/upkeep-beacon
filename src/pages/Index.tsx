@@ -15,6 +15,7 @@ import { AdminStatusCardsSkeleton } from '@/components/dashboard/AdminStatusCard
 import { AdminInspectionsSection } from '@/components/dashboard/AdminInspectionsSection';
 import { ScheduleDetail } from '@/components/dashboard/ScheduleDetail';
 import { MobileDashboard } from '@/components/dashboard/MobileDashboard';
+import { MobileAdminDashboard } from '@/components/dashboard/mobile/MobileAdminDashboard';
 import { UpcomingSchedules } from '@/components/dashboard/UpcomingSchedules';
 import { CleaningTimeAlertBanner } from '@/components/dashboard/CleaningTimeAlertBanner';
 
@@ -25,6 +26,7 @@ import { Schedule, ScheduleStatus } from '@/types/scheduling';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { supabase } from '@/integrations/supabase/client';
 import { cn } from '@/lib/utils';
+import { useUserRole } from '@/hooks/useUserRole';
 
 const SYNC_STORAGE_KEY = 'lastSyncData';
 const FILTERS_STORAGE_KEY = 'adminDashboardFilters';
@@ -122,6 +124,7 @@ function SyncOverlayInline({ isSyncing }: { isSyncing: boolean }) {
 
 const Index = () => {
   const isMobile = useIsMobile();
+  const { isCleaner, hasManagerAccess, loading: roleLoading } = useUserRole();
   const { schedules, loading, error, refetch, updateSchedule, updateScheduleTimes, updateScheduleLocal } = useSchedules();
   const { inspections: adminInspections, loading: inspectionsLoading, refetch: refetchInspections } = useAdminInspections();
   
@@ -718,6 +721,39 @@ const Index = () => {
 
   // Mobile layout
   if (isMobile) {
+    // Admins and managers see the admin dashboard on mobile
+    if (hasManagerAccess && !isCleaner) {
+      return (
+        <>
+          <MobileAdminDashboard
+            schedules={schedules}
+            filteredSchedules={filteredSchedules}
+            stats={filteredStats}
+            cleaningTimeAlerts={cleaningTimeAlerts}
+            onScheduleClick={setSelectedSchedule}
+            onRefresh={syncAndRefresh}
+            lastSyncTime={lastSyncTime}
+            isSyncing={isSyncing}
+            dateFilter={dateFilter}
+            onDateFilterChange={(filter) => setDateFilter(filter as DateFilter)}
+            statusFilter={statusFilter}
+            onStatusFilterChange={setStatusFilter}
+            searchQuery={searchQuery}
+            onSearchChange={setSearchQuery}
+          />
+          {selectedSchedule && (
+            <ScheduleDetail
+              schedule={selectedSchedule}
+              onClose={() => setSelectedSchedule(null)}
+              onUpdateSchedule={handleUpdateSchedule}
+            />
+          )}
+          <SyncOverlayInline isSyncing={isSyncing} />
+        </>
+      );
+    }
+    
+    // Cleaners see the cleaner dashboard
     return (
       <>
         <MobileDashboard

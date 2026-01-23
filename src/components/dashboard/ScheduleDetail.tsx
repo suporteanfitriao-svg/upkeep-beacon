@@ -1490,12 +1490,14 @@ export function ScheduleDetail({ schedule, onClose, onUpdateSchedule }: Schedule
               const selectedCount = okCount + dxCount;
               const allSelected = selectedCount === totalInCategory;
               const hasDX = dxCount > 0;
-              // A categoria só fica "verde/amarelo" quando temos evidência de persistência:
-              // - categorySaveStatus === 'saved' (save callback) OU
-              // - todos os itens já estão com status ok/not_ok no checklist (estado vindo do backend após reload/realtime)
-              const isPersistedComplete = totalInCategory > 0 && items.every(it => it.status === 'ok' || it.status === 'not_ok');
-              const saveStatus = categorySaveStatus[category] ?? (isPersistedComplete ? 'saved' : allSelected ? 'dirty' : 'idle');
-              const isSaved = allSelected && saveStatus === 'saved';
+              // NOVA REGRA: Cor muda IMEDIATAMENTE quando categoria está completa (todos marcados).
+              // A cor depende apenas do estado local na tela, não do salvamento.
+              // - allSelected = true → categoria completa → cor verde (OK) ou âmbar (DX)
+              // - allSelected = false → categoria incompleta → cor neutra
+              // O salvamento acontece em background e não afeta a cor.
+              const saveStatus = categorySaveStatus[category] ?? 'idle';
+              // Categoria "salva" visualmente = todos itens selecionados (cor imediata)
+              const isSaved = allSelected;
               const isDirtyComplete = allSelected && saveStatus === 'dirty';
               const hasPhotosInCategory = categoryPhotosData[category] && categoryPhotosData[category].length > 0;
               const needsPhoto = requirePhotoPerCategory && allSelected && !hasPhotosInCategory;
@@ -1537,13 +1539,13 @@ export function ScheduleDetail({ schedule, onClose, onUpdateSchedule }: Schedule
                               ? "border-primary"
                               : "border-slate-300 dark:border-slate-500"
                         )}>
-                          {isSaved && (
+                          {isSaved && !isAutoSaving && (
                             <span className="material-symbols-outlined text-white text-[12px]">
                               {hasDX ? 'warning' : 'check'}
                             </span>
                           )}
-                          {!isSaved && isDirtyComplete && (
-                            <span className="material-symbols-outlined text-primary text-[12px] animate-spin">sync</span>
+                          {isSaved && isAutoSaving && (
+                            <span className="material-symbols-outlined text-white text-[12px] animate-spin">sync</span>
                           )}
                         </div>
                         <span className={cn(
