@@ -561,36 +561,48 @@ export type Database = {
       }
       onboarding_settings: {
         Row: {
+          auto_release_before_checkout_enabled: boolean
+          auto_release_before_checkout_minutes: number | null
           auto_release_schedules: boolean
           created_at: string
           default_check_in_time: string | null
           default_check_out_time: string | null
           enable_notifications: boolean
           id: string
+          require_checklist: boolean
+          require_photo_for_inspections: boolean
           require_photo_for_issues: boolean
           require_photo_per_category: boolean
           updated_at: string
           user_id: string
         }
         Insert: {
+          auto_release_before_checkout_enabled?: boolean
+          auto_release_before_checkout_minutes?: number | null
           auto_release_schedules?: boolean
           created_at?: string
           default_check_in_time?: string | null
           default_check_out_time?: string | null
           enable_notifications?: boolean
           id?: string
+          require_checklist?: boolean
+          require_photo_for_inspections?: boolean
           require_photo_for_issues?: boolean
           require_photo_per_category?: boolean
           updated_at?: string
           user_id: string
         }
         Update: {
+          auto_release_before_checkout_enabled?: boolean
+          auto_release_before_checkout_minutes?: number | null
           auto_release_schedules?: boolean
           created_at?: string
           default_check_in_time?: string | null
           default_check_out_time?: string | null
           enable_notifications?: boolean
           id?: string
+          require_checklist?: boolean
+          require_photo_for_inspections?: boolean
           require_photo_for_issues?: boolean
           require_photo_per_category?: boolean
           updated_at?: string
