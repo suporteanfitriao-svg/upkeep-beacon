@@ -53,6 +53,24 @@ export function calculateCleaningDelay(schedule: Schedule, now: Date = new Date(
     ? schedule.checkIn 
     : new Date(schedule.checkIn);
 
+  // O check-in relevante para atraso é o do MESMO DIA do checkout
+  // Se o check-in armazenado é de um dia anterior, usamos o horário de check-in
+  // aplicado ao dia do checkout (que é quando a limpeza deveria ocorrer)
+  const checkOutDay = startOfDay(checkOutTime);
+  const checkInDay = startOfDay(checkInTime);
+  
+  // Se o check-in é de um dia diferente do checkout, construir o horário de check-in
+  // usando a hora do check-in mas no dia do checkout
+  let effectiveCheckIn = checkInTime;
+  if (!isSameDay(checkOutDay, checkInDay)) {
+    // Extrair apenas a hora/minuto do check-in original
+    const checkInHours = checkInTime.getHours();
+    const checkInMinutes = checkInTime.getMinutes();
+    // Aplicar ao dia do checkout
+    effectiveCheckIn = new Date(checkOutDay);
+    effectiveCheckIn.setHours(checkInHours, checkInMinutes, 0, 0);
+  }
+
   // Antes do checkout, não existe atraso
   const canBeDelayed = isAfter(now, checkOutTime);
   
@@ -65,8 +83,8 @@ export function calculateCleaningDelay(schedule: Schedule, now: Date = new Date(
     };
   }
 
-  // Se passou do check-in, está em atraso
-  const isDelayed = isAfter(now, checkInTime);
+  // Se passou do check-in efetivo, está em atraso
+  const isDelayed = isAfter(now, effectiveCheckIn);
   
   if (!isDelayed) {
     return {
@@ -77,8 +95,8 @@ export function calculateCleaningDelay(schedule: Schedule, now: Date = new Date(
     };
   }
 
-  // Calcular minutos de atraso: tempo atual - horário do check-in
-  const delayMinutes = differenceInMinutes(now, checkInTime);
+  // Calcular minutos de atraso: tempo atual - horário do check-in efetivo
+  const delayMinutes = differenceInMinutes(now, effectiveCheckIn);
   
   return {
     isDelayed: true,
