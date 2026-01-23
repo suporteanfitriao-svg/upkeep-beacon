@@ -205,12 +205,58 @@ export const canTransitionStatus = (
   };
 };
 
+/**
+ * Combines a date from reservation with a time string from schedule
+ * Example: reservation date "2026-01-23" + schedule time "14:00" = "2026-01-23T14:00:00"
+ * 
+ * For check-in: uses reservation check_out date (guest leaves) + schedule check_in_time (next guest arrives)
+ * For check-out: uses reservation check_in date (current guest arrived) + schedule check_out_time (cleaning should be done)
+ */
+const combineDateTime = (dateSource: string | undefined, timeSource: string): Date => {
+  // If timeSource is already a full ISO date string, use it directly
+  if (timeSource && timeSource.includes('T')) {
+    return new Date(timeSource);
+  }
+  
+  // If we have a date source from reservation, combine with time
+  if (dateSource) {
+    // Extract just the date part (YYYY-MM-DD)
+    const datePart = dateSource.split('T')[0];
+    // Time should be in format "HH:MM" or "HH:MM:SS"
+    const timePart = timeSource.includes(':') ? timeSource : '12:00';
+    return new Date(`${datePart}T${timePart}:00`);
+  }
+  
+  // Fallback: try to parse directly (legacy behavior)
+  const parsed = new Date(timeSource);
+  if (!isNaN(parsed.getTime())) {
+    return parsed;
+  }
+  
+  // Last resort: use today's date with the time
+  const today = new Date();
+  const [hours, minutes] = (timeSource || '12:00').split(':').map(Number);
+  today.setHours(hours || 12, minutes || 0, 0, 0);
+  return today;
+};
+
 const mapRowToSchedule = (row: ScheduleRow): Schedule => {
   // Schedule times take priority over reservation times (schedule can be customized by admin/manager)
   // The schedule's check_in_time and check_out_time are set from property defaults when created
   // and can be overridden per schedule
-  const checkInSource = row.check_in_time;
-  const checkOutSource = row.check_out_time;
+  
+  // For checkIn (when the NEXT guest arrives):
+  // - Use reservation's check_out DATE (the day the current guest leaves)
+  // - Combined with schedule's check_in_time (the time the next guest can check in)
+  const checkInDate = row.reservations?.check_out;
+  const checkInTime = row.check_in_time;
+  
+  // For checkOut (when cleaning should be done by):
+  // - Use reservation's check_out DATE (same day)
+  // - Combined with schedule's check_out_time (the time current guest should leave/cleaning starts)
+  const checkOutDate = row.reservations?.check_out;
+  const checkOutTime = row.check_out_time;
+  
   const guestNameSource = row.reservations?.guest_name || row.guest_name;
   const listingNameSource = row.reservations?.listing_name || row.listing_name || row.property_name;
   const numberOfGuestsSource = row.reservations?.number_of_guests || row.number_of_guests || 1;
@@ -226,8 +272,8 @@ const mapRowToSchedule = (row: ScheduleRow): Schedule => {
     propertyLongitude: row.properties?.longitude || undefined,
     guestName: guestNameSource || 'Hóspede não informado',
     numberOfGuests: numberOfGuestsSource,
-    checkIn: new Date(checkInSource),
-    checkOut: new Date(checkOutSource),
+    checkIn: combineDateTime(checkInDate, checkInTime),
+    checkOut: combineDateTime(checkOutDate, checkOutTime),
     status: mapStatus(row.status),
     maintenanceStatus: mapMaintenanceStatus(row.maintenance_status),
     priority: mapPriority(row.priority),
