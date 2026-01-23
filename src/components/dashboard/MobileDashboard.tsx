@@ -343,11 +343,14 @@ export function MobileDashboard({ schedules, onScheduleClick, onStartCleaning, o
   const yearNumber = format(viewMode === 'calendario' ? currentMonth : selectedDate, "yyyy");
   const isSelectedToday = isSameDay(selectedDate, new Date());
 
-  // Calculate overdue tasks (past dates with pending status)
+  // Calculate overdue tasks (past dates with pending status - NOT cleaning or completed)
+  // Only show tasks that haven't been started yet (waiting/released) and are overdue
   const overdueSchedules = useMemo(() => {
     const today = startOfDay(new Date());
     return schedules.filter(s => 
+      // Only waiting or released status (not yet started)
       (s.status === 'waiting' || s.status === 'released') &&
+      // Checkout date is in the past
       startOfDay(s.checkOut) < today
     );
   }, [schedules]);

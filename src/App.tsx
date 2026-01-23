@@ -30,12 +30,14 @@ import Install from "./pages/Install";
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
-      // Refetch data every 30 seconds for near-realtime updates
-      refetchInterval: 30000,
-      // Refetch when window regains focus
-      refetchOnWindowFocus: true,
-      // Keep data fresh
-      staleTime: 10000, // 10 seconds
+      // Disable automatic refetch interval - use realtime subscriptions instead
+      refetchInterval: false,
+      // Only refetch on window focus if data is stale
+      refetchOnWindowFocus: 'always',
+      // Keep data fresh for 2 minutes before considering stale
+      staleTime: 2 * 60 * 1000, // 2 minutes
+      // Cache data for 5 minutes
+      gcTime: 5 * 60 * 1000, // 5 minutes
     },
   },
 });
