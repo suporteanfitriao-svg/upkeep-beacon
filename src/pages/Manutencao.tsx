@@ -554,7 +554,7 @@ export default function Manutencao() {
         <AppSidebar />
         
         <main className="flex-1">
-          <DashboardHeader title="Manutenção" subtitle="Gestão e Relatórios" />
+          <DashboardHeader title="Relatórios" subtitle="Gestão e Análises" />
 
           <div className="px-8 py-6">
 
@@ -576,7 +576,7 @@ export default function Manutencao() {
               </TabsTrigger>
               <TabsTrigger value="relatorios" className="gap-2">
                 <FileText className="w-4 h-4" />
-                Relatórios
+                Tarefas finalizadas
               </TabsTrigger>
             </TabsList>
 

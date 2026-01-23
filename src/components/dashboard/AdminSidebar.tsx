@@ -34,7 +34,7 @@ const menuItems = [
   { title: 'Propriedades', url: '/propriedades', icon: Building2 },
   { title: 'Inspeção', url: '/inspecoes', icon: ClipboardCheck },
   { title: 'Equipe', url: '/equipe', icon: Users },
-  { title: 'Manutenção', url: '/manutencao', icon: Wrench },
+  { title: 'Relatórios', url: '/manutencao', icon: Wrench },
   { title: 'Minha Conta', url: '/minha-conta', icon: UserCog },
   { title: 'Super Admin', url: '/super-admin', icon: Crown },
 ];
