@@ -20,19 +20,19 @@ export function CleaningTimeAlertBanner({
   const formatMinutes = (minutes: number) => {
     if (minutes < 0) {
       const absMinutes = Math.abs(minutes);
-      if (absMinutes >= 60) {
-        const hours = Math.floor(absMinutes / 60);
-        const mins = absMinutes % 60;
-        return `${hours}h${mins > 0 ? ` ${mins}min` : ''} de atraso`;
+      const hours = Math.floor(absMinutes / 60);
+      const mins = absMinutes % 60;
+      if (hours > 0) {
+        return `${hours}h ${mins > 0 ? `${mins}min ` : ''}excedido`;
       }
-      return `${absMinutes}min de atraso`;
+      return `${mins}min excedido`;
     }
-    if (minutes >= 60) {
-      const hours = Math.floor(minutes / 60);
-      const mins = minutes % 60;
+    const hours = Math.floor(minutes / 60);
+    const mins = minutes % 60;
+    if (hours > 0) {
       return `${hours}h${mins > 0 ? ` ${mins}min` : ''} restantes`;
     }
-    return `${minutes}min restantes`;
+    return `${mins}min restantes`;
   };
 
   const formatDuration = (minutes: number) => {
