@@ -170,7 +170,11 @@ const Index = () => {
   
   // Pagination for range mode
   const [currentPage, setCurrentPage] = useState(1);
-  const ITEMS_PER_PAGE = 10;
+  const [itemsPerPage, setItemsPerPage] = useState(10);
+  
+  // Completed schedules pagination
+  const [completedPage, setCompletedPage] = useState(1);
+  const [completedPerPage, setCompletedPerPage] = useState(5);
 
   // Persist sync data to localStorage
   useEffect(() => {
@@ -257,17 +261,17 @@ const Index = () => {
 
   // Paginated schedules - always apply pagination when more than 10 items
   const paginatedSchedules = useMemo(() => {
-    if (filteredSchedules.length <= ITEMS_PER_PAGE) {
+    if (filteredSchedules.length <= itemsPerPage) {
       return filteredSchedules;
     }
-    const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
-    return filteredSchedules.slice(startIndex, startIndex + ITEMS_PER_PAGE);
-  }, [filteredSchedules, currentPage, ITEMS_PER_PAGE]);
+    const startIndex = (currentPage - 1) * itemsPerPage;
+    return filteredSchedules.slice(startIndex, startIndex + itemsPerPage);
+  }, [filteredSchedules, currentPage, itemsPerPage]);
 
   const totalPages = useMemo(() => {
-    if (filteredSchedules.length <= ITEMS_PER_PAGE) return 1;
-    return Math.ceil(filteredSchedules.length / ITEMS_PER_PAGE);
-  }, [filteredSchedules.length, ITEMS_PER_PAGE]);
+    if (filteredSchedules.length <= itemsPerPage) return 1;
+    return Math.ceil(filteredSchedules.length / itemsPerPage);
+  }, [filteredSchedules.length, itemsPerPage]);
 
   // Calculate filter counts for date filter buttons - respecting property filter
   const dateFilterCounts = useMemo(() => {
@@ -934,8 +938,14 @@ const Index = () => {
                     // Check if we should show the completed separator
                     const showCompletedSection = (dateFilter === 'month' || dateFilter === 'week' || dateFilter === 'range');
                     const activeSchedules = paginatedSchedules.filter(s => s.status !== 'completed');
-                    const completedSchedules = paginatedSchedules.filter(s => s.status === 'completed');
-                    const hasCompletedSchedules = completedSchedules.length > 0 && showCompletedSection;
+                    // All completed from filtered (not paginated) for proper count and pagination
+                    const allCompletedSchedules = filteredSchedules.filter(s => s.status === 'completed');
+                    const completedTotalPages = Math.ceil(allCompletedSchedules.length / completedPerPage);
+                    const paginatedCompleted = allCompletedSchedules.slice(
+                      (completedPage - 1) * completedPerPage,
+                      completedPage * completedPerPage
+                    );
+                    const hasCompletedSchedules = allCompletedSchedules.length > 0 && showCompletedSection;
 
                     return (
                       <>
@@ -954,41 +964,55 @@ const Index = () => {
                           />
                         ))}
 
-                        {/* Completed separator */}
+                        {/* Completed separator with pagination controls */}
                         {hasCompletedSchedules && (
                           <div className="relative py-6">
                             <div className="absolute inset-0 flex items-center">
                               <div className="w-full border-t border-border/60" />
                             </div>
-                            <div className="relative flex justify-center">
-                              <span className="bg-slate-100 dark:bg-slate-900 px-4 text-sm text-muted-foreground font-medium">
-                                Concluídos ({completedSchedules.length})
+                            <div className="relative flex items-center justify-center gap-4">
+                              <span className="bg-background px-4 text-sm text-muted-foreground font-medium">
+                                Concluídos ({allCompletedSchedules.length})
                               </span>
+                              <div className="bg-background px-2 flex items-center gap-2">
+                                <span className="text-xs text-muted-foreground">Exibir:</span>
+                                <button
+                                  onClick={() => {
+                                    setCompletedPerPage(5);
+                                    setCompletedPage(1);
+                                  }}
+                                  className={cn(
+                                    "px-2 py-1 text-xs rounded-md transition-colors",
+                                    completedPerPage === 5 
+                                      ? "bg-primary text-primary-foreground" 
+                                      : "bg-muted text-muted-foreground hover:bg-muted/80"
+                                  )}
+                                >
+                                  5
+                                </button>
+                                <button
+                                  onClick={() => {
+                                    setCompletedPerPage(10);
+                                    setCompletedPage(1);
+                                  }}
+                                  className={cn(
+                                    "px-2 py-1 text-xs rounded-md transition-colors",
+                                    completedPerPage === 10 
+                                      ? "bg-primary text-primary-foreground" 
+                                      : "bg-muted text-muted-foreground hover:bg-muted/80"
+                                  )}
+                                >
+                                  10
+                                </button>
+                              </div>
                             </div>
                           </div>
                         )}
 
-                        {/* Completed schedules - faded style */}
-                        {showCompletedSection ? (
-                          completedSchedules.map(schedule => (
-                            <div key={schedule.id} className="opacity-60 hover:opacity-80 transition-opacity">
-                              <AdminScheduleRow
-                                schedule={schedule}
-                                onClick={() => setSelectedSchedule(schedule)}
-                                onScheduleUpdated={(updated) => {
-                                  updateScheduleLocal(updated);
-                                  if (selectedSchedule?.id === updated.id) {
-                                    setSelectedSchedule(updated);
-                                  }
-                                }}
-                              />
-                            </div>
-                          ))
-                        ) : (
-                          /* For today/tomorrow/custom, render completed without special styling */
-                          completedSchedules.map(schedule => (
+                        {/* Completed schedules - faded style with pagination */}
+                        {showCompletedSection && paginatedCompleted.map(schedule => (
+                          <div key={schedule.id} className="opacity-60 hover:opacity-80 transition-opacity">
                             <AdminScheduleRow
-                              key={schedule.id}
                               schedule={schedule}
                               onClick={() => setSelectedSchedule(schedule)}
                               onScheduleUpdated={(updated) => {
@@ -998,8 +1022,56 @@ const Index = () => {
                                 }
                               }}
                             />
-                          ))
+                          </div>
+                        ))}
+
+                        {/* Completed pagination controls */}
+                        {hasCompletedSchedules && completedTotalPages > 1 && (
+                          <div className="flex items-center justify-center gap-2 pt-4">
+                            <button
+                              onClick={() => setCompletedPage(prev => Math.max(1, prev - 1))}
+                              disabled={completedPage === 1}
+                              className={cn(
+                                'flex items-center justify-center w-8 h-8 rounded-lg text-sm transition-colors',
+                                completedPage === 1
+                                  ? 'text-muted-foreground/50 cursor-not-allowed'
+                                  : 'text-muted-foreground hover:bg-muted hover:text-foreground'
+                              )}
+                            >
+                              <ChevronLeft className="w-4 h-4" />
+                            </button>
+                            <span className="text-xs text-muted-foreground">
+                              Página {completedPage} de {completedTotalPages}
+                            </span>
+                            <button
+                              onClick={() => setCompletedPage(prev => Math.min(completedTotalPages, prev + 1))}
+                              disabled={completedPage === completedTotalPages}
+                              className={cn(
+                                'flex items-center justify-center w-8 h-8 rounded-lg text-sm transition-colors',
+                                completedPage === completedTotalPages
+                                  ? 'text-muted-foreground/50 cursor-not-allowed'
+                                  : 'text-muted-foreground hover:bg-muted hover:text-foreground'
+                              )}
+                            >
+                              <ChevronRight className="w-4 h-4" />
+                            </button>
+                          </div>
                         )}
+
+                        {/* For today/tomorrow/custom, render all completed without special styling */}
+                        {!showCompletedSection && paginatedSchedules.filter(s => s.status === 'completed').map(schedule => (
+                          <AdminScheduleRow
+                            key={schedule.id}
+                            schedule={schedule}
+                            onClick={() => setSelectedSchedule(schedule)}
+                            onScheduleUpdated={(updated) => {
+                              updateScheduleLocal(updated);
+                              if (selectedSchedule?.id === updated.id) {
+                                setSelectedSchedule(updated);
+                              }
+                            }}
+                          />
+                        ))}
                       </>
                     );
                   })()}
