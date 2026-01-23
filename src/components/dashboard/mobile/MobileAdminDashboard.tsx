@@ -484,6 +484,7 @@ export function MobileAdminDashboard({
                 onViewPassword={handleViewPassword}
                 onAssignCleaner={handleAssignCleaner}
                 onRelease={handleRelease}
+                onScheduleUpdated={onUpdateSchedule}
               />
             ))}
             
@@ -506,6 +507,7 @@ export function MobileAdminDashboard({
                 onScheduleClick={onScheduleClick}
                 onViewAddress={handleViewAddress}
                 onViewPassword={handleViewPassword}
+                onScheduleUpdated={onUpdateSchedule}
                 isCompleted
               />
             ))}
