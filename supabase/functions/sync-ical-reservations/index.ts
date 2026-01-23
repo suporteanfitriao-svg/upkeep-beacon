@@ -437,6 +437,24 @@ serve(async (req) => {
               scheduleData.check_out_time = checkOutDate.toISOString();
               scheduleData.status = 'waiting';
               scheduleData.priority = priority;
+              
+              // Initialize history with schedule_created event using reservation date
+              // This captures when the reservation was originally created in the iCal source
+              scheduleData.history = [{
+                timestamp: reservation.created_at || new Date().toISOString(),
+                team_member_id: 'system',
+                team_member_name: 'Sistema',
+                role: 'system',
+                action: 'schedule_created',
+                from_status: null,
+                to_status: 'waiting',
+                payload: {
+                  source: 'ical_sync',
+                  reservation_check_in: event.dtstart.toISOString(),
+                  reservation_check_out: event.dtend.toISOString(),
+                  listing_name: source.custom_name || property.name,
+                }
+              }];
             } else if (existingSchedule.status === 'waiting') {
               // Existing schedule in waiting status - update times if reservation dates changed
               // This handles cases where the reservation was modified in Airbnb
