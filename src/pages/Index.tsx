@@ -248,7 +248,7 @@ const Index = () => {
       // Sort by checkout time
       return a.checkOut.getTime() - b.checkOut.getTime();
     });
-  }, [schedules, activeStatusFilter, statusFilter, responsibleFilter, dateFilter, customDate, dateRange, searchQuery]);
+  }, [schedules, activeStatusFilter, statusFilter, responsibleFilter, propertyFilter, dateFilter, customDate, dateRange, searchQuery]);
 
   // Paginated schedules - always apply pagination when more than 10 items
   const paginatedSchedules = useMemo(() => {
