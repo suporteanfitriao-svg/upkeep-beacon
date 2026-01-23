@@ -692,12 +692,12 @@ export function AdminScheduleRow({ schedule, onClick, onScheduleUpdated }: Admin
                 <div className="flex items-center justify-between gap-2">
                   <div className="flex flex-col gap-1">
                     <div className="flex items-center gap-2">
-                      <span className="text-xs text-muted-foreground">Check-in:</span>
-                      <span className="font-semibold text-foreground">{checkinTime}</span>
+                      <span className="text-xs text-muted-foreground">Liberado para Limpeza:</span>
+                      <span className="font-semibold text-foreground">{checkoutTime}</span>
                     </div>
                     <div className="flex items-center gap-2">
-                      <span className="text-xs text-muted-foreground">Check-out:</span>
-                      <span className="font-semibold text-foreground">{checkoutTime}</span>
+                      <span className="text-xs text-muted-foreground">Hora máxima para finalizar:</span>
+                      <span className="font-semibold text-foreground">{checkinTime}</span>
                     </div>
                   </div>
                   {canManage && (

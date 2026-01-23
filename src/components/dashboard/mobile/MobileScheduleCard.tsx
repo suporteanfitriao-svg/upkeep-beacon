@@ -63,7 +63,7 @@ export const MobileScheduleCard = memo(function MobileScheduleCard({
           <div className="flex flex-col">
             <p className="text-sm font-bold text-slate-900 dark:text-white line-through decoration-[#8A8B88]/30">{schedule.propertyName}</p>
             <div className="mt-1 flex flex-col">
-              <span className="text-[10px] font-bold uppercase tracking-wider text-[#8A8B88]">Liberado</span>
+              <span className="text-[10px] font-bold uppercase tracking-wider text-[#8A8B88]">Liberado para Limpeza</span>
               <p className="text-xs font-bold text-[#8A8B88]">{formatTime(schedule.checkOut)}</p>
             </div>
           </div>
@@ -94,7 +94,7 @@ export const MobileScheduleCard = memo(function MobileScheduleCard({
           <div className="flex-1 flex flex-col justify-center">
             <h3 className="text-base font-bold text-slate-900 dark:text-white leading-tight mb-1">{schedule.propertyName}</h3>
             <div className="mt-1 flex flex-col">
-              <span className="text-[10px] font-bold uppercase tracking-wider text-[#8A8B88] mb-0.5">Liberado a partir de</span>
+              <span className="text-[10px] font-bold uppercase tracking-wider text-[#8A8B88] mb-0.5">Liberado para Limpeza</span>
               <div className="flex items-center gap-1 text-[#8A8B88]">
                 <Clock className="w-4 h-4" />
                 <p className="text-sm font-bold">{formatTime(schedule.checkOut)}</p>
@@ -202,7 +202,7 @@ export const MobileScheduleCard = memo(function MobileScheduleCard({
             </div>
             <h3 className="text-lg font-bold text-slate-900 dark:text-white leading-tight mb-2">{schedule.propertyName}</h3>
             <div className="flex flex-col">
-              <span className="text-[10px] font-bold uppercase tracking-wider text-[#8A8B88] mb-0.5">Liberado a partir de</span>
+              <span className="text-[10px] font-bold uppercase tracking-wider text-[#8A8B88] mb-0.5">Liberado para Limpeza</span>
               <div className="flex items-center gap-1 text-[#8A8B88]">
                 <Clock className="w-4 h-4" />
                 <p className="text-sm font-bold">{formatTime(schedule.checkOut)}</p>
