@@ -66,6 +66,7 @@ export function useDebouncedCategorySave({
   }, []);
 
   // Perform the actual save operation - saves the WHOLE checklist once
+  // REGRA OURO: Salvamento é INVISÍVEL - não pode causar reload, fechar card, ou resetar scroll
   const performSave = useCallback(async (): Promise<boolean> => {
     if (!enabled) return false;
 
@@ -81,6 +82,7 @@ export function useDebouncedCategorySave({
     try {
       const currentChecklist = getChecklistToSave?.() ?? checklistRef.current;
       
+      // IMPORTANTE: Não disparar notificações ao salvar - operação silenciosa
       const { error } = await supabase
         .from('schedules')
         .update({
@@ -98,18 +100,19 @@ export function useDebouncedCategorySave({
       // Log a single audit entry (avoid spamming)
       // NOTE: Don't block save if audit logging fails.
       if (teamMemberId) {
-        const { error: historyError } = await supabase.rpc('append_schedule_history', {
+        // Fire and forget - don't await
+        supabase.rpc('append_schedule_history', {
           p_schedule_id: scheduleId,
           p_team_member_id: teamMemberId,
           p_action: 'checklist_salvo_auto',
           p_from_status: null,
           p_to_status: null,
           p_payload: { debounce_ms: debounceMs },
+        }).then(({ error: historyError }) => {
+          if (historyError) {
+            console.warn('[AutoSave] append_schedule_history failed:', historyError);
+          }
         });
-
-        if (historyError) {
-          console.warn('[AutoSave] append_schedule_history failed:', historyError);
-        }
       }
       
       // Clear cache after successful save
@@ -120,6 +123,7 @@ export function useDebouncedCategorySave({
       stateRef.current.lastSavedAt = now;
       onSaveComplete?.('__all__', true);
       
+      console.log('[AutoSave] Checklist saved successfully (invisible to user)');
       return true;
     } catch (err) {
       console.error('[AutoSave] Exception saving checklist:', err);

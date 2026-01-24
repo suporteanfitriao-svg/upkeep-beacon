@@ -118,7 +118,8 @@ export function ScheduleDetail({ schedule, onClose, onUpdateSchedule }: Schedule
   const [categorySaveStatus, setCategorySaveStatus] = useState<Record<string, 'idle' | 'dirty' | 'saved'>>({});
   const cacheInitializedRef = useRef(false);
   const hasUserInteractedRef = useRef(false);
-  const checklistHydratedRef = useRef(false);
+  // REGRA OURO: Uma vez inicializado, NUNCA mais aceitar dados externos durante cleaning
+  const sessionLockedRef = useRef(false);
   const statusStyle = statusConfig[schedule.status];
 
   // Keep ref to latest checklistItemStates for save callbacks
@@ -127,11 +128,28 @@ export function ScheduleDetail({ schedule, onClose, onUpdateSchedule }: Schedule
     checklistItemStatesRef.current = checklistItemStates;
   }, [checklistItemStates]);
 
-  // When switching schedules (or reopening the same component), reset session-only refs
+  // REGRA OURO: Quando o modal abre em status 'cleaning', TRAVAR A SESSÃO imediatamente
+  // Nenhuma atualização externa pode afetar o estado local até "Finalizar Limpeza"
   useEffect(() => {
+    if (schedule.status === 'cleaning') {
+      sessionLockedRef.current = true;
+      console.log('[ScheduleDetail] Session LOCKED - no external updates allowed');
+    }
+  }, [schedule.id]); // Apenas no ID, não no status
+
+  // RESET: Apenas quando abre um NOVO schedule (mudou o ID)
+  // NUNCA resetar durante uma sessão de limpeza ativa
+  useEffect(() => {
+    // Se a sessão está travada, NÃO resetar nada
+    if (sessionLockedRef.current && schedule.status === 'cleaning') {
+      console.log('[ScheduleDetail] Session locked, ignoring prop changes for schedule:', schedule.id);
+      return;
+    }
+    
+    // Reset apenas para novo schedule
     cacheInitializedRef.current = false;
     hasUserInteractedRef.current = false;
-    checklistHydratedRef.current = false;
+    sessionLockedRef.current = false;
 
     setNotes(schedule.notes);
     setCleanerObservations(schedule.cleanerObservations || '');
@@ -139,31 +157,10 @@ export function ScheduleDetail({ schedule, onClose, onUpdateSchedule }: Schedule
     setChecklistItemStates(deriveChecklistItemStates(schedule.checklist));
     setLocalIssues(schedule.maintenanceIssues);
     setCategorySaveStatus({});
-  }, [schedule.id, deriveChecklistItemStates]);
+  }, [schedule.id]); // APENAS schedule.id - NUNCA outros campos
 
-  // When the backend finishes linking/loading a checklist (after "Iniciar Limpeza"), hydrate local state.
-  // CRITICAL: Only hydrate ONCE and NEVER if user has already interacted
-  useEffect(() => {
-    // Skip if not in cleaning status
-    if (schedule.status !== 'cleaning') return;
-    
-    // CRITICAL: Never overwrite if user has already started working
-    if (hasUserInteractedRef.current) {
-      console.log('[ScheduleDetail] User has interacted, skipping checklist hydration from prop');
-      return;
-    }
-
-    // Hydrate when checklist becomes available (either first time or when prop updates with loaded checklist)
-    if (schedule.checklist.length > 0) {
-      // Only log and set hydrated flag on first hydration
-      if (!checklistHydratedRef.current) {
-        console.log('[ScheduleDetail] Hydrating checklist from schedule prop:', schedule.checklist.length, 'items');
-        checklistHydratedRef.current = true;
-      }
-      setChecklist(schedule.checklist);
-      setChecklistItemStates(deriveChecklistItemStates(schedule.checklist));
-    }
-  }, [schedule.status, schedule.checklist, deriveChecklistItemStates]);
+  // REMOVIDO: O useEffect de hydration que causava sobrescrição do estado local
+  // A inicialização agora é feita apenas no useEffect acima (schedule.id)
 
   // Check if admin notes exist
   const hasAdminNotes = Boolean(schedule.notes && schedule.notes.trim().length > 0);
@@ -199,14 +196,14 @@ export function ScheduleDetail({ schedule, onClose, onUpdateSchedule }: Schedule
   }, [checklist]);
 
   // Auto-save hook with debounce (whole checklist)
+  // REGRA: Salvamento é INVISÍVEL - cor já mudou no clique
   const { scheduleSave, flushAll } = useDebouncedCategorySave({
     scheduleId: schedule.id,
     teamMemberId,
     checklist,
     debounceMs: 800,
     enabled: schedule.status === 'cleaning',
-    // Mobile reliability: ensure we always persist the latest selection, even if
-    // the save is triggered in the same tick as the last checkbox update.
+    // Mobile reliability: ensure we always persist the latest selection
     getChecklistToSave: () => {
       const currentChecklist = checklistRef.current;
       const currentStates = checklistItemStatesRef.current;
@@ -218,38 +215,12 @@ export function ScheduleDetail({ schedule, onClose, onUpdateSchedule }: Schedule
       });
     },
     onSaveStart: () => setIsAutoSaving(true),
-     onSaveComplete: (_category, success) => {
+    onSaveComplete: (_category, success) => {
       setIsAutoSaving(false);
       if (success) {
         setLastAutoSavedAt(Date.now());
-
-        // CRITICAL: After a successful save, mark ALL completed categories as "saved".
-        // Use checklistItemStatesRef (always up-to-date) + checklistRef for complete detection.
-        // This ensures immediate UI update after auto-save completes.
-        setCategorySaveStatus((prev) => {
-          const next: Record<string, 'idle' | 'dirty' | 'saved'> = { ...prev };
-          const currentChecklist = checklistRef.current;
-          const currentStates = checklistItemStatesRef.current;
-          const categories = [...new Set(currentChecklist.map((i) => i.category))];
-          
-          categories.forEach((cat) => {
-            const catItems = currentChecklist.filter((i) => i.category === cat);
-            // Category is complete if ALL items have a selection (yes/no) in UI state
-            // OR have a persisted status (ok/not_ok) - for reload scenarios
-            const allHaveSelection = catItems.length > 0 && catItems.every((item) => {
-              const localState = currentStates[item.id];
-              if (localState === 'yes' || localState === 'no') return true;
-              return item.status === 'ok' || item.status === 'not_ok';
-            });
-            
-            if (allHaveSelection) {
-              // Mark as saved - this triggers immediate color change
-              next[cat] = 'saved';
-            }
-          });
-
-          return next;
-        });
+        // REGRA: Cor já mudou no clique - não precisa atualizar categorySaveStatus aqui
+        // O estado 'saved' já foi definido em handleChecklistItemChange
       }
     },
     clearCache,
@@ -261,40 +232,69 @@ export function ScheduleDetail({ schedule, onClose, onUpdateSchedule }: Schedule
   }, [schedule.checklist]);
 
   // Load cache on mount if cleaning (Rule 41.3.3, 44.3.3)
-  // IMPORTANT: Skip cache restoration if:
-  // 1. User already interacted in this session
-  // 2. Schedule already has saved progress in DB (DB is authoritative)
+  // REGRA DE SEGURANÇA: Se o usuário sair do card, tudo deve continuar guardado
   useEffect(() => {
     if (schedule.status === 'cleaning' && teamMemberId && !cacheInitializedRef.current) {
+      // Se a sessão já está travada, não restaurar
+      if (sessionLockedRef.current) {
+        cacheInitializedRef.current = true;
+        return;
+      }
+      
       // If the user already started interacting, never override their current progress with cached data.
       if (hasUserInteractedRef.current) {
         cacheInitializedRef.current = true;
-        clearCache(); // Clear stale cache since user is actively working
+        clearCache();
         return;
       }
 
-      // If the schedule already has saved progress in DB, DB is authoritative - don't restore cache
+      // If the schedule already has saved progress in DB, DB is authoritative
       if (scheduleHasSavedProgress) {
-        console.log('[ScheduleDetail] Schedule has DB progress, skipping cache restore');
+        console.log('[ScheduleDetail] Schedule has DB progress, using DB data');
         cacheInitializedRef.current = true;
-        clearCache(); // Clear potentially stale cache
+        sessionLockedRef.current = true; // Travar sessão
+        
+        // Reconstruir categorySaveStatus baseado no checklist do DB
+        const categories = [...new Set(schedule.checklist.map(i => i.category))];
+        const initialStatus: Record<string, 'idle' | 'dirty' | 'saved'> = {};
+        categories.forEach(cat => {
+          const catItems = schedule.checklist.filter(i => i.category === cat);
+          const allComplete = catItems.every(item => item.status === 'ok' || item.status === 'not_ok');
+          initialStatus[cat] = allComplete ? 'saved' : 'idle';
+        });
+        setCategorySaveStatus(initialStatus);
         return;
       }
 
       const cachedData = loadCache();
       if (cachedData) {
         console.log('[ScheduleDetail] Restoring from cache...');
+        sessionLockedRef.current = true; // Travar sessão ao restaurar
+        
         if (cachedData.checklistState.length > 0) {
           setChecklist(cachedData.checklistState);
         }
         if (Object.keys(cachedData.checklistItemStates).length > 0) {
           setChecklistItemStates(cachedData.checklistItemStates);
+          
+          // Reconstruir categorySaveStatus baseado nos estados do cache
+          const sourceChecklist = cachedData.checklistState.length > 0 
+            ? cachedData.checklistState 
+            : schedule.checklist;
+          const categories = [...new Set(sourceChecklist.map(i => i.category))];
+          const initialStatus: Record<string, 'idle' | 'dirty' | 'saved'> = {};
+          categories.forEach(cat => {
+            const catItems = sourceChecklist.filter(i => i.category === cat);
+            const allComplete = catItems.every(item => {
+              const state = cachedData.checklistItemStates[item.id];
+              return state === 'yes' || state === 'no';
+            });
+            initialStatus[cat] = allComplete ? 'saved' : 'idle';
+          });
+          setCategorySaveStatus(initialStatus);
         }
-        // Prioritize cached observations over schedule value (more recent)
         if (cachedData.observationsText) {
           setCleanerObservations(cachedData.observationsText);
-        } else if (schedule.cleanerObservations) {
-          setCleanerObservations(schedule.cleanerObservations);
         }
         if (cachedData.draftIssues.length > 0) {
           setLocalIssues(cachedData.draftIssues);
@@ -306,7 +306,7 @@ export function ScheduleDetail({ schedule, onClose, onUpdateSchedule }: Schedule
       }
       cacheInitializedRef.current = true;
     }
-  }, [schedule.status, schedule.cleanerObservations, teamMemberId, loadCache, clearCache, scheduleHasSavedProgress]);
+  }, [schedule.status, schedule.checklist, teamMemberId, loadCache, clearCache, scheduleHasSavedProgress]);
 
   // Auto-save to cache on state changes (Rule 41.3.2, 44.3.2)
   useEffect(() => {
@@ -596,12 +596,6 @@ export function ScheduleDetail({ schedule, onClose, onUpdateSchedule }: Schedule
       // Keep ref in sync immediately (avoid races where save starts before render commits)
       checklistItemStatesRef.current = nextStates;
 
-      // Any interaction makes the category "dirty" until a save succeeds.
-      setCategorySaveStatus((prevStatus) => ({
-        ...prevStatus,
-        [category]: 'dirty',
-      }));
-
       // Update checklist items (persisted shape)
       const itemStatus: ChecklistItemStatus = value === 'yes' ? 'ok' : 'not_ok';
       setChecklist((prevChecklist) =>
@@ -616,7 +610,8 @@ export function ScheduleDetail({ schedule, onClose, onUpdateSchedule }: Schedule
         )
       );
 
-      // Auto-save when the CATEGORY is complete (all items marked OK/DX)
+      // REGRA: Cor muda IMEDIATAMENTE no clique quando categoria está completa
+      // Verificar se a categoria está completa APÓS esta marcação
       const sourceChecklist = checklistRef.current;
       const categoryItems = sourceChecklist.filter((item) => item.category === category);
       const categoryComplete = categoryItems.length > 0 && categoryItems.every((item) => {
@@ -624,21 +619,29 @@ export function ScheduleDetail({ schedule, onClose, onUpdateSchedule }: Schedule
         return state === 'yes' || state === 'no';
       });
 
+      // REGRA: Cor muda imediatamente - marcar como 'saved' quando completo
+      // (Salvamento ocorre em background sem afetar a UI)
       if (categoryComplete) {
-        if (isChecklistComplete(nextStates)) {
-          toast.success('Checklist completo! Salvando...', { duration: 2000 });
-        } else {
-          toast.success(`Categoria "${category}" completa! Salvando...`, { duration: 1500 });
-        }
+        setCategorySaveStatus((prevStatus) => ({
+          ...prevStatus,
+          [category]: 'saved', // Cor muda IMEDIATAMENTE
+        }));
+        // Salvamento silencioso em background
         scheduleSave();
+      } else {
+        // Categoria ainda incompleta - manter como dirty
+        setCategorySaveStatus((prevStatus) => ({
+          ...prevStatus,
+          [category]: 'dirty',
+        }));
       }
 
       return nextStates;
     });
-  }, [scheduleSave, isChecklistEditable, isChecklistComplete]);
+  }, [scheduleSave, isChecklistEditable]);
 
   // Handle marking entire category as complete - updates local state and triggers auto-save
-  // OPTIMIZED: Uses React.unstable_batchedUpdates pattern to prevent UI freezing on mobile
+  // REGRA: Cor muda IMEDIATAMENTE, salvamento é silencioso
   const handleMarkCategoryComplete = useCallback((category: string) => {
     if (!isChecklistEditable || !teamMemberId) return;
 
@@ -669,7 +672,6 @@ export function ScheduleDetail({ schedule, onClose, onUpdateSchedule }: Schedule
     );
     
     // Use requestAnimationFrame to batch DOM updates and prevent UI blocking
-    // This allows the browser to remain responsive while processing
     requestAnimationFrame(() => {
       // Single batched state update - React 18 auto-batches these
       setChecklistItemStates(updatedStates);
@@ -677,27 +679,20 @@ export function ScheduleDetail({ schedule, onClose, onUpdateSchedule }: Schedule
       checklistItemStatesRef.current = updatedStates;
       setChecklist(updatedChecklist);
 
+      // REGRA: Cor muda IMEDIATAMENTE - marcar como 'saved'
       setCategorySaveStatus((prev) => ({
         ...prev,
-        [category]: 'dirty',
+        [category]: 'saved',
       }));
       
-      // Auto-save when category is complete (all items marked OK)
-      // This ensures partial progress is persisted
-      setTimeout(() => {
-        if (isChecklistComplete(updatedStates)) {
-          toast.success('Checklist completo! Salvando...', { duration: 2000 });
-        }
-        // Always save when a category is completed (bulk marking)
-        scheduleSave();
-      }, 0);
-      
-    toast.success(`Categoria "${category}" marcada como completa!`);
+      // Salvamento silencioso em background (sem toast)
+      scheduleSave();
     });
-  }, [isChecklistEditable, checklist, checklistItemStates, teamMemberId, scheduleSave, isChecklistComplete]);
+  }, [isChecklistEditable, checklist, checklistItemStates, teamMemberId, scheduleSave]);
 
   // Handle clearing a category - reset all items to pending state
   // Only allowed when status is 'cleaning' (before finalizing)
+  // REGRA: Não provoca reload, apenas atualiza estado local
   const handleClearCategory = useCallback((category: string) => {
     if (!isChecklistEditable || !teamMemberId || schedule.status !== 'cleaning') return;
 
@@ -721,6 +716,7 @@ export function ScheduleDetail({ schedule, onClose, onUpdateSchedule }: Schedule
       checklistItemStatesRef.current = updatedStates;
       setChecklist(updatedChecklist);
       
+      // Reset category status to idle
       setCategorySaveStatus((prev) => ({
         ...prev,
         [category]: 'idle',
@@ -733,12 +729,8 @@ export function ScheduleDetail({ schedule, onClose, onUpdateSchedule }: Schedule
         return next;
       });
       
-      // Schedule save to persist the reset
-      setTimeout(() => {
-        scheduleSave();
-      }, 0);
-      
-      toast.success(`Categoria "${category}" foi limpa. Refaça o checklist.`);
+      // Salvamento silencioso em background
+      scheduleSave();
     });
   }, [isChecklistEditable, checklist, checklistItemStates, teamMemberId, schedule.status, scheduleSave]);
 
