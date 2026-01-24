@@ -552,19 +552,30 @@ export function useSchedules() {
     fetchSchedules();
   }, [fetchSchedules]);
 
-  // Realtime subscription
+  // Realtime subscription - DISABLED during active cleaning sessions
+  // The skipNextRealtimeRef is set by updateScheduleLocal to prevent unwanted refetches
   useEffect(() => {
     const channel = supabase
       .channel('schedules-changes')
       .on(
         'postgres_changes',
         { event: '*', schema: 'public', table: 'schedules' },
-        () => {
-          // Skip refetch if triggered by local update (notes save, etc.)
+        (payload) => {
+          // Skip refetch if triggered by local update (notes save, auto-save, etc.)
           if (skipNextRealtimeRef.current) {
             skipNextRealtimeRef.current = false;
+            console.log('[useSchedules] Skipping realtime update (local change)');
             return;
           }
+          
+          // REGRA: Ignorar updates que são apenas de checklist/observations durante cleaning
+          // Isso evita reload da tela quando o cleaner está trabalhando
+          const newPayload = payload.new as Record<string, unknown> | undefined;
+          if (newPayload?.status === 'cleaning') {
+            console.log('[useSchedules] Ignoring realtime update for cleaning schedule');
+            return;
+          }
+          
           fetchSchedules();
         }
       )
