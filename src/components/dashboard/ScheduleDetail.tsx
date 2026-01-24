@@ -1800,8 +1800,8 @@ export function ScheduleDetail({ schedule, onClose, onUpdateSchedule }: Schedule
 
               <button
                 onClick={() => setShowIssueForm(true)}
-                disabled={schedule.status === 'waiting'}
-                className="flex w-full items-center justify-center gap-2 rounded-xl border border-slate-200 dark:border-slate-800 py-3 font-bold text-slate-400 disabled:cursor-not-allowed"
+                disabled={schedule.status === 'waiting' || schedule.status === 'completed'}
+                className="flex w-full items-center justify-center gap-2 rounded-xl border border-border py-3 font-bold text-muted-foreground disabled:cursor-not-allowed disabled:opacity-50"
               >
                 <span className="material-symbols-outlined text-[20px]">report_problem</span>
                 Reportar Avaria
