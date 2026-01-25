@@ -22,9 +22,13 @@ export function AdminInspectionsSection({ inspections, loading }: AdminInspectio
     return null;
   }
 
-  // Group by status
+  // Group by status - include completed for display
   const scheduled = inspections.filter(i => i.status === 'scheduled');
   const inProgress = inspections.filter(i => i.status === 'in_progress');
+  const completed = inspections.filter(i => i.status === 'completed');
+  
+  // Active inspections (not completed)
+  const activeInspections = [...scheduled, ...inProgress];
 
   return (
     <section className="mb-8">
@@ -49,6 +53,7 @@ export function AdminInspectionsSection({ inspections, loading }: AdminInspectio
         {inspections.slice(0, 6).map(inspection => {
           const isScheduled = inspection.status === 'scheduled';
           const isInProgress = inspection.status === 'in_progress';
+          const isCompleted = inspection.status === 'completed';
           const scheduledDate = parseISO(inspection.scheduled_date);
           const isTodayInspection = isToday(scheduledDate);
           const completedItems = inspection.checklist_state.filter(i => i.checked).length;
@@ -60,19 +65,23 @@ export function AdminInspectionsSection({ inspections, loading }: AdminInspectio
               onClick={() => navigate(`/inspecoes?inspection=${inspection.id}`)}
               className={cn(
                 "bg-card rounded-2xl border-2 p-4 cursor-pointer transition-all hover:shadow-lg",
-                "border-purple-300 dark:border-purple-700"
+                isCompleted 
+                  ? "border-slate-200 dark:border-slate-700 opacity-60" 
+                  : "border-purple-300 dark:border-purple-700"
               )}
             >
               <div className="flex items-start gap-3">
                 <div className={cn(
                   "h-10 w-10 shrink-0 rounded-xl flex items-center justify-center",
                   isScheduled && "bg-blue-100 dark:bg-blue-900/30",
-                  isInProgress && "bg-yellow-100 dark:bg-yellow-900/30"
+                  isInProgress && "bg-yellow-100 dark:bg-yellow-900/30",
+                  isCompleted && "bg-emerald-100 dark:bg-emerald-900/30"
                 )}>
                   <ClipboardCheck className={cn(
                     "w-5 h-5",
                     isScheduled && "text-blue-600",
-                    isInProgress && "text-yellow-600"
+                    isInProgress && "text-yellow-600",
+                    isCompleted && "text-emerald-600"
                   )} />
                 </div>
                 <div className="flex-1 min-w-0">
@@ -83,9 +92,10 @@ export function AdminInspectionsSection({ inspections, loading }: AdminInspectio
                     <span className={cn(
                       "rounded-full px-2 py-0.5 text-xs font-bold",
                       isScheduled && "bg-blue-100 dark:bg-blue-900/30 text-blue-700",
-                      isInProgress && "bg-yellow-100 dark:bg-yellow-900/30 text-yellow-700"
+                      isInProgress && "bg-yellow-100 dark:bg-yellow-900/30 text-yellow-700",
+                      isCompleted && "bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700"
                     )}>
-                      {isScheduled ? 'Agendada' : 'Em Andamento'}
+                      {isCompleted ? 'Concluída' : isScheduled ? 'Agendada' : 'Em Andamento'}
                     </span>
                     {isTodayInspection && (
                       <span className="rounded-full px-2 py-0.5 text-xs font-bold bg-green-100 dark:bg-green-900/30 text-green-700">

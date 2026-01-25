@@ -31,10 +31,10 @@ export function useAdminInspections() {
   const fetchInspections = useCallback(async () => {
     try {
       setLoading(true);
+      // Include completed inspections to show them dimmed on their scheduled day
       const { data, error } = await supabase
         .from('inspections')
         .select('*')
-        .in('status', ['scheduled', 'in_progress'])
         .order('scheduled_date', { ascending: true });
 
       if (error) throw error;
