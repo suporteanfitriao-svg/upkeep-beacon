@@ -49,12 +49,14 @@ export function useCleanerInspections() {
   const [userRole, setUserRole] = useState<string | null>(null);
   const [roleLoaded, setRoleLoaded] = useState(false);
 
-  // Fetch user role separately to avoid hook nesting issues
+  const [userRoles, setUserRoles] = useState<string[]>([]);
+
+  // Fetch user roles separately to avoid hook nesting issues
   useEffect(() => {
-    async function fetchUserRole() {
+    async function fetchUserRoles() {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) {
-        setUserRole(null);
+        setUserRoles([]);
         setRoleLoaded(true);
         return;
       }
@@ -62,17 +64,19 @@ export function useCleanerInspections() {
       const { data } = await supabase
         .from('user_roles')
         .select('role')
-        .eq('user_id', user.id)
-        .maybeSingle();
+        .eq('user_id', user.id);
       
-      setUserRole(data?.role || null);
+      const roles = (data || []).map(r => r.role);
+      setUserRoles(roles);
+      setUserRole(roles[0] || null);
       setRoleLoaded(true);
     }
     
-    fetchUserRole();
+    fetchUserRoles();
   }, []);
 
-  const isAdminOrManager = userRole === 'admin' || userRole === 'manager';
+  // Admin, manager, or superadmin can see all inspections
+  const isAdminOrManager = userRoles.includes('admin') || userRoles.includes('manager') || userRoles.includes('superadmin');
 
   const fetchInspections = useCallback(async () => {
     // Wait until role is loaded before proceeding
