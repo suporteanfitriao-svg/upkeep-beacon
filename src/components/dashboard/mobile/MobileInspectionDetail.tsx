@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { 
   X, Clock, Building2, Calendar, User, ClipboardCheck, 
-  CheckCircle2, Play, Loader2, MessageSquare, History, Camera, ImagePlus, Trash2,
+  CheckCircle2, Play, Loader2, MessageSquare, History, Camera, ImagePlus,
   AlertTriangle, Shield, ListChecks, Check
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -16,6 +16,7 @@ import { toast } from 'sonner';
 import { format, parseISO } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { useImageCompression } from '@/hooks/useImageCompression';
+import { MobilePhotoGallery } from '@/components/shared/MobilePhotoGallery';
 
 interface InspectionHistoryEvent {
   timestamp: string;
@@ -624,36 +625,12 @@ export function MobileInspectionDetail({
                     </div>
                   )}
 
-                  {/* Photo Grid - Fixed Size Thumbnails */}
-                  {photos.length > 0 && (
-                    <div className="flex flex-wrap gap-2">
-                      {photos.map((photo, index) => (
-                        <div key={index} className="relative w-20 h-20 flex-shrink-0">
-                          <img 
-                            src={photo.url} 
-                            alt={`Foto ${index + 1}`}
-                            className="w-20 h-20 object-cover rounded-lg"
-                          />
-                          {photo.timestamp && (
-                            <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/70 to-transparent p-1 rounded-b-lg">
-                              <div className="flex items-center gap-0.5 text-[8px] text-white">
-                                <Clock className="h-2 w-2 flex-shrink-0" />
-                                <span className="truncate">
-                                  {format(parseISO(photo.timestamp), "dd/MM HH:mm", { locale: ptBR })}
-                                </span>
-                              </div>
-                            </div>
-                          )}
-                          <button
-                            onClick={() => handleRemovePhoto(index)}
-                            className="absolute -top-1.5 -right-1.5 h-5 w-5 bg-destructive text-destructive-foreground rounded-full flex items-center justify-center shadow-md"
-                          >
-                            <Trash2 className="h-2.5 w-2.5" />
-                          </button>
-                        </div>
-                      ))}
-                    </div>
-                  )}
+                  {/* Photo Gallery with Fullscreen View */}
+                  <MobilePhotoGallery
+                    photos={photos}
+                    onRemove={handleRemovePhoto}
+                    editable={true}
+                  />
 
                   {/* Upload Button */}
                   <input
