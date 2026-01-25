@@ -14,7 +14,6 @@ import {
   Camera, 
   Bell, 
   Package, 
-  ScrollText, 
   ClipboardList,
   Plus,
   Trash2,
@@ -36,12 +35,7 @@ interface OnboardingConfig {
   auto_release_schedules: boolean;
 }
 
-interface HouseRule {
-  id: string;
-  title: string;
-  description: string;
-  priority: 'info' | 'warning';
-}
+// HouseRule interface removed - feature deprecated
 
 interface InventoryCategory {
   id: string;
@@ -70,11 +64,7 @@ export default function Settings() {
     auto_release_schedules: true,
   });
 
-  // House rules
-  const [rules, setRules] = useState<HouseRule[]>([]);
-  const [newRule, setNewRule] = useState<{ title: string; description: string; priority: 'info' | 'warning' }>({ 
-    title: '', description: '', priority: 'info' 
-  });
+  // House rules - removed
 
   // Inventory
   const [inventory, setInventory] = useState<InventoryCategory[]>([]);
@@ -95,9 +85,8 @@ export default function Settings() {
       if (!user) return;
 
       // Fetch all data in parallel
-      const [configRes, rulesRes, inventoryRes, inventoryItemsRes, checklistsRes] = await Promise.all([
+      const [configRes, inventoryRes, inventoryItemsRes, checklistsRes] = await Promise.all([
         supabase.from('onboarding_settings').select('*').eq('user_id', user.id).maybeSingle(),
-        supabase.from('house_rules').select('*').eq('user_id', user.id).eq('is_active', true).order('sort_order'),
         supabase.from('inventory_categories').select('*').eq('user_id', user.id).eq('is_active', true).order('sort_order'),
         supabase.from('inventory_items').select('*').eq('is_active', true).order('sort_order'),
         supabase.from('default_checklists').select('*').eq('user_id', user.id).eq('is_active', true).order('created_at'),
@@ -115,15 +104,7 @@ export default function Settings() {
         });
       }
 
-      // Rules
-      if (rulesRes.data) {
-        setRules(rulesRes.data.map(r => ({
-          id: r.id,
-          title: r.title,
-          description: r.description || '',
-          priority: r.priority as 'info' | 'warning',
-        })));
-      }
+      // Rules section removed - feature deprecated
 
       // Inventory
       if (inventoryRes.data && inventoryItemsRes.data) {
@@ -176,46 +157,7 @@ export default function Settings() {
     }
   };
 
-  const handleAddRule = () => {
-    if (!newRule.title.trim()) return;
-    setRules(prev => [...prev, { ...newRule, id: `temp-${Date.now()}` }]);
-    setNewRule({ title: '', description: '', priority: 'info' });
-  };
-
-  const handleRemoveRule = (id: string) => {
-    setRules(prev => prev.filter(r => r.id !== id));
-  };
-
-  const handleSaveRules = async () => {
-    setSaving(true);
-    try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) throw new Error('Usuário não autenticado');
-
-      // Deactivate existing
-      await supabase.from('house_rules').update({ is_active: false }).eq('user_id', user.id);
-
-      // Insert new
-      for (let idx = 0; idx < rules.length; idx++) {
-        const rule = rules[idx];
-        await supabase.from('house_rules').insert({
-          user_id: user.id,
-          title: rule.title,
-          description: rule.description,
-          priority: rule.priority,
-          sort_order: idx,
-        });
-      }
-
-      toast.success('Regras da casa salvas!');
-      await fetchAllData();
-    } catch (error) {
-      console.error('Error saving rules:', error);
-      toast.error('Erro ao salvar regras');
-    } finally {
-      setSaving(false);
-    }
-  };
+  // House rules handlers removed - feature deprecated
 
   const handleAddInventoryItem = (categoryId: string) => {
     const itemName = newItemInputs[categoryId]?.trim();
@@ -370,14 +312,10 @@ export default function Settings() {
 
           <div className="flex-1 overflow-y-auto p-4 lg:p-6">
             <Tabs value={activeTab} onValueChange={setActiveTab} className="max-w-4xl mx-auto">
-              <TabsList className="grid w-full grid-cols-4 mb-6">
+              <TabsList className="grid w-full grid-cols-3 mb-6">
                 <TabsTrigger value="general" className="flex items-center gap-2">
                   <Clock className="h-4 w-4" />
                   <span className="hidden sm:inline">Geral</span>
-                </TabsTrigger>
-                <TabsTrigger value="rules" className="flex items-center gap-2">
-                  <ScrollText className="h-4 w-4" />
-                  <span className="hidden sm:inline">Regras</span>
                 </TabsTrigger>
                 <TabsTrigger value="inventory" className="flex items-center gap-2">
                   <Package className="h-4 w-4" />
@@ -492,104 +430,7 @@ export default function Settings() {
               </TabsContent>
 
               {/* House Rules Tab */}
-              <TabsContent value="rules" className="space-y-6">
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="flex items-center gap-2">
-                      <Plus className="h-5 w-5" />
-                      Adicionar Regra
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent className="space-y-4">
-                    <div className="space-y-2">
-                      <Label>Título da Regra</Label>
-                      <Input
-                        placeholder="Ex: Horário de Silêncio"
-                        value={newRule.title}
-                        onChange={(e) => setNewRule(prev => ({ ...prev, title: e.target.value }))}
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label>Descrição</Label>
-                      <Textarea
-                        placeholder="Descreva a regra em detalhes..."
-                        value={newRule.description}
-                        onChange={(e) => setNewRule(prev => ({ ...prev, description: e.target.value }))}
-                        rows={2}
-                      />
-                    </div>
-                    <div className="flex gap-4">
-                      <label className="flex items-center gap-2 cursor-pointer">
-                        <input
-                          type="radio"
-                          checked={newRule.priority === 'info'}
-                          onChange={() => setNewRule(prev => ({ ...prev, priority: 'info' }))}
-                        />
-                        <Info className="h-4 w-4 text-blue-500" />
-                        <span className="text-sm">Informativa</span>
-                      </label>
-                      <label className="flex items-center gap-2 cursor-pointer">
-                        <input
-                          type="radio"
-                          checked={newRule.priority === 'warning'}
-                          onChange={() => setNewRule(prev => ({ ...prev, priority: 'warning' }))}
-                        />
-                        <AlertTriangle className="h-4 w-4 text-amber-500" />
-                        <span className="text-sm">Importante</span>
-                      </label>
-                    </div>
-                    <Button onClick={handleAddRule} disabled={!newRule.title.trim()}>
-                      <Plus className="h-4 w-4 mr-2" />
-                      Adicionar Regra
-                    </Button>
-                  </CardContent>
-                </Card>
-
-                <Card>
-                  <CardHeader>
-                    <CardTitle>Regras Cadastradas</CardTitle>
-                    <CardDescription>{rules.length} regra{rules.length !== 1 ? 's' : ''}</CardDescription>
-                  </CardHeader>
-                  <CardContent>
-                    {rules.length === 0 ? (
-                      <p className="text-sm text-muted-foreground text-center py-8">Nenhuma regra cadastrada.</p>
-                    ) : (
-                      <div className="space-y-3">
-                        {rules.map((rule) => (
-                          <div key={rule.id} className="flex items-start gap-3 p-4 rounded-lg bg-muted/50 border border-border">
-                            <div className="mt-0.5">
-                              {rule.priority === 'warning' ? (
-                                <AlertTriangle className="h-5 w-5 text-amber-500" />
-                              ) : (
-                                <Info className="h-5 w-5 text-blue-500" />
-                              )}
-                            </div>
-                            <div className="flex-1 min-w-0">
-                              <p className="font-medium text-sm">{rule.title}</p>
-                              {rule.description && <p className="text-xs text-muted-foreground mt-1">{rule.description}</p>}
-                            </div>
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className="text-destructive hover:bg-destructive/10 shrink-0"
-                              onClick={() => handleRemoveRule(rule.id)}
-                            >
-                              <Trash2 className="h-4 w-4" />
-                            </Button>
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                  </CardContent>
-                </Card>
-
-                <div className="flex justify-end">
-                  <Button onClick={handleSaveRules} disabled={saving}>
-                    {saving ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Save className="h-4 w-4 mr-2" />}
-                    Salvar Regras
-                  </Button>
-                </div>
-              </TabsContent>
+              {/* House Rules Tab removed - feature deprecated */}
 
               {/* Inventory Tab */}
               <TabsContent value="inventory" className="space-y-6">

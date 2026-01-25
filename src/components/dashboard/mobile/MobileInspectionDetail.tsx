@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { 
   X, Clock, Building2, Calendar, User, ClipboardCheck, 
   CheckCircle2, Play, Loader2, MessageSquare, History, Camera, ImagePlus, Trash2,
-  AlertTriangle, BookOpen, Shield, ListChecks, Check
+  AlertTriangle, Shield, ListChecks, Check
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
@@ -29,13 +29,7 @@ interface InspectionPhoto {
   uploaded_by?: string;
 }
 
-interface HouseRule {
-  id: string;
-  title: string;
-  description: string | null;
-  priority: string;
-  is_active: boolean;
-}
+// HouseRule interface removed - feature deprecated
 
 interface MobileInspectionDetailProps {
   inspection: CleanerInspection;
@@ -75,7 +69,7 @@ export function MobileInspectionDetail({
   const [isUploadingPhoto, setIsUploadingPhoto] = useState(false);
   const [requirePhoto, setRequirePhoto] = useState(false);
   const [userName, setUserName] = useState('Usuário');
-  const [houseRules, setHouseRules] = useState<HouseRule[]>([]);
+  // houseRules state removed - feature deprecated
   const [localStatus, setLocalStatus] = useState(inspection?.status || 'scheduled');
   const [checklistState, setChecklistState] = useState(inspection?.checklist_state || []);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -136,33 +130,8 @@ export function MobileInspectionDetail({
       }
     };
 
-    const fetchHouseRules = async () => {
-      if (!inspection.property_id) return;
-      
-      try {
-        const { data: rules, error } = await supabase
-          .from('house_rules')
-          .select('*')
-          .eq('is_active', true)
-          .order('priority', { ascending: false })
-          .order('sort_order', { ascending: true });
-        
-        if (error) {
-          console.error('[MobileInspectionDetail] Error fetching house rules:', error);
-          return;
-        }
-        
-        if (rules) {
-          setHouseRules(rules);
-        }
-      } catch (error) {
-        console.error('[MobileInspectionDetail] Error in fetchHouseRules:', error);
-      }
-    };
-
     fetchPropertyRule();
     fetchUserName();
-    fetchHouseRules();
   }, [isValidInspection, inspection?.property_id]);
 
   // Save comment as user types (debounced)
@@ -498,56 +467,7 @@ export function MobileInspectionDetail({
             </div>
           )}
 
-          {/* House Rules Section - Show when in progress */}
-          {isInProgress && houseRules.length > 0 && (
-            <>
-              <Separator />
-              
-              <div className="space-y-3">
-                <h3 className="text-base font-semibold flex items-center gap-2">
-                  <BookOpen className="h-5 w-5 text-amber-600" />
-                  Regras da Casa
-                </h3>
-                
-                <div className="space-y-2">
-                  {houseRules.map((rule) => (
-                    <div 
-                      key={rule.id}
-                      className={`p-3 rounded-lg border ${
-                        rule.priority === 'high' 
-                          ? 'bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-800' 
-                          : rule.priority === 'medium'
-                            ? 'bg-amber-50 dark:bg-amber-900/20 border-amber-200 dark:border-amber-800'
-                            : 'bg-muted/50 border-border'
-                      }`}
-                    >
-                      <div className="flex items-start gap-2">
-                        {rule.priority === 'high' && (
-                          <AlertTriangle className="h-4 w-4 text-red-600 dark:text-red-400 shrink-0 mt-0.5" />
-                        )}
-                        <div className="flex-1">
-                          <p className={`text-sm font-medium ${
-                            rule.priority === 'high' 
-                              ? 'text-red-700 dark:text-red-300' 
-                              : rule.priority === 'medium'
-                                ? 'text-amber-700 dark:text-amber-300'
-                                : 'text-foreground'
-                          }`}>
-                            {rule.title}
-                          </p>
-                          {rule.description && (
-                            <p className="text-xs text-muted-foreground mt-1">
-                              {rule.description}
-                            </p>
-                          )}
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </>
-          )}
+          {/* House Rules Section removed - feature deprecated */}
 
           {/* Requirements Card - Show when in progress */}
           {isInProgress && (
