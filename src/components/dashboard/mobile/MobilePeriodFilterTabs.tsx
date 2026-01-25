@@ -50,7 +50,7 @@ const TaskBadge = memo(function TaskBadge({
               setOpen(!open);
             }}
             className={cn(
-              "absolute -top-1 -right-1 h-5 w-5 rounded-full bg-red-500 text-white text-xs font-bold flex items-center justify-center cursor-pointer",
+              "absolute -top-2.5 -right-2.5 h-5 w-5 rounded-full bg-red-500 text-white text-xs font-bold flex items-center justify-center cursor-pointer z-10",
               className
             )}
           >
@@ -75,7 +75,7 @@ export const MobilePeriodFilterTabs = memo(function MobilePeriodFilterTabs({
   tomorrowTasks
 }: MobilePeriodFilterTabsProps) {
   return (
-    <div className="flex items-center gap-2 mb-4 overflow-x-auto hide-scrollbar relative z-30 pointer-events-auto">
+    <div className="flex items-center gap-2 mb-4 pt-3 overflow-x-auto hide-scrollbar relative z-30 pointer-events-auto overflow-visible">
       <button
         type="button"
         onClick={(e) => {
