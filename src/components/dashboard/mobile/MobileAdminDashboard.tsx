@@ -161,6 +161,9 @@ export function MobileAdminDashboard({
     } else if (agendaViewMode === 'amanha') {
       const tomorrow = startOfDay(addDays(new Date(), 1));
       filtered = schedules.filter(s => isSameDay(s.checkOut, tomorrow));
+    } else if (agendaViewMode === 'dia') {
+      // Filter by the specific selected date from the day strip
+      filtered = schedules.filter(s => isSameDay(s.checkOut, selectedDate));
     } else if (agendaViewMode === 'mes') {
       const monthStart = startOfMonth(currentMonth);
       const monthEnd = endOfMonth(currentMonth);
@@ -247,6 +250,7 @@ export function MobileAdminDashboard({
     
     const todaySchedules = schedules.filter(s => isSameDay(s.checkOut, today));
     const tomorrowSchedules = schedules.filter(s => isSameDay(s.checkOut, tomorrow));
+    const selectedDaySchedules = schedules.filter(s => isSameDay(s.checkOut, selectedDate));
     const monthSchedules = schedules.filter(s => s.checkOut >= monthStart && s.checkOut <= monthEnd);
     const rangeSchedules = dateRange 
       ? schedules.filter(s => isWithinInterval(s.checkOut, { start: startOfDay(dateRange.from), end: startOfDay(addDays(dateRange.to, 1)) }))
@@ -255,10 +259,11 @@ export function MobileAdminDashboard({
     return {
       today: getCount(todaySchedules),
       tomorrow: getCount(tomorrowSchedules),
+      day: getCount(selectedDaySchedules),
       month: getCount(monthSchedules),
       range: getCount(rangeSchedules)
     };
-  }, [schedules, currentMonth, dateRange]);
+  }, [schedules, currentMonth, dateRange, selectedDate]);
 
   const handleDateRangeSelect = useCallback((range: { from: Date; to: Date } | null) => {
     setDateRange(range);
@@ -266,8 +271,22 @@ export function MobileAdminDashboard({
   }, []);
 
   const handleDateSelect = useCallback((date: Date) => {
-    setSelectedDate(startOfDay(date));
+    const newDate = startOfDay(date);
+    setSelectedDate(newDate);
     setCompletedPage(1);
+    
+    // Switch to 'dia' mode when selecting a specific date from the strip
+    // unless it's today or tomorrow (keep those modes for clarity)
+    const today = startOfDay(new Date());
+    const tomorrow = startOfDay(addDays(new Date(), 1));
+    
+    if (isSameDay(newDate, today)) {
+      setAgendaViewMode('hoje');
+    } else if (isSameDay(newDate, tomorrow)) {
+      setAgendaViewMode('amanha');
+    } else {
+      setAgendaViewMode('dia');
+    }
   }, []);
 
   // Quick actions
@@ -549,6 +568,7 @@ export function MobileAdminDashboard({
               onMonthChange={setCurrentMonth}
               todayCount={filterCounts.today}
               tomorrowCount={filterCounts.tomorrow}
+              dayCount={filterCounts.day}
               monthCount={filterCounts.month}
               rangeCount={filterCounts.range}
               dayIndicators={dayIndicators}
