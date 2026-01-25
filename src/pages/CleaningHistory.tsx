@@ -1,20 +1,20 @@
 import { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { format, startOfMonth, endOfMonth, isSameDay } from 'date-fns';
+import { format, startOfMonth, endOfMonth, differenceInMinutes, isWithinInterval, subMonths } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { ArrowLeft, Calendar, Clock, Camera, AlertTriangle, Building2, ChevronLeft, ChevronRight } from 'lucide-react';
+import { ArrowLeft, Calendar, Clock, Camera, AlertTriangle, Building2, ChevronLeft, ChevronRight, TrendingUp, BarChart3 } from 'lucide-react';
 import { useSchedules } from '@/hooks/useSchedules';
 import { Schedule } from '@/types/scheduling';
 import { cn } from '@/lib/utils';
+import { ScheduleDetailReadOnly } from '@/components/reports/ScheduleDetailReadOnly';
 
 const ITEMS_PER_PAGE = 10;
 
 function formatDuration(startAt: Date | undefined, endAt: Date | undefined): string {
   if (!startAt || !endAt) return '-';
-  const diffMs = endAt.getTime() - startAt.getTime();
-  const diffMins = Math.round(diffMs / 60000);
-  const hours = Math.floor(diffMins / 60);
-  const mins = diffMins % 60;
+  const minutes = differenceInMinutes(endAt, startAt);
+  const hours = Math.floor(minutes / 60);
+  const mins = minutes % 60;
   if (hours > 0) {
     return `${hours}h ${mins}min`;
   }
@@ -25,6 +25,7 @@ export default function CleaningHistory() {
   const navigate = useNavigate();
   const { schedules, loading } = useSchedules();
   const [currentPage, setCurrentPage] = useState(1);
+  const [selectedSchedule, setSelectedSchedule] = useState<Schedule | null>(null);
 
   // Filter completed schedules from current month
   const completedSchedules = useMemo(() => {
@@ -46,14 +47,76 @@ export default function CleaningHistory() {
       });
   }, [schedules]);
 
+  // Calculate stats for the current month
+  const monthStats = useMemo(() => {
+    const now = new Date();
+    const monthStart = startOfMonth(now);
+    const monthEnd = endOfMonth(now);
+    const prevMonthStart = startOfMonth(subMonths(now, 1));
+    const prevMonthEnd = endOfMonth(subMonths(now, 1));
+
+    const thisMonthCompleted = schedules.filter(s => 
+      s.status === 'completed' && 
+      s.endAt && 
+      isWithinInterval(s.endAt, { start: monthStart, end: monthEnd })
+    );
+
+    const prevMonthCompleted = schedules.filter(s => 
+      s.status === 'completed' && 
+      s.endAt && 
+      isWithinInterval(s.endAt, { start: prevMonthStart, end: prevMonthEnd })
+    );
+
+    const totalDurationMinutes = thisMonthCompleted.reduce((acc, s) => {
+      if (s.startAt && s.endAt) {
+        return acc + differenceInMinutes(s.endAt, s.startAt);
+      }
+      return acc;
+    }, 0);
+
+    const avgDuration = thisMonthCompleted.length > 0 
+      ? Math.round(totalDurationMinutes / thisMonthCompleted.length) 
+      : 0;
+
+    const totalIssues = thisMonthCompleted.reduce((acc, s) => 
+      acc + (s.maintenanceIssues?.length || 0), 0
+    );
+
+    const growth = prevMonthCompleted.length > 0 
+      ? Math.round(((thisMonthCompleted.length - prevMonthCompleted.length) / prevMonthCompleted.length) * 100)
+      : thisMonthCompleted.length > 0 ? 100 : 0;
+
+    return {
+      total: thisMonthCompleted.length,
+      avgDuration,
+      totalIssues,
+      growth,
+      prevMonthTotal: prevMonthCompleted.length
+    };
+  }, [schedules]);
+
   // Pagination
   const totalPages = Math.ceil(completedSchedules.length / ITEMS_PER_PAGE);
   const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
   const displayedSchedules = completedSchedules.slice(startIndex, startIndex + ITEMS_PER_PAGE);
 
   const handleScheduleClick = (schedule: Schedule) => {
-    navigate(`/?scheduleId=${schedule.id}`);
+    setSelectedSchedule(schedule);
   };
+
+  const handleBack = () => {
+    navigate('/');
+  };
+
+  // If a schedule is selected, show read-only detail
+  if (selectedSchedule) {
+    return (
+      <ScheduleDetailReadOnly 
+        schedule={selectedSchedule} 
+        onClose={() => setSelectedSchedule(null)} 
+      />
+    );
+  }
 
   return (
     <div className="min-h-screen bg-stone-50 dark:bg-[#1a1d21]">
@@ -61,7 +124,7 @@ export default function CleaningHistory() {
       <header className="sticky top-0 z-30 bg-stone-50 dark:bg-[#22252a] px-4 py-4 shadow-sm border-b border-border">
         <div className="flex items-center gap-3">
           <button
-            onClick={() => navigate('/minha-conta')}
+            onClick={handleBack}
             className="flex items-center justify-center rounded-full p-2 transition-colors hover:bg-slate-200 dark:hover:bg-slate-700"
           >
             <ArrowLeft className="w-5 h-5 text-muted-foreground" />
@@ -88,6 +151,68 @@ export default function CleaningHistory() {
           </div>
         ) : (
           <>
+            {/* Stats Cards */}
+            <div className="grid grid-cols-2 gap-3 mb-6">
+              <div className="p-4 rounded-2xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 shadow-sm">
+                <div className="flex items-center gap-2 mb-2">
+                  <div className="w-8 h-8 rounded-lg bg-emerald-100 dark:bg-emerald-900/30 flex items-center justify-center">
+                    <BarChart3 className="w-4 h-4 text-emerald-600" />
+                  </div>
+                  <span className="text-xs font-medium text-muted-foreground">Total</span>
+                </div>
+                <p className="text-2xl font-bold text-foreground">{monthStats.total}</p>
+                <div className="flex items-center gap-1 mt-1">
+                  {monthStats.growth !== 0 && (
+                    <span className={cn(
+                      "text-xs font-medium flex items-center gap-0.5",
+                      monthStats.growth > 0 ? "text-emerald-600" : "text-red-500"
+                    )}>
+                      <TrendingUp className={cn("w-3 h-3", monthStats.growth < 0 && "rotate-180")} />
+                      {Math.abs(monthStats.growth)}%
+                    </span>
+                  )}
+                  <span className="text-xs text-muted-foreground">vs mês anterior</span>
+                </div>
+              </div>
+              
+              <div className="p-4 rounded-2xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 shadow-sm">
+                <div className="flex items-center gap-2 mb-2">
+                  <div className="w-8 h-8 rounded-lg bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center">
+                    <Clock className="w-4 h-4 text-blue-600" />
+                  </div>
+                  <span className="text-xs font-medium text-muted-foreground">Tempo Médio</span>
+                </div>
+                <p className="text-2xl font-bold text-foreground">
+                  {monthStats.avgDuration > 60 
+                    ? `${Math.floor(monthStats.avgDuration / 60)}h ${monthStats.avgDuration % 60}m`
+                    : `${monthStats.avgDuration}min`
+                  }
+                </p>
+                <span className="text-xs text-muted-foreground">por limpeza</span>
+              </div>
+              
+              <div className="p-4 rounded-2xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 shadow-sm col-span-2">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <div className="w-8 h-8 rounded-lg bg-amber-100 dark:bg-amber-900/30 flex items-center justify-center">
+                      <AlertTriangle className="w-4 h-4 text-amber-600" />
+                    </div>
+                    <div>
+                      <span className="text-xs font-medium text-muted-foreground block">Avarias Registradas</span>
+                      <span className="text-xl font-bold text-foreground">{monthStats.totalIssues}</span>
+                    </div>
+                  </div>
+                  <span className="text-xs text-muted-foreground">no mês</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Section Title */}
+            <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide mb-3">
+              Todas as Limpezas
+            </h3>
+
+            {/* Schedule List */}
             <div className="space-y-3">
               {displayedSchedules.map((schedule) => {
                 const issueCount = schedule.maintenanceIssues?.length || 0;
@@ -187,18 +312,18 @@ export default function CleaningHistory() {
 
       {/* Mobile Bottom Navigation */}
       <nav className="fixed bottom-0 left-0 right-0 bg-card/80 backdrop-blur-lg border-t border-border z-50 px-6 py-3 flex justify-around items-center text-xs font-medium text-muted-foreground">
-        <a href="/" className="flex flex-col items-center gap-1 hover:text-primary transition-colors">
+        <button onClick={() => navigate('/')} className="flex flex-col items-center gap-1 hover:text-primary transition-colors">
           <span className="material-symbols-outlined text-xl">home</span>
           <span>Início</span>
-        </a>
-        <a href="/?tab=agenda" className="flex flex-col items-center gap-1 hover:text-primary transition-colors">
+        </button>
+        <button onClick={() => navigate('/?tab=agenda')} className="flex flex-col items-center gap-1 hover:text-primary transition-colors">
           <span className="material-symbols-outlined text-xl">calendar_today</span>
           <span>Agenda</span>
-        </a>
-        <a href="/minha-conta" className="flex flex-col items-center gap-1 text-primary">
+        </button>
+        <button onClick={() => navigate('/minha-conta')} className="flex flex-col items-center gap-1 text-primary">
           <span className="material-symbols-outlined text-xl">menu</span>
           <span>Menu</span>
-        </a>
+        </button>
       </nav>
     </div>
   );
