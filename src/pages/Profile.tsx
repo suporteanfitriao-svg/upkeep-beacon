@@ -10,7 +10,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { User, MapPin, Shield, Camera, Check, Smartphone, Pencil, X, Loader2, LogOut, KeyRound } from 'lucide-react';
+import { User, MapPin, Shield, Camera, Check, Smartphone, Pencil, X, Loader2, LogOut, KeyRound, ClipboardCheck, ChevronRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -618,6 +618,29 @@ export default function Profile() {
                   </div>
                 </CardContent>
               </Card>
+
+              {/* Cleaning History Section - Only for cleaners */}
+              {!isAdmin && !isManager && (
+                <Card className="shadow-sm">
+                  <CardContent className="pt-6 pb-6">
+                    <button
+                      onClick={() => navigate('/historico-limpezas')}
+                      className="w-full flex items-center justify-between p-4 rounded-2xl bg-muted/50 hover:bg-muted transition-colors"
+                    >
+                      <div className="flex items-center gap-4">
+                        <div className="p-2 rounded-xl bg-emerald-50 dark:bg-emerald-900/20 text-emerald-600">
+                          <ClipboardCheck className="w-5 h-5" />
+                        </div>
+                        <div className="text-left">
+                          <h5 className="font-bold text-foreground text-sm">Histórico de Limpezas</h5>
+                          <p className="text-xs text-muted-foreground">Ver todas as limpezas concluídas</p>
+                        </div>
+                      </div>
+                      <ChevronRight className="w-5 h-5 text-muted-foreground" />
+                    </button>
+                  </CardContent>
+                </Card>
+              )}
 
               {/* Security Section */}
               <Card className="shadow-sm">
