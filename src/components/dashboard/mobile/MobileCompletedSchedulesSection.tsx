@@ -10,7 +10,7 @@ interface MobileCompletedSchedulesSectionProps {
   onScheduleClick: (schedule: Schedule) => void;
 }
 
-const ITEMS_PER_PAGE = 10;
+const ITEMS_PER_PAGE = 5;
 
 function formatDuration(startAt: Date | undefined, endAt: Date | undefined): string {
   if (!startAt || !endAt) return '--';
