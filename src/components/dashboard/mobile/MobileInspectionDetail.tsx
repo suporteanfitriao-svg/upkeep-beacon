@@ -624,15 +624,15 @@ export function MobileInspectionDetail({
                     </div>
                   )}
 
-                  {/* Photo Grid - Responsive Thumbnails */}
+                  {/* Photo Grid - Fixed Size Thumbnails */}
                   {photos.length > 0 && (
-                    <div className="grid grid-cols-3 sm:grid-cols-4 gap-2">
+                    <div className="flex flex-wrap gap-2">
                       {photos.map((photo, index) => (
-                        <div key={index} className="relative aspect-square w-full max-w-[120px]">
+                        <div key={index} className="relative w-20 h-20 flex-shrink-0">
                           <img 
                             src={photo.url} 
                             alt={`Foto ${index + 1}`}
-                            className="w-full h-full object-cover rounded-lg"
+                            className="w-20 h-20 object-cover rounded-lg"
                           />
                           {photo.timestamp && (
                             <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/70 to-transparent p-1 rounded-b-lg">
