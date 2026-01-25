@@ -56,7 +56,7 @@ interface PropertyChecklist {
 }
 
 export default function Properties() {
-  const { role, loading: isLoadingRole } = useUserRole();
+  const { loading: isLoadingRole, isSuperAdmin, isAdmin, isManager, hasManagerAccess, role } = useUserRole();
   const [properties, setProperties] = useState<Property[]>([]);
   const [icalSources, setIcalSources] = useState<Record<string, ICalSource[]>>({});
   const [propertyChecklists, setPropertyChecklists] = useState<PropertyChecklist[]>([]);
@@ -85,9 +85,8 @@ export default function Properties() {
     custom_name: ''
   });
 
-  const isAdmin = role === 'admin';
-  const isManager = role === 'manager';
-  const canManage = isAdmin || isManager;
+  const canManage = hasManagerAccess || isSuperAdmin;
+  const canDelete = isAdmin || isSuperAdmin;
 
   useEffect(() => {
     if (!isLoadingRole && role) {
@@ -846,7 +845,7 @@ export default function Properties() {
                             >
                               <span className="material-symbols-outlined text-[20px]">edit</span>
                             </button>
-                            {isAdmin && (
+                            {canDelete && (
                               <AlertDialog>
                                 <AlertDialogTrigger asChild>
                                   <button className="flex h-9 w-9 items-center justify-center rounded-lg text-destructive hover:bg-destructive/10 transition-colors">
