@@ -10,16 +10,6 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from '@/components/ui/alert-dialog';
 import { CleanerInspection } from '@/hooks/useCleanerInspections';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
@@ -85,7 +75,6 @@ export function MobileInspectionDetail({
   const [isUploadingPhoto, setIsUploadingPhoto] = useState(false);
   const [requirePhoto, setRequirePhoto] = useState(false);
   const [userName, setUserName] = useState('Usuário');
-  const [showStartConfirmation, setShowStartConfirmation] = useState(false);
   const [houseRules, setHouseRules] = useState<HouseRule[]>([]);
   const [localStatus, setLocalStatus] = useState(inspection?.status || 'scheduled');
   const [checklistState, setChecklistState] = useState(inspection?.checklist_state || []);
@@ -211,65 +200,43 @@ export function MobileInspectionDetail({
   const hasRequiredPhotos = !requirePhoto || photos.length > 0;
   const canFinish = isVerified && comment.trim().length >= 10 && hasRequiredPhotos;
 
-  const handleStartInspection = async () => {
+  // Lightweight start - no validations, no sync waits, just start immediately
+  const handleStartInspection = () => {
     if (isSubmitting) return; // Prevent double clicks
     
-    setIsSubmitting(true);
-    setShowStartConfirmation(false); // Close modal immediately to prevent re-clicks
+    const now = new Date().toISOString();
     
-    try {
-      const now = new Date().toISOString();
-      
-      // Get user name for history
-      const { data: { user } } = await supabase.auth.getUser();
-      let currentUserName = userName;
-      if (user) {
-        const { data: profile } = await supabase
-          .from('profiles')
-          .select('name')
-          .eq('id', user.id)
-          .maybeSingle();
-        currentUserName = profile?.name || 'Usuário';
-      }
-
-      const newHistory: InspectionHistoryEvent[] = [
-        ...history,
-        { timestamp: now, action: 'started', user_name: currentUserName }
-      ];
-
-      const { error } = await supabase
-        .from('inspections')
-        .update({ 
-          status: 'in_progress',
-          started_at: now,
-          history: JSON.parse(JSON.stringify(newHistory))
-        })
-        .eq('id', inspection.id);
-
-      if (error) throw error;
-
-      // Update local state first before any async operations
-      setHistory(newHistory);
-      setLocalStatus('in_progress');
-      
-      toast.success('Inspeção iniciada!');
-      
-      // Notify parent to refresh list but don't close this view
-      // Use setTimeout to avoid state update conflicts
-      setTimeout(() => {
-        onUpdate(false);
-      }, 100);
-    } catch (error) {
-      console.error('Error starting inspection:', error);
-      toast.error('Erro ao iniciar inspeção');
-      setShowStartConfirmation(false);
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
-
-  const handleStartClick = () => {
-    setShowStartConfirmation(true);
+    // IMMEDIATE local state update - user sees response instantly
+    const newHistory: InspectionHistoryEvent[] = [
+      ...history,
+      { timestamp: now, action: 'started', user_name: userName }
+    ];
+    
+    setLocalStatus('in_progress');
+    setHistory(newHistory);
+    setIsSubmitting(true);
+    
+    toast.success('Inspeção iniciada!');
+    
+    // Background save - fire and forget, don't block UI
+    supabase
+      .from('inspections')
+      .update({ 
+        status: 'in_progress',
+        started_at: now,
+        history: JSON.parse(JSON.stringify(newHistory))
+      })
+      .eq('id', inspection.id)
+      .then(({ error }) => {
+        if (error) {
+          console.error('Error saving inspection start:', error);
+          // Don't revert UI - let user continue working
+        }
+        setIsSubmitting(false);
+      });
+    
+    // Notify parent in background - no waiting
+    setTimeout(() => onUpdate(false), 50);
   };
 
   const handleFinishInspection = async () => {
@@ -429,66 +396,6 @@ export function MobileInspectionDetail({
 
   return (
     <>
-      {/* Start Confirmation Modal */}
-      <AlertDialog open={showStartConfirmation} onOpenChange={setShowStartConfirmation}>
-        <AlertDialogContent className="max-w-[90vw] rounded-xl">
-          <AlertDialogHeader>
-            <AlertDialogTitle className="flex items-center gap-2">
-              <Play className="h-5 w-5 text-purple-600" />
-              Iniciar Inspeção?
-            </AlertDialogTitle>
-            <AlertDialogDescription className="text-left">
-              <span className="block mb-3">
-                Você está prestes a iniciar a inspeção de <strong>{inspection.property_name}</strong>.
-              </span>
-              
-              {/* Requirements summary */}
-              <div className="bg-muted/50 rounded-lg p-3 space-y-2">
-                <p className="text-sm font-medium text-foreground flex items-center gap-2">
-                  <Shield className="h-4 w-4 text-purple-600" />
-                  Requisitos para finalizar:
-                </p>
-                <ul className="text-xs space-y-1 text-muted-foreground ml-6">
-                  {hasChecklist && (
-                    <li className="flex items-center gap-2">
-                      <ListChecks className="h-3 w-3" />
-                      Checklist com {checklistState.length} ite{checklistState.length === 1 ? 'm' : 'ns'} para verificar
-                    </li>
-                  )}
-                  <li className="flex items-center gap-2">
-                    <CheckCircle2 className="h-3 w-3" />
-                    Marcar como verificado
-                  </li>
-                  <li className="flex items-center gap-2">
-                    <MessageSquare className="h-3 w-3" />
-                    Comentário obrigatório (mín. 10 caracteres)
-                  </li>
-                  {requirePhoto && (
-                    <li className="flex items-center gap-2 text-amber-600">
-                      <Camera className="h-3 w-3" />
-                      Foto obrigatória nesta propriedade
-                    </li>
-                  )}
-                </ul>
-              </div>
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter className="flex-row gap-2">
-            <AlertDialogCancel className="flex-1 m-0">Não</AlertDialogCancel>
-            <AlertDialogAction 
-              onClick={handleStartInspection}
-              disabled={isSubmitting}
-              className="flex-1 m-0 bg-purple-600 hover:bg-purple-700"
-            >
-              {isSubmitting ? (
-                <Loader2 className="h-4 w-4 animate-spin mr-2" />
-              ) : null}
-              Sim, Iniciar
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
-
       <div className="fixed inset-0 z-[200] bg-background flex flex-col">
       {/* Header */}
       <div className="flex items-center justify-between p-4 border-b bg-purple-600 text-white">
@@ -903,7 +810,7 @@ export function MobileInspectionDetail({
       <div className="absolute bottom-0 left-0 right-0 p-4 bg-background border-t shadow-lg z-10">
         {isScheduled ? (
           <Button 
-            onClick={handleStartClick}
+            onClick={handleStartInspection}
             disabled={isSubmitting}
             className="w-full h-14 text-lg font-bold bg-purple-600 hover:bg-purple-700"
           >
