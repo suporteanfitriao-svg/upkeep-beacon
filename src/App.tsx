@@ -27,6 +27,7 @@ import Onboarding from "./pages/Onboarding";
 import SuperAdmin from "./pages/SuperAdmin";
 import Settings from "./pages/Settings";
 import Install from "./pages/Install";
+import CleaningHistory from "./pages/CleaningHistory";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -166,7 +167,14 @@ const App = () => (
                 }
               />
               <Route path="/install" element={<Install />} />
-              {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
+              <Route
+                path="/historico-limpezas"
+                element={
+                  <ProtectedRoute>
+                    <CleaningHistory />
+                  </ProtectedRoute>
+                }
+              />
               <Route path="*" element={<NotFound />} />
             </Routes>
           </ViewModeProvider>

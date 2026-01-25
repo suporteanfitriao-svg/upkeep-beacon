@@ -32,7 +32,6 @@ import { MobileInfiniteDayStrip } from './mobile/MobileInfiniteDayStrip';
 import { MobileAgendaFilterTabs, AgendaViewMode } from './mobile/MobileAgendaFilterTabs';
 import { MobileMonthlyHistory } from './mobile/MobileMonthlyHistory';
 import { MobileOverdueDrawer } from './mobile/MobileOverdueDrawer';
-import { MobileCompletedSchedulesSection } from './mobile/MobileCompletedSchedulesSection';
 import { CleanerInspection } from '@/hooks/useCleanerInspections';
 
 interface MobileDashboardProps {
@@ -772,11 +771,24 @@ export function MobileDashboard({ schedules, onScheduleClick, onStartCleaning, o
             {/* Monthly History */}
             <MobileMonthlyHistory schedules={schedules} />
 
-            {/* Completed Schedules Section */}
-            <MobileCompletedSchedulesSection 
-              schedules={schedules} 
-              onScheduleClick={onScheduleClick} 
-            />
+            {/* Completed Schedules - Link to History Page */}
+            <button
+              onClick={() => navigate('/historico-limpezas')}
+              className="w-full mb-3 p-4 rounded-2xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 shadow-sm text-left transition-all hover:shadow-md active:scale-[0.99]"
+            >
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="h-10 w-10 rounded-xl bg-slate-100 dark:bg-slate-700 flex items-center justify-center">
+                    <ClipboardCheck className="w-5 h-5 text-slate-500" />
+                  </div>
+                  <div>
+                    <p className="text-sm font-semibold text-foreground">Histórico de Limpezas</p>
+                    <p className="text-xs text-muted-foreground">Ver todas as limpezas concluídas</p>
+                  </div>
+                </div>
+                <ChevronRight className="w-5 h-5 text-muted-foreground" />
+              </div>
+            </button>
 
             {/* Payment Cards */}
             <CleanerPaymentCards teamMemberId={teamMemberId} period={paymentPeriod} />
