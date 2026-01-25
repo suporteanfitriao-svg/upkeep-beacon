@@ -94,10 +94,10 @@ export function useCleanerInspections() {
     try {
       setLoading(true);
       
+      // Include completed inspections to show them dimmed on their scheduled day
       let query = supabase
         .from('inspections')
         .select('*, properties(image_url)')
-        .in('status', ['scheduled', 'in_progress'])
         .order('scheduled_date', { ascending: true });
 
       // Cleaners only see their assigned inspections
@@ -168,12 +168,12 @@ export function useCleanerInspections() {
 
       if (error) throw error;
 
-      // Update local state
+      // Update local state - keep completed inspections to show them dimmed
       setInspections(prev => 
         prev.map(i => i.id === inspectionId 
           ? { ...i, status: newStatus, ...(newStatus === 'completed' ? { completed_at: updateData.completed_at as string } : {}) }
           : i
-        ).filter(i => newStatus !== 'completed' || i.id !== inspectionId) // Remove completed from list
+        )
       );
 
       return true;

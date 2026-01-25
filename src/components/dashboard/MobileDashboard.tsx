@@ -263,12 +263,12 @@ export function MobileDashboard({ schedules, onScheduleClick, onStartCleaning, o
   }, [schedules, selectedDate]);
 
   const dayIndicators = useMemo(() => {
-    const indicators: Record<string, { pending: number; completed: number; gold: number; inspections: number }> = {};
+    const indicators: Record<string, { pending: number; completed: number; gold: number; inspections: number; completedInspections: number }> = {};
     
     schedules.forEach(s => {
       const dateKey = format(s.checkOut, 'yyyy-MM-dd');
       if (!indicators[dateKey]) {
-        indicators[dateKey] = { pending: 0, completed: 0, gold: 0, inspections: 0 };
+        indicators[dateKey] = { pending: 0, completed: 0, gold: 0, inspections: 0, completedInspections: 0 };
       }
       if (s.status === 'completed') {
         indicators[dateKey].completed++;
@@ -282,10 +282,12 @@ export function MobileDashboard({ schedules, onScheduleClick, onStartCleaning, o
     inspections.forEach(i => {
       const dateKey = i.scheduled_date;
       if (!indicators[dateKey]) {
-        indicators[dateKey] = { pending: 0, completed: 0, gold: 0, inspections: 0 };
+        indicators[dateKey] = { pending: 0, completed: 0, gold: 0, inspections: 0, completedInspections: 0 };
       }
       if (i.status === 'scheduled' || i.status === 'in_progress') {
         indicators[dateKey].inspections++;
+      } else if (i.status === 'completed') {
+        indicators[dateKey].completedInspections++;
       }
     });
     
@@ -338,6 +340,10 @@ export function MobileDashboard({ schedules, onScheduleClick, onStartCleaning, o
   );
   const inProgressInspections = useMemo(() => 
     selectedDayInspections.filter(i => i.status === 'in_progress'),
+    [selectedDayInspections]
+  );
+  const completedInspections = useMemo(() => 
+    selectedDayInspections.filter(i => i.status === 'completed'),
     [selectedDayInspections]
   );
 
@@ -1106,6 +1112,16 @@ export function MobileDashboard({ schedules, onScheduleClick, onStartCleaning, o
                     onScheduleClick={onScheduleClick}
                     loadingScheduleId={loadingScheduleId}
                   />
+
+                  {/* Completed Inspections - Show dimmed at the end */}
+                  {completedInspections.map(inspection => (
+                    <MobileInspectionCard
+                      key={inspection.id}
+                      inspection={inspection}
+                      variant="completed"
+                      onOpenDetail={(i) => setSelectedInspection(i)}
+                    />
+                  ))}
                 </div>
 
                 {/* Tomorrow Section */}
