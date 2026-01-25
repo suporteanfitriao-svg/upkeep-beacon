@@ -1,14 +1,30 @@
 import { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { format, startOfMonth, endOfMonth, differenceInMinutes, isWithinInterval, subMonths } from 'date-fns';
+import { format, startOfMonth, endOfMonth, differenceInMinutes, isWithinInterval, subMonths, setMonth, setYear, getYear, getMonth } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { ArrowLeft, Calendar, Clock, Camera, AlertTriangle, Building2, ChevronLeft, ChevronRight, TrendingUp, BarChart3 } from 'lucide-react';
+import { ArrowLeft, Calendar, Clock, Camera, AlertTriangle, Building2, ChevronLeft, ChevronRight, TrendingUp, BarChart3, ChevronDown } from 'lucide-react';
 import { useSchedules } from '@/hooks/useSchedules';
 import { Schedule } from '@/types/scheduling';
 import { cn } from '@/lib/utils';
 import { ScheduleDetailReadOnly } from '@/components/reports/ScheduleDetailReadOnly';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
 const ITEMS_PER_PAGE = 10;
+
+const MONTHS = [
+  { value: 0, label: 'Janeiro' },
+  { value: 1, label: 'Fevereiro' },
+  { value: 2, label: 'Março' },
+  { value: 3, label: 'Abril' },
+  { value: 4, label: 'Maio' },
+  { value: 5, label: 'Junho' },
+  { value: 6, label: 'Julho' },
+  { value: 7, label: 'Agosto' },
+  { value: 8, label: 'Setembro' },
+  { value: 9, label: 'Outubro' },
+  { value: 10, label: 'Novembro' },
+  { value: 11, label: 'Dezembro' },
+];
 
 function formatDuration(startAt: Date | undefined, endAt: Date | undefined): string {
   if (!startAt || !endAt) return '-';
@@ -26,12 +42,23 @@ export default function CleaningHistory() {
   const { schedules, loading } = useSchedules();
   const [currentPage, setCurrentPage] = useState(1);
   const [selectedSchedule, setSelectedSchedule] = useState<Schedule | null>(null);
+  
+  // Filter states
+  const now = new Date();
+  const [selectedMonth, setSelectedMonth] = useState<number>(getMonth(now));
+  const [selectedYear, setSelectedYear] = useState<number>(getYear(now));
 
-  // Filter completed schedules from current month
+  // Generate available years (current year and 2 previous years)
+  const availableYears = useMemo(() => {
+    const currentYear = getYear(new Date());
+    return [currentYear, currentYear - 1, currentYear - 2];
+  }, []);
+
+  // Filter completed schedules by selected month/year
   const completedSchedules = useMemo(() => {
-    const now = new Date();
-    const monthStart = startOfMonth(now);
-    const monthEnd = endOfMonth(now);
+    const filterDate = setYear(setMonth(new Date(), selectedMonth), selectedYear);
+    const monthStart = startOfMonth(filterDate);
+    const monthEnd = endOfMonth(filterDate);
 
     return schedules
       .filter(s => {
@@ -45,15 +72,16 @@ export default function CleaningHistory() {
         const bEnd = b.endAt?.getTime() || 0;
         return bEnd - aEnd; // Most recent first
       });
-  }, [schedules]);
+  }, [schedules, selectedMonth, selectedYear]);
 
-  // Calculate stats for the current month
+  // Calculate stats for the selected month
   const monthStats = useMemo(() => {
-    const now = new Date();
-    const monthStart = startOfMonth(now);
-    const monthEnd = endOfMonth(now);
-    const prevMonthStart = startOfMonth(subMonths(now, 1));
-    const prevMonthEnd = endOfMonth(subMonths(now, 1));
+    const filterDate = setYear(setMonth(new Date(), selectedMonth), selectedYear);
+    const monthStart = startOfMonth(filterDate);
+    const monthEnd = endOfMonth(filterDate);
+    const prevMonthDate = subMonths(filterDate, 1);
+    const prevMonthStart = startOfMonth(prevMonthDate);
+    const prevMonthEnd = endOfMonth(prevMonthDate);
 
     const thisMonthCompleted = schedules.filter(s => 
       s.status === 'completed' && 
@@ -93,7 +121,18 @@ export default function CleaningHistory() {
       growth,
       prevMonthTotal: prevMonthCompleted.length
     };
-  }, [schedules]);
+  }, [schedules, selectedMonth, selectedYear]);
+
+  // Reset page when filters change
+  const handleMonthChange = (value: string) => {
+    setSelectedMonth(parseInt(value));
+    setCurrentPage(1);
+  };
+
+  const handleYearChange = (value: string) => {
+    setSelectedYear(parseInt(value));
+    setCurrentPage(1);
+  };
 
   // Pagination
   const totalPages = Math.ceil(completedSchedules.length / ITEMS_PER_PAGE);
@@ -132,11 +171,40 @@ export default function CleaningHistory() {
           <div>
             <h1 className="text-lg font-bold text-foreground">Histórico de Limpezas</h1>
             <p className="text-xs text-muted-foreground">
-              {format(new Date(), "MMMM 'de' yyyy", { locale: ptBR })} • {completedSchedules.length} concluídas
+              {completedSchedules.length} concluídas
             </p>
           </div>
         </div>
       </header>
+
+      {/* Month/Year Filters */}
+      <div className="px-4 pt-4 flex gap-2">
+        <Select value={selectedMonth.toString()} onValueChange={handleMonthChange}>
+          <SelectTrigger className="flex-1 bg-white dark:bg-slate-800">
+            <SelectValue placeholder="Mês" />
+          </SelectTrigger>
+          <SelectContent className="bg-white dark:bg-slate-800 z-50">
+            {MONTHS.map((month) => (
+              <SelectItem key={month.value} value={month.value.toString()}>
+                {month.label}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+        
+        <Select value={selectedYear.toString()} onValueChange={handleYearChange}>
+          <SelectTrigger className="w-28 bg-white dark:bg-slate-800">
+            <SelectValue placeholder="Ano" />
+          </SelectTrigger>
+          <SelectContent className="bg-white dark:bg-slate-800 z-50">
+            {availableYears.map((year) => (
+              <SelectItem key={year} value={year.toString()}>
+                {year}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
 
       {/* Content */}
       <main className="px-4 py-4 pb-24">
