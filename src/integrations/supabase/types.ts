@@ -45,10 +45,24 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "auto_release_logs_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: false
+            referencedRelation: "properties_public"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "auto_release_logs_schedule_id_fkey"
             columns: ["schedule_id"]
             isOneToOne: false
             referencedRelation: "schedules"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "auto_release_logs_schedule_id_fkey"
+            columns: ["schedule_id"]
+            isOneToOne: false
+            referencedRelation: "schedules_public"
             referencedColumns: ["id"]
           },
         ]
@@ -140,10 +154,24 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "cleaning_rates_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: false
+            referencedRelation: "properties_public"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "cleaning_rates_team_member_id_fkey"
             columns: ["team_member_id"]
             isOneToOne: false
             referencedRelation: "team_members"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "cleaning_rates_team_member_id_fkey"
+            columns: ["team_member_id"]
+            isOneToOne: false
+            referencedRelation: "team_members_public"
             referencedColumns: ["id"]
           },
         ]
@@ -302,6 +330,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "inspections_assigned_to_fkey"
+            columns: ["assigned_to"]
+            isOneToOne: false
+            referencedRelation: "team_members_public"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "inspections_checklist_id_fkey"
             columns: ["checklist_id"]
             isOneToOne: false
@@ -316,10 +351,24 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "inspections_completed_by_fkey"
+            columns: ["completed_by"]
+            isOneToOne: false
+            referencedRelation: "team_members_public"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "inspections_property_id_fkey"
             columns: ["property_id"]
             isOneToOne: false
             referencedRelation: "properties"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "inspections_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: false
+            referencedRelation: "properties_public"
             referencedColumns: ["id"]
           },
         ]
@@ -364,6 +413,13 @@ export type Database = {
             columns: ["property_id"]
             isOneToOne: false
             referencedRelation: "properties"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "inventory_categories_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: false
+            referencedRelation: "properties_public"
             referencedColumns: ["id"]
           },
         ]
@@ -544,6 +600,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "maintenance_issues_assigned_to_fkey"
+            columns: ["assigned_to"]
+            isOneToOne: false
+            referencedRelation: "team_members_public"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "maintenance_issues_property_id_fkey"
             columns: ["property_id"]
             isOneToOne: false
@@ -551,10 +614,24 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "maintenance_issues_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: false
+            referencedRelation: "properties_public"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "maintenance_issues_schedule_id_fkey"
             columns: ["schedule_id"]
             isOneToOne: false
             referencedRelation: "schedules"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "maintenance_issues_schedule_id_fkey"
+            columns: ["schedule_id"]
+            isOneToOne: false
+            referencedRelation: "schedules_public"
             referencedColumns: ["id"]
           },
         ]
@@ -644,6 +721,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "password_audit_logs_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: false
+            referencedRelation: "properties_public"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "password_audit_logs_schedule_id_fkey"
             columns: ["schedule_id"]
             isOneToOne: false
@@ -651,10 +735,24 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "password_audit_logs_schedule_id_fkey"
+            columns: ["schedule_id"]
+            isOneToOne: false
+            referencedRelation: "schedules_public"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "password_audit_logs_team_member_id_fkey"
             columns: ["team_member_id"]
             isOneToOne: false
             referencedRelation: "team_members"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "password_audit_logs_team_member_id_fkey"
+            columns: ["team_member_id"]
+            isOneToOne: false
+            referencedRelation: "team_members_public"
             referencedColumns: ["id"]
           },
         ]
@@ -711,6 +809,13 @@ export type Database = {
             columns: ["team_member_id"]
             isOneToOne: false
             referencedRelation: "team_members"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "profiles_team_member_id_fkey"
+            columns: ["team_member_id"]
+            isOneToOne: false
+            referencedRelation: "team_members_public"
             referencedColumns: ["id"]
           },
         ]
@@ -829,6 +934,13 @@ export type Database = {
             referencedRelation: "properties"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "property_checklists_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: false
+            referencedRelation: "properties_public"
+            referencedColumns: ["id"]
+          },
         ]
       }
       property_config_audit_logs: {
@@ -874,10 +986,24 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "property_config_audit_logs_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: false
+            referencedRelation: "properties_public"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "property_config_audit_logs_team_member_id_fkey"
             columns: ["team_member_id"]
             isOneToOne: false
             referencedRelation: "team_members"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "property_config_audit_logs_team_member_id_fkey"
+            columns: ["team_member_id"]
+            isOneToOne: false
+            referencedRelation: "team_members_public"
             referencedColumns: ["id"]
           },
         ]
@@ -922,6 +1048,13 @@ export type Database = {
             columns: ["property_id"]
             isOneToOne: false
             referencedRelation: "properties"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "property_ical_sources_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: false
+            referencedRelation: "properties_public"
             referencedColumns: ["id"]
           },
         ]
@@ -978,6 +1111,13 @@ export type Database = {
             columns: ["property_id"]
             isOneToOne: false
             referencedRelation: "properties"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "reservations_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: false
+            referencedRelation: "properties_public"
             referencedColumns: ["id"]
           },
         ]
@@ -1100,6 +1240,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "schedules_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: false
+            referencedRelation: "properties_public"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "schedules_reservation_id_fkey"
             columns: ["reservation_id"]
             isOneToOne: true
@@ -1113,7 +1260,53 @@ export type Database = {
             referencedRelation: "team_members"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "schedules_responsible_team_member_id_fkey"
+            columns: ["responsible_team_member_id"]
+            isOneToOne: false
+            referencedRelation: "team_members_public"
+            referencedColumns: ["id"]
+          },
         ]
+      }
+      security_audit_logs: {
+        Row: {
+          action: string
+          created_at: string
+          details: Json | null
+          id: string
+          ip_address: string | null
+          resource_id: string | null
+          resource_type: string
+          team_member_id: string | null
+          user_agent: string | null
+          user_id: string | null
+        }
+        Insert: {
+          action: string
+          created_at?: string
+          details?: Json | null
+          id?: string
+          ip_address?: string | null
+          resource_id?: string | null
+          resource_type: string
+          team_member_id?: string | null
+          user_agent?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          action?: string
+          created_at?: string
+          details?: Json | null
+          id?: string
+          ip_address?: string | null
+          resource_id?: string | null
+          resource_type?: string
+          team_member_id?: string | null
+          user_agent?: string | null
+          user_id?: string | null
+        }
+        Relationships: []
       }
       team_member_audit_logs: {
         Row: {
@@ -1148,6 +1341,13 @@ export type Database = {
             referencedRelation: "team_members"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "team_member_audit_logs_team_member_id_fkey"
+            columns: ["team_member_id"]
+            isOneToOne: false
+            referencedRelation: "team_members_public"
+            referencedColumns: ["id"]
+          },
         ]
       }
       team_member_properties: {
@@ -1178,10 +1378,24 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "team_member_properties_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: false
+            referencedRelation: "properties_public"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "team_member_properties_team_member_id_fkey"
             columns: ["team_member_id"]
             isOneToOne: false
             referencedRelation: "team_members"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "team_member_properties_team_member_id_fkey"
+            columns: ["team_member_id"]
+            isOneToOne: false
+            referencedRelation: "team_members_public"
             referencedColumns: ["id"]
           },
         ]
@@ -1320,7 +1534,264 @@ export type Database = {
       }
     }
     Views: {
-      [_ in never]: never
+      properties_public: {
+        Row: {
+          address: string | null
+          auto_release_before_checkout_enabled: boolean | null
+          auto_release_before_checkout_minutes: number | null
+          auto_release_on_checkout: boolean | null
+          created_at: string | null
+          default_check_in_time: string | null
+          default_check_out_time: string | null
+          id: string | null
+          image_url: string | null
+          is_active: boolean | null
+          latitude: number | null
+          longitude: number | null
+          name: string | null
+          password_mode:
+            | Database["public"]["Enums"]["property_password_mode"]
+            | null
+          property_code: string | null
+          require_checklist: boolean | null
+          require_photo_for_inspections: boolean | null
+          require_photo_for_issues: boolean | null
+          require_photo_per_category: boolean | null
+          updated_at: string | null
+        }
+        Insert: {
+          address?: string | null
+          auto_release_before_checkout_enabled?: boolean | null
+          auto_release_before_checkout_minutes?: number | null
+          auto_release_on_checkout?: boolean | null
+          created_at?: string | null
+          default_check_in_time?: string | null
+          default_check_out_time?: string | null
+          id?: string | null
+          image_url?: string | null
+          is_active?: boolean | null
+          latitude?: number | null
+          longitude?: number | null
+          name?: string | null
+          password_mode?:
+            | Database["public"]["Enums"]["property_password_mode"]
+            | null
+          property_code?: string | null
+          require_checklist?: boolean | null
+          require_photo_for_inspections?: boolean | null
+          require_photo_for_issues?: boolean | null
+          require_photo_per_category?: boolean | null
+          updated_at?: string | null
+        }
+        Update: {
+          address?: string | null
+          auto_release_before_checkout_enabled?: boolean | null
+          auto_release_before_checkout_minutes?: number | null
+          auto_release_on_checkout?: boolean | null
+          created_at?: string | null
+          default_check_in_time?: string | null
+          default_check_out_time?: string | null
+          id?: string | null
+          image_url?: string | null
+          is_active?: boolean | null
+          latitude?: number | null
+          longitude?: number | null
+          name?: string | null
+          password_mode?:
+            | Database["public"]["Enums"]["property_password_mode"]
+            | null
+          property_code?: string | null
+          require_checklist?: boolean | null
+          require_photo_for_inspections?: boolean | null
+          require_photo_for_issues?: boolean | null
+          require_photo_per_category?: boolean | null
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
+      schedules_public: {
+        Row: {
+          ack_by_team_members: Json | null
+          admin_revert_reason: string | null
+          category_photos: Json | null
+          check_in_time: string | null
+          check_out_time: string | null
+          checklist_loaded_at: string | null
+          checklist_state: Json | null
+          checklists: Json | null
+          cleaner_avatar: string | null
+          cleaner_name: string | null
+          cleaner_observations: string | null
+          created_at: string | null
+          end_at: string | null
+          estimated_duration: number | null
+          guest_name: string | null
+          history: Json | null
+          id: string | null
+          important_info: string | null
+          is_active: boolean | null
+          listing_name: string | null
+          maintenance_issues: Json | null
+          maintenance_status: string | null
+          notes: string | null
+          number_of_guests: number | null
+          priority: string | null
+          property_address: string | null
+          property_id: string | null
+          property_name: string | null
+          reservation_id: string | null
+          responsible_team_member_id: string | null
+          start_at: string | null
+          status: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          ack_by_team_members?: Json | null
+          admin_revert_reason?: string | null
+          category_photos?: Json | null
+          check_in_time?: string | null
+          check_out_time?: string | null
+          checklist_loaded_at?: string | null
+          checklist_state?: Json | null
+          checklists?: Json | null
+          cleaner_avatar?: string | null
+          cleaner_name?: string | null
+          cleaner_observations?: string | null
+          created_at?: string | null
+          end_at?: string | null
+          estimated_duration?: number | null
+          guest_name?: string | null
+          history?: Json | null
+          id?: string | null
+          important_info?: string | null
+          is_active?: boolean | null
+          listing_name?: string | null
+          maintenance_issues?: Json | null
+          maintenance_status?: string | null
+          notes?: string | null
+          number_of_guests?: number | null
+          priority?: string | null
+          property_address?: string | null
+          property_id?: string | null
+          property_name?: string | null
+          reservation_id?: string | null
+          responsible_team_member_id?: string | null
+          start_at?: string | null
+          status?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          ack_by_team_members?: Json | null
+          admin_revert_reason?: string | null
+          category_photos?: Json | null
+          check_in_time?: string | null
+          check_out_time?: string | null
+          checklist_loaded_at?: string | null
+          checklist_state?: Json | null
+          checklists?: Json | null
+          cleaner_avatar?: string | null
+          cleaner_name?: string | null
+          cleaner_observations?: string | null
+          created_at?: string | null
+          end_at?: string | null
+          estimated_duration?: number | null
+          guest_name?: string | null
+          history?: Json | null
+          id?: string | null
+          important_info?: string | null
+          is_active?: boolean | null
+          listing_name?: string | null
+          maintenance_issues?: Json | null
+          maintenance_status?: string | null
+          notes?: string | null
+          number_of_guests?: number | null
+          priority?: string | null
+          property_address?: string | null
+          property_id?: string | null
+          property_name?: string | null
+          reservation_id?: string | null
+          responsible_team_member_id?: string | null
+          start_at?: string | null
+          status?: string | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "schedules_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: false
+            referencedRelation: "properties"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "schedules_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: false
+            referencedRelation: "properties_public"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "schedules_reservation_id_fkey"
+            columns: ["reservation_id"]
+            isOneToOne: true
+            referencedRelation: "reservations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "schedules_responsible_team_member_id_fkey"
+            columns: ["responsible_team_member_id"]
+            isOneToOne: false
+            referencedRelation: "team_members"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "schedules_responsible_team_member_id_fkey"
+            columns: ["responsible_team_member_id"]
+            isOneToOne: false
+            referencedRelation: "team_members_public"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      team_members_public: {
+        Row: {
+          activated_at: string | null
+          created_at: string | null
+          email: string | null
+          has_all_properties: boolean | null
+          id: string | null
+          is_active: boolean | null
+          name: string | null
+          role: Database["public"]["Enums"]["app_role"] | null
+          updated_at: string | null
+          user_id: string | null
+        }
+        Insert: {
+          activated_at?: string | null
+          created_at?: string | null
+          email?: string | null
+          has_all_properties?: boolean | null
+          id?: string | null
+          is_active?: boolean | null
+          name?: string | null
+          role?: Database["public"]["Enums"]["app_role"] | null
+          updated_at?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          activated_at?: string | null
+          created_at?: string | null
+          email?: string | null
+          has_all_properties?: boolean | null
+          id?: string | null
+          is_active?: boolean | null
+          name?: string | null
+          role?: Database["public"]["Enums"]["app_role"] | null
+          updated_at?: string | null
+          user_id?: string | null
+        }
+        Relationships: []
+      }
     }
     Functions: {
       append_schedule_history: {
@@ -1334,9 +1805,22 @@ export type Database = {
         }
         Returns: undefined
       }
+      can_access_team_member_sensitive_data: {
+        Args: { p_team_member_id: string }
+        Returns: boolean
+      }
       can_deactivate_checklist: {
         Args: { p_checklist_id?: string; p_property_id: string }
         Returns: Json
+      }
+      can_submit_to_waitlist: { Args: { p_email: string }; Returns: boolean }
+      get_property_password: {
+        Args: { p_property_id: string; p_schedule_id?: string }
+        Returns: string
+      }
+      get_schedule_password: {
+        Args: { p_schedule_id: string }
+        Returns: string
       }
       has_any_role: { Args: { _user_id: string }; Returns: boolean }
       has_property_access: { Args: { p_property_id: string }; Returns: boolean }
@@ -1364,6 +1848,19 @@ export type Database = {
           p_team_member_id: string
         }
         Returns: undefined
+      }
+      log_security_event: {
+        Args: {
+          p_action: string
+          p_details?: Json
+          p_resource_id?: string
+          p_resource_type: string
+        }
+        Returns: undefined
+      }
+      validate_input: {
+        Args: { p_allow_html?: boolean; p_input: string; p_max_length?: number }
+        Returns: string
       }
       validate_schedule_status_transition: {
         Args: {
