@@ -17,7 +17,7 @@ import {
 } from '@/components/ui/tooltip';
 import { DateRange } from 'react-day-picker';
 
-export type AdminAgendaViewMode = 'hoje' | 'amanha' | 'mes' | 'range';
+export type AdminAgendaViewMode = 'hoje' | 'amanha' | 'mes' | 'range' | 'dia';
 
 interface DayIndicators {
   pending: number;
@@ -42,6 +42,7 @@ interface MobileAdminFilterTabsProps {
   onMonthChange: (month: Date) => void;
   todayCount: FilterCount;
   tomorrowCount: FilterCount;
+  dayCount?: FilterCount;
   monthCount: FilterCount;
   rangeCount: FilterCount;
   dayIndicators?: Record<string, DayIndicators>;
@@ -109,6 +110,7 @@ export const MobileAdminFilterTabs = memo(function MobileAdminFilterTabs({
   onMonthChange,
   todayCount,
   tomorrowCount,
+  dayCount,
   monthCount,
   rangeCount,
   dayIndicators = {}
@@ -216,6 +218,19 @@ export const MobileAdminFilterTabs = memo(function MobileAdminFilterTabs({
         Amanhã
         <CountBadge count={tomorrowCount} isActive={viewMode === 'amanha'} />
       </button>
+
+      {/* Selected Day Button - Only shows when a specific day is selected (not today/tomorrow) */}
+      {viewMode === 'dia' && dayCount && (
+        <button
+          className={cn(
+            "relative px-4 py-2 rounded-full text-sm font-semibold transition-all whitespace-nowrap touch-manipulation",
+            "bg-primary text-white shadow-md"
+          )}
+        >
+          {format(selectedDate, 'dd/MM', { locale: ptBR })}
+          <CountBadge count={dayCount} isActive={true} />
+        </button>
+      )}
 
       {/* Mês Button */}
       <button
