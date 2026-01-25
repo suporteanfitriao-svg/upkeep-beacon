@@ -256,52 +256,84 @@ export function ScheduleDetailReadOnly({ schedule, onClose }: ScheduleDetailRead
             </section>
           )}
 
-          {/* History Section */}
-          {schedule.history && schedule.history.length > 0 && (
-            <section className="rounded-2xl bg-white dark:bg-[#2d3138] shadow-sm p-5 border border-slate-100 dark:border-slate-700">
-              <h3 className="text-sm font-bold uppercase tracking-wide text-slate-900 dark:text-white mb-4 flex items-center gap-2">
-                <span className="material-symbols-outlined text-primary text-[20px]">history</span>
-                Histórico Completo
-              </h3>
-              <div className="space-y-3">
-                {schedule.history.map((event, index) => (
-                  <div 
-                    key={index}
-                    className="flex items-start gap-3 p-3 rounded-xl bg-slate-50 dark:bg-slate-800/50 border border-slate-100 dark:border-slate-700"
-                  >
-                    <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
-                      <span className="material-symbols-outlined text-primary text-[16px]">
-                        {event.action === 'status_change' ? 'swap_horiz' : 
-                         event.action === 'categoria_checklist_completa' ? 'checklist' : 
-                         'edit'}
-                      </span>
+          {/* Simplified History Section - Only key timestamps */}
+          <section className="rounded-2xl bg-white dark:bg-[#2d3138] shadow-sm p-5 border border-slate-100 dark:border-slate-700">
+            <h3 className="text-sm font-bold uppercase tracking-wide text-slate-900 dark:text-white mb-4 flex items-center gap-2">
+              <span className="material-symbols-outlined text-primary text-[20px]">history</span>
+              Histórico
+            </h3>
+            <div className="space-y-3">
+              {/* Hora Liberada */}
+              {(() => {
+                const releasedEvent = schedule.history?.find(
+                  e => e.action === 'status_change' && e.to_status === 'released'
+                );
+                return (
+                  <div className="flex items-center gap-3 p-3 rounded-xl bg-slate-50 dark:bg-slate-800/50 border border-slate-100 dark:border-slate-700">
+                    <div className="w-8 h-8 rounded-full bg-emerald-100 dark:bg-emerald-900/30 flex items-center justify-center flex-shrink-0">
+                      <span className="material-symbols-outlined text-emerald-600 text-[16px]">lock_open</span>
                     </div>
                     <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium">
-                        {event.action === 'status_change' && event.from_status && event.to_status
-                          ? `Status alterado de "${event.from_status}" para "${event.to_status}"`
-                          : event.action === 'categoria_checklist_completa'
-                          ? `Categoria "${(event.payload as any)?.category_name || 'desconhecida'}" marcada como completa`
-                          : event.action}
+                      <p className="text-sm font-medium text-slate-900 dark:text-white">Hora Liberada</p>
+                      <p className="text-xs text-muted-foreground">
+                        {releasedEvent 
+                          ? format(new Date(releasedEvent.timestamp), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })
+                          : '--'}
                       </p>
-                      <div className="flex items-center gap-2 text-xs text-muted-foreground mt-1">
-                        {event.team_member_name && (
-                          <span className="flex items-center gap-1">
-                            <span className="material-symbols-outlined text-[12px]">person</span>
-                            {event.team_member_name}
-                          </span>
-                        )}
-                        <span className="flex items-center gap-1">
-                          <span className="material-symbols-outlined text-[12px]">schedule</span>
-                          {format(new Date(event.timestamp), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}
-                        </span>
-                      </div>
                     </div>
                   </div>
-                ))}
-              </div>
-            </section>
-          )}
+                );
+              })()}
+
+              {/* Hora Iniciada */}
+              {(() => {
+                const startedEvent = schedule.history?.find(
+                  e => e.action === 'status_change' && e.to_status === 'cleaning'
+                );
+                return (
+                  <div className="flex items-center gap-3 p-3 rounded-xl bg-slate-50 dark:bg-slate-800/50 border border-slate-100 dark:border-slate-700">
+                    <div className="w-8 h-8 rounded-full bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center flex-shrink-0">
+                      <span className="material-symbols-outlined text-blue-600 text-[16px]">play_arrow</span>
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium text-slate-900 dark:text-white">Hora Iniciada</p>
+                      <p className="text-xs text-muted-foreground">
+                        {startedEvent 
+                          ? format(new Date(startedEvent.timestamp), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })
+                          : schedule.startAt 
+                            ? format(schedule.startAt, "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })
+                            : '--'}
+                      </p>
+                    </div>
+                  </div>
+                );
+              })()}
+
+              {/* Hora Finalizada */}
+              {(() => {
+                const completedEvent = schedule.history?.find(
+                  e => e.action === 'status_change' && e.to_status === 'completed'
+                );
+                return (
+                  <div className="flex items-center gap-3 p-3 rounded-xl bg-slate-50 dark:bg-slate-800/50 border border-slate-100 dark:border-slate-700">
+                    <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
+                      <span className="material-symbols-outlined text-primary text-[16px]">check_circle</span>
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium text-slate-900 dark:text-white">Hora Finalizada</p>
+                      <p className="text-xs text-muted-foreground">
+                        {completedEvent 
+                          ? format(new Date(completedEvent.timestamp), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })
+                          : schedule.endAt 
+                            ? format(schedule.endAt, "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })
+                            : '--'}
+                      </p>
+                    </div>
+                  </div>
+                );
+              })()}
+            </div>
+          </section>
 
           {/* Notes Section */}
           {schedule.notes && (

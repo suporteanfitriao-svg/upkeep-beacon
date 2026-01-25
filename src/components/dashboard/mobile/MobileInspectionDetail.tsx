@@ -624,20 +624,20 @@ export function MobileInspectionDetail({
                     </div>
                   )}
 
-                  {/* Photo Grid */}
+                  {/* Photo Grid - Responsive Thumbnails */}
                   {photos.length > 0 && (
-                    <div className="grid grid-cols-3 gap-2">
+                    <div className="grid grid-cols-3 sm:grid-cols-4 gap-2">
                       {photos.map((photo, index) => (
-                        <div key={index} className="relative aspect-square">
+                        <div key={index} className="relative aspect-square w-full max-w-[120px]">
                           <img 
                             src={photo.url} 
                             alt={`Foto ${index + 1}`}
                             className="w-full h-full object-cover rounded-lg"
                           />
                           {photo.timestamp && (
-                            <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/70 to-transparent p-1.5 rounded-b-lg">
-                              <div className="flex items-center gap-1 text-[9px] text-white">
-                                <Clock className="h-2.5 w-2.5" />
+                            <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/70 to-transparent p-1 rounded-b-lg">
+                              <div className="flex items-center gap-0.5 text-[8px] text-white">
+                                <Clock className="h-2 w-2 flex-shrink-0" />
                                 <span className="truncate">
                                   {format(parseISO(photo.timestamp), "dd/MM HH:mm", { locale: ptBR })}
                                 </span>
@@ -646,9 +646,9 @@ export function MobileInspectionDetail({
                           )}
                           <button
                             onClick={() => handleRemovePhoto(index)}
-                            className="absolute -top-2 -right-2 h-6 w-6 bg-destructive text-destructive-foreground rounded-full flex items-center justify-center shadow-md"
+                            className="absolute -top-1.5 -right-1.5 h-5 w-5 bg-destructive text-destructive-foreground rounded-full flex items-center justify-center shadow-md"
                           >
-                            <Trash2 className="h-3 w-3" />
+                            <Trash2 className="h-2.5 w-2.5" />
                           </button>
                         </div>
                       ))}
