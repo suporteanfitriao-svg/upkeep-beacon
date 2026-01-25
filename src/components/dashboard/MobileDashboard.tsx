@@ -30,7 +30,7 @@ import { MobileInspectionCard } from './mobile/MobileInspectionCard';
 import { MobileInspectionDetail } from './mobile/MobileInspectionDetail';
 import { MobileInfiniteDayStrip } from './mobile/MobileInfiniteDayStrip';
 import { MobileAgendaFilterTabs, AgendaViewMode } from './mobile/MobileAgendaFilterTabs';
-import { MobileMonthlyHistory } from './mobile/MobileMonthlyHistory';
+// MobileMonthlyHistory moved to /historico-limpezas page only
 import { MobileOverdueDrawer } from './mobile/MobileOverdueDrawer';
 import { CleanerInspection } from '@/hooks/useCleanerInspections';
 
@@ -768,8 +768,7 @@ export function MobileDashboard({ schedules, onScheduleClick, onStartCleaning, o
               </div>
             </div>
 
-            {/* Monthly History */}
-            <MobileMonthlyHistory schedules={schedules} />
+            {/* Removed MobileMonthlyHistory from home - now only in /historico-limpezas */}
 
             {/* Completed Schedules - Link to History Page */}
             <button
