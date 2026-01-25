@@ -1084,25 +1084,39 @@ export function MobileDashboard({ schedules, onScheduleClick, onStartCleaning, o
                     </div>
                   )}
 
-                  {/* Scheduled Inspections - Memoized */}
-                  {scheduledInspections.map(inspection => (
-                    <MobileInspectionCard
-                      key={inspection.id}
-                      inspection={inspection}
-                      variant="scheduled"
-                      onOpenDetail={(i) => setSelectedInspection(i)}
-                    />
-                  ))}
-
-                  {/* In Progress Inspections - Memoized */}
-                  {inProgressInspections.map(inspection => (
-                    <MobileInspectionCard
-                      key={inspection.id}
-                      inspection={inspection}
-                      variant="inProgress"
-                      onOpenDetail={(i) => setSelectedInspection(i)}
-                    />
-                  ))}
+                  {/* Inspections Section - Limited to 6 cards max */}
+                  {(() => {
+                    const allInspections = [...scheduledInspections, ...inProgressInspections, ...completedInspections];
+                    const displayedInspections = allInspections.slice(0, 6);
+                    const hasMoreInspections = allInspections.length > 6;
+                    
+                    return (
+                      <>
+                        {displayedInspections.map(inspection => (
+                          <MobileInspectionCard
+                            key={inspection.id}
+                            inspection={inspection}
+                            variant={
+                              inspection.status === 'completed' ? 'completed' :
+                              inspection.status === 'in_progress' ? 'inProgress' : 'scheduled'
+                            }
+                            onOpenDetail={(i) => setSelectedInspection(i)}
+                          />
+                        ))}
+                        
+                        {hasMoreInspections && (
+                          <button
+                            onClick={() => navigate('/inspecoes')}
+                            className="w-full py-3 px-4 rounded-xl bg-purple-50 dark:bg-purple-900/20 border border-purple-200 dark:border-purple-800 text-purple-700 dark:text-purple-300 text-sm font-semibold flex items-center justify-center gap-2 transition-colors hover:bg-purple-100 dark:hover:bg-purple-900/30 active:scale-[0.98]"
+                          >
+                            <ClipboardCheck className="w-4 h-4" />
+                            Ver todas as {allInspections.length} inspeções
+                            <ChevronRight className="w-4 h-4" />
+                          </button>
+                        )}
+                      </>
+                    );
+                  })()}
 
                   {/* Schedule List - Memoized */}
                   <MobileScheduleList
@@ -1112,16 +1126,6 @@ export function MobileDashboard({ schedules, onScheduleClick, onStartCleaning, o
                     onScheduleClick={onScheduleClick}
                     loadingScheduleId={loadingScheduleId}
                   />
-
-                  {/* Completed Inspections - Show dimmed at the end */}
-                  {completedInspections.map(inspection => (
-                    <MobileInspectionCard
-                      key={inspection.id}
-                      inspection={inspection}
-                      variant="completed"
-                      onOpenDetail={(i) => setSelectedInspection(i)}
-                    />
-                  ))}
                 </div>
 
                 {/* Tomorrow Section */}
