@@ -12,7 +12,7 @@ import { useViewMode, ViewMode } from '@/hooks/useViewMode';
 import { MobileInfiniteDayStrip } from './MobileInfiniteDayStrip';
 import { MobileAdminFilterTabs, AdminAgendaViewMode } from './MobileAdminFilterTabs';
 import { MobileAdminScheduleCard } from './MobileAdminScheduleCard';
-import { Dialog, DialogContent } from '@/components/ui/dialog';
+
 import { LocationModal } from '../LocationModal';
 import { PasswordModal } from '../PasswordModal';
 import { useTeamMemberId } from '@/hooks/useTeamMemberId';
@@ -860,35 +860,29 @@ export function MobileAdminDashboard({
         </div>
       </nav>
 
-      {/* Modals */}
-      <Dialog open={locationModal.open} onOpenChange={(open) => !open && setLocationModal({ open: false, schedule: null })}>
-        <DialogContent className="max-w-md p-0 overflow-hidden">
-          {locationModal.schedule && (
-            <LocationModal
-              onClose={() => setLocationModal({ open: false, schedule: null })}
-              address={locationModal.schedule.propertyAddress || ''}
-              propertyName={locationModal.schedule.propertyName}
-            />
-          )}
-        </DialogContent>
-      </Dialog>
+      {/* Modals - Rendered directly without Dialog wrapper since they handle their own overlay */}
+      {locationModal.open && locationModal.schedule && (
+        <LocationModal
+          onClose={() => setLocationModal({ open: false, schedule: null })}
+          address={locationModal.schedule.propertyAddress || ''}
+          propertyName={locationModal.schedule.propertyName}
+          latitude={locationModal.schedule.propertyLatitude}
+          longitude={locationModal.schedule.propertyLongitude}
+        />
+      )}
 
-      <Dialog open={passwordModal.open} onOpenChange={(open) => !open && setPasswordModal({ open: false, schedule: null })}>
-        <DialogContent className="max-w-md p-0 overflow-hidden">
-          {passwordModal.schedule && (
-            <PasswordModal
-              onClose={() => setPasswordModal({ open: false, schedule: null })}
-              scheduleId={passwordModal.schedule.id}
-              propertyId={passwordModal.schedule.propertyId || ''}
-              propertyName={passwordModal.schedule.propertyName}
-              scheduleDate={format(passwordModal.schedule.checkOut, 'yyyy-MM-dd')}
-              scheduleStatus={passwordModal.schedule.status}
-              accessPassword={passwordModal.schedule.accessPassword}
-              teamMemberId={null}
-            />
-          )}
-        </DialogContent>
-      </Dialog>
+      {passwordModal.open && passwordModal.schedule && (
+        <PasswordModal
+          onClose={() => setPasswordModal({ open: false, schedule: null })}
+          scheduleId={passwordModal.schedule.id}
+          propertyId={passwordModal.schedule.propertyId || ''}
+          propertyName={passwordModal.schedule.propertyName}
+          scheduleDate={format(passwordModal.schedule.checkOut, 'yyyy-MM-dd')}
+          scheduleStatus={passwordModal.schedule.status}
+          accessPassword={passwordModal.schedule.accessPassword}
+          teamMemberId={null}
+        />
+      )}
     </div>
   );
 }
