@@ -821,6 +821,7 @@ const Index = () => {
             propertyFilter={propertyFilter}
             onPropertyFilterChange={setPropertyFilter}
             onUpdateSchedule={handleUpdateSchedule}
+            managerActiveTab={managerMobileTab === 'inicio' ? 'home' : 'calendario'}
           />
           {selectedSchedule && (
             <ScheduleDetail
@@ -829,6 +830,13 @@ const Index = () => {
               onUpdateSchedule={handleUpdateSchedule}
             />
           )}
+          <MobileBottomNav
+            activeTab={managerMobileTab}
+            onTabChange={(tab) => {
+              if (tab === 'menu') return;
+              setManagerMobileTab(tab);
+            }}
+          />
           <SyncOverlayInline isSyncing={isSyncing} />
         </>
       );
@@ -867,16 +875,14 @@ const Index = () => {
           )}
           <SyncOverlayInline isSyncing={isSyncing} />
 
-          {/* REGRA 4: Bottom nav específico para Anfitrião alternar Home/Calendário */}
-          {isManager && !isAdmin && !isSuperAdmin && (
-            <MobileBottomNav
-              activeTab={managerMobileTab}
-              onTabChange={(tab) => {
-                if (tab === 'menu') return;
-                setManagerMobileTab(tab);
-              }}
-            />
-          )}
+          {/* REGRA 4 & 6: Bottom nav para Anfitrião e Proprietário alternar Home/Calendário */}
+          <MobileBottomNav
+            activeTab={managerMobileTab}
+            onTabChange={(tab) => {
+              if (tab === 'menu') return;
+              setManagerMobileTab(tab);
+            }}
+          />
         </>
       );
     }
