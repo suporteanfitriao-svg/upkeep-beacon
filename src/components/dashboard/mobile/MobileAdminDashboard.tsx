@@ -1,7 +1,7 @@
 import { useState, useMemo, useCallback, useRef, useEffect } from 'react';
-import { format, formatDistanceToNow, isSameDay, startOfDay, addDays, startOfMonth, endOfMonth, isWithinInterval } from 'date-fns';
+import { format, formatDistanceToNow, isSameDay, startOfDay, addDays, startOfMonth, endOfMonth, isWithinInterval, parseISO } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { RefreshCw, ChevronRight, AlertTriangle, Building2, Calendar, Search, Clock, User, Check, Play, Eye, ChevronLeft, Settings, ClipboardList, X, ChevronDown } from 'lucide-react';
+import { RefreshCw, ChevronRight, AlertTriangle, Building2, Calendar, Search, Clock, User, Check, Play, Eye, ChevronLeft, Settings, ClipboardList, X, ChevronDown, Wrench } from 'lucide-react';
 import { Schedule, ScheduleStatus } from '@/types/scheduling';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
@@ -18,6 +18,7 @@ import { LocationModal } from '../LocationModal';
 import { PasswordModal } from '../PasswordModal';
 import { useTeamMemberId } from '@/hooks/useTeamMemberId';
 import { supabase } from '@/integrations/supabase/client';
+import { useMaintenanceIssues } from '@/hooks/useMaintenanceIssues';
 
 // REGRA 4: Tipos de aba para Anfitrião
 export type ManagerActiveTab = 'home' | 'calendario';
@@ -74,6 +75,7 @@ export function MobileAdminDashboard({
   const navigate = useNavigate();
   const { user } = useAuth();
   const { viewMode, setViewMode, canSwitchView, getViewLabel } = useViewMode();
+  const { issues: maintenanceIssues } = useMaintenanceIssues();
   const [showViewModeMenu, setShowViewModeMenu] = useState(false);
   const [completedPage, setCompletedPage] = useState(1);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -230,6 +232,67 @@ export function MobileAdminDashboard({
     const completed = dateFilteredSchedules.filter(s => s.status === 'completed').length;
     return { waiting, released, cleaning, completed, total: dateFilteredSchedules.length };
   }, [dateFilteredSchedules]);
+
+  // REGRA 1 & 2: Calcular avarias em aberto baseado no período ativo
+  const maintenanceStats = useMemo(() => {
+    const today = startOfDay(new Date());
+    const tomorrow = startOfDay(addDays(new Date(), 1));
+    const monthStart = startOfMonth(currentMonth);
+    const monthEnd = endOfMonth(currentMonth);
+    
+    // Filtrar apenas avarias não resolvidas
+    const openIssues = maintenanceIssues.filter(issue => issue.status !== 'resolved');
+    
+    // Filtrar por período baseado no agendaViewMode
+    let periodIssues = openIssues;
+    
+    if (agendaViewMode === 'hoje') {
+      periodIssues = openIssues.filter(issue => {
+        const issueDate = startOfDay(parseISO(issue.created_at));
+        return isSameDay(issueDate, today);
+      });
+    } else if (agendaViewMode === 'amanha') {
+      periodIssues = openIssues.filter(issue => {
+        const issueDate = startOfDay(parseISO(issue.created_at));
+        return isSameDay(issueDate, tomorrow);
+      });
+    } else if (agendaViewMode === 'dia') {
+      periodIssues = openIssues.filter(issue => {
+        const issueDate = startOfDay(parseISO(issue.created_at));
+        return isSameDay(issueDate, selectedDate);
+      });
+    } else if (agendaViewMode === 'mes') {
+      periodIssues = openIssues.filter(issue => {
+        const issueDate = parseISO(issue.created_at);
+        return issueDate >= monthStart && issueDate <= monthEnd;
+      });
+    }
+    
+    // Filtrar por propriedade se ativo
+    if (propertyFilter !== 'all') {
+      periodIssues = periodIssues.filter(issue => issue.property_id === propertyFilter);
+    }
+    
+    // REGRA 3.2: Avarias críticas = vinculadas a tarefas do dia ou check-in próximo
+    const criticalIssues = periodIssues.filter(issue => {
+      // Verificar se a avaria está vinculada a uma tarefa do dia
+      if (issue.schedule_id) {
+        const linkedSchedule = dateFilteredSchedules.find(s => s.id === issue.schedule_id);
+        if (linkedSchedule && isSameDay(linkedSchedule.checkIn, today)) {
+          return true;
+        }
+      }
+      // Ou se é de alta severidade
+      return issue.severity === 'high';
+    });
+    
+    return {
+      total: periodIssues.length,
+      critical: criticalIssues.length,
+      hasPending: periodIssues.length > 0,
+      hasCritical: criticalIssues.length > 0
+    };
+  }, [maintenanceIssues, agendaViewMode, currentMonth, selectedDate, propertyFilter, dateFilteredSchedules]);
 
   // Handle view mode change
   const handleAgendaViewModeChange = useCallback((mode: AdminAgendaViewMode) => {
@@ -694,6 +757,74 @@ export function MobileAdminDashboard({
               <span className="text-xs font-medium text-muted-foreground mt-1">Finalizadas</span>
             </button>
           </div>
+
+          {/* REGRA 1: Indicador de Avarias */}
+          <button
+            onClick={() => navigate('/manutencao')}
+            className={cn(
+              "mt-4 w-full p-4 rounded-xl border transition-all active:scale-[0.99]",
+              maintenanceStats.hasCritical
+                ? "bg-rose-50 dark:bg-rose-900/20 border-rose-300 dark:border-rose-700"
+                : maintenanceStats.hasPending
+                  ? "bg-amber-50 dark:bg-amber-900/20 border-amber-300 dark:border-amber-700"
+                  : "bg-muted/30 border-border"
+            )}
+          >
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className={cn(
+                  "w-10 h-10 rounded-full flex items-center justify-center",
+                  maintenanceStats.hasCritical
+                    ? "bg-rose-100 dark:bg-rose-900/40"
+                    : maintenanceStats.hasPending
+                      ? "bg-amber-100 dark:bg-amber-900/40"
+                      : "bg-muted"
+                )}>
+                  <Wrench className={cn(
+                    "w-5 h-5",
+                    maintenanceStats.hasCritical
+                      ? "text-rose-600 dark:text-rose-400"
+                      : maintenanceStats.hasPending
+                        ? "text-amber-600 dark:text-amber-400"
+                        : "text-muted-foreground"
+                  )} />
+                </div>
+                <div className="text-left">
+                  <p className={cn(
+                    "font-semibold text-sm",
+                    maintenanceStats.hasCritical
+                      ? "text-rose-700 dark:text-rose-300"
+                      : maintenanceStats.hasPending
+                        ? "text-amber-700 dark:text-amber-300"
+                        : "text-muted-foreground"
+                  )}>
+                    Avarias
+                  </p>
+                  <p className="text-[10px] text-muted-foreground">
+                    {maintenanceStats.total === 0 
+                      ? 'Nenhuma avaria em aberto'
+                      : maintenanceStats.hasCritical
+                        ? `${maintenanceStats.critical} crítica${maintenanceStats.critical > 1 ? 's' : ''}`
+                        : `${maintenanceStats.total} pendente${maintenanceStats.total > 1 ? 's' : ''}`
+                    }
+                  </p>
+                </div>
+              </div>
+              <div className="flex items-center gap-2">
+                {maintenanceStats.total > 0 && (
+                  <span className={cn(
+                    "text-2xl font-bold",
+                    maintenanceStats.hasCritical
+                      ? "text-rose-600 dark:text-rose-400"
+                      : "text-amber-600 dark:text-amber-400"
+                  )}>
+                    {maintenanceStats.total}
+                  </span>
+                )}
+                <ChevronRight className="w-5 h-5 text-muted-foreground" />
+              </div>
+            </div>
+          </button>
 
           {/* Alertas de atraso */}
           {stats.delayed > 0 && (
