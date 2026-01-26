@@ -21,6 +21,9 @@ verify_jwt = false
 [functions.admin-reset-password]
 verify_jwt = false
 
+[functions.admin-create-user]
+verify_jwt = false
+
 # Cron job para sincronizar reservas do iCal automaticamente a cada 15 minutos
 [[cron_jobs]]
 name = "sync-ical-frequent"
