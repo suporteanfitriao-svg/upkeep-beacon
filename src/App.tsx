@@ -8,6 +8,7 @@ import { ViewModeProvider } from "@/hooks/useViewMode";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
 import { AdminRoute } from "@/components/AdminRoute";
 import { SuperAdminRoute } from "@/components/SuperAdminRoute";
+import { CleanerRoute } from "@/components/CleanerRoute";
 import { InstallPrompt } from "@/components/pwa/InstallPrompt";
 import { PWAUpdateModal } from "@/components/pwa/PWAUpdateModal";
 import { usePWAUpdate } from "@/hooks/usePWAUpdate";
@@ -137,9 +138,9 @@ const App = () => (
               <Route
                 path="/mensagens"
                 element={
-                  <ProtectedRoute>
+                  <CleanerRoute>
                     <Messages />
-                  </ProtectedRoute>
+                  </CleanerRoute>
                 }
               />
               <Route
@@ -161,9 +162,9 @@ const App = () => (
               <Route
                 path="/configuracoes"
                 element={
-                  <ProtectedRoute>
+                  <CleanerRoute>
                     <Settings />
-                  </ProtectedRoute>
+                  </CleanerRoute>
                 }
               />
               <Route path="/install" element={<Install />} />

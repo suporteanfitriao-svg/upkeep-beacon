@@ -2,10 +2,7 @@ import {
   Home, 
   Building2, 
   ClipboardCheck, 
-  Building, 
   Users, 
-  Package, 
-  HelpCircle, 
   LogOut,
   UserCog,
   Wrench,
@@ -13,6 +10,7 @@ import {
 } from 'lucide-react';
 import { NavLink } from '@/components/NavLink';
 import { useAuth } from '@/hooks/useAuth';
+import { useUserRole } from '@/hooks/useUserRole';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 import {
@@ -28,23 +26,43 @@ import {
   useSidebar,
 } from '@/components/ui/sidebar';
 import { ViewModeSwitcher } from './ViewModeSwitcher';
+import { Skeleton } from '@/components/ui/skeleton';
 import logo from '@/assets/logo.png';
 
-const menuItems = [
+interface MenuItem {
+  title: string;
+  url: string;
+  icon: React.ComponentType<{ className?: string }>;
+  adminOnly?: boolean;
+  superAdminOnly?: boolean;
+}
+
+const allMenuItems: MenuItem[] = [
   { title: 'Inicio', url: '/', icon: Home },
-  { title: 'Propriedades', url: '/propriedades', icon: Building2 },
-  { title: 'Inspeção', url: '/inspecoes', icon: ClipboardCheck },
-  { title: 'Equipe', url: '/equipe', icon: Users },
-  { title: 'Relatórios', url: '/manutencao', icon: Wrench },
+  { title: 'Propriedades', url: '/propriedades', icon: Building2, adminOnly: true },
+  { title: 'Inspeção', url: '/inspecoes', icon: ClipboardCheck, adminOnly: true },
+  { title: 'Equipe', url: '/equipe', icon: Users, adminOnly: true },
+  { title: 'Relatórios', url: '/manutencao', icon: Wrench, adminOnly: true },
   { title: 'Minha Conta', url: '/minha-conta', icon: UserCog },
-  { title: 'Super Admin', url: '/super-admin', icon: Crown },
+  { title: 'Super Admin', url: '/super-admin', icon: Crown, superAdminOnly: true },
 ];
 
 export function AdminSidebar() {
   const { state } = useSidebar();
   const collapsed = state === 'collapsed';
   const { signOut } = useAuth();
+  const { isCleaner, isSuperAdmin, hasManagerAccess, loading: roleLoading } = useUserRole();
   const navigate = useNavigate();
+
+  // Filter menu items based on user role
+  const menuItems = allMenuItems.filter(item => {
+    // SuperAdmin-only items
+    if (item.superAdminOnly && !isSuperAdmin) return false;
+    // Admin-only items - hide for cleaners
+    if (item.adminOnly && isCleaner) return false;
+    if (item.adminOnly && !hasManagerAccess) return false;
+    return true;
+  });
 
   const handleSignOut = async () => {
     await signOut();
@@ -67,28 +85,44 @@ export function AdminSidebar() {
 
       <SidebarContent className="px-4 py-6">
         {/* View Mode Switcher for SuperAdmin */}
-        <div className="mb-4">
-          <ViewModeSwitcher collapsed={collapsed} />
-        </div>
+        {isSuperAdmin && (
+          <div className="mb-4">
+            <ViewModeSwitcher collapsed={collapsed} />
+          </div>
+        )}
 
         <SidebarGroup>
           <SidebarGroupContent>
             <SidebarMenu className="space-y-2">
-              {menuItems.map((item) => (
-                <SidebarMenuItem key={item.title}>
-                  <SidebarMenuButton asChild tooltip={item.title}>
-                    <NavLink 
-                      to={item.url} 
-                      end={item.url === '/'} 
-                      className="flex items-center gap-4 px-4 py-3 rounded-xl transition-colors text-muted-foreground hover:bg-muted hover:text-primary"
-                      activeClassName="bg-primary/10 text-primary font-medium"
-                    >
-                      <item.icon className="h-5 w-5" />
-                      {!collapsed && <span>{item.title}</span>}
-                    </NavLink>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-              ))}
+              {roleLoading ? (
+                // Show skeleton while loading roles
+                <>
+                  {[1, 2, 3].map((i) => (
+                    <SidebarMenuItem key={i}>
+                      <div className="flex items-center gap-4 px-4 py-3">
+                        <Skeleton className="h-5 w-5 rounded" />
+                        {!collapsed && <Skeleton className="h-4 w-24" />}
+                      </div>
+                    </SidebarMenuItem>
+                  ))}
+                </>
+              ) : (
+                menuItems.map((item) => (
+                  <SidebarMenuItem key={item.title}>
+                    <SidebarMenuButton asChild tooltip={item.title}>
+                      <NavLink 
+                        to={item.url} 
+                        end={item.url === '/'} 
+                        className="flex items-center gap-4 px-4 py-3 rounded-xl transition-colors text-muted-foreground hover:bg-muted hover:text-primary"
+                        activeClassName="bg-primary/10 text-primary font-medium"
+                      >
+                        <item.icon className="h-5 w-5" />
+                        {!collapsed && <span>{item.title}</span>}
+                      </NavLink>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                ))
+              )}
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
