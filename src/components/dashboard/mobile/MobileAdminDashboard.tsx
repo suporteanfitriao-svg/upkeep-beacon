@@ -18,6 +18,9 @@ import { PasswordModal } from '../PasswordModal';
 import { useTeamMemberId } from '@/hooks/useTeamMemberId';
 import { supabase } from '@/integrations/supabase/client';
 
+// REGRA 4: Tipos de aba para Anfitrião
+export type ManagerActiveTab = 'home' | 'calendario';
+
 interface MobileAdminDashboardProps {
   schedules: Schedule[];
   filteredSchedules: Schedule[];
@@ -43,6 +46,8 @@ interface MobileAdminDashboardProps {
   propertyFilter?: string;
   onPropertyFilterChange?: (property: string) => void;
   onUpdateSchedule?: (schedule: Schedule) => void;
+  // REGRA 4: Aba ativa para Anfitrião (home = contadores, calendario = agenda)
+  managerActiveTab?: ManagerActiveTab;
 }
 
 export function MobileAdminDashboard({
@@ -63,6 +68,7 @@ export function MobileAdminDashboard({
   propertyFilter = 'all',
   onPropertyFilterChange,
   onUpdateSchedule,
+  managerActiveTab = 'calendario', // Default to calendario for backwards compatibility
 }: MobileAdminDashboardProps) {
   const navigate = useNavigate();
   const { user } = useAuth();
@@ -413,457 +419,542 @@ export function MobileAdminDashboard({
           </p>
         )}
 
-        {/* Search and Property Filter Row */}
-        <div className="mt-3 flex items-center gap-2">
-          {/* Property Filter Dropdown */}
-          <div className="relative flex-1">
-            <button 
-              onClick={() => setIsPropertyFilterOpen(!isPropertyFilterOpen)}
-              className={cn(
-                "w-full flex items-center gap-2 px-3 py-2.5 rounded-xl text-sm font-medium transition-all",
-                propertyFilter !== 'all'
-                  ? "bg-primary/10 text-primary border border-primary/30"
-                  : "bg-card border border-border text-muted-foreground"
-              )}
-            >
-              <Building2 className="w-4 h-4 shrink-0" />
-              <span className="truncate flex-1 text-left">
-                {propertyFilter === 'all' 
-                  ? 'Todos Imóveis' 
-                  : properties.find(p => p.id === propertyFilter)?.name || 'Selecionar'}
-              </span>
-              <ChevronDown className={cn("w-4 h-4 shrink-0 transition-transform", isPropertyFilterOpen && "rotate-180")} />
-            </button>
-            
-            {isPropertyFilterOpen && (
-              <>
-                <div 
-                  className="fixed inset-0 z-40" 
-                  onClick={() => setIsPropertyFilterOpen(false)} 
-                />
-                <div className="absolute top-full left-0 right-0 mt-1 z-50 bg-card border border-border rounded-xl shadow-xl max-h-64 overflow-y-auto">
-                  <button
-                    onClick={() => {
-                      onPropertyFilterChange?.('all');
-                      setIsPropertyFilterOpen(false);
-                    }}
-                    className={cn(
-                      "w-full text-left px-4 py-3 text-sm font-medium transition-colors flex items-center gap-2",
-                      propertyFilter === 'all' 
-                        ? "bg-primary/10 text-primary" 
-                        : "hover:bg-muted text-foreground"
-                    )}
-                  >
-                    <Building2 className="w-4 h-4" />
-                    Todos Imóveis
-                    {propertyFilter === 'all' && <Check className="w-4 h-4 ml-auto" />}
-                  </button>
-                  <div className="border-t border-border" />
-                  {properties.map((property) => (
-                    <button
-                      key={property.id}
-                      onClick={() => {
-                        onPropertyFilterChange?.(property.id);
-                        setIsPropertyFilterOpen(false);
-                      }}
-                      className={cn(
-                        "w-full text-left px-4 py-3 text-sm transition-colors flex items-center gap-2",
-                        propertyFilter === property.id 
-                          ? "bg-primary/10 text-primary font-medium" 
-                          : "hover:bg-muted text-foreground"
-                      )}
-                    >
-                      {property.name}
-                      {propertyFilter === property.id && <Check className="w-4 h-4 ml-auto" />}
-                    </button>
-                  ))}
-                </div>
-              </>
-            )}
-          </div>
-          
-          {/* Search Toggle */}
-          {isSearchOpen ? (
-            <div className="flex items-center gap-2 flex-1 animate-in slide-in-from-right-4">
+        {/* REGRA 4: Aba Calendário do Anfitrião - Filtros e busca no header */}
+        {managerActiveTab === 'calendario' && (
+          <>
+            {/* Search and Property Filter Row */}
+            <div className="mt-3 flex items-center gap-2">
+              {/* Property Filter Dropdown */}
               <div className="relative flex-1">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                <input
-                  ref={searchInputRef}
-                  type="text"
-                  value={searchQuery}
-                  onChange={(e) => onSearchChange(e.target.value)}
-                  placeholder="Buscar imóvel ou responsável..."
-                  className="w-full pl-9 pr-8 py-2.5 rounded-xl text-sm bg-card border border-border focus:border-primary focus:ring-1 focus:ring-primary outline-none"
-                />
-                {searchQuery && (
-                  <button
-                    onClick={() => onSearchChange('')}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-                  >
-                    <X className="w-4 h-4" />
-                  </button>
+                <button 
+                  onClick={() => setIsPropertyFilterOpen(!isPropertyFilterOpen)}
+                  className={cn(
+                    "w-full flex items-center gap-2 px-3 py-2.5 rounded-xl text-sm font-medium transition-all",
+                    propertyFilter !== 'all'
+                      ? "bg-primary/10 text-primary border border-primary/30"
+                      : "bg-card border border-border text-muted-foreground"
+                  )}
+                >
+                  <Building2 className="w-4 h-4 shrink-0" />
+                  <span className="truncate flex-1 text-left">
+                    {propertyFilter === 'all' 
+                      ? 'Todos Imóveis' 
+                      : properties.find(p => p.id === propertyFilter)?.name || 'Selecionar'}
+                  </span>
+                  <ChevronDown className={cn("w-4 h-4 shrink-0 transition-transform", isPropertyFilterOpen && "rotate-180")} />
+                </button>
+                
+                {isPropertyFilterOpen && (
+                  <>
+                    <div 
+                      className="fixed inset-0 z-40" 
+                      onClick={() => setIsPropertyFilterOpen(false)} 
+                    />
+                    <div className="absolute top-full left-0 right-0 mt-1 z-50 bg-card border border-border rounded-xl shadow-xl max-h-64 overflow-y-auto">
+                      <button
+                        onClick={() => {
+                          onPropertyFilterChange?.('all');
+                          setIsPropertyFilterOpen(false);
+                        }}
+                        className={cn(
+                          "w-full text-left px-4 py-3 text-sm font-medium transition-colors flex items-center gap-2",
+                          propertyFilter === 'all' 
+                            ? "bg-primary/10 text-primary" 
+                            : "hover:bg-muted text-foreground"
+                        )}
+                      >
+                        <Building2 className="w-4 h-4" />
+                        Todos Imóveis
+                        {propertyFilter === 'all' && <Check className="w-4 h-4 ml-auto" />}
+                      </button>
+                      <div className="border-t border-border" />
+                      {properties.map((property) => (
+                        <button
+                          key={property.id}
+                          onClick={() => {
+                            onPropertyFilterChange?.(property.id);
+                            setIsPropertyFilterOpen(false);
+                          }}
+                          className={cn(
+                            "w-full text-left px-4 py-3 text-sm transition-colors flex items-center gap-2",
+                            propertyFilter === property.id 
+                              ? "bg-primary/10 text-primary font-medium" 
+                              : "hover:bg-muted text-foreground"
+                          )}
+                        >
+                          {property.name}
+                          {propertyFilter === property.id && <Check className="w-4 h-4 ml-auto" />}
+                        </button>
+                      ))}
+                    </div>
+                  </>
                 )}
               </div>
-              <button
-                onClick={() => {
-                  setIsSearchOpen(false);
-                  onSearchChange('');
-                }}
-                className="flex h-10 w-10 items-center justify-center rounded-xl bg-muted text-muted-foreground hover:text-foreground transition-colors"
-              >
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-          ) : (
-            <button
-              onClick={() => setIsSearchOpen(true)}
-              className={cn(
-                "flex h-10 w-10 items-center justify-center rounded-xl transition-colors shrink-0",
-                searchQuery 
-                  ? "bg-primary text-primary-foreground" 
-                  : "bg-card border border-border text-muted-foreground hover:text-foreground"
+              
+              {/* Search Toggle */}
+              {isSearchOpen ? (
+                <div className="flex items-center gap-2 flex-1 animate-in slide-in-from-right-4">
+                  <div className="relative flex-1">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                    <input
+                      ref={searchInputRef}
+                      type="text"
+                      value={searchQuery}
+                      onChange={(e) => onSearchChange(e.target.value)}
+                      placeholder="Buscar imóvel ou responsável..."
+                      className="w-full pl-9 pr-8 py-2.5 rounded-xl text-sm bg-card border border-border focus:border-primary focus:ring-1 focus:ring-primary outline-none"
+                    />
+                    {searchQuery && (
+                      <button
+                        onClick={() => onSearchChange('')}
+                        className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                      >
+                        <X className="w-4 h-4" />
+                      </button>
+                    )}
+                  </div>
+                  <button
+                    onClick={() => {
+                      setIsSearchOpen(false);
+                      onSearchChange('');
+                    }}
+                    className="flex h-10 w-10 items-center justify-center rounded-xl bg-muted text-muted-foreground hover:text-foreground transition-colors"
+                  >
+                    <X className="w-5 h-5" />
+                  </button>
+                </div>
+              ) : (
+                <button
+                  onClick={() => setIsSearchOpen(true)}
+                  className={cn(
+                    "flex h-10 w-10 items-center justify-center rounded-xl transition-colors shrink-0",
+                    searchQuery 
+                      ? "bg-primary text-primary-foreground" 
+                      : "bg-card border border-border text-muted-foreground hover:text-foreground"
+                  )}
+                >
+                  <Search className="w-5 h-5" />
+                </button>
               )}
-            >
-              <Search className="w-5 h-5" />
-            </button>
-          )}
-        </div>
+            </div>
 
-        {/* Active Filters Indicator */}
-        {(propertyFilter !== 'all' || searchQuery) && (
-          <div className="mt-2 flex items-center gap-2 flex-wrap">
-            {propertyFilter !== 'all' && (
-              <span className="inline-flex items-center gap-1 px-2 py-1 rounded-lg bg-primary/10 text-primary text-xs font-medium">
-                <Building2 className="w-3 h-3" />
-                {properties.find(p => p.id === propertyFilter)?.name}
-                <button 
-                  onClick={() => onPropertyFilterChange?.('all')}
-                  className="ml-1 hover:bg-primary/20 rounded p-0.5"
-                >
-                  <X className="w-3 h-3" />
-                </button>
-              </span>
+            {/* Active Filters Indicator */}
+            {(propertyFilter !== 'all' || searchQuery) && (
+              <div className="mt-2 flex items-center gap-2 flex-wrap">
+                {propertyFilter !== 'all' && (
+                  <span className="inline-flex items-center gap-1 px-2 py-1 rounded-lg bg-primary/10 text-primary text-xs font-medium">
+                    <Building2 className="w-3 h-3" />
+                    {properties.find(p => p.id === propertyFilter)?.name}
+                    <button 
+                      onClick={() => onPropertyFilterChange?.('all')}
+                      className="ml-1 hover:bg-primary/20 rounded p-0.5"
+                    >
+                      <X className="w-3 h-3" />
+                    </button>
+                  </span>
+                )}
+                {searchQuery && (
+                  <span className="inline-flex items-center gap-1 px-2 py-1 rounded-lg bg-primary/10 text-primary text-xs font-medium">
+                    <Search className="w-3 h-3" />
+                    "{searchQuery}"
+                    <button 
+                      onClick={() => onSearchChange('')}
+                      className="ml-1 hover:bg-primary/20 rounded p-0.5"
+                    >
+                      <X className="w-3 h-3" />
+                    </button>
+                  </span>
+                )}
+              </div>
             )}
-            {searchQuery && (
-              <span className="inline-flex items-center gap-1 px-2 py-1 rounded-lg bg-primary/10 text-primary text-xs font-medium">
-                <Search className="w-3 h-3" />
-                "{searchQuery}"
-                <button 
-                  onClick={() => onSearchChange('')}
-                  className="ml-1 hover:bg-primary/20 rounded p-0.5"
-                >
-                  <X className="w-3 h-3" />
-                </button>
-              </span>
-            )}
-          </div>
+
+            {/* Filter Tabs - Updated with counters */}
+            <div className="mt-3 overflow-visible">
+              <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider mb-1.5 block">Filtros</span>
+              <div className="pt-2 overflow-visible">
+                <MobileAdminFilterTabs
+                  viewMode={agendaViewMode}
+                  selectedDate={selectedDate}
+                  dateRange={dateRange}
+                  onViewModeChange={handleAgendaViewModeChange}
+                  onDateSelect={handleDateSelect}
+                  onDateRangeSelect={handleDateRangeSelect}
+                  onMonthChange={setCurrentMonth}
+                  todayCount={filterCounts.today}
+                  tomorrowCount={filterCounts.tomorrow}
+                  dayCount={filterCounts.day}
+                  monthCount={filterCounts.month}
+                  rangeCount={filterCounts.range}
+                  dayIndicators={dayIndicators}
+                />
+              </div>
+            </div>
+          </>
         )}
-
-        {/* Filter Tabs - Updated with counters */}
-        <div className="mt-3 overflow-visible">
-          <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider mb-1.5 block">Filtros</span>
-          <div className="pt-2 overflow-visible">
-            <MobileAdminFilterTabs
-              viewMode={agendaViewMode}
-              selectedDate={selectedDate}
-              dateRange={dateRange}
-              onViewModeChange={handleAgendaViewModeChange}
-              onDateSelect={handleDateSelect}
-              onDateRangeSelect={handleDateRangeSelect}
-              onMonthChange={setCurrentMonth}
-              todayCount={filterCounts.today}
-              tomorrowCount={filterCounts.tomorrow}
-              dayCount={filterCounts.day}
-              monthCount={filterCounts.month}
-              rangeCount={filterCounts.range}
-              dayIndicators={dayIndicators}
-            />
-          </div>
-        </div>
       </header>
 
-      {/* Section: Status Counters - Top priority */}
-      <section className="px-4 pt-3 pb-2">
-        <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider mb-2 block">Selecione Contadores</span>
-        <div className="grid grid-cols-4 gap-2">
-          <button
-            onClick={() => onStatusFilterChange(statusFilter === 'waiting' ? 'all' : 'waiting')}
-            className={cn(
-              "flex flex-col items-center justify-center p-2.5 rounded-xl transition-all",
-              statusFilter === 'waiting' 
-                ? "bg-orange-100 dark:bg-orange-900/30 ring-2 ring-orange-400" 
-                : "bg-white dark:bg-slate-800 shadow-sm"
-            )}
-          >
-            <span className="text-lg font-bold text-orange-600 dark:text-orange-400">{periodStats.waiting}</span>
-            <span className="text-[9px] text-muted-foreground">Aguardando</span>
-          </button>
-          <button
-            onClick={() => onStatusFilterChange(statusFilter === 'released' ? 'all' : 'released')}
-            className={cn(
-              "flex flex-col items-center justify-center p-2.5 rounded-xl transition-all",
-              statusFilter === 'released' 
-                ? "bg-primary/20 ring-2 ring-primary" 
-                : "bg-white dark:bg-slate-800 shadow-sm"
-            )}
-          >
-            <span className="text-lg font-bold text-primary">{periodStats.released}</span>
-            <span className="text-[9px] text-muted-foreground">Liberado</span>
-          </button>
-          <button
-            onClick={() => onStatusFilterChange(statusFilter === 'cleaning' ? 'all' : 'cleaning')}
-            className={cn(
-              "flex flex-col items-center justify-center p-2.5 rounded-xl transition-all",
-              statusFilter === 'cleaning' 
-                ? "bg-[#E0C051]/20 ring-2 ring-[#E0C051]" 
-                : "bg-white dark:bg-slate-800 shadow-sm"
-            )}
-          >
-            <span className="text-lg font-bold text-[#E0C051]">{periodStats.cleaning}</span>
-            <span className="text-[9px] text-muted-foreground">Limpando</span>
-          </button>
-          <button
-            onClick={() => onStatusFilterChange(statusFilter === 'completed' ? 'all' : 'completed')}
-            className={cn(
-              "flex flex-col items-center justify-center p-2.5 rounded-xl transition-all",
-              statusFilter === 'completed' 
-                ? "bg-emerald-100 dark:bg-emerald-900/30 ring-2 ring-emerald-400" 
-                : "bg-white dark:bg-slate-800 shadow-sm"
-            )}
-          >
-            <span className="text-lg font-bold text-emerald-600 dark:text-emerald-400">{periodStats.completed}</span>
-            <span className="text-[9px] text-muted-foreground">Finalizado</span>
-          </button>
-        </div>
-      </section>
+      {/* REGRA 4: Aba Home do Anfitrião - Apenas contadores de status */}
+      {managerActiveTab === 'home' && (
+        <section className="flex-1 px-4 pt-6 pb-24">
+          <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider mb-3 block">Resumo de Hoje</span>
+          <div className="grid grid-cols-2 gap-3">
+            <button
+              onClick={() => {
+                onStatusFilterChange('waiting');
+                // Note: This doesn't switch tabs automatically - user needs to go to Calendário
+              }}
+              className="flex flex-col items-center justify-center p-6 rounded-2xl bg-card border border-border shadow-sm transition-all hover:shadow-md active:scale-[0.98]"
+            >
+              <span className="text-4xl font-bold text-orange-600 dark:text-orange-400">{stats.waiting}</span>
+              <span className="text-sm font-medium text-muted-foreground mt-1">Aguardando</span>
+            </button>
+            <button
+              onClick={() => onStatusFilterChange('released')}
+              className="flex flex-col items-center justify-center p-6 rounded-2xl bg-card border border-border shadow-sm transition-all hover:shadow-md active:scale-[0.98]"
+            >
+              <span className="text-4xl font-bold text-primary">{stats.released}</span>
+              <span className="text-sm font-medium text-muted-foreground mt-1">Liberado</span>
+            </button>
+            <button
+              onClick={() => onStatusFilterChange('cleaning')}
+              className="flex flex-col items-center justify-center p-6 rounded-2xl bg-card border border-border shadow-sm transition-all hover:shadow-md active:scale-[0.98]"
+            >
+              <span className="text-4xl font-bold text-[#E0C051]">{stats.cleaning}</span>
+              <span className="text-sm font-medium text-muted-foreground mt-1">Limpando</span>
+            </button>
+            <button
+              onClick={() => onStatusFilterChange('completed')}
+              className="flex flex-col items-center justify-center p-6 rounded-2xl bg-card border border-border shadow-sm transition-all hover:shadow-md active:scale-[0.98]"
+            >
+              <span className="text-4xl font-bold text-emerald-600 dark:text-emerald-400">{stats.completed}</span>
+              <span className="text-sm font-medium text-muted-foreground mt-1">Finalizado</span>
+            </button>
+          </div>
 
-      {/* Section: Calendar Strip - Show for hoje, amanha modes */}
-      {(agendaViewMode === 'hoje' || agendaViewMode === 'amanha') && (
-        <section className="border-t border-b border-slate-200 dark:border-slate-700/50 py-2">
-          <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider mb-2 px-4 block">Dia</span>
-          <MobileInfiniteDayStrip
-            selectedDate={selectedDate}
-            onDateSelect={(date) => {
-              handleDateSelect(date);
-              // Auto-switch to 'hoje' if picking today, or 'amanha' if picking tomorrow
-              const today = startOfDay(new Date());
-              const tomorrow = startOfDay(addDays(new Date(), 1));
-              if (isSameDay(date, today)) {
-                setAgendaViewMode('hoje');
-              } else if (isSameDay(date, tomorrow)) {
-                setAgendaViewMode('amanha');
-              }
-            }}
-            dayIndicators={dayIndicators}
-          />
+          {/* Quick Stats Summary */}
+          <div className="mt-6 p-4 rounded-xl bg-muted/50 border border-border">
+            <div className="flex items-center justify-between">
+              <span className="text-sm font-medium text-foreground">Total de Tarefas</span>
+              <span className="text-lg font-bold text-foreground">
+                {stats.waiting + stats.released + stats.cleaning + stats.completed}
+              </span>
+            </div>
+            {stats.delayed > 0 && (
+              <div className="mt-2 flex items-center gap-2 text-rose-600 dark:text-rose-400">
+                <AlertTriangle className="w-4 h-4" />
+                <span className="text-sm font-medium">{stats.delayed} em atraso</span>
+              </div>
+            )}
+          </div>
+
+          {/* Cleaning Time Alerts - Show on Home too */}
+          {cleaningTimeAlerts.length > 0 && (
+            <div className="mt-6">
+              <div className="flex items-center gap-2 mb-3">
+                <AlertTriangle className="w-4 h-4 text-rose-500" />
+                <span className="text-xs font-bold text-rose-600 dark:text-rose-400 uppercase tracking-wider">
+                  Alertas de Tempo ({cleaningTimeAlerts.length})
+                </span>
+              </div>
+              <div className="space-y-2">
+                {cleaningTimeAlerts.slice(0, 3).map((alert) => {
+                  const formatAlertTime = (minutes: number) => {
+                    if (minutes < 0) {
+                      const absMinutes = Math.abs(minutes);
+                      const hours = Math.floor(absMinutes / 60);
+                      const mins = absMinutes % 60;
+                      if (hours > 0) return `+${hours}h ${mins > 0 ? `${mins}min ` : ''}excedido`;
+                      return `+${mins}min excedido`;
+                    }
+                    const hours = Math.floor(minutes / 60);
+                    const mins = minutes % 60;
+                    if (hours > 0) return `${hours}h${mins > 0 ? ` ${mins}min` : ''} restantes`;
+                    return `${mins}min restantes`;
+                  };
+
+                  return (
+                    <button
+                      key={alert.schedule.id}
+                      onClick={() => onScheduleClick(alert.schedule)}
+                      className={cn(
+                        "w-full p-3 rounded-xl text-left transition-all active:scale-[0.99]",
+                        alert.type === 'exceeding' 
+                          ? "bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800" 
+                          : "bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800"
+                      )}
+                    >
+                      <div className="flex items-center justify-between">
+                        <div className="flex-1 min-w-0">
+                          <p className="font-bold text-sm text-foreground truncate">{alert.schedule.propertyName}</p>
+                          <p className="text-[10px] text-muted-foreground">
+                            {alert.schedule.cleanerName || 'Não atribuído'}
+                          </p>
+                        </div>
+                        <div className={cn(
+                          "text-right flex-shrink-0 ml-2",
+                          alert.type === 'exceeding' ? "text-red-600 dark:text-red-400" : "text-amber-600 dark:text-amber-400"
+                        )}>
+                          <span className="text-xs font-bold whitespace-nowrap">
+                            {formatAlertTime(alert.minutesRemaining)}
+                          </span>
+                        </div>
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          )}
         </section>
       )}
 
-      {/* Cleaning Time Alerts */}
-      {cleaningTimeAlerts.length > 0 && (
-        <div className="px-4 py-2">
-          <div className="flex items-center gap-2 mb-2">
-            <AlertTriangle className="w-4 h-4 text-rose-500" />
-            <span className="text-xs font-bold text-rose-600 dark:text-rose-400">
-              ALERTAS DE TEMPO ({cleaningTimeAlerts.length})
-            </span>
-          </div>
-          <div className="space-y-2">
-            {cleaningTimeAlerts.slice(0, 2).map((alert) => {
-              // Format minutes to hours - same logic as CleaningTimeAlertBanner
-              const formatAlertTime = (minutes: number) => {
-                if (minutes < 0) {
-                  const absMinutes = Math.abs(minutes);
-                  const hours = Math.floor(absMinutes / 60);
-                  const mins = absMinutes % 60;
-                  if (hours > 0) {
-                    return `+${hours}h ${mins > 0 ? `${mins}min ` : ''}excedido`;
+      {/* REGRA 4: Aba Calendário do Anfitrião - Conteúdo principal */}
+      {managerActiveTab === 'calendario' && (
+        <>
+          {/* Section: Status Counters - Top priority */}
+          <section className="px-4 pt-3 pb-2">
+            <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider mb-2 block">Selecione Contadores</span>
+            <div className="grid grid-cols-4 gap-2">
+              <button
+                onClick={() => onStatusFilterChange(statusFilter === 'waiting' ? 'all' : 'waiting')}
+                className={cn(
+                  "flex flex-col items-center justify-center p-2.5 rounded-xl transition-all",
+                  statusFilter === 'waiting' 
+                    ? "bg-orange-100 dark:bg-orange-900/30 ring-2 ring-orange-400" 
+                    : "bg-card shadow-sm"
+                )}
+              >
+                <span className="text-lg font-bold text-orange-600 dark:text-orange-400">{periodStats.waiting}</span>
+                <span className="text-[9px] text-muted-foreground">Aguardando</span>
+              </button>
+              <button
+                onClick={() => onStatusFilterChange(statusFilter === 'released' ? 'all' : 'released')}
+                className={cn(
+                  "flex flex-col items-center justify-center p-2.5 rounded-xl transition-all",
+                  statusFilter === 'released' 
+                    ? "bg-primary/20 ring-2 ring-primary" 
+                    : "bg-card shadow-sm"
+                )}
+              >
+                <span className="text-lg font-bold text-primary">{periodStats.released}</span>
+                <span className="text-[9px] text-muted-foreground">Liberado</span>
+              </button>
+              <button
+                onClick={() => onStatusFilterChange(statusFilter === 'cleaning' ? 'all' : 'cleaning')}
+                className={cn(
+                  "flex flex-col items-center justify-center p-2.5 rounded-xl transition-all",
+                  statusFilter === 'cleaning' 
+                    ? "bg-[#E0C051]/20 ring-2 ring-[#E0C051]" 
+                    : "bg-card shadow-sm"
+                )}
+              >
+                <span className="text-lg font-bold text-[#E0C051]">{periodStats.cleaning}</span>
+                <span className="text-[9px] text-muted-foreground">Limpando</span>
+              </button>
+              <button
+                onClick={() => onStatusFilterChange(statusFilter === 'completed' ? 'all' : 'completed')}
+                className={cn(
+                  "flex flex-col items-center justify-center p-2.5 rounded-xl transition-all",
+                  statusFilter === 'completed' 
+                    ? "bg-emerald-100 dark:bg-emerald-900/30 ring-2 ring-emerald-400" 
+                    : "bg-card shadow-sm"
+                )}
+              >
+                <span className="text-lg font-bold text-emerald-600 dark:text-emerald-400">{periodStats.completed}</span>
+                <span className="text-[9px] text-muted-foreground">Finalizado</span>
+              </button>
+            </div>
+          </section>
+
+          {/* Section: Calendar Strip - Show for hoje, amanha modes */}
+          {(agendaViewMode === 'hoje' || agendaViewMode === 'amanha') && (
+            <section className="border-t border-b border-border py-2">
+              <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider mb-2 px-4 block">Dia</span>
+              <MobileInfiniteDayStrip
+                selectedDate={selectedDate}
+                onDateSelect={(date) => {
+                  handleDateSelect(date);
+                  const today = startOfDay(new Date());
+                  const tomorrow = startOfDay(addDays(new Date(), 1));
+                  if (isSameDay(date, today)) {
+                    setAgendaViewMode('hoje');
+                  } else if (isSameDay(date, tomorrow)) {
+                    setAgendaViewMode('amanha');
                   }
-                  return `+${mins}min excedido`;
-                }
-                const hours = Math.floor(minutes / 60);
-                const mins = minutes % 60;
-                if (hours > 0) {
-                  return `${hours}h${mins > 0 ? ` ${mins}min` : ''} restantes`;
-                }
-                return `${mins}min restantes`;
-              };
+                }}
+                dayIndicators={dayIndicators}
+              />
+            </section>
+          )}
 
-              return (
-                <button
-                  key={alert.schedule.id}
-                  onClick={() => onScheduleClick(alert.schedule)}
-                  className={cn(
-                    "w-full p-3 rounded-xl text-left transition-all active:scale-[0.99]",
-                    alert.type === 'exceeding' 
-                      ? "bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800" 
-                      : "bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800"
-                  )}
-                >
-                  <div className="flex items-center justify-between">
-                    <div className="flex-1 min-w-0">
-                      <p className="font-bold text-sm text-foreground truncate">{alert.schedule.propertyName}</p>
-                      <p className="text-[10px] text-muted-foreground">
-                        {alert.schedule.cleanerName || 'Não atribuído'} • Check-in {format(alert.checkInTime, 'HH:mm')}
-                      </p>
-                    </div>
-                    <div className={cn(
-                      "text-right flex-shrink-0 ml-2",
-                      alert.type === 'exceeding' ? "text-red-600 dark:text-red-400" : "text-amber-600 dark:text-amber-400"
-                    )}>
-                      <span className="text-xs font-bold whitespace-nowrap">
-                        {formatAlertTime(alert.minutesRemaining)}
-                      </span>
-                    </div>
+          {/* Cleaning Time Alerts */}
+          {cleaningTimeAlerts.length > 0 && (
+            <div className="px-4 py-2">
+              <div className="flex items-center gap-2 mb-2">
+                <AlertTriangle className="w-4 h-4 text-rose-500" />
+                <span className="text-xs font-bold text-rose-600 dark:text-rose-400">
+                  ALERTAS DE TEMPO ({cleaningTimeAlerts.length})
+                </span>
+              </div>
+              <div className="space-y-2">
+                {cleaningTimeAlerts.slice(0, 2).map((alert) => {
+                  const formatAlertTime = (minutes: number) => {
+                    if (minutes < 0) {
+                      const absMinutes = Math.abs(minutes);
+                      const hours = Math.floor(absMinutes / 60);
+                      const mins = absMinutes % 60;
+                      if (hours > 0) return `+${hours}h ${mins > 0 ? `${mins}min ` : ''}excedido`;
+                      return `+${mins}min excedido`;
+                    }
+                    const hours = Math.floor(minutes / 60);
+                    const mins = minutes % 60;
+                    if (hours > 0) return `${hours}h${mins > 0 ? ` ${mins}min` : ''} restantes`;
+                    return `${mins}min restantes`;
+                  };
+
+                  return (
+                    <button
+                      key={alert.schedule.id}
+                      onClick={() => onScheduleClick(alert.schedule)}
+                      className={cn(
+                        "w-full p-3 rounded-xl text-left transition-all active:scale-[0.99]",
+                        alert.type === 'exceeding' 
+                          ? "bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800" 
+                          : "bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800"
+                      )}
+                    >
+                      <div className="flex items-center justify-between">
+                        <div className="flex-1 min-w-0">
+                          <p className="font-bold text-sm text-foreground truncate">{alert.schedule.propertyName}</p>
+                          <p className="text-[10px] text-muted-foreground">
+                            {alert.schedule.cleanerName || 'Não atribuído'} • Check-in {format(alert.checkInTime, 'HH:mm')}
+                          </p>
+                        </div>
+                        <div className={cn(
+                          "text-right flex-shrink-0 ml-2",
+                          alert.type === 'exceeding' ? "text-red-600 dark:text-red-400" : "text-amber-600 dark:text-amber-400"
+                        )}>
+                          <span className="text-xs font-bold whitespace-nowrap">
+                            {formatAlertTime(alert.minutesRemaining)}
+                          </span>
+                        </div>
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
+          {/* Search Bar */}
+          <div className="px-4 py-2">
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+              <input
+                type="text"
+                placeholder="Buscar propriedade ou responsável..."
+                value={searchQuery}
+                onChange={(e) => onSearchChange(e.target.value)}
+                className="w-full pl-10 pr-4 py-2.5 rounded-xl bg-card border border-border text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/50"
+              />
+            </div>
+          </div>
+
+          {/* Schedule List */}
+          <div className="flex-1 px-4 py-2 pb-24 overflow-y-auto">
+            {dateFilteredSchedules.length === 0 ? (
+              <div className="flex flex-col items-center justify-center py-12 text-center">
+                <Calendar className="w-12 h-12 text-muted-foreground/50 mb-3" />
+                <p className="text-sm font-medium text-muted-foreground">Nenhum agendamento</p>
+                <p className="text-xs text-muted-foreground/70 mt-1">
+                  {agendaViewMode === 'hoje' 
+                    ? 'para hoje' 
+                    : agendaViewMode === 'amanha' 
+                      ? 'para amanhã' 
+                      : agendaViewMode === 'mes' 
+                        ? 'neste mês' 
+                        : 'neste período'}
+                </p>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {/* Active Schedules */}
+                {activeSchedules.map((schedule) => (
+                  <MobileAdminScheduleCard
+                    key={schedule.id}
+                    schedule={schedule}
+                    onScheduleClick={onScheduleClick}
+                    onViewAddress={handleViewAddress}
+                    onViewPassword={handleViewPassword}
+                    onAssignCleaner={handleAssignCleaner}
+                    onRelease={handleRelease}
+                    onScheduleUpdated={onUpdateSchedule}
+                  />
+                ))}
+                
+                {/* Separator */}
+                {activeSchedules.length > 0 && completedSchedules.length > 0 && (
+                  <div className="flex items-center gap-3 py-3">
+                    <div className="flex-1 h-px bg-border" />
+                    <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">
+                      Finalizados ({completedSchedules.length})
+                    </span>
+                    <div className="flex-1 h-px bg-border" />
                   </div>
-                </button>
-              );
-            })}
+                )}
+                
+                {/* Completed Schedules - Paginated */}
+                {paginatedCompleted.map((schedule) => (
+                  <MobileAdminScheduleCard
+                    key={schedule.id}
+                    schedule={schedule}
+                    onScheduleClick={onScheduleClick}
+                    onViewAddress={handleViewAddress}
+                    onViewPassword={handleViewPassword}
+                    onScheduleUpdated={onUpdateSchedule}
+                    isCompleted
+                  />
+                ))}
+                
+                {/* Pagination Controls */}
+                {totalCompletedPages > 1 && (
+                  <div className="flex items-center justify-center gap-4 py-3">
+                    <button
+                      onClick={() => setCompletedPage(p => Math.max(1, p - 1))}
+                      disabled={completedPage === 1}
+                      className={cn(
+                        "flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors",
+                        completedPage === 1
+                          ? "text-muted-foreground/50 cursor-not-allowed"
+                          : "text-primary hover:bg-primary/10"
+                      )}
+                    >
+                      <ChevronLeft className="w-4 h-4" />
+                      Anterior
+                    </button>
+                    <span className="text-xs text-muted-foreground">
+                      {completedPage} de {totalCompletedPages}
+                    </span>
+                    <button
+                      onClick={() => setCompletedPage(p => Math.min(totalCompletedPages, p + 1))}
+                      disabled={completedPage === totalCompletedPages}
+                      className={cn(
+                        "flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors",
+                        completedPage === totalCompletedPages
+                          ? "text-muted-foreground/50 cursor-not-allowed"
+                          : "text-primary hover:bg-primary/10"
+                      )}
+                    >
+                      Próximo
+                      <ChevronRight className="w-4 h-4" />
+                    </button>
+                  </div>
+                )}
+              </div>
+            )}
           </div>
-        </div>
+        </>
       )}
-
-      {/* Search Bar */}
-      <div className="px-4 py-2">
-        <div className="relative">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-          <input
-            type="text"
-            placeholder="Buscar propriedade ou responsável..."
-            value={searchQuery}
-            onChange={(e) => onSearchChange(e.target.value)}
-            className="w-full pl-10 pr-4 py-2.5 rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/50"
-          />
-        </div>
-      </div>
-
-      {/* Schedule List */}
-      <div className="flex-1 px-4 py-2 pb-24 overflow-y-auto">
-        {dateFilteredSchedules.length === 0 ? (
-          <div className="flex flex-col items-center justify-center py-12 text-center">
-            <Calendar className="w-12 h-12 text-muted-foreground/50 mb-3" />
-            <p className="text-sm font-medium text-muted-foreground">Nenhum agendamento</p>
-            <p className="text-xs text-muted-foreground/70 mt-1">
-              {agendaViewMode === 'hoje' 
-                ? 'para hoje' 
-                : agendaViewMode === 'amanha' 
-                  ? 'para amanhã' 
-                  : agendaViewMode === 'mes' 
-                    ? 'neste mês' 
-                    : 'neste período'}
-            </p>
-          </div>
-        ) : (
-          <div className="space-y-3">
-            {/* Active Schedules */}
-            {activeSchedules.map((schedule) => (
-              <MobileAdminScheduleCard
-                key={schedule.id}
-                schedule={schedule}
-                onScheduleClick={onScheduleClick}
-                onViewAddress={handleViewAddress}
-                onViewPassword={handleViewPassword}
-                onAssignCleaner={handleAssignCleaner}
-                onRelease={handleRelease}
-                onScheduleUpdated={onUpdateSchedule}
-              />
-            ))}
-            
-            {/* Separator */}
-            {activeSchedules.length > 0 && completedSchedules.length > 0 && (
-              <div className="flex items-center gap-3 py-3">
-                <div className="flex-1 h-px bg-slate-300 dark:bg-slate-600" />
-                <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">
-                  Finalizados ({completedSchedules.length})
-                </span>
-                <div className="flex-1 h-px bg-slate-300 dark:bg-slate-600" />
-              </div>
-            )}
-            
-            {/* Completed Schedules - Paginated */}
-            {paginatedCompleted.map((schedule) => (
-              <MobileAdminScheduleCard
-                key={schedule.id}
-                schedule={schedule}
-                onScheduleClick={onScheduleClick}
-                onViewAddress={handleViewAddress}
-                onViewPassword={handleViewPassword}
-                onScheduleUpdated={onUpdateSchedule}
-                isCompleted
-              />
-            ))}
-            
-            {/* Pagination Controls */}
-            {totalCompletedPages > 1 && (
-              <div className="flex items-center justify-center gap-4 py-3">
-                <button
-                  onClick={() => setCompletedPage(p => Math.max(1, p - 1))}
-                  disabled={completedPage === 1}
-                  className={cn(
-                    "flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors",
-                    completedPage === 1
-                      ? "text-muted-foreground/50 cursor-not-allowed"
-                      : "text-primary hover:bg-primary/10"
-                  )}
-                >
-                  <ChevronLeft className="w-4 h-4" />
-                  Anterior
-                </button>
-                <span className="text-xs text-muted-foreground">
-                  {completedPage} de {totalCompletedPages}
-                </span>
-                <button
-                  onClick={() => setCompletedPage(p => Math.min(totalCompletedPages, p + 1))}
-                  disabled={completedPage === totalCompletedPages}
-                  className={cn(
-                    "flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors",
-                    completedPage === totalCompletedPages
-                      ? "text-muted-foreground/50 cursor-not-allowed"
-                      : "text-primary hover:bg-primary/10"
-                  )}
-                >
-                  Próximo
-                  <ChevronRight className="w-4 h-4" />
-                </button>
-              </div>
-            )}
-          </div>
-        )}
-      </div>
-
-      {/* Bottom Navigation */}
-      <nav className="fixed bottom-0 left-0 right-0 bg-white dark:bg-slate-900 border-t border-slate-200 dark:border-slate-800 px-6 py-3 safe-area-bottom z-40">
-        <div className="flex items-center justify-around">
-          <button
-            onClick={() => navigate('/')}
-            className="flex flex-col items-center gap-1 text-primary"
-          >
-            <Building2 className="w-5 h-5" />
-            <span className="text-[10px] font-medium">Início</span>
-          </button>
-          <button
-            onClick={() => navigate('/propriedades')}
-            className="flex flex-col items-center gap-1 text-muted-foreground hover:text-foreground transition-colors"
-          >
-            <Building2 className="w-5 h-5" />
-            <span className="text-[10px] font-medium">Propriedades</span>
-          </button>
-          <button
-            onClick={() => navigate('/equipe')}
-            className="flex flex-col items-center gap-1 text-muted-foreground hover:text-foreground transition-colors"
-          >
-            <User className="w-5 h-5" />
-            <span className="text-[10px] font-medium">Equipe</span>
-          </button>
-          <button
-            onClick={() => navigate('/configuracoes')}
-            className="flex flex-col items-center gap-1 text-muted-foreground hover:text-foreground transition-colors"
-          >
-            <Settings className="w-5 h-5" />
-            <span className="text-[10px] font-medium">Config</span>
-          </button>
-        </div>
-      </nav>
 
       {/* Modals - Rendered directly without Dialog wrapper since they handle their own overlay */}
       {locationModal.open && locationModal.schedule && (

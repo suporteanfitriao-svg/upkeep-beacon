@@ -70,10 +70,14 @@ export const MobileBottomNav = memo(function MobileBottomNav({
           {/* Home */}
           <button 
             type="button"
-            onClick={(e) => { handleTabClick('inicio', e); }}
+            onClick={(e) => { 
+              e.preventDefault();
+              e.stopPropagation();
+              requestAnimationFrame(() => onTabChange('inicio'));
+            }}
             className={cn(
               "group flex flex-col items-center justify-center gap-0.5 p-2 min-w-[56px] transition-colors touch-manipulation select-none",
-              activeManagerTab === 'home' ? "text-primary" : "text-[#8A8B88] active:text-primary"
+              activeManagerTab === 'home' ? "text-primary" : "text-muted-foreground active:text-primary"
             )}
           >
             <span className={cn(
@@ -86,10 +90,14 @@ export const MobileBottomNav = memo(function MobileBottomNav({
           {/* Calendário */}
           <button 
             type="button"
-            onClick={(e) => { handleTabClick('agenda', e); }}
+            onClick={(e) => { 
+              e.preventDefault();
+              e.stopPropagation();
+              requestAnimationFrame(() => onTabChange('agenda'));
+            }}
             className={cn(
               "group flex flex-col items-center justify-center gap-0.5 p-2 min-w-[56px] transition-colors touch-manipulation select-none",
-              activeManagerTab === 'calendario' ? "text-primary" : "text-[#8A8B88] active:text-primary"
+              activeManagerTab === 'calendario' ? "text-primary" : "text-muted-foreground active:text-primary"
             )}
           >
             <span className={cn(

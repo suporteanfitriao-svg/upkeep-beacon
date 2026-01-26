@@ -15,7 +15,7 @@ import { AdminStatusCardsSkeleton } from '@/components/dashboard/AdminStatusCard
 import { AdminInspectionsSection } from '@/components/dashboard/AdminInspectionsSection';
 import { ScheduleDetail } from '@/components/dashboard/ScheduleDetail';
 import { MobileDashboard } from '@/components/dashboard/MobileDashboard';
-import { MobileAdminDashboard } from '@/components/dashboard/mobile/MobileAdminDashboard';
+import { MobileAdminDashboard, ManagerActiveTab } from '@/components/dashboard/mobile/MobileAdminDashboard';
 import { UpcomingSchedules } from '@/components/dashboard/UpcomingSchedules';
 import { CleaningTimeAlertBanner } from '@/components/dashboard/CleaningTimeAlertBanner';
 import { CleanerWebLayout } from '@/components/dashboard/CleanerWebLayout';
@@ -126,8 +126,12 @@ function SyncOverlayInline({ isSyncing }: { isSyncing: boolean }) {
 
 const Index = () => {
   const isMobile = useIsMobile();
-  const { isCleaner, hasManagerAccess, isSuperAdmin, loading: roleLoading } = useUserRole();
+  const { isCleaner, hasManagerAccess, isSuperAdmin, isManager, isAdmin, loading: roleLoading } = useUserRole();
   const { viewMode, canSwitchView } = useViewMode();
+  
+  // REGRA 4: Estado para controlar aba ativa do Anfitrião no mobile
+  // 'inicio' = contadores de status na Home, 'agenda' = calendário com tarefas
+  const [managerMobileTab, setManagerMobileTab] = useState<'inicio' | 'agenda'>('inicio');
   const { schedules, loading, error, refetch, updateSchedule, updateScheduleTimes, updateScheduleLocal } = useSchedules();
   const { inspections: adminInspections, loading: inspectionsLoading, refetch: refetchInspections } = useAdminInspections();
   
@@ -851,6 +855,7 @@ const Index = () => {
             propertyFilter={propertyFilter}
             onPropertyFilterChange={setPropertyFilter}
             onUpdateSchedule={handleUpdateSchedule}
+            managerActiveTab={managerMobileTab === 'inicio' ? 'home' : 'calendario'}
           />
           {selectedSchedule && (
             <ScheduleDetail
