@@ -32,6 +32,7 @@ import { MobileAgendaFilterTabs, AgendaViewMode } from './mobile/MobileAgendaFil
 // MobileMonthlyHistory moved to /historico-limpezas page only
 import { MobileOverdueDrawer } from './mobile/MobileOverdueDrawer';
 import { CleanerInspection } from '@/hooks/useCleanerInspections';
+import { MobileEmptyState } from '@/components/mobile/MobileEmptyState';
 
 interface MobileDashboardProps {
   schedules: Schedule[];
@@ -1020,10 +1021,12 @@ export function MobileDashboard({ schedules, onScheduleClick, onStartCleaning, o
                     />
                   ))}
 
+                  {/* REGRA 5: Estado vazio com mensagem amigável */}
                   {selectedDaySchedules.length === 0 && (
-                    <div className="py-8 text-center">
-                      <p className="text-[#8A8B88]">Nenhum agendamento para este dia</p>
-                    </div>
+                    <MobileEmptyState 
+                      type="schedule" 
+                      message="Não há agendamentos para este dia."
+                    />
                   )}
                 </div>
 
@@ -1064,21 +1067,15 @@ export function MobileDashboard({ schedules, onScheduleClick, onStartCleaning, o
                 </div>
 
                 <div className="px-6 flex flex-col gap-4">
-                  {/* Empty state */}
+                  {/* REGRA 5: Estado vazio com mensagem amigável */}
                   {selectedDaySchedules.length === 0 && selectedDayInspections.length === 0 && (
-                    <div className="py-8 flex flex-col items-center text-center">
-                      <div className="w-16 h-16 bg-slate-100 dark:bg-slate-800 rounded-full flex items-center justify-center mb-3">
-                        <Calendar className="h-8 w-8 text-slate-300 dark:text-slate-600" />
-                      </div>
-                      <h3 className="text-base font-bold text-slate-800 dark:text-white mb-1">
-                        Nenhum agendamento
-                      </h3>
-                      <p className="text-sm text-[#8A8B88] max-w-[280px]">
-                        {checkIsToday(selectedDate) 
-                          ? 'Você não tem tarefas para hoje. Aproveite o dia! 🎉' 
-                          : 'Não há agendamentos para esta data.'}
-                      </p>
-                    </div>
+                    <MobileEmptyState 
+                      type="schedule" 
+                      message="Não há agendamentos para este dia."
+                      submessage={checkIsToday(selectedDate) 
+                        ? 'Você não tem tarefas para hoje. Aproveite o dia! 🎉' 
+                        : 'Selecione outra data para ver as tarefas.'}
+                    />
                   )}
 
                   {/* Inspections Section - Limited to 6 cards max */}

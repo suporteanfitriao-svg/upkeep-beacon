@@ -2,12 +2,15 @@ import { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { format, startOfMonth, endOfMonth, differenceInMinutes, isWithinInterval, subMonths, setMonth, setYear, getYear, getMonth } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { ArrowLeft, Calendar, Clock, Camera, AlertTriangle, Building2, ChevronLeft, ChevronRight, TrendingUp, BarChart3, ChevronDown } from 'lucide-react';
+import { Calendar, Clock, Camera, AlertTriangle, Building2, ChevronLeft, ChevronRight, TrendingUp, BarChart3 } from 'lucide-react';
 import { useSchedules } from '@/hooks/useSchedules';
 import { Schedule } from '@/types/scheduling';
 import { cn } from '@/lib/utils';
 import { ScheduleDetailReadOnly } from '@/components/reports/ScheduleDetailReadOnly';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { MobilePageHeader } from '@/components/mobile/MobilePageHeader';
+import { MobileEmptyState } from '@/components/mobile/MobileEmptyState';
+import { MobileBottomNav } from '@/components/dashboard/mobile/MobileBottomNav';
 
 const ITEMS_PER_PAGE = 10;
 
@@ -159,23 +162,11 @@ export default function CleaningHistory() {
 
   return (
     <div className="min-h-screen bg-stone-50 dark:bg-[#1a1d21]">
-      {/* Header */}
-      <header className="sticky top-0 z-30 bg-stone-50 dark:bg-[#22252a] px-4 py-4 shadow-sm border-b border-border">
-        <div className="flex items-center gap-3">
-          <button
-            onClick={handleBack}
-            className="flex items-center justify-center rounded-full p-2 transition-colors hover:bg-slate-200 dark:hover:bg-slate-700"
-          >
-            <ArrowLeft className="w-5 h-5 text-muted-foreground" />
-          </button>
-          <div>
-            <h1 className="text-lg font-bold text-foreground">Histórico de Limpezas</h1>
-            <p className="text-xs text-muted-foreground">
-              {completedSchedules.length} concluídas
-            </p>
-          </div>
-        </div>
-      </header>
+      {/* REGRA 1: Header com botão Voltar obrigatório */}
+      <MobilePageHeader 
+        title="Histórico de Limpezas"
+        subtitle={`${completedSchedules.length} concluídas`}
+      />
 
       {/* Month/Year Filters */}
       <div className="px-4 pt-4 flex gap-2">
@@ -213,10 +204,12 @@ export default function CleaningHistory() {
             <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
           </div>
         ) : completedSchedules.length === 0 ? (
-          <div className="text-center py-12">
-            <Calendar className="w-12 h-12 text-muted-foreground mx-auto mb-3" />
-            <p className="text-muted-foreground">Nenhuma limpeza concluída este mês</p>
-          </div>
+          /* REGRA 5: Estado vazio com mensagem amigável */
+          <MobileEmptyState 
+            type="schedule"
+            message="Nenhuma limpeza concluída este mês"
+            submessage="Selecione outro período para ver o histórico"
+          />
         ) : (
           <>
             {/* Stats Cards */}
@@ -378,21 +371,11 @@ export default function CleaningHistory() {
         )}
       </main>
 
-      {/* Mobile Bottom Navigation */}
-      <nav className="fixed bottom-0 left-0 right-0 bg-card/80 backdrop-blur-lg border-t border-border z-50 px-6 py-3 flex justify-around items-center text-xs font-medium text-muted-foreground">
-        <button onClick={() => navigate('/')} className="flex flex-col items-center gap-1 hover:text-primary transition-colors">
-          <span className="material-symbols-outlined text-xl">home</span>
-          <span>Início</span>
-        </button>
-        <button onClick={() => navigate('/?tab=agenda')} className="flex flex-col items-center gap-1 hover:text-primary transition-colors">
-          <span className="material-symbols-outlined text-xl">calendar_today</span>
-          <span>Agenda</span>
-        </button>
-        <button onClick={() => navigate('/minha-conta')} className="flex flex-col items-center gap-1 text-primary">
-          <span className="material-symbols-outlined text-xl">menu</span>
-          <span>Menu</span>
-        </button>
-      </nav>
+      {/* REGRA 3: Menu inferior fixo e sempre visível */}
+      <MobileBottomNav 
+        activeTab="inicio" 
+        onTabChange={() => navigate('/')} 
+      />
     </div>
   );
 }

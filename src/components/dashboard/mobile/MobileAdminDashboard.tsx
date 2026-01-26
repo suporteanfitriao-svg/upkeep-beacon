@@ -12,6 +12,7 @@ import { useViewMode, ViewMode } from '@/hooks/useViewMode';
 import { MobileInfiniteDayStrip } from './MobileInfiniteDayStrip';
 import { MobileAdminFilterTabs, AdminAgendaViewMode } from './MobileAdminFilterTabs';
 import { MobileAdminScheduleCard } from './MobileAdminScheduleCard';
+import { MobileEmptyState } from '@/components/mobile/MobileEmptyState';
 
 import { LocationModal } from '../LocationModal';
 import { PasswordModal } from '../PasswordModal';
@@ -862,20 +863,21 @@ export function MobileAdminDashboard({
 
           {/* Schedule List */}
           <div className="flex-1 px-4 py-2 pb-24 overflow-y-auto">
+            {/* REGRA 5: Estado vazio com mensagem amigável */}
             {dateFilteredSchedules.length === 0 ? (
-              <div className="flex flex-col items-center justify-center py-12 text-center">
-                <Calendar className="w-12 h-12 text-muted-foreground/50 mb-3" />
-                <p className="text-sm font-medium text-muted-foreground">Nenhum agendamento</p>
-                <p className="text-xs text-muted-foreground/70 mt-1">
-                  {agendaViewMode === 'hoje' 
-                    ? 'para hoje' 
+              <MobileEmptyState 
+                type="schedule"
+                message="Não há agendamentos para este dia."
+                submessage={
+                  agendaViewMode === 'hoje' 
+                    ? 'Nenhuma tarefa programada para hoje.' 
                     : agendaViewMode === 'amanha' 
-                      ? 'para amanhã' 
+                      ? 'Nenhuma tarefa programada para amanhã.' 
                       : agendaViewMode === 'mes' 
-                        ? 'neste mês' 
-                        : 'neste período'}
-                </p>
-              </div>
+                        ? 'Nenhuma tarefa programada neste mês.' 
+                        : 'Nenhuma tarefa programada neste período.'
+                }
+              />
             ) : (
               <div className="space-y-3">
                 {/* Active Schedules */}
