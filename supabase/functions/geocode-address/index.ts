@@ -13,6 +13,43 @@ interface GeocodeResult {
 }
 
 /**
+ * Simplify address for better geocoding results
+ * Removes complex formatting and keeps essential parts
+ */
+function simplifyAddressForGeocoding(address: string): string {
+  // Remove "nº" notation and extra numbers after street number
+  let simplified = address
+    .replace(/,?\s*nº\s*/gi, ', ')
+    .replace(/\s+/g, ' ')
+    .trim();
+  
+  // Extract essential parts: street, number, city, state
+  const parts = simplified.split(',').map(p => p.trim()).filter(Boolean);
+  
+  if (parts.length >= 4) {
+    // Try to get: street, first number only, city-state, keep CEP for context
+    const street = parts[0];
+    const number = parts[1]?.match(/^\d+/)?.[0] || '';
+    
+    // Find city-state pattern (e.g., "Santos - SP" or last meaningful parts)
+    const cityStatePart = parts.find(p => /[A-Za-z]+\s*-\s*[A-Z]{2}/.test(p));
+    const cepPart = parts.find(p => /\d{5}-?\d{3}/.test(p));
+    
+    const essentialParts = [
+      street,
+      number,
+      cityStatePart,
+      'Brasil'
+    ].filter(Boolean);
+    
+    simplified = essentialParts.join(', ');
+  }
+  
+  console.log(`[geocode] Simplified address: "${address}" -> "${simplified}"`);
+  return simplified;
+}
+
+/**
  * Geocode an address using OpenStreetMap Nominatim API (free)
  */
 async function geocodeAddress(address: string): Promise<GeocodeResult | null> {
@@ -25,7 +62,9 @@ async function geocodeAddress(address: string): Promise<GeocodeResult | null> {
     return null;
   }
 
-  const encodedAddress = encodeURIComponent(cleanAddress);
+  // Try with simplified address first for better results
+  const simplifiedAddress = simplifyAddressForGeocoding(cleanAddress);
+  const encodedAddress = encodeURIComponent(simplifiedAddress);
   
   // Use Nominatim API (OpenStreetMap) - free and no API key required
   const url = `https://nominatim.openstreetmap.org/search?q=${encodedAddress}&format=json&limit=1&countrycodes=br`;
@@ -48,6 +87,29 @@ async function geocodeAddress(address: string): Promise<GeocodeResult | null> {
   console.log(`[geocode] Nominatim results:`, JSON.stringify(results));
 
   if (!results || results.length === 0) {
+    // Fallback: try with original address if simplified failed
+    console.log('[geocode] No results with simplified address, trying original...');
+    const fallbackUrl = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(cleanAddress)}&format=json&limit=1&countrycodes=br`;
+    
+    const fallbackResponse = await fetch(fallbackUrl, {
+      headers: {
+        'User-Agent': 'UpkeepBeacon/1.0 (property-management-app)',
+        'Accept-Language': 'pt-BR,pt;q=0.9',
+      },
+    });
+    
+    if (fallbackResponse.ok) {
+      const fallbackResults = await fallbackResponse.json();
+      if (fallbackResults && fallbackResults.length > 0) {
+        const result = fallbackResults[0];
+        return {
+          latitude: parseFloat(result.lat),
+          longitude: parseFloat(result.lon),
+          displayName: result.display_name,
+        };
+      }
+    }
+    
     console.log('[geocode] No results found for address');
     return null;
   }
