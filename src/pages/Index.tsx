@@ -16,6 +16,7 @@ import { AdminInspectionsSection } from '@/components/dashboard/AdminInspections
 import { ScheduleDetail } from '@/components/dashboard/ScheduleDetail';
 import { MobileDashboard } from '@/components/dashboard/MobileDashboard';
 import { MobileAdminDashboard, ManagerActiveTab } from '@/components/dashboard/mobile/MobileAdminDashboard';
+import { MobileBottomNav } from '@/components/dashboard/mobile/MobileBottomNav';
 import { UpcomingSchedules } from '@/components/dashboard/UpcomingSchedules';
 import { CleaningTimeAlertBanner } from '@/components/dashboard/CleaningTimeAlertBanner';
 import { CleanerWebLayout } from '@/components/dashboard/CleanerWebLayout';
@@ -865,6 +866,17 @@ const Index = () => {
             />
           )}
           <SyncOverlayInline isSyncing={isSyncing} />
+
+          {/* REGRA 4: Bottom nav específico para Anfitrião alternar Home/Calendário */}
+          {isManager && !isAdmin && !isSuperAdmin && (
+            <MobileBottomNav
+              activeTab={managerMobileTab}
+              onTabChange={(tab) => {
+                if (tab === 'menu') return;
+                setManagerMobileTab(tab);
+              }}
+            />
+          )}
         </>
       );
     }
