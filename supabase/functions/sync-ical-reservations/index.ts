@@ -156,11 +156,18 @@ function parseICalEvents(icalData: string): ICalEvent[] {
     const descriptionMatch = eventBlock.match(descriptionRegex);
     const hasDescription = descriptionMatch && descriptionMatch[1].trim().length > 0;
     
-    // Accept if:
-    // 1. Explicitly marked as reservation, OR
-    // 2. Has a non-empty summary (likely guest name) and didn't match block patterns, OR
-    // 3. Has description with booking details
-    const isValidReservation = isExplicitReservation || (summary !== '' && !isBlock) || hasDescription;
+    // Check if description contains explicit reservation data (Airbnb patterns)
+    const descriptionContent = descriptionMatch ? descriptionMatch[1].trim() : '';
+    const hasReservationData = descriptionContent.includes('Reservation URL') || 
+                               descriptionContent.includes('Phone Number') ||
+                               descriptionContent.includes('Código de acesso') ||
+                               descriptionContent.includes('PIN:');
+    
+    // REGRA 1: Accept ONLY if:
+    // 1. SUMMARY contains explicit reservation terms (reserved, booking, confirmed, etc.), OR
+    // 2. DESCRIPTION contains explicit reservation data (URL, phone, PIN, etc.)
+    // ❌ NOT accepting events just because SUMMARY is non-empty
+    const isValidReservation = isExplicitReservation || hasReservationData;
     
     if (!isValidReservation) {
       skippedEvents++;
