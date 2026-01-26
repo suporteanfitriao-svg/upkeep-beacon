@@ -68,44 +68,6 @@ export const MobileAgendaFilterTabs = memo(function MobileAgendaFilterTabs({
 
   const selectedDateTaskCount = getTaskCount(selectedDate);
 
-  // Custom day render for calendar with task indicators
-  const renderDay = (day: Date) => {
-    const dateKey = format(day, 'yyyy-MM-dd');
-    const indicators = dayIndicators[dateKey];
-    const totalTasks = indicators 
-      ? indicators.pending + indicators.completed + indicators.gold + indicators.inspections 
-      : 0;
-    const isSelected = isSameDay(day, selectedDate);
-    const isToday = isSameDay(day, new Date());
-
-    return (
-      <div className="relative flex flex-col items-center">
-        <span>{format(day, 'd')}</span>
-        {totalTasks > 0 && (
-          <div className="absolute -bottom-1 flex gap-0.5">
-            {isSelected ? (
-              <div className="h-1 w-1 rounded-full bg-white" />
-            ) : (
-              <>
-                {indicators?.pending && indicators.pending > 0 && (
-                  <div className="h-1 w-1 rounded-full bg-primary" />
-                )}
-                {indicators?.gold && indicators.gold > 0 && (
-                  <div className="h-1 w-1 rounded-full bg-[#E0C051]" />
-                )}
-                {indicators?.completed && indicators.completed > 0 && (
-                  <div className="h-1 w-1 rounded-full bg-primary/50" />
-                )}
-                {indicators?.inspections && indicators.inspections > 0 && (
-                  <div className="h-1 w-1 rounded-full bg-purple-500" />
-                )}
-              </>
-            )}
-          </div>
-        )}
-      </div>
-    );
-  };
 
   return (
     <div className="flex items-center gap-2 overflow-x-auto hide-scrollbar pb-1">
@@ -161,7 +123,7 @@ export const MobileAgendaFilterTabs = memo(function MobileAgendaFilterTabs({
           </button>
         </PopoverTrigger>
         <PopoverContent 
-          className="w-[calc(100vw-32px)] max-w-[320px] p-0 z-[100] bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 shadow-xl" 
+          className="w-[calc(100vw-32px)] max-w-[320px] p-0 z-[100] bg-popover border shadow-xl" 
           align="end" 
           sideOffset={8}
           side="bottom"
@@ -172,31 +134,7 @@ export const MobileAgendaFilterTabs = memo(function MobileAgendaFilterTabs({
             onSelect={handleDatePickerSelect}
             initialFocus
             locale={ptBR}
-            className={cn("p-3 pointer-events-auto bg-white dark:bg-slate-800 rounded-lg")}
-            classNames={{
-              months: "flex flex-col space-y-4",
-              month: "space-y-3",
-              caption: "flex justify-center pt-1 relative items-center",
-              caption_label: "text-sm font-medium",
-              nav: "space-x-1 flex items-center",
-              nav_button: "h-7 w-7 bg-transparent p-0 opacity-50 hover:opacity-100 inline-flex items-center justify-center rounded-md border border-slate-200 dark:border-slate-700",
-              nav_button_previous: "absolute left-1",
-              nav_button_next: "absolute right-1",
-              table: "w-full border-collapse",
-              head_row: "flex justify-between",
-              head_cell: "text-muted-foreground rounded-md flex-1 font-normal text-[0.75rem] text-center",
-              row: "flex w-full mt-1.5 justify-between",
-              cell: "flex-1 aspect-square text-center text-sm p-0 relative focus-within:relative focus-within:z-20",
-              day: "h-full w-full p-0 font-normal aria-selected:opacity-100 transition-all duration-200 ease-out hover:bg-slate-100 dark:hover:bg-slate-700 rounded-md flex items-center justify-center",
-              day_selected: "bg-primary text-primary-foreground hover:bg-primary hover:text-primary-foreground focus:bg-primary focus:text-primary-foreground shadow-md",
-              day_today: "bg-accent text-accent-foreground ring-2 ring-primary/30",
-              day_outside: "text-muted-foreground opacity-50 aria-selected:bg-accent/50 aria-selected:text-muted-foreground aria-selected:opacity-30",
-              day_disabled: "text-muted-foreground opacity-50",
-              day_hidden: "invisible",
-            }}
-            components={{
-              DayContent: ({ date }) => renderDay(date)
-            }}
+            className={cn("p-3 pointer-events-auto")}
           />
         </PopoverContent>
       </Popover>
