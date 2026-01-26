@@ -107,31 +107,31 @@ export const MobileInfiniteDayStrip = memo(function MobileInfiniteDayStrip({
             <button
               key={`${dateKey}-${index}`}
               onClick={() => handleDayClick(day)}
-              className={cn(
-                "group flex h-[5.5rem] min-w-[4.5rem] snap-start flex-col items-center justify-center gap-1.5 rounded-2xl transition-all active:scale-95",
-                isSelected
-                  ? "bg-primary shadow-glow ring-2 ring-primary ring-offset-2 ring-offset-stone-50 dark:ring-offset-[#22252a]"
-                  : isToday
-                    ? "bg-white dark:bg-[#2d3138] shadow-md border-2 border-primary/30"
-                    : "bg-white dark:bg-[#2d3138] shadow-sm border border-slate-200 dark:border-slate-700"
-              )}
+            className={cn(
+              "group flex h-[5.5rem] min-w-[4.5rem] snap-start flex-col items-center justify-center gap-1.5 rounded-2xl transition-all active:scale-95",
+              isSelected
+                ? "bg-primary shadow-glow ring-2 ring-primary ring-offset-2 ring-offset-stone-50 dark:ring-offset-[#22252a]"
+                : isToday
+                  ? "bg-gradient-to-b from-primary/15 to-primary/5 dark:from-primary/25 dark:to-primary/10 shadow-md border-2 border-primary ring-1 ring-primary/20"
+                  : "bg-white dark:bg-[#2d3138] shadow-sm border border-slate-200 dark:border-slate-700"
+            )}
             >
               <span className={cn(
                 "text-[10px] font-semibold uppercase tracking-wide",
-                isSelected ? "text-white/90 font-bold" : "text-[#8A8B88]"
+                isSelected ? "text-white/90 font-bold" : isToday ? "text-primary font-bold" : "text-[#8A8B88]"
               )}>
-                {dayNames[dayOfWeek]}
+                {isToday && !isSelected ? 'HOJE' : dayNames[dayOfWeek]}
               </span>
               <span className={cn(
                 "font-bold",
-                isSelected ? "text-2xl text-white font-extrabold" : "text-lg text-slate-900 dark:text-white",
-                isPast && !isSelected && "text-[#8A8B88]"
+                isSelected ? "text-2xl text-white font-extrabold" : isToday ? "text-xl text-primary font-extrabold" : "text-lg text-slate-900 dark:text-white",
+                isPast && !isSelected && !isToday && "text-[#8A8B88]"
               )}>
                 {format(day, 'd')}
               </span>
               <span className={cn(
                 "text-[9px] font-medium",
-                isSelected ? "text-white/80" : "text-[#8A8B88]"
+                isSelected ? "text-white/80" : isToday ? "text-primary/80" : "text-[#8A8B88]"
               )}>
                 {format(day, 'MMM').toUpperCase()}
               </span>
