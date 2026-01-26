@@ -236,7 +236,7 @@ function calculatePriority(checkInDate: Date): string {
   if (diffHours <= 24) {
     return 'high'; // Within 24 hours
   } else if (diffHours <= 72) {
-    return 'medium'; // Within 3 days
+    return 'normal'; // Within 3 days (was 'medium' - constraint uses 'normal')
   }
   return 'low'; // More than 3 days
 }
