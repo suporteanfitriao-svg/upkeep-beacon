@@ -18,6 +18,7 @@ import { AdvancedRulesConfig } from '@/components/properties/AdvancedRulesConfig
 import { CleaningRatesManager } from '@/components/properties/CleaningRatesManager';
 import { PropertyTeamManager } from '@/components/properties/PropertyTeamManager';
 import { DeletePropertyModal } from '@/components/properties/DeletePropertyModal';
+import { PropertyAddressEditor, AddressFormData, initialAddressData, parseAddressToFormData, buildFullAddress } from '@/components/properties/PropertyAddressEditor';
 import { cn } from '@/lib/utils';
 import { useImageCompression } from '@/hooks/useImageCompression';
 import { usePropertyGeocoding } from '@/hooks/usePropertyGeocoding';
@@ -66,10 +67,11 @@ export default function Properties() {
   const [editingProperty, setEditingProperty] = useState<Property | null>(null);
   const [formData, setFormData] = useState({
     name: '',
-    address: '',
     default_check_in_time: '14:00',
     default_check_out_time: '11:00'
   });
+  const [addressFormData, setAddressFormData] = useState<AddressFormData>(initialAddressData);
+  const [addressLoaded, setAddressLoaded] = useState(false);
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [isUploading, setIsUploading] = useState(false);
@@ -158,10 +160,11 @@ export default function Properties() {
   const resetForm = () => {
     setFormData({ 
       name: '', 
-      address: '', 
       default_check_in_time: '14:00',
       default_check_out_time: '11:00'
     });
+    setAddressFormData(initialAddressData);
+    setAddressLoaded(false);
     setEditingProperty(null);
     setImageFile(null);
     setImagePreview(null);
@@ -177,10 +180,13 @@ export default function Properties() {
     setEditingProperty(property);
     setFormData({
       name: property.name,
-      address: property.address || '',
       default_check_in_time: property.default_check_in_time?.slice(0, 5) || '14:00',
       default_check_out_time: property.default_check_out_time?.slice(0, 5) || '11:00'
     });
+    // Parse existing address into form data
+    const parsedAddress = parseAddressToFormData(property.address);
+    setAddressFormData(parsedAddress);
+    setAddressLoaded(!!(parsedAddress.address_street || parsedAddress.address_city));
     setImagePreview(property.image_url);
     setImageFile(null);
     setDialogOpen(true);
@@ -299,9 +305,10 @@ export default function Properties() {
           imageUrl = await uploadImage(editingProperty.id);
         }
 
+        const fullAddress = buildFullAddress(addressFormData);
         const propertyData = {
           name: formData.name.trim(),
-          address: formData.address.trim() || null,
+          address: fullAddress || null,
           default_check_in_time: formData.default_check_in_time,
           default_check_out_time: formData.default_check_out_time,
           image_url: imageUrl
@@ -332,8 +339,8 @@ export default function Properties() {
         }
 
         // Geocode address automatically if it changed
-        const addressChanged = editingProperty.address !== formData.address.trim();
-        if (addressChanged && formData.address.trim()) {
+        const addressChanged = editingProperty.address !== fullAddress;
+        if (addressChanged && fullAddress) {
           geocodeProperty(editingProperty.id).then(result => {
             if (result.success) {
               toast.success('Coordenadas do imóvel atualizadas automaticamente');
@@ -344,9 +351,10 @@ export default function Properties() {
         toast.success('Propriedade atualizada com sucesso');
       } else {
         // Create property first to get the ID
+        const newFullAddress = buildFullAddress(addressFormData);
         const propertyData = {
           name: formData.name.trim(),
-          address: formData.address.trim() || null,
+          address: newFullAddress || null,
           default_check_in_time: formData.default_check_in_time,
           default_check_out_time: formData.default_check_out_time
         };
@@ -383,7 +391,7 @@ export default function Properties() {
         }
 
         // Geocode address automatically for new properties
-        if (newProperty && formData.address.trim()) {
+        if (newProperty && newFullAddress) {
           geocodeProperty(newProperty.id).then(result => {
             if (result.success) {
               toast.success('Coordenadas do imóvel obtidas automaticamente');
@@ -657,16 +665,12 @@ export default function Properties() {
                           className="rounded-xl"
                         />
                       </div>
-                      <div className="space-y-2">
-                        <Label htmlFor="address" className="text-sm font-medium">Endereço</Label>
-                        <Input
-                          id="address"
-                          value={formData.address}
-                          onChange={(e) => setFormData({ ...formData, address: e.target.value })}
-                          placeholder="Ex: Rua das Flores, 123"
-                          className="rounded-xl"
-                        />
-                      </div>
+                      <PropertyAddressEditor
+                        value={addressFormData}
+                        onChange={setAddressFormData}
+                        onAddressLoaded={setAddressLoaded}
+                        isRequired={!editingProperty}
+                      />
                       <div className="space-y-2">
                         <div className="flex items-center gap-2 text-sm font-medium">
                           <span className="material-symbols-outlined text-primary text-[18px]">schedule</span>
