@@ -235,12 +235,17 @@ export function MobileAdminDashboard({
     setCompletedPage(1);
   }, []);
 
-  // Calculate counts for each filter
+  // Calculate counts for each filter - MUST respect property filter
   const filterCounts = useMemo(() => {
     const today = startOfDay(new Date());
     const tomorrow = startOfDay(addDays(new Date(), 1));
     const monthStart = startOfMonth(currentMonth);
     const monthEnd = endOfMonth(currentMonth);
+    
+    // Apply property filter first to base schedules
+    const baseSchedules = propertyFilter !== 'all' 
+      ? schedules.filter(s => s.propertyId === propertyFilter)
+      : schedules;
     
     const getCount = (filtered: Schedule[]) => ({
       total: filtered.length,
@@ -248,12 +253,12 @@ export function MobileAdminDashboard({
       inspections: 0
     });
     
-    const todaySchedules = schedules.filter(s => isSameDay(s.checkOut, today));
-    const tomorrowSchedules = schedules.filter(s => isSameDay(s.checkOut, tomorrow));
-    const selectedDaySchedules = schedules.filter(s => isSameDay(s.checkOut, selectedDate));
-    const monthSchedules = schedules.filter(s => s.checkOut >= monthStart && s.checkOut <= monthEnd);
+    const todaySchedules = baseSchedules.filter(s => isSameDay(s.checkOut, today));
+    const tomorrowSchedules = baseSchedules.filter(s => isSameDay(s.checkOut, tomorrow));
+    const selectedDaySchedules = baseSchedules.filter(s => isSameDay(s.checkOut, selectedDate));
+    const monthSchedules = baseSchedules.filter(s => s.checkOut >= monthStart && s.checkOut <= monthEnd);
     const rangeSchedules = dateRange 
-      ? schedules.filter(s => isWithinInterval(s.checkOut, { start: startOfDay(dateRange.from), end: startOfDay(addDays(dateRange.to, 1)) }))
+      ? baseSchedules.filter(s => isWithinInterval(s.checkOut, { start: startOfDay(dateRange.from), end: startOfDay(addDays(dateRange.to, 1)) }))
       : [];
     
     return {
@@ -263,7 +268,7 @@ export function MobileAdminDashboard({
       month: getCount(monthSchedules),
       range: getCount(rangeSchedules)
     };
-  }, [schedules, currentMonth, dateRange, selectedDate]);
+  }, [schedules, currentMonth, dateRange, selectedDate, propertyFilter]);
 
   const handleDateRangeSelect = useCallback((range: { from: Date; to: Date } | null) => {
     setDateRange(range);
