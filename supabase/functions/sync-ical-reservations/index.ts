@@ -195,6 +195,38 @@ function parseICalEvents(icalData: string): ICalEvent[] {
   return events;
 }
 
+// Extract access password from iCal description
+// Airbnb includes "Phone Number (Last 4 Digits): XXXX" in the description
+function extractAccessPassword(description: string): string | null {
+  if (!description) return null;
+  
+  // Pattern 1: "Phone Number (Last 4 Digits): XXXX"
+  const phonePattern = /Phone Number \(Last 4 Digits\):\s*(\d{4})/i;
+  const phoneMatch = description.match(phonePattern);
+  if (phoneMatch) {
+    console.log(`[PASSWORD] Extracted phone last 4 digits: ${phoneMatch[1]}`);
+    return phoneMatch[1];
+  }
+  
+  // Pattern 2: "Código de acesso: XXXX" or "Access code: XXXX"
+  const codePattern = /(?:Código de acesso|Access code|Code|Código):\s*(\d{4,8})/i;
+  const codeMatch = description.match(codePattern);
+  if (codeMatch) {
+    console.log(`[PASSWORD] Extracted access code: ${codeMatch[1]}`);
+    return codeMatch[1];
+  }
+  
+  // Pattern 3: "PIN: XXXX"
+  const pinPattern = /PIN:\s*(\d{4,8})/i;
+  const pinMatch = description.match(pinPattern);
+  if (pinMatch) {
+    console.log(`[PASSWORD] Extracted PIN: ${pinMatch[1]}`);
+    return pinMatch[1];
+  }
+  
+  return null;
+}
+
 // Calculate priority based on check-in date proximity
 function calculatePriority(checkInDate: Date): string {
   const now = new Date();
@@ -409,10 +441,13 @@ serve(async (req) => {
             // Calculate priority based on check-in proximity
             const priority = calculatePriority(checkInDate);
 
+            // Extract access password from reservation description
+            const accessPassword = extractAccessPassword(event.description);
+
             // Check if schedule already exists
             const { data: existingSchedule } = await supabase
               .from('schedules')
-              .select('id, status, check_in_time, check_out_time')
+              .select('id, status, check_in_time, check_out_time, access_password')
               .eq('reservation_id', reservation.id)
               .maybeSingle();
 
@@ -427,6 +462,12 @@ serve(async (req) => {
               listing_name: source.custom_name || property.name,
               number_of_guests: 1
             };
+
+            // Set access_password if extracted and not already set (preserve manual passwords)
+            if (accessPassword && (!existingSchedule || !existingSchedule.access_password)) {
+              scheduleData.access_password = accessPassword;
+              console.log(`[SCHEDULE] Setting access_password: ${accessPassword} for ${property.name}`);
+            }
 
             // For NEW schedules: set all times and status
             // For EXISTING schedules in 'waiting' status: update times if reservation dates changed
