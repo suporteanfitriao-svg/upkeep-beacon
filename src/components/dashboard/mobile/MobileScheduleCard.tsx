@@ -116,42 +116,53 @@ export const MobileScheduleCard = memo(function MobileScheduleCard({
     return (
       <button
         onClick={() => onScheduleClick(schedule)}
-        className="overflow-hidden rounded-2xl bg-white dark:bg-[#2d3138] shadow-soft border border-slate-100 dark:border-slate-700 transition-transform active:scale-[0.98] text-left"
+        className="overflow-hidden rounded-2xl bg-white dark:bg-[#2d3138] shadow-soft border border-slate-100 dark:border-slate-700 transition-transform active:scale-[0.98] text-left w-full"
       >
-        <div className="flex flex-row p-3 gap-3">
-          {schedule.propertyImageUrl ? (
-            <img 
-              src={schedule.propertyImageUrl} 
-              alt={schedule.propertyName}
-              className="w-16 h-16 shrink-0 rounded-xl object-cover border border-slate-100 dark:border-slate-700"
-            />
-          ) : (
-            <div className="w-16 h-16 shrink-0 rounded-xl bg-slate-50 dark:bg-slate-800 flex items-center justify-center border border-slate-100 dark:border-slate-700">
-              <span className="material-symbols-outlined text-slate-400 text-[28px]">apartment</span>
-            </div>
-          )}
-          <div className="flex-1 flex flex-col justify-center">
-            <h3 className="text-sm font-bold text-slate-900 dark:text-white leading-tight mb-1">
-              {schedule.propertyName}
-            </h3>
-            <div className="flex items-center gap-1.5 text-[#8A8B88] dark:text-slate-400">
-              <span className="material-symbols-outlined text-[16px]">schedule</span>
-              <span className="text-xs font-bold">
-                Liberado {formatTime(schedule.checkOut)} 
-                <span className="font-normal opacity-70">
-                  - {schedule.status === 'completed' ? 'Finalizado' : schedule.status === 'cleaning' ? 'Em limpeza' : 'Pendente'}
+        <div className="flex flex-col">
+          {/* Image and status row */}
+          <div className="flex flex-row p-3 pb-2 gap-3">
+            {schedule.propertyImageUrl ? (
+              <img 
+                src={schedule.propertyImageUrl} 
+                alt={schedule.propertyName}
+                className="w-16 h-16 shrink-0 rounded-xl object-cover border border-slate-100 dark:border-slate-700"
+              />
+            ) : (
+              <div className="w-16 h-16 shrink-0 rounded-xl bg-slate-50 dark:bg-slate-800 flex items-center justify-center border border-slate-100 dark:border-slate-700">
+                <span className="material-symbols-outlined text-slate-400 text-[28px]">apartment</span>
+              </div>
+            )}
+            <div className="flex-1 flex flex-col justify-center min-w-0">
+              {/* Status indicator */}
+              <div className="flex items-center gap-1.5 mb-1">
+                {schedule.status === 'completed' ? (
+                  <span className="material-symbols-outlined text-primary text-[18px]">check_circle</span>
+                ) : schedule.status === 'cleaning' ? (
+                  <div className="h-2 w-2 rounded-full bg-[#E0C051] ring-2 ring-[#E0C051]/30" />
+                ) : (
+                  <div className="h-2 w-2 rounded-full bg-primary ring-2 ring-primary/30" />
+                )}
+                <span className="text-[10px] font-bold uppercase tracking-wider text-[#8A8B88]">
+                  {schedule.status === 'completed' ? 'Finalizado' : schedule.status === 'cleaning' ? 'Em limpeza' : 'Aguardando'}
                 </span>
-              </span>
+              </div>
+              {/* Property name - full width */}
+              <h3 className="text-sm font-bold text-slate-900 dark:text-white leading-tight">
+                {schedule.propertyName}
+              </h3>
             </div>
           </div>
-          <div className="flex items-center pr-1">
-            {schedule.status === 'completed' ? (
-              <span className="material-symbols-outlined text-primary text-[24px]">check_circle</span>
-            ) : schedule.status === 'cleaning' ? (
-              <div className="h-2.5 w-2.5 rounded-full bg-[#E0C051] ring-2 ring-[#E0C051]/30" />
-            ) : (
-              <div className="h-2.5 w-2.5 rounded-full bg-primary ring-2 ring-primary/30" />
-            )}
+          {/* Time and type row */}
+          <div className="px-3 pb-3 flex items-center justify-between">
+            <div className="flex items-center gap-1.5 text-[#8A8B88] dark:text-slate-400">
+              <Clock className="w-4 h-4" />
+              <span className="text-xs font-bold">{formatTime(schedule.checkOut)}</span>
+              <span className="text-xs">→</span>
+              <span className="text-xs font-bold">{schedule.checkIn ? format(schedule.checkIn, 'HH:mm') : '--:--'}</span>
+            </div>
+            <span className="text-xs font-medium text-primary bg-primary/10 px-2 py-0.5 rounded-full">
+              Limpeza
+            </span>
           </div>
         </div>
       </button>
