@@ -471,7 +471,7 @@ serve(async (req) => {
 
             // For NEW schedules: set all times and status
             // For EXISTING schedules in 'waiting' status: update times if reservation dates changed
-            // For schedules in other statuses (released, cleaning, completed): preserve times
+            // For schedules in other statuses (released, cleaning, completed): skip update entirely
             if (!existingSchedule) {
               // New schedule - set everything
               scheduleData.check_in_time = checkInDate.toISOString();
@@ -496,6 +496,15 @@ serve(async (req) => {
                   listing_name: source.custom_name || property.name,
                 }
               }];
+
+              const { error: scheduleError } = await supabase
+                .from('schedules')
+                .insert(scheduleData);
+
+              if (scheduleError) {
+                console.error(`Error inserting schedule:`, scheduleError);
+                continue;
+              }
             } else if (existingSchedule.status === 'waiting') {
               // Existing schedule in waiting status - update times if reservation dates changed
               // This handles cases where the reservation was modified in Airbnb
@@ -510,23 +519,25 @@ serve(async (req) => {
                 console.log(`Updating schedule times for reservation ${reservation.id}: check_in changed=${checkInChanged}, check_out changed=${checkOutChanged}`);
                 scheduleData.check_in_time = checkInDate.toISOString();
                 scheduleData.check_out_time = checkOutDate.toISOString();
+              } else {
+                // No changes needed, keep existing times
+                scheduleData.check_in_time = existingSchedule.check_in_time;
+                scheduleData.check_out_time = existingSchedule.check_out_time;
               }
               
               scheduleData.priority = priority;
-            }
-            // For released/cleaning/completed: don't update times (preserve manual changes)
 
-            const { error: scheduleError } = await supabase
-              .from('schedules')
-              .upsert(scheduleData, {
-                onConflict: 'reservation_id',
-                ignoreDuplicates: false
-              });
+              const { error: scheduleError } = await supabase
+                .from('schedules')
+                .update(scheduleData)
+                .eq('id', existingSchedule.id);
 
-            if (scheduleError) {
-              console.error(`Error upserting schedule:`, scheduleError);
-              continue;
+              if (scheduleError) {
+                console.error(`Error updating schedule:`, scheduleError);
+                continue;
+              }
             }
+            // For released/cleaning/completed: don't update at all (preserve everything)
 
             reservationsCount++;
             totalSynced++;
@@ -538,8 +549,7 @@ serve(async (req) => {
           // Find reservations from this source that are NOT in the current sync
           // Only delete if:
           // 1. The reservation was synced from iCal (has external_id)
-          // 2. The checkout is in the future (don't touch historical data)
-          // 3. The schedule is still in 'waiting' status (don't delete active cleanings)
+          // 2. The schedule is still in 'waiting' status (don't delete active cleanings)
           
           if (currentUIDs.length > 0) {
             // Get all reservations for this property that have external_id (from iCal)
@@ -550,17 +560,9 @@ serve(async (req) => {
               .not('external_id', 'is', null);
 
             if (existingReservations) {
-              const now = new Date();
-              
               for (const existingRes of existingReservations) {
                 // Skip if this reservation is in the current sync
                 if (currentUIDs.includes(existingRes.external_id!)) {
-                  continue;
-                }
-
-                // Skip if checkout is in the past (historical data)
-                const checkoutDate = new Date(existingRes.check_out);
-                if (checkoutDate < now) {
                   continue;
                 }
 
