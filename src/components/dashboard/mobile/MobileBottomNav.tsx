@@ -20,9 +20,9 @@ export const MobileBottomNav = memo(function MobileBottomNav({
   const location = useLocation();
   const { isManager, isAdmin, isSuperAdmin } = useUserRole();
 
-  // REGRA 4: Anfitrião tem menu específico com 5 abas
-  // Admin e SuperAdmin usam o mesmo menu que outros roles administrativos
-  const showManagerNav = isManager && !isAdmin && !isSuperAdmin;
+  // REGRA 4 & 6: Anfitrião E Proprietário têm mesmo menu de 5 abas
+  // Menu: Home, Calendário, Checklist, Inspeções, Perfil
+  const showAdminNav = isManager || isAdmin;
 
   // Optimized handlers for cleaner/admin nav
   const handleTabClick = useCallback((tab: CleanerTab, e: React.MouseEvent) => {
@@ -61,8 +61,8 @@ export const MobileBottomNav = memo(function MobileBottomNav({
 
   const activeManagerTab = getActiveManagerTab();
 
-  // REGRA 4: Menu do Anfitrião - Home, Calendário, Checklist, Inspeções, Perfil
-  if (showManagerNav) {
+  // REGRA 4 & 6: Menu de Anfitrião e Proprietário - Home, Calendário, Checklist, Inspeções, Perfil
+  if (showAdminNav) {
     return (
       <nav className="fixed bottom-0 left-0 right-0 z-[100] safe-area-inset-bottom">
         <div className="absolute inset-0 bg-stone-50/95 dark:bg-[#22252a]/95 backdrop-blur-lg border-t border-slate-200/50 dark:border-slate-700/50" />
