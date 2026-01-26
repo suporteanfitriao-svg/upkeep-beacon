@@ -10,6 +10,8 @@ import { IssueReportModal } from './IssueReportModal';
 import { AttentionModal } from './AttentionModal';
 import { ChecklistPendingModal } from './ChecklistPendingModal';
 import { NoChecklistModal } from './NoChecklistModal';
+import { ChecklistLoadingModal } from './ChecklistLoadingModal';
+import { FinalizingModal } from './FinalizingModal';
 import LocationRequiredModal from './mobile/LocationRequiredModal';
 import { useUserRole } from '@/hooks/useUserRole';
 import { useAuth } from '@/hooks/useAuth';
@@ -28,7 +30,6 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { CategoryPhotoUpload } from './CategoryPhotoUpload';
 import { MapPin, Navigation } from 'lucide-react';
 import { useDebouncedCategorySave } from '@/hooks/useDebouncedCategorySave';
-
 interface ScheduleDetailProps {
   schedule: Schedule;
   onClose: () => void;
@@ -111,6 +112,10 @@ export function ScheduleDetail({ schedule, onClose, onUpdateSchedule }: Schedule
   const [photoUploadModal, setPhotoUploadModal] = useState<{ open: boolean; category: string | null }>({ open: false, category: null });
   const [deleteIssueConfirm, setDeleteIssueConfirm] = useState<{ open: boolean; issueId: string | null }>({ open: false, issueId: null });
   const [isCommitting, setIsCommitting] = useState(false);
+  const [showFinalizingModal, setShowFinalizingModal] = useState(false);
+  const [finalizingComplete, setFinalizingComplete] = useState(false);
+  const [isLoadingChecklist, setIsLoadingChecklist] = useState(false);
+  const [isTransitioningToClean, setIsTransitioningToClean] = useState(false);
   // Auto-save state tracking (global for the whole checklist)
   const [isAutoSaving, setIsAutoSaving] = useState(false);
   const [lastAutoSavedAt, setLastAutoSavedAt] = useState<number | null>(null);
@@ -157,6 +162,19 @@ export function ScheduleDetail({ schedule, onClose, onUpdateSchedule }: Schedule
     setChecklistItemStates(deriveChecklistItemStates(schedule.checklist));
     setLocalIssues(schedule.maintenanceIssues);
     setCategorySaveStatus({});
+    
+    // REGRA: Para schedules em cleaning ou completed, auto-expandir todas as categorias
+    // Isso garante que o checklist seja visível imediatamente
+    if (schedule.status === 'cleaning' || schedule.status === 'completed') {
+      const categories = [...new Set(schedule.checklist.map(item => item.category))];
+      const expandAll: Record<string, boolean> = {};
+      categories.forEach(cat => {
+        expandAll[cat] = true;
+      });
+      setExpandedCategories(expandAll);
+    } else {
+      setExpandedCategories({});
+    }
   }, [schedule.id]); // APENAS schedule.id - NUNCA outros campos
 
   // REMOVIDO: O useEffect de hydration que causava sobrescrição do estado local
@@ -829,25 +847,90 @@ export function ScheduleDetail({ schedule, onClose, onUpdateSchedule }: Schedule
     const previousStatus = schedule.status;
     const updates: Partial<Schedule> = { status: targetStatus };
     
-    if (targetStatus === 'cleaning' && !schedule.startAt) {
-      updates.startAt = new Date();
-      updates.teamArrival = new Date();
-      if (teamMemberId) {
-        updates.responsibleTeamMemberId = teamMemberId;
+    // REGRA: Quando transiciona para 'cleaning', expandir todas as categorias automaticamente
+    if (targetStatus === 'cleaning') {
+      setIsTransitioningToClean(true);
+      setIsLoadingChecklist(true);
+      
+      // Set start time
+      if (!schedule.startAt) {
+        updates.startAt = new Date();
+        updates.teamArrival = new Date();
+        if (teamMemberId) {
+          updates.responsibleTeamMemberId = teamMemberId;
+        }
       }
-      toast.success('Chegada da equipe registrada! Checklist carregado.');
+      
+      // First update the schedule to trigger the checklist loading
+      try {
+        onUpdateSchedule({ ...schedule, ...updates }, previousStatus, teamMemberId || undefined);
+        
+        // Wait a moment for the database trigger to populate the checklist
+        await new Promise(resolve => setTimeout(resolve, 500));
+        
+        // Fetch the updated schedule to get the populated checklist
+        const { data: updatedSchedule, error } = await supabase
+          .from('schedules')
+          .select('checklists, checklist_state')
+          .eq('id', schedule.id)
+          .maybeSingle();
+        
+        if (error) throw error;
+        
+        // Parse and set the checklist
+        if (updatedSchedule?.checklist_state && Array.isArray(updatedSchedule.checklist_state)) {
+          const parsedChecklist = (updatedSchedule.checklist_state as unknown[]).map((item: unknown, index: number) => {
+            const typedItem = item as Record<string, unknown>;
+            return {
+              id: String(typedItem?.id || index),
+              title: String(typedItem?.title || ''),
+              completed: Boolean(typedItem?.completed),
+              category: String(typedItem?.category || 'Geral'),
+              status: (typedItem?.status as 'pending' | 'ok' | 'not_ok') || 'pending',
+            };
+          });
+          
+          if (parsedChecklist.length > 0) {
+            setChecklist(parsedChecklist);
+            
+            // Auto-expand ALL categories when starting cleaning
+            const categories = [...new Set(parsedChecklist.map(item => item.category))];
+            const expandAll: Record<string, boolean> = {};
+            categories.forEach(cat => {
+              expandAll[cat] = true;
+            });
+            setExpandedCategories(expandAll);
+          }
+        }
+        
+        toast.success('Checklist carregado! Inicie a verificação.');
+      } catch (error) {
+        console.error('Error loading checklist:', error);
+        toast.error('Erro ao carregar checklist. Tente novamente.');
+      } finally {
+        setIsLoadingChecklist(false);
+        setIsTransitioningToClean(false);
+      }
+      return;
     }
     
-    // Rule 41.8: Single commit when finalizing
+    // Rule 41.8: Single commit when finalizing - show blocking modal
     if (targetStatus === 'completed') {
+      setShowFinalizingModal(true);
+      setFinalizingComplete(false);
       setIsCommitting(true);
+      
       try {
+        // Small delay to ensure modal is visible
+        await new Promise(resolve => setTimeout(resolve, 300));
+        
         // Commit all data: checklist, observations, issues, photos
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const commitPayload: any = {
           status: 'completed',
           end_at: new Date().toISOString(),
           checklists: checklist,
+          checklist_state: checklist, // Also update checklist_state to preserve data
           cleaner_observations: cleanerObservations || null,
           maintenance_issues: localIssues,
           category_photos: categoryPhotosData,
@@ -880,12 +963,24 @@ export function ScheduleDetail({ schedule, onClose, onUpdateSchedule }: Schedule
         
         updates.endAt = new Date();
         updates.teamDeparture = new Date();
-        toast.success('Limpeza finalizada com sucesso!');
         
-        onUpdateSchedule({ ...schedule, ...updates }, previousStatus, teamMemberId || undefined);
+        // Show completion state
+        setFinalizingComplete(true);
+        await new Promise(resolve => setTimeout(resolve, 1000));
+        
+        // Update schedule with preserved checklist data
+        onUpdateSchedule({ 
+          ...schedule, 
+          ...updates, 
+          checklist, // Preserve the filled checklist
+        }, previousStatus, teamMemberId || undefined);
+        
+        setShowFinalizingModal(false);
+        toast.success('Limpeza finalizada com sucesso!');
       } catch (error) {
         // Rule 41.8.2: On failure, don't clear cache, allow retry
         console.error('Error committing cleaning:', error);
+        setShowFinalizingModal(false);
         toast.error('Erro ao finalizar limpeza. Tente novamente.');
         setIsCommitting(false);
         return;
@@ -2118,6 +2213,17 @@ export function ScheduleDetail({ schedule, onClose, onUpdateSchedule }: Schedule
         />
       )}
 
+      {/* Checklist Loading Modal - blocks interaction while loading checklist */}
+      <ChecklistLoadingModal 
+        isOpen={isLoadingChecklist || isTransitioningToClean}
+        message={isLoadingChecklist ? 'Carregando checklist...' : 'Iniciando limpeza...'}
+      />
+
+      {/* Finalizing Modal - blocks interaction while saving */}
+      <FinalizingModal 
+        isOpen={showFinalizingModal}
+        isComplete={finalizingComplete}
+      />
 
       {/* Category Photo Upload Modal */}
       {photoUploadModal.open && photoUploadModal.category && (
