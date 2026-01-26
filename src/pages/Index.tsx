@@ -689,9 +689,22 @@ const Index = () => {
     return startSync();
   }, [startSync]);
 
-  // Wait for role loading first to avoid flash of wrong UI
-  if (loading || roleLoading) {
-    // Show simple loading for cleaners, admin layout for admins
+  // Wait for role loading first - show neutral loading without sidebar
+  // This prevents showing admin UI to cleaners during the role fetch
+  if (roleLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <div className="flex flex-col items-center gap-3">
+          <Loader2 className="h-8 w-8 animate-spin text-primary" />
+          <p className="text-muted-foreground">Carregando...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Now we know the role - show appropriate loading state
+  if (loading) {
+    // Show simple loading for cleaners - without sidebar
     if (isCleaner && !hasManagerAccess && !canSwitchView) {
       return (
         <div className="min-h-screen flex items-center justify-center bg-background">
