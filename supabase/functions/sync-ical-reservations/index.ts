@@ -278,14 +278,13 @@ serve(async (req) => {
         );
       }
 
-      // Verify user has any valid role (admin, manager, or cleaner)
+      // Verify user has any valid role (admin, manager, cleaner, or superadmin)
       const { data: roleData, error: roleError } = await supabase
         .from('user_roles')
         .select('role')
-        .eq('user_id', user.id)
-        .maybeSingle();
+        .eq('user_id', user.id);
 
-      if (roleError || !roleData) {
+      if (roleError || !roleData || roleData.length === 0) {
         console.log(`User ${user.id} attempted sync without any role`);
         return new Response(
           JSON.stringify({ error: 'Acesso negado - usuário não tem permissão' }),
@@ -293,7 +292,8 @@ serve(async (req) => {
         );
       }
       
-      console.log(`User ${user.id} (${roleData.role}) triggered manual sync`);
+      const userRoles = roleData.map(r => r.role).join(', ');
+      console.log(`User ${user.id} (${userRoles}) triggered manual sync`);
     }
 
     let sourceId: string | null = null;
