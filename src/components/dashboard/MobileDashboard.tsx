@@ -10,8 +10,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { useTeamMemberId } from '@/hooks/useTeamMemberId';
 import { useUserRole } from '@/hooks/useUserRole';
 import { useViewMode } from '@/hooks/useViewMode';
-import { useCleanerPayments, PaymentPeriod } from '@/hooks/useCleanerPayments';
-import { CleanerPaymentCards } from './CleanerPaymentCards';
+import { PaymentPeriod } from '@/hooks/useCleanerPayments';
 import { useCleanerInspections } from '@/hooks/useCleanerInspections';
 import { AddToHomeScreen } from '@/components/pwa/AddToHomeScreen';
 import { CleaningTimeAlertBanner } from '@/components/dashboard/CleaningTimeAlertBanner';
@@ -400,10 +399,10 @@ export function MobileDashboard({ schedules, onScheduleClick, onStartCleaning, o
     const tomorrow = addDays(new Date(), 1);
     const tomorrowDateStr = format(tomorrow, 'yyyy-MM-dd');
     
-    // Schedules for tomorrow (not completed) + overdue
+    // Schedules for tomorrow only (not completed) - overdue NOT included here
     const schedulesCount = schedules.filter(s => 
       isSameDay(s.checkOut, tomorrow) && s.status !== 'completed'
-    ).length + overdueCount;
+    ).length;
     
     // Inspections for tomorrow (scheduled or in_progress)
     const inspectionsCount = inspections.filter(i =>
@@ -416,7 +415,7 @@ export function MobileDashboard({ schedules, onScheduleClick, onStartCleaning, o
       inspections: inspectionsCount,
       total: schedulesCount + inspectionsCount
     };
-  }, [schedules, overdueCount, inspections]);
+  }, [schedules, inspections]);
 
   const periodStats = useMemo(() => {
     const now = new Date();
@@ -795,8 +794,6 @@ export function MobileDashboard({ schedules, onScheduleClick, onStartCleaning, o
               </div>
             </button>
 
-            {/* Payment Cards */}
-            <CleanerPaymentCards teamMemberId={teamMemberId} period={paymentPeriod} />
 
 
             {/* Next Task */}
