@@ -383,14 +383,14 @@ serve(async (req) => {
           const events = parseICalEvents(icalData);
           console.log(`Parsed ${events.length} reservations for ${source.custom_name || source.id}`);
           
-          // Log full parsed events JSON for debugging
-          console.log(`[ICAL_JSON] ${property.name}:`, JSON.stringify(events.map(e => ({
+          // Log full parsed events JSON for debugging (complete DESCRIPTION field)
+          console.log(`[ICAL_RAW_DATA] ${property.name}:`, JSON.stringify(events.map(e => ({
             uid: e.uid,
             dtstart: e.dtstart.toISOString(),
             dtend: e.dtend.toISOString(),
             summary: e.summary,
-            description: e.description?.substring(0, 500) || null,
-            access_password: extractAccessPassword(e.description)
+            description_full: e.description || null,
+            extracted_password: extractAccessPassword(e.description)
           })), null, 2));
 
           // Track UIDs from this sync to detect removed reservations
