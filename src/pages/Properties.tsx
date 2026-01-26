@@ -2,7 +2,6 @@ import { useState, useEffect, useRef } from 'react';
 import { SidebarProvider, SidebarInset } from '@/components/ui/sidebar';
 import { AppSidebar } from '@/components/dashboard/AppSidebar';
 import { DashboardHeader } from '@/components/dashboard/DashboardHeader';
-import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
@@ -18,6 +17,7 @@ import { PasswordModeConfig } from '@/components/properties/PasswordModeConfig';
 import { AdvancedRulesConfig } from '@/components/properties/AdvancedRulesConfig';
 import { CleaningRatesManager } from '@/components/properties/CleaningRatesManager';
 import { PropertyTeamManager } from '@/components/properties/PropertyTeamManager';
+import { DeletePropertyModal } from '@/components/properties/DeletePropertyModal';
 import { cn } from '@/lib/utils';
 import { useImageCompression } from '@/hooks/useImageCompression';
 import { usePropertyGeocoding } from '@/hooks/usePropertyGeocoding';
@@ -84,6 +84,10 @@ export default function Properties() {
     ical_url: '',
     custom_name: ''
   });
+  
+  // Delete property modal state
+  const [deleteModalOpen, setDeleteModalOpen] = useState(false);
+  const [propertyToDelete, setPropertyToDelete] = useState<Property | null>(null);
 
   const canManage = hasManagerAccess || isSuperAdmin;
   const canDelete = isAdmin || isSuperAdmin;
@@ -846,30 +850,15 @@ export default function Properties() {
                               <span className="material-symbols-outlined text-[20px]">edit</span>
                             </button>
                             {canDelete && (
-                              <AlertDialog>
-                                <AlertDialogTrigger asChild>
-                                  <button className="flex h-9 w-9 items-center justify-center rounded-lg text-destructive hover:bg-destructive/10 transition-colors">
-                                    <span className="material-symbols-outlined text-[20px]">delete</span>
-                                  </button>
-                                </AlertDialogTrigger>
-                                <AlertDialogContent>
-                                  <AlertDialogHeader>
-                                    <AlertDialogTitle>Excluir propriedade?</AlertDialogTitle>
-                                    <AlertDialogDescription>
-                                      Esta ação não pode ser desfeita. Todas as reservas e schedules associados serão removidos.
-                                    </AlertDialogDescription>
-                                  </AlertDialogHeader>
-                                  <AlertDialogFooter>
-                                    <AlertDialogCancel>Cancelar</AlertDialogCancel>
-                                    <AlertDialogAction
-                                      onClick={() => handleDelete(property.id)}
-                                      className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                                    >
-                                      Excluir
-                                    </AlertDialogAction>
-                                  </AlertDialogFooter>
-                                </AlertDialogContent>
-                              </AlertDialog>
+                              <button 
+                                onClick={() => {
+                                  setPropertyToDelete(property);
+                                  setDeleteModalOpen(true);
+                                }}
+                                className="flex h-9 w-9 items-center justify-center rounded-lg text-destructive hover:bg-destructive/10 transition-colors"
+                              >
+                                <span className="material-symbols-outlined text-[20px]">delete</span>
+                              </button>
                             )}
                           </div>
                         )}
@@ -1138,6 +1127,21 @@ export default function Properties() {
               </div>
             </DialogContent>
           </Dialog>
+
+          {/* Delete Property Modal */}
+          <DeletePropertyModal
+            isOpen={deleteModalOpen}
+            onClose={() => {
+              setDeleteModalOpen(false);
+              setPropertyToDelete(null);
+            }}
+            onConfirm={() => {
+              if (propertyToDelete) {
+                handleDelete(propertyToDelete.id);
+              }
+            }}
+            propertyName={propertyToDelete?.name || ''}
+          />
         </SidebarInset>
       </div>
     </SidebarProvider>
