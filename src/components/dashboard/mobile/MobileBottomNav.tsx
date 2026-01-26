@@ -18,13 +18,13 @@ export const MobileBottomNav = memo(function MobileBottomNav({
 }: MobileBottomNavProps) {
   const navigate = useNavigate();
   const location = useLocation();
-  const { isManager, isAdmin, isSuperAdmin } = useUserRole();
+  const { isManager, isAdmin, isSuperAdmin, loading: roleLoading } = useUserRole();
 
   // REGRA 4 & 6: Anfitrião E Proprietário têm mesmo menu de 5 abas
   // Menu: Home, Calendário, Checklist, Inspeções, Perfil
   const showAdminNav = isManager || isAdmin;
 
-  // Optimized handlers for cleaner/admin nav
+  // All hooks must be called before any early returns
   const handleTabClick = useCallback((tab: CleanerTab, e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
@@ -41,7 +41,6 @@ export const MobileBottomNav = memo(function MobileBottomNav({
     });
   }, [navigate]);
 
-  // Manager-specific navigation handler
   const handleManagerNavClick = useCallback((route: string, e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
@@ -54,12 +53,21 @@ export const MobileBottomNav = memo(function MobileBottomNav({
   const getActiveManagerTab = (): ManagerTab => {
     if (location.pathname === '/inspecoes') return 'inspecoes';
     if (location.pathname === '/minha-conta') return 'perfil';
-    // For home and calendar, use the activeTab prop mapping
     if (activeTab === 'agenda') return 'calendario';
     return 'home';
   };
 
   const activeManagerTab = getActiveManagerTab();
+
+  // Prevent flash of cleaner menu while roles are loading
+  if (roleLoading) {
+    return (
+      <nav className="fixed bottom-0 left-0 right-0 z-[100] safe-area-inset-bottom">
+        <div className="absolute inset-0 bg-background/95 backdrop-blur-lg border-t border-border/50" />
+        <div className="relative flex h-20 items-center justify-around px-1 pb-2" />
+      </nav>
+    );
+  }
 
   // REGRA 4 & 6: Menu de Anfitrião e Proprietário - Home, Calendário, Checklist, Inspeções, Perfil
   if (showAdminNav) {
