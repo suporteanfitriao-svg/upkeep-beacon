@@ -1,9 +1,10 @@
 import { useState } from 'react';
-import { UserPlus, Check, Loader2, Users, X, User } from 'lucide-react';
+import { UserPlus, Check, Loader2, Users, X, User, Lock } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { Button } from '@/components/ui/button';
 import { useAssignableCleaners } from '@/hooks/useAssignableCleaners';
+import { useUserRole } from '@/hooks/useUserRole';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 
@@ -32,12 +33,17 @@ export function AssignCleanerSheet({
 }: AssignCleanerSheetProps) {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const { cleaners, loading, error } = useAssignableCleaners(propertyId);
+  const { isManager, isAdmin, isSuperAdmin } = useUserRole();
 
   // Block reassignment during cleaning
   const isBlocked = status === 'cleaning';
+  
+  // REGRA: Anfitrião (manager) NÃO pode atribuir ou alterar cleaner
+  // Apenas Admin/SuperAdmin podem fazer essa ação
+  const canAssign = isAdmin || isSuperAdmin;
 
   const handleAssign = async (cleaner: { id: string; name: string }) => {
-    if (isBlocked || isSubmitting) return;
+    if (isBlocked || isSubmitting || !canAssign) return;
 
     setIsSubmitting(true);
     try {
@@ -63,7 +69,7 @@ export function AssignCleanerSheet({
   };
 
   const handleRemoveAssignment = async () => {
-    if (isBlocked || isSubmitting || !responsibleTeamMemberId) return;
+    if (isBlocked || isSubmitting || !responsibleTeamMemberId || !canAssign) return;
 
     setIsSubmitting(true);
     try {
@@ -138,12 +144,24 @@ export function AssignCleanerSheet({
             </div>
           )}
 
-          {/* Block Message */}
+          {/* Block Messages */}
           {isBlocked && (
             <div className="mb-4 p-4 bg-amber-50 dark:bg-amber-900/20 rounded-xl border border-amber-200 dark:border-amber-800">
               <p className="text-sm text-amber-700 dark:text-amber-300 text-center">
                 Não é possível alterar o responsável durante a limpeza
               </p>
+            </div>
+          )}
+          
+          {/* REGRA: Anfitrião não pode atribuir cleaners */}
+          {!canAssign && !isBlocked && (
+            <div className="mb-4 p-4 bg-slate-50 dark:bg-slate-800/50 rounded-xl border border-slate-200 dark:border-slate-700">
+              <div className="flex items-center gap-3">
+                <Lock className="w-5 h-5 text-muted-foreground" />
+                <p className="text-sm text-muted-foreground">
+                  Apenas o Proprietário pode atribuir ou alterar responsáveis
+                </p>
+              </div>
             </div>
           )}
 
@@ -181,13 +199,13 @@ export function AssignCleanerSheet({
                     <button
                       key={cleaner.id}
                       onClick={() => handleAssign(cleaner)}
-                      disabled={isSubmitting || isBlocked}
+                      disabled={isSubmitting || isBlocked || !canAssign}
                       className={cn(
                         'w-full flex items-center justify-between p-4 rounded-xl border transition-all',
                         isSelected
                           ? 'bg-primary/10 border-primary/30 ring-2 ring-primary/20'
                           : 'bg-card border-border hover:bg-accent hover:border-accent',
-                        (isSubmitting || isBlocked) && 'opacity-50 cursor-not-allowed'
+                        (isSubmitting || isBlocked || !canAssign) && 'opacity-50 cursor-not-allowed'
                       )}
                     >
                       <div className="flex items-center gap-3">

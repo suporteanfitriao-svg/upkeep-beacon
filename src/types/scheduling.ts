@@ -119,9 +119,10 @@ export const STATUS_LABELS: Record<ScheduleStatus, string> = {
 };
 
 // Roles that can transition to each status
+// REGRA: Anfitrião (manager) pode LIBERAR mas NÃO pode iniciar/finalizar limpeza
 export const STATUS_ALLOWED_ROLES: Record<ScheduleStatus, AppRole[]> = {
   waiting: [], // Can't transition TO waiting (only revert by admin)
-  released: ['admin', 'manager'],
-  cleaning: ['admin', 'manager', 'cleaner'],
-  completed: ['admin', 'manager', 'cleaner'],
+  released: ['admin', 'manager'], // Anfitrião pode liberar
+  cleaning: ['admin', 'cleaner'], // Anfitrião NÃO pode iniciar limpeza - apenas cleaner ou admin
+  completed: ['admin', 'cleaner'], // Anfitrião NÃO pode finalizar limpeza - apenas cleaner ou admin
 };

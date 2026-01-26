@@ -514,8 +514,16 @@ export function ScheduleDetail({ schedule, onClose, onUpdateSchedule }: Schedule
     }
 
     // Rule 3: Check role permission
+    // REGRA: Anfitrião (manager) pode LIBERAR mas NÃO pode iniciar/finalizar limpeza
     const allowedRoles = STATUS_ALLOWED_ROLES[nextStatus];
     if (!allowedRoles.includes(role as AppRole)) {
+      // Mensagem específica para Anfitrião tentando iniciar/finalizar limpeza
+      if (role === 'manager' && (nextStatus === 'cleaning' || nextStatus === 'completed')) {
+        return { 
+          allowed: false, 
+          reason: 'Anfitrião não pode iniciar ou finalizar limpezas. Esta ação é exclusiva do Cleaner.' 
+        };
+      }
       return { 
         allowed: false, 
         reason: `Apenas ${allowedRoles.map(r => r === 'admin' ? 'administradores' : r === 'manager' ? 'gestores' : 'limpadores').join(' ou ')} podem realizar esta ação` 

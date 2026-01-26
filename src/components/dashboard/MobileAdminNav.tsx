@@ -27,16 +27,18 @@ interface MenuItem {
   url: string;
   icon: React.ComponentType<{ className?: string }>;
   requiresSuperAdmin?: boolean;
-  requiresAdmin?: boolean;
-  requiresManager?: boolean;
+  requiresOwner?: boolean; // REGRA: Bloqueado para Anfitrião - apenas Owner (admin/superadmin)
+  requiresManager?: boolean; // Permite manager + admin + superadmin
 }
 
 const menuItems: MenuItem[] = [
   { title: 'Início', url: '/', icon: Home },
-  { title: 'Propriedades', url: '/propriedades', icon: Building2, requiresManager: true },
+  // REGRA: Propriedades e Equipe são bloqueados para Anfitrião - apenas Owner
+  { title: 'Propriedades', url: '/propriedades', icon: Building2, requiresOwner: true },
+  { title: 'Equipe', url: '/equipe', icon: Users, requiresOwner: true },
+  // REGRA: Inspeção, Inventário e Relatórios são permitidos para Anfitrião
   { title: 'Inspeção', url: '/inspecoes', icon: ClipboardCheck, requiresManager: true },
   { title: 'Inventário', url: '/inventario', icon: Package, requiresManager: true },
-  { title: 'Equipe', url: '/equipe', icon: Users, requiresAdmin: true },
   { title: 'Relatórios', url: '/manutencao', icon: Wrench, requiresManager: true },
   { title: 'Minha Conta', url: '/minha-conta', icon: UserCog },
   { title: 'Super Admin', url: '/super-admin', icon: Crown, requiresSuperAdmin: true },
@@ -66,7 +68,9 @@ export function MobileAdminNav() {
   // Filter menu items based on role
   const visibleItems = menuItems.filter(item => {
     if (item.requiresSuperAdmin && !isSuperAdmin) return false;
-    if (item.requiresAdmin && !isAdmin && !isSuperAdmin) return false;
+    // REGRA: Owner-only routes (Proprietário/Equipe) - apenas admin/superadmin, NOT manager
+    if (item.requiresOwner && !isAdmin && !isSuperAdmin) return false;
+    // Manager routes - allows manager + admin + superadmin
     if (item.requiresManager && !hasManagerAccess) return false;
     return true;
   });
