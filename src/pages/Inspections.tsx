@@ -24,6 +24,11 @@ import { toast } from 'sonner';
 import { format, parseISO, isToday, isPast, isFuture } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import type { Json } from '@/integrations/supabase/types';
+import { useIsMobile } from '@/hooks/use-mobile';
+import { useUserRole } from '@/hooks/useUserRole';
+import { useNavigate } from 'react-router-dom';
+import { MobileBottomNav } from '@/components/dashboard/mobile/MobileBottomNav';
+import { MobilePageHeader } from '@/components/mobile/MobilePageHeader';
 
 interface Property {
   id: string;
@@ -99,6 +104,9 @@ interface TeamMemberWithAccess extends TeamMember {
 }
 
 const Inspections = () => {
+  const navigate = useNavigate();
+  const isMobile = useIsMobile();
+  const { isAdmin, isManager, isCleaner } = useUserRole();
   const [properties, setProperties] = useState<Property[]>([]);
   const [allTeamMembers, setAllTeamMembers] = useState<TeamMemberWithAccess[]>([]);
   const [checklists, setChecklists] = useState<Checklist[]>([]);
@@ -503,7 +511,7 @@ const Inspections = () => {
       </div>
       <SidebarInset className="w-full">
         <DashboardHeader title="Inspeção" subtitle="Agende e gerencie inspeções" />
-        <main className="flex-1 p-4 sm:p-6">
+        <main className={`flex-1 p-4 sm:p-6 ${isMobile ? 'pb-28' : ''}`}>
           {/* Header - Mobile optimized */}
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
             <div>
@@ -1047,6 +1055,14 @@ const Inspections = () => {
           )}
         </DialogContent>
       </Dialog>
+
+      {/* REGRA 3: Menu inferior fixo para mobile */}
+      {isMobile && !isCleaner && (
+        <MobileBottomNav 
+          activeTab="menu" 
+          onTabChange={() => navigate('/')} 
+        />
+      )}
     </SidebarProvider>
   );
 };
