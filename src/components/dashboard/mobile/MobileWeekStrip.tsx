@@ -30,31 +30,34 @@ export const MobileWeekStrip = memo(function MobileWeekStrip({
         {weekDays.map((day, index) => {
           const dateKey = format(day, 'yyyy-MM-dd');
           const isSelected = isSameDay(day, selectedDate);
+          const isToday = isSameDay(day, new Date());
           const indicators = dayIndicators[dateKey] || { pending: 0, completed: 0, gold: 0, inspections: 0 };
           const totalTasks = indicators.pending + indicators.completed + indicators.gold + indicators.inspections;
-          const isPast = day < startOfDay(new Date()) && !isSameDay(day, new Date());
+          const isPast = day < startOfDay(new Date()) && !isToday;
 
           return (
             <button
               key={index}
               onClick={() => onDateSelect(day)}
-              className={cn(
-                "group flex h-24 min-w-[4.5rem] snap-start flex-col items-center justify-center gap-2 rounded-2xl transition-transform active:scale-95",
-                isSelected
-                  ? "bg-primary shadow-glow ring-2 ring-primary ring-offset-2 ring-offset-stone-50 dark:ring-offset-[#22252a]"
+            className={cn(
+              "group flex h-24 min-w-[4.5rem] snap-start flex-col items-center justify-center gap-2 rounded-2xl transition-transform active:scale-95",
+              isSelected
+                ? "bg-primary shadow-glow ring-2 ring-primary ring-offset-2 ring-offset-stone-50 dark:ring-offset-[#22252a]"
+                : isToday
+                  ? "bg-gradient-to-b from-primary/15 to-primary/5 dark:from-primary/25 dark:to-primary/10 shadow-md border-2 border-primary ring-1 ring-primary/20"
                   : "bg-white dark:bg-[#2d3138] shadow-sm border border-slate-200 dark:border-slate-700"
-              )}
+            )}
             >
               <span className={cn(
                 "text-xs font-semibold",
-                isSelected ? "text-white/90 font-bold" : "text-[#8A8B88]"
+                isSelected ? "text-white/90 font-bold" : isToday ? "text-primary font-bold" : "text-[#8A8B88]"
               )}>
-                {dayNames[index]}
+                {isToday && !isSelected ? 'HOJE' : dayNames[index]}
               </span>
               <span className={cn(
                 "font-bold",
-                isSelected ? "text-2xl text-white font-extrabold" : "text-lg text-slate-900 dark:text-white",
-                isPast && !isSelected && "text-[#8A8B88]"
+                isSelected ? "text-2xl text-white font-extrabold" : isToday ? "text-xl text-primary font-extrabold" : "text-lg text-slate-900 dark:text-white",
+                isPast && !isSelected && !isToday && "text-[#8A8B88]"
               )}>
                 {format(day, 'd')}
               </span>
