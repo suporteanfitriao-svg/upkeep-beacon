@@ -410,26 +410,177 @@ export default function Profile() {
         
         <MobileMenuSheet />
         
-        <main className="px-4 py-4">
-          {/* Profile Summary Card */}
+        <main className="px-4 py-4 overflow-x-hidden">
+          {/* REGRA 4: Profile Summary Card - Exibição de dados cadastrais */}
           <Card className="shadow-sm mb-4">
             <CardContent className="pt-6 pb-6 flex flex-col items-center text-center">
               <div className="relative mb-4">
-                <Avatar className="w-24 h-24 border-4 border-muted">
+                <Avatar className="w-20 h-20 border-4 border-muted">
                   <AvatarImage src="" />
-                  <AvatarFallback className="bg-primary/10 text-primary text-2xl">
+                  <AvatarFallback className="bg-primary/10 text-primary text-xl">
                     {teamMember?.name ? getInitials(teamMember.name) : 'U'}
                   </AvatarFallback>
                 </Avatar>
-                <button className="absolute bottom-0 right-0 bg-primary text-primary-foreground p-2 rounded-full shadow-lg hover:opacity-90 transition-opacity border-2 border-card">
-                  <Camera className="w-3 h-3" />
-                </button>
               </div>
               <h3 className="text-lg font-bold text-foreground">{teamMember?.name || 'Usuário'}</h3>
-              <p className="text-muted-foreground text-sm mb-3">{teamMember?.email || user?.email}</p>
+              <p className="text-muted-foreground text-sm mb-2 break-all">{teamMember?.email || user?.email}</p>
               <Badge variant="outline" className="bg-primary/10 text-primary border-primary/20 uppercase tracking-wider text-xs">
                 {role ? roleLabels[role] : 'Usuário'}
               </Badge>
+            </CardContent>
+          </Card>
+
+          {/* REGRA 5: Seção de Telefone - Editável */}
+          <Card className="shadow-sm mb-4">
+            <CardContent className="pt-4 pb-4">
+              <div className="flex items-center justify-between mb-3">
+                <div className="flex items-center gap-2">
+                  <Smartphone className="w-4 h-4 text-primary" />
+                  <span className="text-sm font-semibold text-foreground">Telefone</span>
+                </div>
+                {!editingPersonal ? (
+                  <Button variant="ghost" size="sm" className="h-8 px-2 text-primary" onClick={() => setEditingPersonal(true)}>
+                    <Pencil className="w-3 h-3 mr-1" />
+                    Editar
+                  </Button>
+                ) : (
+                  <div className="flex gap-1">
+                    <Button variant="ghost" size="sm" className="h-8 px-2" onClick={handleCancelPersonal} disabled={saving}>
+                      <X className="w-3 h-3" />
+                    </Button>
+                    <Button size="sm" className="h-8 px-2" onClick={handleSavePersonal} disabled={saving}>
+                      {saving ? <Loader2 className="w-3 h-3 animate-spin" /> : <Check className="w-3 h-3" />}
+                    </Button>
+                  </div>
+                )}
+              </div>
+              {editingPersonal ? (
+                <Input
+                  type="tel"
+                  value={formData.whatsapp}
+                  onChange={(e) => setFormData(prev => ({ ...prev, whatsapp: e.target.value }))}
+                  placeholder="(00) 00000-0000"
+                  className="w-full"
+                />
+              ) : (
+                <p className="text-sm text-muted-foreground">
+                  {teamMember?.whatsapp || 'Não informado'}
+                </p>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* REGRA 5: Seção de Endereço - Editável */}
+          <Card className="shadow-sm mb-4">
+            <CardContent className="pt-4 pb-4">
+              <div className="flex items-center justify-between mb-3">
+                <div className="flex items-center gap-2">
+                  <MapPin className="w-4 h-4 text-primary" />
+                  <span className="text-sm font-semibold text-foreground">Endereço</span>
+                </div>
+                {!editingAddress ? (
+                  <Button variant="ghost" size="sm" className="h-8 px-2 text-primary" onClick={() => setEditingAddress(true)}>
+                    <Pencil className="w-3 h-3 mr-1" />
+                    Editar
+                  </Button>
+                ) : (
+                  <div className="flex gap-1">
+                    <Button variant="ghost" size="sm" className="h-8 px-2" onClick={handleCancelAddress} disabled={saving}>
+                      <X className="w-3 h-3" />
+                    </Button>
+                    <Button size="sm" className="h-8 px-2" onClick={handleSaveAddress} disabled={saving}>
+                      {saving ? <Loader2 className="w-3 h-3 animate-spin" /> : <Check className="w-3 h-3" />}
+                    </Button>
+                  </div>
+                )}
+              </div>
+              {editingAddress ? (
+                <div className="space-y-3">
+                  <div>
+                    <Label className="text-xs text-muted-foreground">CEP</Label>
+                    <div className="relative">
+                      <Input
+                        value={formData.address_cep}
+                        onChange={(e) => {
+                          const value = e.target.value;
+                          handleCepChange(value, setFormData);
+                        }}
+                        placeholder="00000-000"
+                        className="w-full"
+                      />
+                      {fetchingCep && <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 animate-spin text-muted-foreground" />}
+                    </div>
+                  </div>
+                  <div>
+                    <Label className="text-xs text-muted-foreground">Rua</Label>
+                    <Input
+                      value={formData.address_street}
+                      readOnly
+                      className="w-full bg-muted/50"
+                    />
+                  </div>
+                  <div className="grid grid-cols-3 gap-2">
+                    <div>
+                      <Label className="text-xs text-muted-foreground">Número</Label>
+                      <Input
+                        value={formData.address_number}
+                        onChange={(e) => setFormData(prev => ({ ...prev, address_number: e.target.value }))}
+                        placeholder="Nº"
+                        className="w-full"
+                      />
+                    </div>
+                    <div className="col-span-2">
+                      <Label className="text-xs text-muted-foreground">Complemento</Label>
+                      <Input
+                        value={formData.address_complement}
+                        onChange={(e) => setFormData(prev => ({ ...prev, address_complement: e.target.value }))}
+                        placeholder="Apto, Bloco..."
+                        className="w-full"
+                      />
+                    </div>
+                  </div>
+                  <div>
+                    <Label className="text-xs text-muted-foreground">Bairro</Label>
+                    <Input
+                      value={formData.address_district}
+                      readOnly
+                      className="w-full bg-muted/50"
+                    />
+                  </div>
+                  <div className="grid grid-cols-4 gap-2">
+                    <div className="col-span-3">
+                      <Label className="text-xs text-muted-foreground">Cidade</Label>
+                      <Input
+                        value={formData.address_city}
+                        readOnly
+                        className="w-full bg-muted/50"
+                      />
+                    </div>
+                    <div>
+                      <Label className="text-xs text-muted-foreground">UF</Label>
+                      <Input
+                        value={formData.address_state}
+                        readOnly
+                        className="w-full bg-muted/50"
+                      />
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                <div className="text-sm text-muted-foreground">
+                  {teamMember?.address_street ? (
+                    <>
+                      <p>{teamMember.address_street}{teamMember.address_number ? `, ${teamMember.address_number}` : ''}</p>
+                      {teamMember.address_complement && <p>{teamMember.address_complement}</p>}
+                      <p>{teamMember.address_district}</p>
+                      <p>{teamMember.address_city} - {teamMember.address_state}</p>
+                      <p>{teamMember.address_cep}</p>
+                    </>
+                  ) : (
+                    <p>Endereço não informado</p>
+                  )}
+                </div>
+              )}
             </CardContent>
           </Card>
 
@@ -442,11 +593,11 @@ export default function Profile() {
               <div className="p-2 rounded-lg bg-primary/10">
                 <KeyRound className="w-5 h-5 text-primary" />
               </div>
-              <div className="flex-1">
+              <div className="flex-1 min-w-0">
                 <p className="font-semibold text-foreground">Alterar Senha</p>
                 <p className="text-xs text-muted-foreground">Atualize sua senha de acesso</p>
               </div>
-              <ChevronRight className="w-5 h-5 text-muted-foreground" />
+              <ChevronRight className="w-5 h-5 text-muted-foreground flex-shrink-0" />
             </button>
 
             <button
@@ -456,11 +607,11 @@ export default function Profile() {
               <div className="p-2 rounded-lg bg-destructive/10">
                 <LogOut className="w-5 h-5 text-destructive" />
               </div>
-              <div className="flex-1">
+              <div className="flex-1 min-w-0">
                 <p className="font-semibold text-foreground">Sair da Conta</p>
                 <p className="text-xs text-muted-foreground">Encerrar sessão atual</p>
               </div>
-              <ChevronRight className="w-5 h-5 text-muted-foreground" />
+              <ChevronRight className="w-5 h-5 text-muted-foreground flex-shrink-0" />
             </button>
           </div>
 

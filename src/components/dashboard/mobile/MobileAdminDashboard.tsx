@@ -594,59 +594,116 @@ export function MobileAdminDashboard({
         )}
       </header>
 
-      {/* REGRA 4: Aba Home do Anfitrião - Apenas contadores de status */}
+      {/* REGRA 4: Aba Home do Anfitrião - Filtros de período + contadores responsivos */}
       {managerActiveTab === 'home' && (
-        <section className="flex-1 px-4 pt-6 pb-24">
-          <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider mb-3 block">Resumo de Hoje</span>
+        <section className="flex-1 px-4 pt-4 pb-24 overflow-y-auto">
+          {/* REGRA 1.1: Filtros rápidos de período */}
+          <div className="mb-4">
+            <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider mb-2 block">Período</span>
+            <div className="flex items-center gap-2 overflow-x-auto hide-scrollbar pb-1">
+              <button
+                onClick={() => handleAgendaViewModeChange('hoje')}
+                className={cn(
+                  "px-4 py-2 rounded-full text-sm font-semibold transition-all whitespace-nowrap touch-manipulation",
+                  agendaViewMode === 'hoje'
+                    ? "bg-primary text-white shadow-md"
+                    : "bg-white dark:bg-slate-800 text-muted-foreground border border-slate-200 dark:border-slate-700"
+                )}
+              >
+                Hoje
+              </button>
+              <button
+                onClick={() => handleAgendaViewModeChange('amanha')}
+                className={cn(
+                  "px-4 py-2 rounded-full text-sm font-semibold transition-all whitespace-nowrap touch-manipulation",
+                  agendaViewMode === 'amanha'
+                    ? "bg-primary text-white shadow-md"
+                    : "bg-white dark:bg-slate-800 text-muted-foreground border border-slate-200 dark:border-slate-700"
+                )}
+              >
+                Amanhã
+              </button>
+              <button
+                onClick={() => handleAgendaViewModeChange('mes')}
+                className={cn(
+                  "px-4 py-2 rounded-full text-sm font-semibold transition-all whitespace-nowrap touch-manipulation",
+                  agendaViewMode === 'mes'
+                    ? "bg-primary text-white shadow-md"
+                    : "bg-white dark:bg-slate-800 text-muted-foreground border border-slate-200 dark:border-slate-700"
+                )}
+              >
+                Mês
+              </button>
+              {/* Day selection via day strip shown in calendario tab */}
+            </div>
+          </div>
+
+          {/* REGRA 2.1: Contadores visíveis que respondem ao filtro */}
+          <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider mb-3 block">
+            {agendaViewMode === 'hoje' ? 'Resumo de Hoje' : agendaViewMode === 'amanha' ? 'Resumo de Amanhã' : 'Resumo do Mês'}
+          </span>
+          
+          {/* Total do período destacado */}
+          <div className="mb-4 p-4 rounded-xl bg-primary/5 border border-primary/20">
+            <div className="flex items-center justify-between">
+              <span className="text-sm font-medium text-foreground">Total de Tarefas</span>
+              <span className="text-2xl font-bold text-primary">{periodStats.total}</span>
+            </div>
+          </div>
+
+          {/* Grid de contadores por status */}
           <div className="grid grid-cols-2 gap-3">
             <button
-              onClick={() => {
-                onStatusFilterChange('waiting');
-                // Note: This doesn't switch tabs automatically - user needs to go to Calendário
-              }}
-              className="flex flex-col items-center justify-center p-6 rounded-2xl bg-card border border-border shadow-sm transition-all hover:shadow-md active:scale-[0.98]"
+              onClick={() => onStatusFilterChange(statusFilter === 'waiting' ? 'all' : 'waiting')}
+              className={cn(
+                "flex flex-col items-center justify-center p-5 rounded-2xl bg-card border shadow-sm transition-all hover:shadow-md active:scale-[0.98]",
+                statusFilter === 'waiting' ? "border-orange-400 ring-2 ring-orange-200" : "border-border"
+              )}
             >
-              <span className="text-4xl font-bold text-orange-600 dark:text-orange-400">{stats.waiting}</span>
-              <span className="text-sm font-medium text-muted-foreground mt-1">Aguardando</span>
+              <span className="text-3xl font-bold text-orange-600 dark:text-orange-400">{periodStats.waiting}</span>
+              <span className="text-xs font-medium text-muted-foreground mt-1">Pendentes</span>
             </button>
             <button
-              onClick={() => onStatusFilterChange('released')}
-              className="flex flex-col items-center justify-center p-6 rounded-2xl bg-card border border-border shadow-sm transition-all hover:shadow-md active:scale-[0.98]"
+              onClick={() => onStatusFilterChange(statusFilter === 'released' ? 'all' : 'released')}
+              className={cn(
+                "flex flex-col items-center justify-center p-5 rounded-2xl bg-card border shadow-sm transition-all hover:shadow-md active:scale-[0.98]",
+                statusFilter === 'released' ? "border-primary ring-2 ring-primary/20" : "border-border"
+              )}
             >
-              <span className="text-4xl font-bold text-primary">{stats.released}</span>
-              <span className="text-sm font-medium text-muted-foreground mt-1">Liberado</span>
+              <span className="text-3xl font-bold text-primary">{periodStats.released}</span>
+              <span className="text-xs font-medium text-muted-foreground mt-1">Liberado</span>
             </button>
             <button
-              onClick={() => onStatusFilterChange('cleaning')}
-              className="flex flex-col items-center justify-center p-6 rounded-2xl bg-card border border-border shadow-sm transition-all hover:shadow-md active:scale-[0.98]"
+              onClick={() => onStatusFilterChange(statusFilter === 'cleaning' ? 'all' : 'cleaning')}
+              className={cn(
+                "flex flex-col items-center justify-center p-5 rounded-2xl bg-card border shadow-sm transition-all hover:shadow-md active:scale-[0.98]",
+                statusFilter === 'cleaning' ? "border-amber-400 ring-2 ring-amber-200" : "border-border"
+              )}
             >
-              <span className="text-4xl font-bold text-[#E0C051]">{stats.cleaning}</span>
-              <span className="text-sm font-medium text-muted-foreground mt-1">Limpando</span>
+              <span className="text-3xl font-bold text-amber-500">{periodStats.cleaning}</span>
+              <span className="text-xs font-medium text-muted-foreground mt-1">Em Andamento</span>
             </button>
             <button
-              onClick={() => onStatusFilterChange('completed')}
-              className="flex flex-col items-center justify-center p-6 rounded-2xl bg-card border border-border shadow-sm transition-all hover:shadow-md active:scale-[0.98]"
+              onClick={() => onStatusFilterChange(statusFilter === 'completed' ? 'all' : 'completed')}
+              className={cn(
+                "flex flex-col items-center justify-center p-5 rounded-2xl bg-card border shadow-sm transition-all hover:shadow-md active:scale-[0.98]",
+                statusFilter === 'completed' ? "border-emerald-400 ring-2 ring-emerald-200" : "border-border"
+              )}
             >
-              <span className="text-4xl font-bold text-emerald-600 dark:text-emerald-400">{stats.completed}</span>
-              <span className="text-sm font-medium text-muted-foreground mt-1">Finalizado</span>
+              <span className="text-3xl font-bold text-emerald-600 dark:text-emerald-400">{periodStats.completed}</span>
+              <span className="text-xs font-medium text-muted-foreground mt-1">Finalizadas</span>
             </button>
           </div>
 
-          {/* Quick Stats Summary */}
-          <div className="mt-6 p-4 rounded-xl bg-muted/50 border border-border">
-            <div className="flex items-center justify-between">
-              <span className="text-sm font-medium text-foreground">Total de Tarefas</span>
-              <span className="text-lg font-bold text-foreground">
-                {stats.waiting + stats.released + stats.cleaning + stats.completed}
-              </span>
-            </div>
-            {stats.delayed > 0 && (
-              <div className="mt-2 flex items-center gap-2 text-rose-600 dark:text-rose-400">
+          {/* Alertas de atraso */}
+          {stats.delayed > 0 && (
+            <div className="mt-4 p-3 rounded-xl bg-rose-50 dark:bg-rose-900/20 border border-rose-200 dark:border-rose-800">
+              <div className="flex items-center gap-2 text-rose-600 dark:text-rose-400">
                 <AlertTriangle className="w-4 h-4" />
-                <span className="text-sm font-medium">{stats.delayed} em atraso</span>
+                <span className="text-sm font-semibold">{stats.delayed} tarefa{stats.delayed > 1 ? 's' : ''} em atraso</span>
               </div>
-            )}
-          </div>
+            </div>
+          )}
 
           {/* Cleaning Time Alerts - Show on Home too */}
           {cleaningTimeAlerts.length > 0 && (
