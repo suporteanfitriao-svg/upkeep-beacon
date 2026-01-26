@@ -531,6 +531,80 @@ serve(async (req) => {
             reservationsCount++;
             totalSynced++;
           }
+
+          // ============================================================
+          // CLEANUP: Remove reservations no longer in iCal
+          // ============================================================
+          // Find reservations from this source that are NOT in the current sync
+          // Only delete if:
+          // 1. The reservation was synced from iCal (has external_id)
+          // 2. The checkout is in the future (don't touch historical data)
+          // 3. The schedule is still in 'waiting' status (don't delete active cleanings)
+          
+          if (currentUIDs.length > 0) {
+            // Get all reservations for this property that have external_id (from iCal)
+            const { data: existingReservations } = await supabase
+              .from('reservations')
+              .select('id, external_id, check_out')
+              .eq('property_id', property.id)
+              .not('external_id', 'is', null);
+
+            if (existingReservations) {
+              const now = new Date();
+              
+              for (const existingRes of existingReservations) {
+                // Skip if this reservation is in the current sync
+                if (currentUIDs.includes(existingRes.external_id!)) {
+                  continue;
+                }
+
+                // Skip if checkout is in the past (historical data)
+                const checkoutDate = new Date(existingRes.check_out);
+                if (checkoutDate < now) {
+                  continue;
+                }
+
+                // Check if schedule exists and its status
+                const { data: schedule } = await supabase
+                  .from('schedules')
+                  .select('id, status')
+                  .eq('reservation_id', existingRes.id)
+                  .maybeSingle();
+
+                // Only delete if schedule is in 'waiting' status or doesn't exist
+                // Don't delete released/cleaning/completed schedules
+                if (schedule && schedule.status !== 'waiting') {
+                  console.log(`[CLEANUP SKIPPED] Reservation ${existingRes.external_id} - schedule in ${schedule.status} status`);
+                  continue;
+                }
+
+                console.log(`[CLEANUP] Removing reservation ${existingRes.external_id} - no longer in iCal`);
+
+                // Delete the schedule first (if exists)
+                if (schedule) {
+                  const { error: deleteScheduleError } = await supabase
+                    .from('schedules')
+                    .delete()
+                    .eq('id', schedule.id);
+
+                  if (deleteScheduleError) {
+                    console.error(`Error deleting schedule:`, deleteScheduleError);
+                    continue;
+                  }
+                }
+
+                // Delete the reservation
+                const { error: deleteReservationError } = await supabase
+                  .from('reservations')
+                  .delete()
+                  .eq('id', existingRes.id);
+
+                if (deleteReservationError) {
+                  console.error(`Error deleting reservation:`, deleteReservationError);
+                }
+              }
+            }
+          }
         }
       } catch (error) {
         lastError = error instanceof Error ? error.message : 'Erro desconhecido';
