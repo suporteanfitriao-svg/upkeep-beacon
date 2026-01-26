@@ -26,6 +26,10 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { useInventoryPhotoUpload } from '@/hooks/useInventoryPhotoUpload';
 import { useInventoryItemHistory } from '@/hooks/useInventoryItemHistory';
 import { useIsMobile } from '@/hooks/use-mobile';
+import { useUserRole } from '@/hooks/useUserRole';
+import { useNavigate } from 'react-router-dom';
+import { MobileBottomNav } from '@/components/dashboard/mobile/MobileBottomNav';
+import { MobilePageHeader } from '@/components/mobile/MobilePageHeader';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import {
@@ -182,6 +186,9 @@ interface InventoryItem {
 }
 
 const Inventory = () => {
+  const navigate = useNavigate();
+  const isMobile = useIsMobile();
+  const { isAdmin, isManager, isCleaner } = useUserRole();
   const [properties, setProperties] = useState<Property[]>([]);
   const [selectedPropertyId, setSelectedPropertyId] = useState<string>('all');
   const [categories, setCategories] = useState<InventoryCategory[]>([]);
@@ -237,8 +244,6 @@ const Inventory = () => {
   const [historyItemId, setHistoryItemId] = useState<string | null>(null);
   const [historyItemName, setHistoryItemName] = useState('');
 
-  // Mobile detection
-  const isMobile = useIsMobile();
 
   // DnD sensors for touch and pointer
   const sensors = useSensors(
@@ -908,7 +913,7 @@ const Inventory = () => {
       </div>
       <SidebarInset className="w-full">
         <DashboardHeader title="Inventário" subtitle="Gerencie itens e quantidades" />
-        <main className="flex-1 p-4 sm:p-6">
+        <main className={`flex-1 p-4 sm:p-6 ${isMobile ? 'pb-28' : ''}`}>
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
             <div>
               <h1 className="text-xl sm:text-2xl font-bold text-foreground flex items-center gap-2">
@@ -1575,6 +1580,14 @@ const Inventory = () => {
         defaultTemplate={DEFAULT_INVENTORY_TEMPLATE}
         onSuccess={fetchInventory}
       />
+
+      {/* REGRA 3: Menu inferior fixo para mobile */}
+      {isMobile && !isCleaner && (
+        <MobileBottomNav 
+          activeTab="menu" 
+          onTabChange={() => navigate('/')} 
+        />
+      )}
     </SidebarProvider>
   );
 };

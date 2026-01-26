@@ -22,6 +22,11 @@ import {
   Plus,
   ZoomIn
 } from 'lucide-react';
+import { useIsMobile } from '@/hooks/use-mobile';
+import { useUserRole } from '@/hooks/useUserRole';
+import { useNavigate } from 'react-router-dom';
+import { MobileBottomNav } from '@/components/dashboard/mobile/MobileBottomNav';
+import { MobilePageHeader } from '@/components/mobile/MobilePageHeader';
 import { SidebarProvider } from '@/components/ui/sidebar';
 import { AppSidebar } from '@/components/dashboard/AppSidebar';
 import { DashboardHeader } from '@/components/dashboard/DashboardHeader';
@@ -307,6 +312,9 @@ function IssueCard({
 }
 
 export default function Manutencao() {
+  const navigate = useNavigate();
+  const isMobile = useIsMobile();
+  const { isAdmin, isManager, isCleaner } = useUserRole();
   const { issues, isLoading, stats, resolveIssue, assignIssue, addProgressNote, startIssue, addPhoto } = useMaintenanceIssues();
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
@@ -555,7 +563,7 @@ export default function Manutencao() {
           <AppSidebar />
         </div>
         
-        <main className="flex-1 w-full">
+        <main className={`flex-1 w-full ${isMobile ? 'pb-28' : ''}`}>
           <DashboardHeader title="Relatórios" subtitle="Gestão e Análises" />
 
           <div className="px-4 md:px-8 py-4 md:py-6">
@@ -1029,6 +1037,14 @@ export default function Manutencao() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* REGRA 3: Menu inferior fixo para mobile */}
+      {isMobile && !isCleaner && (
+        <MobileBottomNav 
+          activeTab="menu" 
+          onTabChange={() => navigate('/')} 
+        />
+      )}
     </SidebarProvider>
   );
 }
