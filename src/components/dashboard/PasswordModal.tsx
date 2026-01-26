@@ -111,7 +111,12 @@ export function PasswordModal({
   }, [propertyId]);
 
   // Determine which password to display
-  const displayPassword = passwordMode === 'ical' ? passwordFromIcal : accessPassword;
+  // For 'ical' mode: prioritize accessPassword (synced by edge function) over passwordFromIcal (extracted from description)
+  // For 'manual' mode: use accessPassword
+  // For 'global' mode: handled separately by property config
+  const displayPassword = passwordMode === 'ical' 
+    ? (accessPassword || passwordFromIcal) // iCal mode: prefer access_password (already synced), fallback to extracted
+    : accessPassword; // manual mode
   const hasPassword = Boolean(displayPassword && displayPassword.trim());
 
   // REGRAS FINAIS DE VISIBILIDADE DA SENHA PARA CLEANERS:
