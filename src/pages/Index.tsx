@@ -18,6 +18,7 @@ import { MobileDashboard } from '@/components/dashboard/MobileDashboard';
 import { MobileAdminDashboard } from '@/components/dashboard/mobile/MobileAdminDashboard';
 import { UpcomingSchedules } from '@/components/dashboard/UpcomingSchedules';
 import { CleaningTimeAlertBanner } from '@/components/dashboard/CleaningTimeAlertBanner';
+import { CleanerWebLayout } from '@/components/dashboard/CleanerWebLayout';
 
 import { useSchedules, calculateStats } from '@/hooks/useSchedules';
 import { useAdminInspections } from '@/hooks/useAdminInspections';
@@ -688,7 +689,20 @@ const Index = () => {
     return startSync();
   }, [startSync]);
 
-  if (loading) {
+  // Wait for role loading first to avoid flash of wrong UI
+  if (loading || roleLoading) {
+    // Show simple loading for cleaners, admin layout for admins
+    if (isCleaner && !hasManagerAccess && !canSwitchView) {
+      return (
+        <div className="min-h-screen flex items-center justify-center bg-background">
+          <div className="flex flex-col items-center gap-3">
+            <Loader2 className="h-8 w-8 animate-spin text-primary" />
+            <p className="text-muted-foreground">Carregando agendamentos...</p>
+          </div>
+        </div>
+      );
+    }
+    
     return (
       <SidebarProvider>
         <div className="min-h-screen flex w-full bg-background">
@@ -705,6 +719,23 @@ const Index = () => {
   }
 
   if (error) {
+    // Show simple error for cleaners
+    if (isCleaner && !hasManagerAccess && !canSwitchView) {
+      return (
+        <div className="min-h-screen flex items-center justify-center bg-background">
+          <div className="text-center">
+            <p className="text-destructive font-medium">{error}</p>
+            <button
+              onClick={refetch}
+              className="mt-4 px-4 py-2 bg-primary text-primary-foreground rounded-md hover:bg-primary/90"
+            >
+              Tentar novamente
+            </button>
+          </div>
+        </div>
+      );
+    }
+
     return (
       <SidebarProvider>
         <div className="min-h-screen flex w-full bg-background">
@@ -841,9 +872,31 @@ const Index = () => {
     );
   }
 
+  // Web layout for cleaners - simplified view without admin features
+  if (isCleaner && !hasManagerAccess && !canSwitchView) {
+    return (
+      <CleanerWebLayout>
+        <MobileDashboard
+          schedules={schedules}
+          onScheduleClick={setSelectedSchedule}
+          onStartCleaning={handleStartCleaning}
+          onRefresh={syncAndRefresh}
+        />
+        {selectedSchedule && (
+          <ScheduleDetail
+            schedule={selectedSchedule}
+            onClose={() => setSelectedSchedule(null)}
+            onUpdateSchedule={handleUpdateSchedule}
+          />
+        )}
+        <SyncOverlayInline isSyncing={isSyncing} />
+      </CleanerWebLayout>
+    );
+  }
+
   return (
     <SidebarProvider>
-      <div className="min-h-screen flex w-full bg-slate-100 dark:bg-slate-900 overflow-hidden">
+      <div className="min-h-screen flex w-full bg-muted overflow-hidden">
         <AdminSidebar />
         
         <main className="flex-1 flex flex-col h-screen relative overflow-hidden">
@@ -909,11 +962,11 @@ const Index = () => {
               {isFilterTransitioning ? (
                 <AdminScheduleRowSkeletonList count={Math.min(paginatedSchedules.length || 3, 5)} />
               ) : filteredSchedules.length === 0 ? (
-                <div className="bg-card dark:bg-slate-800/50 rounded-3xl border border-slate-100 dark:border-slate-800 p-12 flex flex-col items-center justify-center text-center">
-                  <div className="w-20 h-20 bg-slate-50 dark:bg-slate-800 rounded-full flex items-center justify-center mb-6">
-                    <CalendarX className="h-10 w-10 text-slate-300 dark:text-slate-600" />
+                <div className="bg-card rounded-3xl border border-border p-12 flex flex-col items-center justify-center text-center">
+                  <div className="w-20 h-20 bg-muted rounded-full flex items-center justify-center mb-6">
+                    <CalendarX className="h-10 w-10 text-muted-foreground" />
                   </div>
-                  <h4 className="text-xl font-bold text-slate-800 dark:text-white mb-2">
+                  <h4 className="text-xl font-bold text-foreground mb-2">
                     Nenhum agendamento encontrado
                   </h4>
                   <p className="text-muted-foreground max-w-md mx-auto">
