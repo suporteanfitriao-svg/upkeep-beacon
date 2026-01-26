@@ -7,6 +7,7 @@ import { AuthProvider } from "@/hooks/useAuth";
 import { ViewModeProvider } from "@/hooks/useViewMode";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
 import { AdminRoute } from "@/components/AdminRoute";
+import { OwnerRoute } from "@/components/OwnerRoute";
 import { SuperAdminRoute } from "@/components/SuperAdminRoute";
 import { CleanerRoute } from "@/components/CleanerRoute";
 import { InstallPrompt } from "@/components/pwa/InstallPrompt";
@@ -79,20 +80,21 @@ const App = () => (
                   </ProtectedRoute>
                 }
               />
+              {/* REGRA: Rotas bloqueadas para Anfitrião - apenas Owner/Admin */}
               <Route
                 path="/equipe"
                 element={
-                  <AdminRoute>
+                  <OwnerRoute>
                     <Team />
-                  </AdminRoute>
+                  </OwnerRoute>
                 }
               />
               <Route
                 path="/propriedades"
                 element={
-                  <AdminRoute>
+                  <OwnerRoute>
                     <Properties />
-                  </AdminRoute>
+                  </OwnerRoute>
                 }
               />
               <Route
@@ -143,12 +145,13 @@ const App = () => (
                   </CleanerRoute>
                 }
               />
+              {/* REGRA: Onboarding bloqueado para Anfitrião - apenas Owner/Admin */}
               <Route
                 path="/onboarding"
                 element={
-                  <AdminRoute>
+                  <OwnerRoute>
                     <Onboarding />
-                  </AdminRoute>
+                  </OwnerRoute>
                 }
               />
               <Route
@@ -159,12 +162,13 @@ const App = () => (
                   </SuperAdminRoute>
                 }
               />
+              {/* REGRA: Configurações bloqueadas para Anfitrião - apenas Owner/Admin */}
               <Route
                 path="/configuracoes"
                 element={
-                  <CleanerRoute>
+                  <OwnerRoute>
                     <Settings />
-                  </CleanerRoute>
+                  </OwnerRoute>
                 }
               />
               <Route path="/install" element={<Install />} />

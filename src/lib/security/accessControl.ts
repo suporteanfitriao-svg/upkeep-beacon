@@ -97,19 +97,19 @@ const ROLE_PERMISSIONS: Record<AppRole, Permission[]> = {
     'delete:team',
     'delete:schedules',
   ],
+  // REGRA: Anfitrião tem acesso operacional ampliado, SEM acesso a configurações estruturais
+  // NÃO pode: gestão de time, sync iCal, senhas, pagamentos, regras globais, configurações de propriedade
+  // PODE: ver tarefas, liberar limpeza, editar horários/obs, checklists, inspeções, avarias
   manager: [
     'view:dashboard',
-    'view:properties',
-    'view:team',
     'view:schedules',
     'view:inspections',
     'view:maintenance',
-    'view:inventory',
     'view:reports',
-    'manage:schedules',
-    'manage:inspections',
-    'manage:maintenance',
-    'manage:checklists',
+    'manage:schedules', // editar check-in/out, observações, liberar limpeza
+    'manage:inspections', // criar, iniciar, finalizar inspeções
+    'manage:maintenance', // ver, comentar, resolver avarias
+    'manage:checklists', // visualizar e editar checklist do imóvel
   ],
   cleaner: [
     'view:dashboard',
@@ -166,24 +166,27 @@ export function getHighestRole(roles: AppRole[]): AppRole | null {
 // ROUTE ACCESS DEFINITIONS
 // ============================================================
 
-export type RouteAccess = 'public' | 'authenticated' | 'admin' | 'superadmin';
+export type RouteAccess = 'public' | 'authenticated' | 'admin' | 'owner' | 'superadmin';
 
 export const ROUTE_ACCESS: Record<string, RouteAccess> = {
   '/': 'authenticated',
   '/auth': 'public',
   '/landing': 'public',
   '/install': 'public',
-  '/propriedades': 'admin',
-  '/equipe': 'admin',
-  '/inspecoes': 'admin',
-  '/inventario': 'admin',
-  '/manutencao': 'admin',
+  // REGRA: Rotas bloqueadas para Anfitrião (manager) - apenas Owner/Admin
+  '/propriedades': 'owner', // Configurações de propriedade
+  '/equipe': 'owner', // Gestão de time
+  '/configuracoes': 'owner', // Configurações gerais
+  '/onboarding': 'owner', // Onboarding
+  // REGRA: Rotas permitidas para Anfitrião (manager)
+  '/inspecoes': 'admin', // Inspeções - manager pode acessar
+  '/inventario': 'admin', // Inventário - manager pode acessar
+  '/manutencao': 'admin', // Avarias - manager pode acessar
   '/minha-conta': 'authenticated',
   '/ajuda': 'authenticated',
   '/historico': 'authenticated',
-  '/configuracoes': 'admin',
+  '/historico-limpezas': 'authenticated',
   '/super-admin': 'superadmin',
-  '/onboarding': 'admin',
 };
 
 /**
@@ -206,6 +209,12 @@ export function canAccessRoute(
     return highestRole === 'superadmin';
   }
   
+  // REGRA: 'owner' routes require admin or superadmin (NOT manager/anfitrião)
+  if (access === 'owner') {
+    return highestRole === 'superadmin' || highestRole === 'admin';
+  }
+  
+  // 'admin' routes allow manager access (includes manager role)
   if (access === 'admin') {
     return hasRolePriority(highestRole, 'manager');
   }

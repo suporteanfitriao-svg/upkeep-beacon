@@ -23,14 +23,17 @@ interface MenuItem {
   url: string;
   icon: React.ComponentType<{ className?: string }>;
   adminOnly?: boolean;
+  ownerOnly?: boolean; // REGRA: Bloqueado para Anfitrião - apenas Owner/Admin
 }
 
 const allMenuItems: MenuItem[] = [
   { title: 'Inicio', url: '/', icon: Home },
-  { title: 'Propriedades', url: '/propriedades', icon: Building2, adminOnly: true },
+  // REGRA: Propriedades e Equipe são bloqueados para Anfitrião
+  { title: 'Propriedades', url: '/propriedades', icon: Building2, ownerOnly: true },
+  { title: 'Equipe', url: '/equipe', icon: Users, ownerOnly: true },
+  // REGRA: Inspeção, Inventário e Manutenção são permitidos para Anfitrião
   { title: 'Inspeção', url: '/inspecoes', icon: ClipboardCheck, adminOnly: true },
   { title: 'Inventário', url: '/inventario', icon: Package, adminOnly: true },
-  { title: 'Equipe', url: '/equipe', icon: Users, adminOnly: true },
   { title: 'Manutenção', url: '/manutencao', icon: Wrench, adminOnly: true },
 ];
 
@@ -38,11 +41,14 @@ export function AppSidebar() {
   const { state } = useSidebar();
   const collapsed = state === 'collapsed';
   const { signOut } = useAuth();
-  const { isCleaner, hasManagerAccess } = useUserRole();
+  const { isCleaner, isAdmin, isSuperAdmin, hasManagerAccess } = useUserRole();
   const navigate = useNavigate();
 
-  // Filter menu items based on role - cleaners only see non-admin items
+  // Filter menu items based on role
   const menuItems = allMenuItems.filter(item => {
+    // Owner-only items - REGRA: Bloqueado para Anfitrião (manager), apenas admin/superadmin
+    if (item.ownerOnly && !isAdmin && !isSuperAdmin) return false;
+    // Admin-only items (allows manager) - hide for cleaners
     if (item.adminOnly && isCleaner) return false;
     if (item.adminOnly && !hasManagerAccess) return false;
     return true;

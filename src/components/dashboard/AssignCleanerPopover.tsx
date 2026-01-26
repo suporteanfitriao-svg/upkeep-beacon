@@ -1,9 +1,10 @@
 import { useState } from 'react';
-import { UserPlus, Check, Loader2, Users } from 'lucide-react';
+import { UserPlus, Check, Loader2, Users, Lock } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Button } from '@/components/ui/button';
 import { useAssignableCleaners } from '@/hooks/useAssignableCleaners';
+import { useUserRole } from '@/hooks/useUserRole';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 
@@ -29,12 +30,17 @@ export function AssignCleanerPopover({
   const [open, setOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const { cleaners, loading, error } = useAssignableCleaners(propertyId);
+  const { isAdmin, isSuperAdmin } = useUserRole();
+
+  // REGRA: Anfitrião (manager) NÃO pode atribuir ou alterar cleaner
+  // Apenas Admin/SuperAdmin podem fazer essa ação
+  const canAssign = isAdmin || isSuperAdmin;
 
   // Block reassignment during cleaning (except admin - handled in parent)
   const isBlocked = status === 'cleaning' && disabled;
 
   const handleAssign = async (cleaner: { id: string; name: string }) => {
-    if (isBlocked || isSubmitting) return;
+    if (isBlocked || isSubmitting || !canAssign) return;
 
     setIsSubmitting(true);
     try {
@@ -69,11 +75,17 @@ export function AssignCleanerPopover({
             'h-8 w-8 p-0 rounded-full',
             responsibleTeamMemberId ? 'text-primary' : 'text-muted-foreground hover:text-primary'
           )}
-          disabled={isBlocked}
-          title={isBlocked ? 'Não é possível reatribuir durante a limpeza' : 'Atribuir limpeza'}
+          disabled={isBlocked || !canAssign}
+          title={
+            !canAssign 
+              ? 'Apenas o Proprietário pode atribuir responsáveis' 
+              : isBlocked 
+                ? 'Não é possível reatribuir durante a limpeza' 
+                : 'Atribuir limpeza'
+          }
           onClick={(e) => e.stopPropagation()}
         >
-          <UserPlus className="h-4 w-4" />
+          {!canAssign ? <Lock className="h-4 w-4" /> : <UserPlus className="h-4 w-4" />}
         </Button>
       </PopoverTrigger>
       <PopoverContent
@@ -90,6 +102,11 @@ export function AssignCleanerPopover({
           {loading ? (
             <div className="flex items-center justify-center py-4">
               <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+            </div>
+          ) : !canAssign ? (
+            <div className="flex items-center gap-2 text-sm text-muted-foreground text-center py-4 px-2">
+              <Lock className="h-4 w-4" />
+              <span>Apenas o Proprietário pode atribuir responsáveis</span>
             </div>
           ) : error ? (
             <div className="text-sm text-destructive text-center py-4">{error}</div>

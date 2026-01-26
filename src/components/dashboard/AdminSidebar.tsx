@@ -34,14 +34,17 @@ interface MenuItem {
   url: string;
   icon: React.ComponentType<{ className?: string }>;
   adminOnly?: boolean;
+  ownerOnly?: boolean; // REGRA: Bloqueado para Anfitrião - apenas Owner/Admin
   superAdminOnly?: boolean;
 }
 
 const allMenuItems: MenuItem[] = [
   { title: 'Inicio', url: '/', icon: Home },
-  { title: 'Propriedades', url: '/propriedades', icon: Building2, adminOnly: true },
+  // REGRA: Propriedades e Equipe são bloqueados para Anfitrião
+  { title: 'Propriedades', url: '/propriedades', icon: Building2, ownerOnly: true },
+  { title: 'Equipe', url: '/equipe', icon: Users, ownerOnly: true },
+  // REGRA: Inspeção e Relatórios são permitidos para Anfitrião
   { title: 'Inspeção', url: '/inspecoes', icon: ClipboardCheck, adminOnly: true },
-  { title: 'Equipe', url: '/equipe', icon: Users, adminOnly: true },
   { title: 'Relatórios', url: '/manutencao', icon: Wrench, adminOnly: true },
   { title: 'Minha Conta', url: '/minha-conta', icon: UserCog },
   { title: 'Super Admin', url: '/super-admin', icon: Crown, superAdminOnly: true },
@@ -51,14 +54,16 @@ export function AdminSidebar() {
   const { state } = useSidebar();
   const collapsed = state === 'collapsed';
   const { signOut } = useAuth();
-  const { isCleaner, isSuperAdmin, hasManagerAccess, loading: roleLoading } = useUserRole();
+  const { isCleaner, isSuperAdmin, isAdmin, hasManagerAccess, loading: roleLoading } = useUserRole();
   const navigate = useNavigate();
 
   // Filter menu items based on user role
   const menuItems = allMenuItems.filter(item => {
     // SuperAdmin-only items
     if (item.superAdminOnly && !isSuperAdmin) return false;
-    // Admin-only items - hide for cleaners
+    // Owner-only items - REGRA: Bloqueado para Anfitrião (manager), apenas admin/superadmin
+    if (item.ownerOnly && !isAdmin && !isSuperAdmin) return false;
+    // Admin-only items (allows manager) - hide for cleaners
     if (item.adminOnly && isCleaner) return false;
     if (item.adminOnly && !hasManagerAccess) return false;
     return true;
