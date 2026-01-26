@@ -1068,77 +1068,158 @@ export function MobileAdminDashboard({
               />
             ) : (
               <div className="space-y-3">
-                {/* Active Schedules */}
-                {activeSchedules.map((schedule) => (
-                  <MobileAdminScheduleCard
-                    key={schedule.id}
-                    schedule={schedule}
-                    onScheduleClick={onScheduleClick}
-                    onViewAddress={handleViewAddress}
-                    onViewPassword={handleViewPassword}
-                    onAssignCleaner={handleAssignCleaner}
-                    onRelease={handleRelease}
-                    onScheduleUpdated={onUpdateSchedule}
-                  />
-                ))}
-                
-                {/* Separator */}
-                {activeSchedules.length > 0 && completedSchedules.length > 0 && (
-                  <div className="flex items-center gap-3 py-3">
-                    <div className="flex-1 h-px bg-border" />
-                    <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">
-                      Finalizados ({completedSchedules.length})
-                    </span>
-                    <div className="flex-1 h-px bg-border" />
-                  </div>
-                )}
-                
-                {/* Completed Schedules - Paginated */}
-                {paginatedCompleted.map((schedule) => (
-                  <MobileAdminScheduleCard
-                    key={schedule.id}
-                    schedule={schedule}
-                    onScheduleClick={onScheduleClick}
-                    onViewAddress={handleViewAddress}
-                    onViewPassword={handleViewPassword}
-                    onScheduleUpdated={onUpdateSchedule}
-                    isCompleted
-                  />
-                ))}
-                
-                {/* Pagination Controls */}
-                {totalCompletedPages > 1 && (
-                  <div className="flex items-center justify-center gap-4 py-3">
-                    <button
-                      onClick={() => setCompletedPage(p => Math.max(1, p - 1))}
-                      disabled={completedPage === 1}
-                      className={cn(
-                        "flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors",
-                        completedPage === 1
-                          ? "text-muted-foreground/50 cursor-not-allowed"
-                          : "text-primary hover:bg-primary/10"
-                      )}
-                    >
-                      <ChevronLeft className="w-4 h-4" />
-                      Anterior
-                    </button>
-                    <span className="text-xs text-muted-foreground">
-                      {completedPage} de {totalCompletedPages}
-                    </span>
-                    <button
-                      onClick={() => setCompletedPage(p => Math.min(totalCompletedPages, p + 1))}
-                      disabled={completedPage === totalCompletedPages}
-                      className={cn(
-                        "flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors",
-                        completedPage === totalCompletedPages
-                          ? "text-muted-foreground/50 cursor-not-allowed"
-                          : "text-primary hover:bg-primary/10"
-                      )}
-                    >
-                      Próximo
-                      <ChevronRight className="w-4 h-4" />
-                    </button>
-                  </div>
+                {/* When filtering by 'completed' status, show only completed cards directly */}
+                {statusFilter === 'completed' ? (
+                  <>
+                    {/* Header for completed view */}
+                    <div className="flex items-center gap-2 pb-2">
+                      <Check className="w-4 h-4 text-emerald-500" />
+                      <span className="text-xs font-bold text-emerald-600 dark:text-emerald-400 uppercase tracking-wider">
+                        Finalizadas no {agendaViewMode === 'hoje' ? 'dia' : agendaViewMode === 'amanha' ? 'dia' : 'período'} ({completedSchedules.length})
+                      </span>
+                    </div>
+                    
+                    {completedSchedules.length === 0 ? (
+                      <MobileEmptyState 
+                        type="schedule"
+                        message="Nenhuma tarefa finalizada."
+                        submessage={
+                          agendaViewMode === 'hoje' 
+                            ? 'Não há limpezas finalizadas hoje.' 
+                            : agendaViewMode === 'amanha' 
+                              ? 'Não há limpezas finalizadas para amanhã.' 
+                              : agendaViewMode === 'dia'
+                                ? `Não há limpezas finalizadas em ${format(selectedDate, "dd/MM", { locale: ptBR })}.`
+                                : 'Não há limpezas finalizadas neste período.'
+                        }
+                      />
+                    ) : (
+                      <>
+                        {/* Completed Schedules - Paginated */}
+                        {paginatedCompleted.map((schedule) => (
+                          <MobileAdminScheduleCard
+                            key={schedule.id}
+                            schedule={schedule}
+                            onScheduleClick={onScheduleClick}
+                            onViewAddress={handleViewAddress}
+                            onViewPassword={handleViewPassword}
+                            onScheduleUpdated={onUpdateSchedule}
+                            isCompleted
+                          />
+                        ))}
+                        
+                        {/* Pagination Controls */}
+                        {totalCompletedPages > 1 && (
+                          <div className="flex items-center justify-center gap-4 py-3">
+                            <button
+                              onClick={() => setCompletedPage(p => Math.max(1, p - 1))}
+                              disabled={completedPage === 1}
+                              className={cn(
+                                "flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors",
+                                completedPage === 1
+                                  ? "text-muted-foreground/50 cursor-not-allowed"
+                                  : "text-primary hover:bg-primary/10"
+                              )}
+                            >
+                              <ChevronLeft className="w-4 h-4" />
+                              Anterior
+                            </button>
+                            <span className="text-xs text-muted-foreground">
+                              {completedPage} de {totalCompletedPages}
+                            </span>
+                            <button
+                              onClick={() => setCompletedPage(p => Math.min(totalCompletedPages, p + 1))}
+                              disabled={completedPage === totalCompletedPages}
+                              className={cn(
+                                "flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors",
+                                completedPage === totalCompletedPages
+                                  ? "text-muted-foreground/50 cursor-not-allowed"
+                                  : "text-primary hover:bg-primary/10"
+                              )}
+                            >
+                              Próximo
+                              <ChevronRight className="w-4 h-4" />
+                            </button>
+                          </div>
+                        )}
+                      </>
+                    )}
+                  </>
+                ) : (
+                  <>
+                    {/* Active Schedules */}
+                    {activeSchedules.map((schedule) => (
+                      <MobileAdminScheduleCard
+                        key={schedule.id}
+                        schedule={schedule}
+                        onScheduleClick={onScheduleClick}
+                        onViewAddress={handleViewAddress}
+                        onViewPassword={handleViewPassword}
+                        onAssignCleaner={handleAssignCleaner}
+                        onRelease={handleRelease}
+                        onScheduleUpdated={onUpdateSchedule}
+                      />
+                    ))}
+                    
+                    {/* Separator */}
+                    {activeSchedules.length > 0 && completedSchedules.length > 0 && (
+                      <div className="flex items-center gap-3 py-3">
+                        <div className="flex-1 h-px bg-border" />
+                        <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">
+                          Finalizados ({completedSchedules.length})
+                        </span>
+                        <div className="flex-1 h-px bg-border" />
+                      </div>
+                    )}
+                    
+                    {/* Completed Schedules - Paginated */}
+                    {paginatedCompleted.map((schedule) => (
+                      <MobileAdminScheduleCard
+                        key={schedule.id}
+                        schedule={schedule}
+                        onScheduleClick={onScheduleClick}
+                        onViewAddress={handleViewAddress}
+                        onViewPassword={handleViewPassword}
+                        onScheduleUpdated={onUpdateSchedule}
+                        isCompleted
+                      />
+                    ))}
+                    
+                    {/* Pagination Controls */}
+                    {totalCompletedPages > 1 && (
+                      <div className="flex items-center justify-center gap-4 py-3">
+                        <button
+                          onClick={() => setCompletedPage(p => Math.max(1, p - 1))}
+                          disabled={completedPage === 1}
+                          className={cn(
+                            "flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors",
+                            completedPage === 1
+                              ? "text-muted-foreground/50 cursor-not-allowed"
+                              : "text-primary hover:bg-primary/10"
+                          )}
+                        >
+                          <ChevronLeft className="w-4 h-4" />
+                          Anterior
+                        </button>
+                        <span className="text-xs text-muted-foreground">
+                          {completedPage} de {totalCompletedPages}
+                        </span>
+                        <button
+                          onClick={() => setCompletedPage(p => Math.min(totalCompletedPages, p + 1))}
+                          disabled={completedPage === totalCompletedPages}
+                          className={cn(
+                            "flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors",
+                            completedPage === totalCompletedPages
+                              ? "text-muted-foreground/50 cursor-not-allowed"
+                              : "text-primary hover:bg-primary/10"
+                          )}
+                        >
+                          Próximo
+                          <ChevronRight className="w-4 h-4" />
+                        </button>
+                      </div>
+                    )}
+                  </>
                 )}
               </div>
             )}
