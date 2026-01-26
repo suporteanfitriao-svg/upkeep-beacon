@@ -6,11 +6,12 @@ import { AppSidebar } from '@/components/dashboard/AppSidebar';
 import { useAuth } from '@/hooks/useAuth';
 import { useUserRole } from '@/hooks/useUserRole';
 import { useCepLookup } from '@/hooks/useCepLookup';
+import { useIsMobile } from '@/hooks/use-mobile';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { User, MapPin, Shield, Camera, Check, Smartphone, Pencil, X, Loader2, LogOut, KeyRound, ClipboardCheck, ChevronRight } from 'lucide-react';
+import { User, MapPin, Shield, Camera, Check, Smartphone, Pencil, X, Loader2, LogOut, KeyRound, ClipboardCheck, ChevronRight, Menu, Clock, History } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -20,7 +21,9 @@ import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
 import { APP_VERSION } from '@/components/pwa/PWAUpdateModal';
+import { MobileBottomNav } from '@/components/dashboard/mobile/MobileBottomNav';
 
 // Password validation schema
 const passwordSchema = z.string()
@@ -81,14 +84,16 @@ const roleDescriptions: Record<string, string> = {
 
 export default function Profile() {
   const navigate = useNavigate();
+  const isMobile = useIsMobile();
   const { user, signOut, updatePassword } = useAuth();
-  const { role, isAdmin, isManager, loading: roleLoading } = useUserRole();
+  const { role, isAdmin, isManager, isCleaner, loading: roleLoading } = useUserRole();
   const { fetching: fetchingCep, handleCepChange } = useCepLookup();
   const [teamMember, setTeamMember] = useState<TeamMember | null>(null);
   const [loading, setLoading] = useState(true);
   const [editingPersonal, setEditingPersonal] = useState(false);
   const [editingAddress, setEditingAddress] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [showMobileMenu, setShowMobileMenu] = useState(false);
   
   // Password reset modal state
   const [showPasswordModal, setShowPasswordModal] = useState(false);
@@ -322,17 +327,243 @@ export default function Profile() {
 
   if (loading || roleLoading) {
     return (
-      <SidebarProvider>
-        <AppSidebar />
-        <SidebarInset className="flex flex-col min-h-screen bg-background">
-          <div className="flex items-center justify-center h-full">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
-          </div>
-        </SidebarInset>
-      </SidebarProvider>
+      <div className="flex flex-col min-h-screen bg-background">
+        <div className="flex items-center justify-center h-full">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+        </div>
+      </div>
     );
   }
 
+  // REGRA 2.3: Menu hambúrguer apenas na tela Perfil (mobile)
+  const MobileMenuSheet = () => (
+    <Sheet open={showMobileMenu} onOpenChange={setShowMobileMenu}>
+      <SheetContent side="left" className="w-[280px] p-0">
+        <SheetHeader className="p-4 border-b border-border">
+          <SheetTitle className="text-left">Menu</SheetTitle>
+        </SheetHeader>
+        <nav className="flex flex-col p-4 gap-1">
+          <button
+            onClick={() => { setShowMobileMenu(false); navigate('/'); }}
+            className="flex items-center gap-3 px-4 py-3 rounded-xl text-left hover:bg-muted transition-colors"
+          >
+            <span className="material-symbols-outlined text-muted-foreground">home</span>
+            <span className="font-medium">Início</span>
+          </button>
+          <button
+            onClick={() => { setShowMobileMenu(false); navigate('/historico-limpezas'); }}
+            className="flex items-center gap-3 px-4 py-3 rounded-xl text-left hover:bg-muted transition-colors"
+          >
+            <History className="w-5 h-5 text-muted-foreground" />
+            <span className="font-medium">Histórico</span>
+          </button>
+          {!isCleaner && (
+            <>
+              <button
+                onClick={() => { setShowMobileMenu(false); navigate('/inventario'); }}
+                className="flex items-center gap-3 px-4 py-3 rounded-xl text-left hover:bg-muted transition-colors"
+              >
+                <ClipboardCheck className="w-5 h-5 text-muted-foreground" />
+                <span className="font-medium">Checklist</span>
+              </button>
+              <button
+                onClick={() => { setShowMobileMenu(false); navigate('/inspecoes'); }}
+                className="flex items-center gap-3 px-4 py-3 rounded-xl text-left hover:bg-muted transition-colors"
+              >
+                <span className="material-symbols-outlined text-muted-foreground">search</span>
+                <span className="font-medium">Inspeções</span>
+              </button>
+            </>
+          )}
+          <Separator className="my-2" />
+          <button
+            onClick={() => { setShowMobileMenu(false); signOut(); }}
+            className="flex items-center gap-3 px-4 py-3 rounded-xl text-left text-destructive hover:bg-destructive/10 transition-colors"
+          >
+            <LogOut className="w-5 h-5" />
+            <span className="font-medium">Sair</span>
+          </button>
+        </nav>
+      </SheetContent>
+    </Sheet>
+  );
+
+  // Mobile version of the profile page
+  if (isMobile) {
+    return (
+      <div className="min-h-screen bg-stone-50 dark:bg-[#1a1d21] pb-24">
+        {/* REGRA 2.3: Header com menu hambúrguer apenas na tela Perfil */}
+        <header className="sticky top-0 z-30 bg-stone-50/95 dark:bg-[#22252a]/95 backdrop-blur-md px-4 py-4 shadow-sm border-b border-border safe-area-top">
+          <div className="flex items-center gap-3">
+            <button
+              onClick={() => setShowMobileMenu(true)}
+              className="flex items-center justify-center rounded-full p-2 -ml-2 transition-colors hover:bg-slate-200 dark:hover:bg-slate-700"
+              aria-label="Abrir menu"
+            >
+              <Menu className="w-5 h-5 text-muted-foreground" />
+            </button>
+            <div className="flex-1">
+              <h1 className="text-lg font-bold text-foreground">Minha Conta</h1>
+            </div>
+          </div>
+        </header>
+        
+        <MobileMenuSheet />
+        
+        <main className="px-4 py-4">
+          {/* Profile Summary Card */}
+          <Card className="shadow-sm mb-4">
+            <CardContent className="pt-6 pb-6 flex flex-col items-center text-center">
+              <div className="relative mb-4">
+                <Avatar className="w-24 h-24 border-4 border-muted">
+                  <AvatarImage src="" />
+                  <AvatarFallback className="bg-primary/10 text-primary text-2xl">
+                    {teamMember?.name ? getInitials(teamMember.name) : 'U'}
+                  </AvatarFallback>
+                </Avatar>
+                <button className="absolute bottom-0 right-0 bg-primary text-primary-foreground p-2 rounded-full shadow-lg hover:opacity-90 transition-opacity border-2 border-card">
+                  <Camera className="w-3 h-3" />
+                </button>
+              </div>
+              <h3 className="text-lg font-bold text-foreground">{teamMember?.name || 'Usuário'}</h3>
+              <p className="text-muted-foreground text-sm mb-3">{teamMember?.email || user?.email}</p>
+              <Badge variant="outline" className="bg-primary/10 text-primary border-primary/20 uppercase tracking-wider text-xs">
+                {role ? roleLabels[role] : 'Usuário'}
+              </Badge>
+            </CardContent>
+          </Card>
+
+          {/* Quick Actions */}
+          <div className="space-y-2 mb-4">
+            <button
+              onClick={() => setShowPasswordModal(true)}
+              className="w-full flex items-center gap-3 p-4 rounded-xl bg-card border border-border shadow-sm text-left"
+            >
+              <div className="p-2 rounded-lg bg-primary/10">
+                <KeyRound className="w-5 h-5 text-primary" />
+              </div>
+              <div className="flex-1">
+                <p className="font-semibold text-foreground">Alterar Senha</p>
+                <p className="text-xs text-muted-foreground">Atualize sua senha de acesso</p>
+              </div>
+              <ChevronRight className="w-5 h-5 text-muted-foreground" />
+            </button>
+
+            <button
+              onClick={() => signOut()}
+              className="w-full flex items-center gap-3 p-4 rounded-xl bg-card border border-border shadow-sm text-left"
+            >
+              <div className="p-2 rounded-lg bg-destructive/10">
+                <LogOut className="w-5 h-5 text-destructive" />
+              </div>
+              <div className="flex-1">
+                <p className="font-semibold text-foreground">Sair da Conta</p>
+                <p className="text-xs text-muted-foreground">Encerrar sessão atual</p>
+              </div>
+              <ChevronRight className="w-5 h-5 text-muted-foreground" />
+            </button>
+          </div>
+
+          {/* Version Info */}
+          <div className="text-center py-4">
+            <p className="text-xs text-muted-foreground">Versão {APP_VERSION}</p>
+          </div>
+        </main>
+
+        {/* REGRA 3: Menu inferior fixo */}
+        <MobileBottomNav 
+          activeTab="menu" 
+          onTabChange={() => navigate('/')} 
+        />
+        
+        {/* Password Reset Modal */}
+        <Dialog open={showPasswordModal} onOpenChange={setShowPasswordModal}>
+          <DialogContent className="sm:max-w-md">
+            <DialogHeader>
+              <DialogTitle>Alterar Senha</DialogTitle>
+              <DialogDescription>
+                Crie uma nova senha segura para sua conta.
+              </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-4 py-4">
+              <div className="space-y-2">
+                <Label htmlFor="newPasswordMobile">Nova Senha</Label>
+                <Input
+                  id="newPasswordMobile"
+                  type="password"
+                  placeholder="••••••••"
+                  value={newPassword}
+                  onChange={(e) => setNewPassword(e.target.value)}
+                  disabled={savingPassword}
+                />
+                {newPassword && (
+                  <div className="space-y-1.5">
+                    <div className="flex gap-1">
+                      {[...Array(6)].map((_, i) => (
+                        <div
+                          key={i}
+                          className={`h-1.5 flex-1 rounded-full transition-colors ${
+                            i < getPasswordStrength(newPassword).score
+                              ? getPasswordStrength(newPassword).color
+                              : 'bg-muted'
+                          }`}
+                        />
+                      ))}
+                    </div>
+                    <p className={`text-xs ${
+                      getPasswordStrength(newPassword).score <= 2 ? 'text-destructive' :
+                      getPasswordStrength(newPassword).score <= 4 ? 'text-yellow-600' : 'text-green-600'
+                    }`}>
+                      Força: {getPasswordStrength(newPassword).label}
+                    </p>
+                  </div>
+                )}
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="confirmNewPasswordMobile">Confirmar Nova Senha</Label>
+                <Input
+                  id="confirmNewPasswordMobile"
+                  type="password"
+                  placeholder="••••••••"
+                  value={confirmNewPassword}
+                  onChange={(e) => setConfirmNewPassword(e.target.value)}
+                  disabled={savingPassword}
+                />
+              </div>
+              {passwordError && (
+                <p className="text-sm text-destructive">{passwordError}</p>
+              )}
+            </div>
+            <DialogFooter className="flex-col gap-2 sm:flex-row">
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setShowPasswordModal(false);
+                  setNewPassword('');
+                  setConfirmNewPassword('');
+                  setPasswordError(null);
+                }}
+                disabled={savingPassword}
+                className="w-full sm:w-auto"
+              >
+                Cancelar
+              </Button>
+              <Button
+                onClick={handlePasswordReset}
+                disabled={savingPassword || !newPassword || !confirmNewPassword}
+                className="w-full sm:w-auto"
+              >
+                {savingPassword && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                Atualizar Senha
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+      </div>
+    );
+  }
+
+  // Desktop version
   return (
     <SidebarProvider>
       <AppSidebar />
