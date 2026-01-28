@@ -233,66 +233,35 @@ export function MobileAdminDashboard({
     return { waiting, released, cleaning, completed, total: dateFilteredSchedules.length };
   }, [dateFilteredSchedules]);
 
-  // REGRA 1 & 2: Calcular avarias em aberto baseado no período ativo
+  // REGRA ATUALIZADA: Avarias é um indicador FIXO - mostra TODAS as avarias em aberto, independente de filtros
   const maintenanceStats = useMemo(() => {
     const today = startOfDay(new Date());
-    const tomorrow = startOfDay(addDays(new Date(), 1));
-    const monthStart = startOfMonth(currentMonth);
-    const monthEnd = endOfMonth(currentMonth);
     
-    // Filtrar apenas avarias não resolvidas
+    // Mostrar TODAS as avarias não resolvidas (sem filtro de período ou propriedade)
     const openIssues = maintenanceIssues.filter(issue => issue.status !== 'resolved');
     
-    // Filtrar por período baseado no agendaViewMode
-    let periodIssues = openIssues;
-    
-    if (agendaViewMode === 'hoje') {
-      periodIssues = openIssues.filter(issue => {
-        const issueDate = startOfDay(parseISO(issue.created_at));
-        return isSameDay(issueDate, today);
-      });
-    } else if (agendaViewMode === 'amanha') {
-      periodIssues = openIssues.filter(issue => {
-        const issueDate = startOfDay(parseISO(issue.created_at));
-        return isSameDay(issueDate, tomorrow);
-      });
-    } else if (agendaViewMode === 'dia') {
-      periodIssues = openIssues.filter(issue => {
-        const issueDate = startOfDay(parseISO(issue.created_at));
-        return isSameDay(issueDate, selectedDate);
-      });
-    } else if (agendaViewMode === 'mes') {
-      periodIssues = openIssues.filter(issue => {
-        const issueDate = parseISO(issue.created_at);
-        return issueDate >= monthStart && issueDate <= monthEnd;
-      });
-    }
-    
-    // Filtrar por propriedade se ativo
-    if (propertyFilter !== 'all') {
-      periodIssues = periodIssues.filter(issue => issue.property_id === propertyFilter);
-    }
-    
-    // REGRA 3.2: Avarias críticas = vinculadas a tarefas do dia ou check-in próximo
-    const criticalIssues = periodIssues.filter(issue => {
-      // Verificar se a avaria está vinculada a uma tarefa do dia
+    // Avarias críticas = alta severidade OU vinculadas a tarefas de hoje
+    const criticalIssues = openIssues.filter(issue => {
+      // Alta severidade
+      if (issue.severity === 'high') return true;
+      
+      // Vinculadas a tarefas do dia atual
       if (issue.schedule_id) {
-        const linkedSchedule = dateFilteredSchedules.find(s => s.id === issue.schedule_id);
+        const linkedSchedule = schedules.find(s => s.id === issue.schedule_id);
         if (linkedSchedule && isSameDay(linkedSchedule.checkIn, today)) {
           return true;
         }
       }
-      // Ou se é de alta severidade
-      return issue.severity === 'high';
+      return false;
     });
     
     return {
-      total: periodIssues.length,
+      total: openIssues.length,
       critical: criticalIssues.length,
-      hasPending: periodIssues.length > 0,
+      hasPending: openIssues.length > 0,
       hasCritical: criticalIssues.length > 0
     };
-  }, [maintenanceIssues, agendaViewMode, currentMonth, selectedDate, propertyFilter, dateFilteredSchedules]);
+  }, [maintenanceIssues, schedules]);
 
   // Handle view mode change
   const handleAgendaViewModeChange = useCallback((mode: AdminAgendaViewMode) => {
@@ -798,13 +767,13 @@ export function MobileAdminDashboard({
                         ? "text-amber-700 dark:text-amber-300"
                         : "text-muted-foreground"
                   )}>
-                    Avarias
+                    Avarias em Aberto
                   </p>
                   <p className="text-[10px] text-muted-foreground">
                     {maintenanceStats.total === 0 
-                      ? 'Nenhuma avaria em aberto'
+                      ? 'Tudo em ordem!'
                       : maintenanceStats.hasCritical
-                        ? `${maintenanceStats.critical} crítica${maintenanceStats.critical > 1 ? 's' : ''}`
+                        ? `${maintenanceStats.critical} crítica${maintenanceStats.critical > 1 ? 's' : ''} de ${maintenanceStats.total} total`
                         : `${maintenanceStats.total} pendente${maintenanceStats.total > 1 ? 's' : ''}`
                     }
                   </p>
@@ -900,60 +869,7 @@ export function MobileAdminDashboard({
       {/* REGRA 4: Aba Calendário do Anfitrião - Conteúdo principal */}
       {managerActiveTab === 'calendario' && (
         <>
-          {/* Section: Status Counters - Top priority */}
-          <section className="px-4 pt-3 pb-2">
-            <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider mb-2 block">Selecione Contadores</span>
-            <div className="grid grid-cols-4 gap-2">
-              <button
-                onClick={() => onStatusFilterChange(statusFilter === 'waiting' ? 'all' : 'waiting')}
-                className={cn(
-                  "flex flex-col items-center justify-center p-2.5 rounded-xl transition-all",
-                  statusFilter === 'waiting' 
-                    ? "bg-orange-100 dark:bg-orange-900/30 ring-2 ring-orange-400" 
-                    : "bg-card shadow-sm"
-                )}
-              >
-                <span className="text-lg font-bold text-orange-600 dark:text-orange-400">{periodStats.waiting}</span>
-                <span className="text-[9px] text-muted-foreground">Aguardando</span>
-              </button>
-              <button
-                onClick={() => onStatusFilterChange(statusFilter === 'released' ? 'all' : 'released')}
-                className={cn(
-                  "flex flex-col items-center justify-center p-2.5 rounded-xl transition-all",
-                  statusFilter === 'released' 
-                    ? "bg-primary/20 ring-2 ring-primary" 
-                    : "bg-card shadow-sm"
-                )}
-              >
-                <span className="text-lg font-bold text-primary">{periodStats.released}</span>
-                <span className="text-[9px] text-muted-foreground">Liberado</span>
-              </button>
-              <button
-                onClick={() => onStatusFilterChange(statusFilter === 'cleaning' ? 'all' : 'cleaning')}
-                className={cn(
-                  "flex flex-col items-center justify-center p-2.5 rounded-xl transition-all",
-                  statusFilter === 'cleaning' 
-                    ? "bg-[#E0C051]/20 ring-2 ring-[#E0C051]" 
-                    : "bg-card shadow-sm"
-                )}
-              >
-                <span className="text-lg font-bold text-[#E0C051]">{periodStats.cleaning}</span>
-                <span className="text-[9px] text-muted-foreground">Limpando</span>
-              </button>
-              <button
-                onClick={() => onStatusFilterChange(statusFilter === 'completed' ? 'all' : 'completed')}
-                className={cn(
-                  "flex flex-col items-center justify-center p-2.5 rounded-xl transition-all",
-                  statusFilter === 'completed' 
-                    ? "bg-emerald-100 dark:bg-emerald-900/30 ring-2 ring-emerald-400" 
-                    : "bg-card shadow-sm"
-                )}
-              >
-                <span className="text-lg font-bold text-emerald-600 dark:text-emerald-400">{periodStats.completed}</span>
-                <span className="text-[9px] text-muted-foreground">Finalizado</span>
-              </button>
-            </div>
-          </section>
+          {/* Contadores removidos da aba Calendário - mantidos apenas na Home */}
 
           {/* Section: Calendar Strip - Show for hoje, amanha modes */}
           {(agendaViewMode === 'hoje' || agendaViewMode === 'amanha') && (
