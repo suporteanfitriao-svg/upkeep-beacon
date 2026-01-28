@@ -13,6 +13,7 @@ import { CleanerRoute } from "@/components/CleanerRoute";
 import { InstallPrompt } from "@/components/pwa/InstallPrompt";
 import { PWAUpdateModal } from "@/components/pwa/PWAUpdateModal";
 import { usePWAUpdate } from "@/hooks/usePWAUpdate";
+import { MobileAdminLayoutWrapper } from "@/components/layout/MobileAdminLayoutWrapper";
 import Index from "./pages/Index";
 import Auth from "./pages/Auth";
 import Team from "./pages/Team";
@@ -72,11 +73,14 @@ const App = () => (
             <Routes>
               <Route path="/landing" element={<Landing />} />
               <Route path="/auth" element={<Auth />} />
+              {/* REGRA MENU FIXO: Rotas com layout persistente mobile */}
               <Route
                 path="/"
                 element={
                   <ProtectedRoute>
-                    <Index />
+                    <MobileAdminLayoutWrapper>
+                      <Index />
+                    </MobileAdminLayoutWrapper>
                   </ProtectedRoute>
                 }
               />
@@ -101,7 +105,9 @@ const App = () => (
                 path="/inspecoes"
                 element={
                   <AdminRoute>
-                    <Inspections />
+                    <MobileAdminLayoutWrapper>
+                      <Inspections />
+                    </MobileAdminLayoutWrapper>
                   </AdminRoute>
                 }
               />
@@ -109,7 +115,9 @@ const App = () => (
                 path="/inventario"
                 element={
                   <AdminRoute>
-                    <Inventory />
+                    <MobileAdminLayoutWrapper>
+                      <Inventory />
+                    </MobileAdminLayoutWrapper>
                   </AdminRoute>
                 }
               />
@@ -125,7 +133,9 @@ const App = () => (
                 path="/manutencao"
                 element={
                   <AdminRoute>
-                    <Manutencao />
+                    <MobileAdminLayoutWrapper>
+                      <Manutencao />
+                    </MobileAdminLayoutWrapper>
                   </AdminRoute>
                 }
               />
@@ -133,7 +143,9 @@ const App = () => (
                 path="/minha-conta"
                 element={
                   <ProtectedRoute>
-                    <Profile />
+                    <MobileAdminLayoutWrapper>
+                      <Profile />
+                    </MobileAdminLayoutWrapper>
                   </ProtectedRoute>
                 }
               />
@@ -176,7 +188,9 @@ const App = () => (
                 path="/historico-limpezas"
                 element={
                   <ProtectedRoute>
-                    <CleaningHistory />
+                    <MobileAdminLayoutWrapper>
+                      <CleaningHistory />
+                    </MobileAdminLayoutWrapper>
                   </ProtectedRoute>
                 }
               />

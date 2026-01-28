@@ -28,7 +28,6 @@ import { useInventoryItemHistory } from '@/hooks/useInventoryItemHistory';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { useUserRole } from '@/hooks/useUserRole';
 import { useNavigate } from 'react-router-dom';
-import { MobileBottomNav } from '@/components/dashboard/mobile/MobileBottomNav';
 import { MobilePageHeader } from '@/components/mobile/MobilePageHeader';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
@@ -1683,13 +1682,7 @@ const Inventory = () => {
         onSuccess={fetchInventory}
       />
 
-      {/* REGRA 3: Menu inferior fixo para mobile */}
-      {isMobile && !isCleaner && (
-        <MobileBottomNav 
-          activeTab="menu" 
-          onTabChange={() => navigate('/')} 
-        />
-      )}
+      {/* MENU INFERIOR: Gerenciado pelo MobileAdminLayout - não renderiza aqui */}
     </SidebarProvider>
   );
 };

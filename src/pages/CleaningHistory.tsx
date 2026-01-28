@@ -10,7 +10,6 @@ import { ScheduleDetailReadOnly } from '@/components/reports/ScheduleDetailReadO
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { MobilePageHeader } from '@/components/mobile/MobilePageHeader';
 import { MobileEmptyState } from '@/components/mobile/MobileEmptyState';
-import { MobileBottomNav } from '@/components/dashboard/mobile/MobileBottomNav';
 
 const ITEMS_PER_PAGE = 10;
 
@@ -198,7 +197,7 @@ export default function CleaningHistory() {
       </div>
 
       {/* Content */}
-      <main className="px-4 py-4 pb-24">
+      <main className="px-4 py-4">
         {loading ? (
           <div className="flex items-center justify-center py-12">
             <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
@@ -371,11 +370,7 @@ export default function CleaningHistory() {
         )}
       </main>
 
-      {/* REGRA 3: Menu inferior fixo e sempre visível */}
-      <MobileBottomNav 
-        activeTab="inicio" 
-        onTabChange={() => navigate('/')} 
-      />
+      {/* MENU INFERIOR: Gerenciado pelo MobileAdminLayout - não renderiza aqui */}
     </div>
   );
 }

@@ -27,7 +27,6 @@ import type { Json } from '@/integrations/supabase/types';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { useUserRole } from '@/hooks/useUserRole';
 import { useNavigate } from 'react-router-dom';
-import { MobileBottomNav } from '@/components/dashboard/mobile/MobileBottomNav';
 import { MobilePageHeader } from '@/components/mobile/MobilePageHeader';
 
 interface Property {
@@ -1056,13 +1055,7 @@ const Inspections = () => {
         </DialogContent>
       </Dialog>
 
-      {/* REGRA 3: Menu inferior fixo para mobile */}
-      {isMobile && !isCleaner && (
-        <MobileBottomNav 
-          activeTab="menu" 
-          onTabChange={() => navigate('/')} 
-        />
-      )}
+      {/* MENU INFERIOR: Gerenciado pelo MobileAdminLayout - não renderiza aqui */}
     </SidebarProvider>
   );
 };
