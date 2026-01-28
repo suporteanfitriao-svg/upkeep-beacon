@@ -890,6 +890,16 @@ const Inventory = () => {
     item.details?.toLowerCase().includes(searchTerm.toLowerCase())
   ) || [];
 
+  // Global search across all categories
+  const globalSearchResults = searchTerm.trim() ? categories.flatMap(cat =>
+    cat.items
+      .filter(item =>
+        item.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        item.details?.toLowerCase().includes(searchTerm.toLowerCase())
+      )
+      .map(item => ({ ...item, categoryName: cat.name, categoryId: cat.id }))
+  ) : [];
+
   if (loading && categories.length === 0) {
     return (
       <SidebarProvider>
@@ -925,6 +935,24 @@ const Inventory = () => {
               </p>
             </div>
             <div className="flex flex-wrap items-center gap-2 sm:gap-3">
+              {/* Global Search Field */}
+              <div className="relative w-full sm:w-auto order-first sm:order-none">
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Input
+                  placeholder="Buscar item..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="pl-10 w-full sm:w-[200px] lg:w-[250px]"
+                />
+                {searchTerm && (
+                  <button
+                    onClick={() => setSearchTerm('')}
+                    className="absolute right-3 top-1/2 transform -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                  >
+                    <X className="h-4 w-4" />
+                  </button>
+                )}
+              </div>
               <div className="flex items-center gap-2">
                 <Building2 className="h-4 w-4 text-muted-foreground hidden sm:block" />
                 <Select value={selectedPropertyId} onValueChange={setSelectedPropertyId}>
@@ -1043,9 +1071,14 @@ const Inventory = () => {
                   <div>
                     <CardTitle className="flex items-center gap-2">
                       <Box className="h-5 w-5" />
-                      {selectedCategory ? selectedCategory.name : 'Selecione uma categoria'}
+                      {searchTerm.trim() 
+                        ? `Resultados para "${searchTerm}"`
+                        : selectedCategory 
+                          ? selectedCategory.name 
+                          : 'Selecione uma categoria'
+                      }
                     </CardTitle>
-                    {selectedCategory && (
+                    {!searchTerm.trim() && selectedCategory && (
                       <CardDescription className="mt-1 flex items-center gap-2">
                         <Badge variant="outline" className="text-xs">
                           <Building2 className="h-3 w-3 mr-1" />
@@ -1058,28 +1091,97 @@ const Inventory = () => {
                         )}
                       </CardDescription>
                     )}
+                    {searchTerm.trim() && (
+                      <CardDescription className="mt-1">
+                        {globalSearchResults.length} item(ns) encontrado(s) em todas as categorias
+                      </CardDescription>
+                    )}
                   </div>
-                  {selectedCategory && (
+                  {selectedCategory && !searchTerm.trim() && (
                     <Button onClick={() => handleOpenItemDialog()} size="sm">
                       <Plus className="h-4 w-4 mr-2" />
                       Novo Item
                     </Button>
                   )}
                 </div>
-                {selectedCategory && (
-                  <div className="relative mt-4">
-                    <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                    <Input
-                      placeholder="Buscar itens..."
-                      value={searchTerm}
-                      onChange={(e) => setSearchTerm(e.target.value)}
-                      className="pl-10"
-                    />
-                  </div>
-                )}
               </CardHeader>
               <CardContent>
-                {!selectedCategory ? (
+                {/* Global search results */}
+                {searchTerm.trim() ? (
+                  globalSearchResults.length === 0 ? (
+                    <div className="text-center py-12 text-muted-foreground">
+                      <Search className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                      <p>Nenhum item encontrado para "{searchTerm}"</p>
+                      <Button 
+                        variant="outline" 
+                        className="mt-4"
+                        onClick={() => setSearchTerm('')}
+                      >
+                        Limpar busca
+                      </Button>
+                    </div>
+                  ) : (
+                    <div className="space-y-4">
+                      {/* Group results by category */}
+                      {Array.from(new Set(globalSearchResults.map(r => r.categoryId))).map(catId => {
+                        const catResults = globalSearchResults.filter(r => r.categoryId === catId);
+                        const catName = catResults[0]?.categoryName || 'Categoria';
+                        return (
+                          <div key={catId} className="space-y-2">
+                            <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground border-b pb-2">
+                              <FolderOpen className="h-4 w-4" />
+                              {catName}
+                              <Badge variant="secondary" className="text-xs">
+                                {catResults.length}
+                              </Badge>
+                            </div>
+                            {isMobile ? (
+                              <div className="space-y-2">
+                                {catResults.map(item => (
+                                  <SortableItemMobile
+                                    key={item.id}
+                                    id={item.id}
+                                    name={item.name}
+                                    quantity={item.quantity}
+                                    unit={item.unit}
+                                    details={item.details}
+                                    photoUrl={item.photo_url}
+                                    photoTakenAt={item.photo_taken_at}
+                                    onEdit={() => handleOpenItemDialog(item)}
+                                    onDelete={() => handleDeleteItem(item.id)}
+                                    onPhotoClick={() => item.photo_url && window.open(item.photo_url, '_blank')}
+                                    onHistoryClick={() => handleOpenHistory(item.id, item.name)}
+                                  />
+                                ))}
+                              </div>
+                            ) : (
+                              <Table>
+                                <TableBody>
+                                  {catResults.map(item => (
+                                    <SortableItem
+                                      key={item.id}
+                                      id={item.id}
+                                      name={item.name}
+                                      quantity={item.quantity}
+                                      unit={item.unit}
+                                      details={item.details}
+                                      photoUrl={item.photo_url}
+                                      photoTakenAt={item.photo_taken_at}
+                                      onEdit={() => handleOpenItemDialog(item)}
+                                      onDelete={() => handleDeleteItem(item.id)}
+                                      onPhotoClick={() => item.photo_url && window.open(item.photo_url, '_blank')}
+                                      onHistoryClick={() => handleOpenHistory(item.id, item.name)}
+                                    />
+                                  ))}
+                                </TableBody>
+                              </Table>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )
+                ) : !selectedCategory ? (
                   <div className="text-center py-12 text-muted-foreground">
                     <Package className="h-12 w-12 mx-auto mb-4 opacity-50" />
                     <p>Selecione uma categoria para ver seus itens</p>
@@ -1089,7 +1191,7 @@ const Inventory = () => {
                     <Box className="h-12 w-12 mx-auto mb-4 opacity-50" />
                     <p>Nenhum item nesta categoria</p>
                     <Button 
-                      variant="outline" 
+                      variant="outline"
                       className="mt-4"
                       onClick={() => handleOpenItemDialog()}
                     >
