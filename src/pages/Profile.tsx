@@ -23,7 +23,6 @@ import { Separator } from '@/components/ui/separator';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
 import { APP_VERSION } from '@/components/pwa/PWAUpdateModal';
-import { MobileBottomNav } from '@/components/dashboard/mobile/MobileBottomNav';
 
 // Password validation schema
 const passwordSchema = z.string()
@@ -391,7 +390,7 @@ export default function Profile() {
   // Mobile version of the profile page
   if (isMobile) {
     return (
-      <div className="min-h-screen bg-stone-50 dark:bg-[#1a1d21] pb-24">
+      <div className="min-h-screen bg-stone-50 dark:bg-[#1a1d21]">
         {/* REGRA 2.3: Header com menu hambúrguer apenas na tela Perfil */}
         <header className="sticky top-0 z-30 bg-stone-50/95 dark:bg-[#22252a]/95 backdrop-blur-md px-4 py-4 shadow-sm border-b border-border safe-area-top">
           <div className="flex items-center gap-3">
@@ -621,11 +620,7 @@ export default function Profile() {
           </div>
         </main>
 
-        {/* REGRA 3: Menu inferior fixo */}
-        <MobileBottomNav 
-          activeTab="menu" 
-          onTabChange={() => navigate('/')} 
-        />
+        {/* MENU INFERIOR: Gerenciado pelo MobileAdminLayout - não renderiza aqui */}
         
         {/* Password Reset Modal */}
         <Dialog open={showPasswordModal} onOpenChange={setShowPasswordModal}>

@@ -1,4 +1,5 @@
 import { useState, useMemo, useCallback, useEffect, createContext, useContext, useRef } from 'react';
+import { useLocation } from 'react-router-dom';
 import { Loader2, CalendarX, ChevronLeft, ChevronRight } from 'lucide-react';
 import { toast } from 'sonner';
 import { isToday, isTomorrow, isSameDay, isWithinInterval, startOfDay, endOfDay, parseISO, startOfWeek, endOfWeek, addWeeks, startOfMonth, endOfMonth } from 'date-fns';
@@ -16,7 +17,6 @@ import { AdminInspectionsSection } from '@/components/dashboard/AdminInspections
 import { ScheduleDetail } from '@/components/dashboard/ScheduleDetail';
 import { MobileDashboard } from '@/components/dashboard/MobileDashboard';
 import { MobileAdminDashboard, ManagerActiveTab } from '@/components/dashboard/mobile/MobileAdminDashboard';
-import { MobileBottomNav } from '@/components/dashboard/mobile/MobileBottomNav';
 import { UpcomingSchedules } from '@/components/dashboard/UpcomingSchedules';
 import { CleaningTimeAlertBanner } from '@/components/dashboard/CleaningTimeAlertBanner';
 import { CleanerWebLayout } from '@/components/dashboard/CleanerWebLayout';
@@ -127,12 +127,24 @@ function SyncOverlayInline({ isSyncing }: { isSyncing: boolean }) {
 
 const Index = () => {
   const isMobile = useIsMobile();
+  const location = useLocation();
   const { isCleaner, hasManagerAccess, isSuperAdmin, isManager, isAdmin, loading: roleLoading } = useUserRole();
   const { viewMode, canSwitchView } = useViewMode();
   
   // REGRA 4: Estado para controlar aba ativa do Anfitrião no mobile
   // 'inicio' = contadores de status na Home, 'agenda' = calendário com tarefas
-  const [managerMobileTab, setManagerMobileTab] = useState<'inicio' | 'agenda'>('inicio');
+  // REGRA MENU FIXO: Recebe aba ativa via location.state do layout persistente
+  const locationState = location.state as { activeTab?: 'inicio' | 'agenda' } | null;
+  const [managerMobileTab, setManagerMobileTab] = useState<'inicio' | 'agenda'>(
+    locationState?.activeTab || 'inicio'
+  );
+  
+  // Sincroniza com navigation state quando muda
+  useEffect(() => {
+    if (locationState?.activeTab && locationState.activeTab !== managerMobileTab) {
+      setManagerMobileTab(locationState.activeTab);
+    }
+  }, [locationState?.activeTab]);
   const { schedules, loading, error, refetch, updateSchedule, updateScheduleTimes, updateScheduleLocal } = useSchedules();
   const { inspections: adminInspections, loading: inspectionsLoading, refetch: refetchInspections } = useAdminInspections();
   
@@ -830,13 +842,7 @@ const Index = () => {
               onUpdateSchedule={handleUpdateSchedule}
             />
           )}
-          <MobileBottomNav
-            activeTab={managerMobileTab}
-            onTabChange={(tab) => {
-              if (tab === 'menu') return;
-              setManagerMobileTab(tab);
-            }}
-          />
+          {/* MENU INFERIOR: Gerenciado pelo MobileAdminLayout - não renderiza aqui */}
           <SyncOverlayInline isSyncing={isSyncing} />
         </>
       );
@@ -873,16 +879,8 @@ const Index = () => {
               onUpdateSchedule={handleUpdateSchedule}
             />
           )}
+          {/* MENU INFERIOR: Gerenciado pelo MobileAdminLayout - não renderiza aqui */}
           <SyncOverlayInline isSyncing={isSyncing} />
-
-          {/* REGRA 4 & 6: Bottom nav para Anfitrião e Proprietário alternar Home/Calendário */}
-          <MobileBottomNav
-            activeTab={managerMobileTab}
-            onTabChange={(tab) => {
-              if (tab === 'menu') return;
-              setManagerMobileTab(tab);
-            }}
-          />
         </>
       );
     }
