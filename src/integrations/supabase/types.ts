@@ -1308,6 +1308,101 @@ export type Database = {
         }
         Relationships: []
       }
+      subscription_plans: {
+        Row: {
+          created_at: string
+          description: string | null
+          features: Json
+          id: string
+          is_active: boolean
+          max_properties: number
+          max_syncs_per_property: number
+          name: string
+          price_monthly: number
+          slug: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          features?: Json
+          id?: string
+          is_active?: boolean
+          max_properties?: number
+          max_syncs_per_property?: number
+          name: string
+          price_monthly: number
+          slug: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          features?: Json
+          id?: string
+          is_active?: boolean
+          max_properties?: number
+          max_syncs_per_property?: number
+          name?: string
+          price_monthly?: number
+          slug?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      subscriptions: {
+        Row: {
+          cancelled_at: string | null
+          created_at: string
+          expires_at: string | null
+          hotmart_product_id: string | null
+          hotmart_subscription_id: string | null
+          hotmart_transaction_id: string | null
+          id: string
+          plan_id: string
+          started_at: string | null
+          status: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          cancelled_at?: string | null
+          created_at?: string
+          expires_at?: string | null
+          hotmart_product_id?: string | null
+          hotmart_subscription_id?: string | null
+          hotmart_transaction_id?: string | null
+          id?: string
+          plan_id: string
+          started_at?: string | null
+          status?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          cancelled_at?: string | null
+          created_at?: string
+          expires_at?: string | null
+          hotmart_product_id?: string | null
+          hotmart_subscription_id?: string | null
+          hotmart_transaction_id?: string | null
+          id?: string
+          plan_id?: string
+          started_at?: string | null
+          status?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "subscriptions_plan_id_fkey"
+            columns: ["plan_id"]
+            isOneToOne: false
+            referencedRelation: "subscription_plans"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       team_member_audit_logs: {
         Row: {
           action: string
@@ -1814,6 +1909,18 @@ export type Database = {
         Returns: Json
       }
       can_submit_to_waitlist: { Args: { p_email: string }; Returns: boolean }
+      get_active_subscription: {
+        Args: { p_user_id: string }
+        Returns: {
+          expires_at: string
+          max_properties: number
+          plan_id: string
+          plan_name: string
+          plan_slug: string
+          status: string
+          subscription_id: string
+        }[]
+      }
       get_property_password: {
         Args: { p_property_id: string; p_schedule_id?: string }
         Returns: string
@@ -1822,6 +1929,7 @@ export type Database = {
         Args: { p_schedule_id: string }
         Returns: string
       }
+      has_active_subscription: { Args: { p_user_id: string }; Returns: boolean }
       has_any_role: { Args: { _user_id: string }; Returns: boolean }
       has_property_access: { Args: { p_property_id: string }; Returns: boolean }
       has_role: {
