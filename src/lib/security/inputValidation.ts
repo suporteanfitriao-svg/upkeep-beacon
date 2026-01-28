@@ -3,6 +3,12 @@
  * 
  * Client-side validation as first line of defense.
  * Server-side validation (RLS/Edge Functions) is the authoritative check.
+ * 
+ * REGRAS DE SEGURANÇA:
+ * - R-GLOBAL-8: Sanitização de inputs (proteção Prototype Pollution)
+ * - R-GLOBAL-9: Proteção NoSQL Injection
+ * - R-GLOBAL-10: Detecção SQL Injection
+ * - NUNCA confiar em front-end - backend é fonte de verdade
  */
 
 import { z } from 'zod';
@@ -23,7 +29,59 @@ export function sanitizeHtml(input: string): string {
     .replace(/javascript:/gi, '')
     .replace(/on\w+\s*=/gi, '')
     .replace(/data:/gi, '')
+    .replace(/vbscript:/gi, '')
     .trim();
+}
+
+/**
+ * Sanitize object - remove prototype pollution attempts
+ * R-GLOBAL-8: Proteção contra Prototype Pollution
+ */
+export function sanitizeObject<T extends Record<string, unknown>>(obj: T): T {
+  if (typeof obj !== 'object' || obj === null) {
+    return obj;
+  }
+
+  const dangerousKeys = ['__proto__', 'constructor', 'prototype'];
+  const result = {} as T;
+
+  for (const [key, value] of Object.entries(obj)) {
+    if (!dangerousKeys.includes(key)) {
+      if (typeof value === 'object' && value !== null) {
+        result[key as keyof T] = sanitizeObject(value as Record<string, unknown>) as T[keyof T];
+      } else {
+        result[key as keyof T] = value as T[keyof T];
+      }
+    }
+  }
+
+  return result;
+}
+
+/**
+ * Check for NoSQL injection patterns
+ * R-GLOBAL-9: Proteção NoSQL Injection
+ */
+export function hasNoSqlInjectionPattern(obj: unknown): boolean {
+  if (typeof obj !== 'object' || obj === null) {
+    return false;
+  }
+
+  const dangerousOperators = [
+    '$where', '$ne', '$gt', '$gte', '$lt', '$lte', 
+    '$regex', '$in', '$nin', '$or', '$and', '$not'
+  ];
+
+  for (const [key, value] of Object.entries(obj)) {
+    if (dangerousOperators.includes(key)) {
+      return true;
+    }
+    if (hasNoSqlInjectionPattern(value)) {
+      return true;
+    }
+  }
+
+  return false;
 }
 
 /**
@@ -193,6 +251,7 @@ export function validateInput<T>(
 
 /**
  * Check if input contains SQL injection patterns
+ * R-GLOBAL-10: Detecção SQL Injection
  */
 export function hasSqlInjectionPattern(input: string): boolean {
   if (!input) return false;
@@ -204,6 +263,8 @@ export function hasSqlInjectionPattern(input: string): boolean {
     /(\bOR\b\s+[\d\w]+\s*=\s*[\d\w]+)/i,
     /(\bAND\b\s+[\d\w]+\s*=\s*[\d\w]+)/i,
     /(;|\x00)/,
+    /(\bXP_\w+)/i, // SQL Server extended procedures
+    /(\bSP_\w+)/i, // SQL Server stored procedures
   ];
   
   return sqlPatterns.some((pattern) => pattern.test(input));
@@ -218,14 +279,65 @@ export function hasXssPattern(input: string): boolean {
   const xssPatterns = [
     /<script\b/i,
     /javascript:/i,
+    /vbscript:/i,
     /on\w+\s*=/i,
     /<iframe/i,
     /<object/i,
     /<embed/i,
+    /<form/i,
+    /<input/i,
     /data:text\/html/i,
+    /expression\s*\(/i, // CSS expression
   ];
   
   return xssPatterns.some((pattern) => pattern.test(input));
+}
+
+/**
+ * Check for path traversal patterns
+ * R-GLOBAL-11: Proteção Path Traversal
+ */
+export function hasPathTraversalPattern(input: string): boolean {
+  if (!input) return false;
+  
+  const patterns = [
+    /\.\.\//,
+    /\.\.\\/,
+    /%2e%2e%2f/i,
+    /%2e%2e\//i,
+    /\.\.%2f/i,
+    /%252e%252e%252f/i, // Double encoded
+  ];
+  
+  return patterns.some((pattern) => pattern.test(input));
+}
+
+/**
+ * Comprehensive input validation
+ * Combines all security checks
+ */
+export function validateSecureInput(input: string): {
+  valid: boolean;
+  threats: string[];
+} {
+  const threats: string[] = [];
+
+  if (hasSqlInjectionPattern(input)) {
+    threats.push('sql_injection');
+  }
+
+  if (hasXssPattern(input)) {
+    threats.push('xss');
+  }
+
+  if (hasPathTraversalPattern(input)) {
+    threats.push('path_traversal');
+  }
+
+  return {
+    valid: threats.length === 0,
+    threats,
+  };
 }
 
 // ============================================================
