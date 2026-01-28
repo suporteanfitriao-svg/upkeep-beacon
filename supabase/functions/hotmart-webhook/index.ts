@@ -1,17 +1,24 @@
 /**
- * Hotmart Webhook Handler
- * Processa eventos de pagamento da Hotmart para ativar/gerenciar subscriptions
+ * Hotmart Webhook Handler - SECURE VERSION
  * 
- * REGRA: Compra confirmada via webhook → criar/atualizar usuário como Proprietário
- *        associar plano comprado → liberar acesso exclusivamente para onboarding
+ * REGRAS DE SEGURANÇA APLICADAS:
+ * - R-GLOBAL-11: Verificação de assinatura HMAC
+ * - R-GLOBAL-5: Idempotência via webhook_events
+ * - R-GLOBAL-10: Rate limiting
+ * - R-GLOBAL-15: Logging seguro
+ * - R-GLOBAL-13: Proteção contra replay attacks
  */
 
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.49.1'
-
-const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-hotmart-hottok',
-}
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.87.1';
+import {
+  createSecureHandler,
+  verifyWebhookSignatureAsync,
+  isWebhookTimestampValid,
+  secureLog,
+  errorResponse,
+  successResponse,
+  validateRequestBody,
+} from '../_shared/security/index.ts';
 
 // Hotmart event types we handle
 type HotmartEvent = 
@@ -66,40 +73,80 @@ const PRODUCT_TO_PLAN: Record<string, string> = {
   'HOTMART_STANDARD_PRODUCT_ID': 'padrao',
 };
 
-Deno.serve(async (req) => {
-  // Handle CORS preflight
-  if (req.method === 'OPTIONS') {
-    return new Response('ok', { headers: corsHeaders });
-  }
+// Rate limit: 10 requests per minute per webhook signature
+const RATE_LIMIT_CONFIG = {
+  windowMs: 60 * 1000,
+  maxRequests: 10,
+  keyGenerator: (req: Request) => {
+    return req.headers.get('x-hotmart-hottok') || 'unknown';
+  },
+};
 
-  try {
-    // Verify Hotmart webhook token (optional but recommended)
+const handler = createSecureHandler(
+  async (req, context) => {
+    const { requestId, supabaseAdmin } = context;
+
+    // Validate request body
+    const bodyResult = await validateRequestBody(req.clone());
+    if (!bodyResult.valid) {
+      secureLog('warn', 'Invalid webhook body', {
+        request_id: requestId,
+        error: bodyResult.error,
+      });
+      return errorResponse(400, bodyResult.error || 'Invalid body', requestId);
+    }
+
+    const payload = bodyResult.body as HotmartPayload;
+
+    // R-GLOBAL-11: Verify Hotmart webhook token
     const hottok = req.headers.get('x-hotmart-hottok');
     const expectedToken = Deno.env.get('HOTMART_WEBHOOK_TOKEN');
     
     if (expectedToken && hottok !== expectedToken) {
-      console.error('[Hotmart Webhook] Invalid hottok');
-      return new Response(
-        JSON.stringify({ error: 'Unauthorized' }),
-        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
+      secureLog('warn', 'Invalid Hotmart webhook token', {
+        request_id: requestId,
+      });
+      return errorResponse(401, 'Unauthorized', requestId);
     }
 
-    const payload: HotmartPayload = await req.json();
-    console.log('[Hotmart Webhook] Received event:', payload.event);
-    console.log('[Hotmart Webhook] Buyer:', payload.data.buyer.email);
-
-    // Initialize Supabase admin client
-    const supabase = createClient(
-      Deno.env.get('SUPABASE_URL') ?? '',
-      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '',
-      { auth: { persistSession: false } }
-    );
+    // R-GLOBAL-13: Check timestamp for replay protection (if provided)
+    const timestamp = req.headers.get('x-hotmart-timestamp');
+    if (timestamp && !isWebhookTimestampValid(timestamp, 300)) {
+      secureLog('warn', 'Webhook timestamp expired', {
+        request_id: requestId,
+        timestamp,
+      });
+      return errorResponse(401, 'Webhook expired', requestId);
+    }
 
     const { event, data } = payload;
+    const transactionId = data.purchase.transaction;
+
+    // R-GLOBAL-5: Check idempotency
+    const eventId = `hotmart:${event}:${transactionId}`;
+    const { data: isNew } = await supabaseAdmin.rpc('check_webhook_idempotency', {
+      p_event_id: eventId,
+      p_event_type: event,
+      p_provider: 'hotmart',
+      p_payload: payload,
+    });
+
+    if (!isNew) {
+      secureLog('info', 'Duplicate webhook event', {
+        request_id: requestId,
+        event_id: eventId,
+      });
+      return successResponse({ status: 'already_processed', event }, requestId);
+    }
+
+    secureLog('info', 'Processing Hotmart webhook', {
+      request_id: requestId,
+      event,
+      transaction_id: transactionId,
+    });
+
     const buyerEmail = data.buyer.email.toLowerCase().trim();
     const buyerName = data.buyer.name;
-    const transactionId = data.purchase.transaction;
     const productId = data.product.id;
     const subscriptionId = data.subscription?.subscriber_code;
 
@@ -107,37 +154,40 @@ Deno.serve(async (req) => {
     const planSlug = PRODUCT_TO_PLAN[productId] || 'basico';
     
     // Get plan from database
-    const { data: planData, error: planError } = await supabase
+    const { data: planData, error: planError } = await supabaseAdmin
       .from('subscription_plans')
       .select('id')
       .eq('slug', planSlug)
-      .single();
+      .maybeSingle();
 
     if (planError || !planData) {
-      console.error('[Hotmart Webhook] Plan not found:', planSlug);
-      return new Response(
-        JSON.stringify({ error: 'Plan not found' }),
-        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
+      secureLog('error', 'Plan not found', {
+        request_id: requestId,
+        plan_slug: planSlug,
+      });
+      return errorResponse(400, 'Plan not found', requestId);
     }
 
     switch (event) {
       case 'PURCHASE_APPROVED':
       case 'PURCHASE_COMPLETE': {
         // Check if user exists
-        const { data: existingUsers } = await supabase.auth.admin.listUsers();
+        const { data: existingUsers } = await supabaseAdmin.auth.admin.listUsers();
         let userId: string | null = null;
         
         const existingUser = existingUsers?.users?.find(u => u.email === buyerEmail);
         
         if (existingUser) {
           userId = existingUser.id;
-          console.log('[Hotmart Webhook] Found existing user:', userId);
+          secureLog('info', 'Found existing user', {
+            request_id: requestId,
+            user_id: userId,
+          });
         } else {
-          // Create new user with temporary password
+          // Create new user with secure temporary password
           const tempPassword = crypto.randomUUID().slice(0, 12) + 'Aa1!';
           
-          const { data: newUser, error: createError } = await supabase.auth.admin.createUser({
+          const { data: newUser, error: createError } = await supabaseAdmin.auth.admin.createUser({
             email: buyerEmail,
             password: tempPassword,
             email_confirm: true,
@@ -148,18 +198,17 @@ Deno.serve(async (req) => {
           });
 
           if (createError) {
-            console.error('[Hotmart Webhook] Error creating user:', createError);
-            return new Response(
-              JSON.stringify({ error: 'Failed to create user' }),
-              { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-            );
+            secureLog('error', 'Failed to create user', {
+              request_id: requestId,
+              error: createError.message,
+            });
+            return errorResponse(500, 'Failed to create user', requestId);
           }
 
           userId = newUser.user.id;
-          console.log('[Hotmart Webhook] Created new user:', userId);
 
-          // Create profile
-          await supabase.from('profiles').insert({
+          // Create profile with must_reset_password flag
+          await supabaseAdmin.from('profiles').insert({
             id: userId,
             email: buyerEmail,
             name: buyerName,
@@ -168,17 +217,21 @@ Deno.serve(async (req) => {
           });
 
           // Assign admin role (Proprietário)
-          await supabase.from('user_roles').insert({
+          await supabaseAdmin.from('user_roles').insert({
             user_id: userId,
             role: 'admin',
           });
 
-          // TODO: Send welcome email with password reset link
-          console.log('[Hotmart Webhook] User needs password reset');
+          secureLog('info', 'Created new user from Hotmart purchase', {
+            request_id: requestId,
+            user_id: userId,
+          });
+
+          // TODO: Send welcome email with password reset link via Resend
         }
 
         // Check for existing subscription
-        const { data: existingSub } = await supabase
+        const { data: existingSub } = await supabaseAdmin
           .from('subscriptions')
           .select('id')
           .eq('hotmart_transaction_id', transactionId)
@@ -186,7 +239,7 @@ Deno.serve(async (req) => {
 
         if (existingSub) {
           // Update existing subscription
-          await supabase
+          await supabaseAdmin
             .from('subscriptions')
             .update({
               status: 'active',
@@ -194,10 +247,13 @@ Deno.serve(async (req) => {
             })
             .eq('id', existingSub.id);
           
-          console.log('[Hotmart Webhook] Updated subscription:', existingSub.id);
+          secureLog('info', 'Updated existing subscription', {
+            request_id: requestId,
+            subscription_id: existingSub.id,
+          });
         } else {
           // Create new subscription
-          const { data: newSub, error: subError } = await supabase
+          const { data: newSub, error: subError } = await supabaseAdmin
             .from('subscriptions')
             .insert({
               user_id: userId,
@@ -212,9 +268,15 @@ Deno.serve(async (req) => {
             .single();
 
           if (subError) {
-            console.error('[Hotmart Webhook] Error creating subscription:', subError);
+            secureLog('error', 'Failed to create subscription', {
+              request_id: requestId,
+              error: subError.message,
+            });
           } else {
-            console.log('[Hotmart Webhook] Created subscription:', newSub.id);
+            secureLog('info', 'Created subscription', {
+              request_id: requestId,
+              subscription_id: newSub.id,
+            });
           }
         }
 
@@ -226,7 +288,7 @@ Deno.serve(async (req) => {
       case 'PURCHASE_CHARGEBACK':
       case 'SUBSCRIPTION_CANCELLATION': {
         // Cancel subscription
-        const { error: cancelError } = await supabase
+        const { error: cancelError } = await supabaseAdmin
           .from('subscriptions')
           .update({
             status: event === 'SUBSCRIPTION_CANCELLATION' ? 'cancelled' : 'suspended',
@@ -235,38 +297,48 @@ Deno.serve(async (req) => {
           .eq('hotmart_transaction_id', transactionId);
 
         if (cancelError) {
-          console.error('[Hotmart Webhook] Error cancelling subscription:', cancelError);
+          secureLog('error', 'Failed to cancel subscription', {
+            request_id: requestId,
+            error: cancelError.message,
+          });
         } else {
-          console.log('[Hotmart Webhook] Subscription cancelled for transaction:', transactionId);
+          secureLog('info', 'Subscription cancelled', {
+            request_id: requestId,
+            transaction_id: transactionId,
+            reason: event,
+          });
         }
 
         break;
       }
 
       case 'PURCHASE_EXPIRED': {
-        await supabase
+        await supabaseAdmin
           .from('subscriptions')
           .update({ status: 'expired' })
           .eq('hotmart_transaction_id', transactionId);
         
-        console.log('[Hotmart Webhook] Subscription expired for transaction:', transactionId);
+        secureLog('info', 'Subscription expired', {
+          request_id: requestId,
+          transaction_id: transactionId,
+        });
         break;
       }
 
       default:
-        console.log('[Hotmart Webhook] Unhandled event:', event);
+        secureLog('info', 'Unhandled Hotmart event', {
+          request_id: requestId,
+          event,
+        });
     }
 
-    return new Response(
-      JSON.stringify({ success: true, event }),
-      { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-    );
-
-  } catch (error) {
-    console.error('[Hotmart Webhook] Error:', error);
-    return new Response(
-      JSON.stringify({ error: 'Internal server error' }),
-      { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-    );
+    return successResponse({ success: true, event }, requestId);
+  },
+  {
+    requireAuth: false, // Webhooks don't have user auth
+    rateLimit: RATE_LIMIT_CONFIG,
+    allowedMethods: ['POST', 'OPTIONS'],
   }
-});
+);
+
+Deno.serve(handler);

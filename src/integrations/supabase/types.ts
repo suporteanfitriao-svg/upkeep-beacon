@@ -206,6 +206,33 @@ export type Database = {
         }
         Relationships: []
       }
+      encrypted_secrets: {
+        Row: {
+          created_at: string
+          encrypted_value: string
+          id: string
+          name: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          encrypted_value: string
+          id?: string
+          name: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          encrypted_value?: string
+          id?: string
+          name?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       house_rules: {
         Row: {
           created_at: string
@@ -1059,6 +1086,27 @@ export type Database = {
           },
         ]
       }
+      rate_limits: {
+        Row: {
+          count: number
+          id: string
+          key: string
+          window_start: string
+        }
+        Insert: {
+          count?: number
+          id?: string
+          key: string
+          window_start?: string
+        }
+        Update: {
+          count?: number
+          id?: string
+          key?: string
+          window_start?: string
+        }
+        Relationships: []
+      }
       reservations: {
         Row: {
           check_in: string
@@ -1145,6 +1193,7 @@ export type Database = {
           important_info: string | null
           is_active: boolean | null
           listing_name: string | null
+          lock_version: number
           maintenance_issues: Json | null
           maintenance_status: string | null
           notes: string | null
@@ -1181,6 +1230,7 @@ export type Database = {
           important_info?: string | null
           is_active?: boolean | null
           listing_name?: string | null
+          lock_version?: number
           maintenance_issues?: Json | null
           maintenance_status?: string | null
           notes?: string | null
@@ -1217,6 +1267,7 @@ export type Database = {
           important_info?: string | null
           is_active?: boolean | null
           listing_name?: string | null
+          lock_version?: number
           maintenance_issues?: Json | null
           maintenance_status?: string | null
           notes?: string | null
@@ -1627,6 +1678,36 @@ export type Database = {
         }
         Relationships: []
       }
+      webhook_events: {
+        Row: {
+          created_at: string
+          event_id: string
+          event_type: string
+          id: string
+          payload: Json | null
+          processed_at: string
+          provider: string
+        }
+        Insert: {
+          created_at?: string
+          event_id: string
+          event_type: string
+          id?: string
+          payload?: Json | null
+          processed_at?: string
+          provider: string
+        }
+        Update: {
+          created_at?: string
+          event_id?: string
+          event_type?: string
+          id?: string
+          payload?: Json | null
+          processed_at?: string
+          provider?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       properties_public: {
@@ -1909,6 +1990,27 @@ export type Database = {
         Returns: Json
       }
       can_submit_to_waitlist: { Args: { p_email: string }; Returns: boolean }
+      check_rate_limit: {
+        Args: {
+          p_key: string
+          p_max_requests: number
+          p_window_seconds: number
+        }
+        Returns: boolean
+      }
+      check_webhook_idempotency: {
+        Args: {
+          p_event_id: string
+          p_event_type: string
+          p_payload?: Json
+          p_provider: string
+        }
+        Returns: boolean
+      }
+      cleanup_rate_limits: { Args: never; Returns: undefined }
+      cleanup_webhook_events: { Args: never; Returns: undefined }
+      current_tenant_id: { Args: never; Returns: string }
+      current_user_id: { Args: never; Returns: string }
       get_active_subscription: {
         Args: { p_user_id: string }
         Returns: {
@@ -1939,6 +2041,7 @@ export type Database = {
         }
         Returns: boolean
       }
+      is_admin_or_superadmin: { Args: { _user_id?: string }; Returns: boolean }
       is_cleaner_assigned_to_schedule: {
         Args: { p_schedule_id: string }
         Returns: boolean
@@ -1965,6 +2068,14 @@ export type Database = {
           p_resource_type: string
         }
         Returns: undefined
+      }
+      update_schedule_with_lock: {
+        Args: {
+          p_current_version: number
+          p_schedule_id: string
+          p_updates: Json
+        }
+        Returns: Json
       }
       validate_input: {
         Args: { p_allow_html?: boolean; p_input: string; p_max_length?: number }
