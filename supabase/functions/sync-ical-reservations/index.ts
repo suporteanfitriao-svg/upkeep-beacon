@@ -260,12 +260,18 @@ serve(async (req) => {
 
     const authHeader = req.headers.get('Authorization');
     const token = authHeader?.replace('Bearer ', '') || '';
+    const anonKey = Deno.env.get('SUPABASE_ANON_KEY') || '';
     
     // Allow requests authenticated with service_role_key (for cron jobs and system calls)
     const isServiceRoleRequest = token === supabaseKey;
     
+    // Allow requests with anon_key (for cron jobs that can only use anon key)
+    const isCronRequest = token === anonKey;
+    
     if (isServiceRoleRequest) {
       console.log('Service role authenticated - automatic/cron sync');
+    } else if (isCronRequest) {
+      console.log('Anon key authenticated - cron job sync');
     } else {
       // For user-initiated requests, verify authentication only (allow all authenticated users)
       if (!authHeader) {
