@@ -1,8 +1,29 @@
 /**
  * Access Control Utilities
  * 
- * Client-side access control helpers.
- * Server-side RLS is the authoritative check.
+ * Regras de Acesso por Perfil:
+ * 
+ * 1.1 PROPRIETÁRIO (Admin)
+ * - Contratação de plano, onboarding obrigatório
+ * - Configuração completa da propriedade
+ * - Gestão de vínculos e time
+ * - Configurações avançadas
+ * - ÚNICO que contrata plano, vê preços, faz upgrade
+ * 
+ * 1.2 ANFITRIÃO (Manager)
+ * - Perfil operacional
+ * - PODE: visualizar tarefas, editar card (check-in/out, obs), liberar limpeza,
+ *         editar checklist, criar/executar inspeções, visualizar/resolver avarias
+ * - NÃO PODE: configurações da propriedade, gerenciar time, ver sync, ver planos
+ * 
+ * 1.3 CLEANER
+ * - Perfil executor
+ * - PODE: ver tarefas vinculadas, iniciar/finalizar limpeza, executar checklist, registrar avarias
+ * - NÃO PODE: ver configurações, editar checklist estrutural, ver dados fora do vínculo
+ * 
+ * REGRA DE VÍNCULO: Nenhum usuário visualiza dados sem vínculo explícito usuário ↔ propriedade
+ * 
+ * REGRA DE OURO: Sem plano → não entra. Sem onboarding → não usa. Sem vínculo → não vê.
  */
 
 import type { User } from '@supabase/supabase-js';
@@ -41,6 +62,7 @@ export type Permission =
   | 'view:inventory'
   | 'view:reports'
   | 'view:superadmin'
+  | 'view:pricing'
   | 'manage:properties'
   | 'manage:team'
   | 'manage:schedules'
@@ -49,6 +71,7 @@ export type Permission =
   | 'manage:inventory'
   | 'manage:checklists'
   | 'manage:settings'
+  | 'manage:subscription'
   | 'delete:properties'
   | 'delete:team'
   | 'delete:schedules';

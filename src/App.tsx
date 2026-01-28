@@ -10,6 +10,8 @@ import { AdminRoute } from "@/components/AdminRoute";
 import { OwnerRoute } from "@/components/OwnerRoute";
 import { SuperAdminRoute } from "@/components/SuperAdminRoute";
 import { CleanerRoute } from "@/components/CleanerRoute";
+import { OnboardingGuard } from "@/components/OnboardingGuard";
+import { SubscriptionGuard } from "@/components/SubscriptionGuard";
 import { InstallPrompt } from "@/components/pwa/InstallPrompt";
 import { PWAUpdateModal } from "@/components/pwa/PWAUpdateModal";
 import { usePWAUpdate } from "@/hooks/usePWAUpdate";
@@ -31,6 +33,8 @@ import SuperAdmin from "./pages/SuperAdmin";
 import Settings from "./pages/Settings";
 import Install from "./pages/Install";
 import CleaningHistory from "./pages/CleaningHistory";
+import Pricing from "./pages/Pricing";
+import Checkout from "./pages/Checkout";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -73,14 +77,21 @@ const App = () => (
             <Routes>
               <Route path="/landing" element={<Landing />} />
               <Route path="/auth" element={<Auth />} />
+              {/* REGRA: Páginas de pricing e checkout - públicas */}
+              <Route path="/pricing" element={<Pricing />} />
+              <Route path="/checkout" element={<Checkout />} />
               {/* REGRA MENU FIXO: Rotas com layout persistente mobile */}
               <Route
                 path="/"
                 element={
                   <ProtectedRoute>
-                    <MobileAdminLayoutWrapper>
-                      <Index />
-                    </MobileAdminLayoutWrapper>
+                    <OnboardingGuard>
+                      <SubscriptionGuard>
+                        <MobileAdminLayoutWrapper>
+                          <Index />
+                        </MobileAdminLayoutWrapper>
+                      </SubscriptionGuard>
+                    </OnboardingGuard>
                   </ProtectedRoute>
                 }
               />
