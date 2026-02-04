@@ -44,6 +44,8 @@ export function useAcknowledgeNotes({
 }: UseAcknowledgeNotesProps) {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [localHistory, setLocalHistory] = useState<ScheduleHistoryEvent[]>(history);
+  // REGRA 4.2: Track save failure state
+  const [saveFailed, setSaveFailed] = useState(false);
   
   // Track if we've locally added an acknowledgment to prevent prop override
   const hasLocalAckRef = useRef(false);
@@ -54,12 +56,13 @@ export function useAcknowledgeNotes({
   useEffect(() => {
     if (prevScheduleIdRef.current !== scheduleId) {
       hasLocalAckRef.current = false;
+      setSaveFailed(false);
       prevScheduleIdRef.current = scheduleId;
       setLocalHistory(history);
     }
   }, [scheduleId, history]);
 
-  // Update local history when prop changes, BUT preserve local acknowledgment
+  // REGRA 2.1: Update local history when prop changes, BUT preserve local acknowledgment
   // This prevents the realtime subscription from overwriting local changes
   useEffect(() => {
     // Skip if schedule ID changed (handled above)
@@ -85,9 +88,13 @@ export function useAcknowledgeNotes({
     setLocalHistory(history);
   }, [history, teamMemberId, scheduleId]);
 
-  // Check if current team member has already acknowledged the notes
+  // REGRA 5.1: Check if current team member has already acknowledged the notes
+  // Returns true immediately after local marking (before save completes)
   const hasAcknowledged = useMemo(() => {
     if (!teamMemberId || !notes) return false;
+    
+    // REGRA 4.1: Return true immediately if locally marked
+    if (hasLocalAckRef.current) return true;
     
     // Find any notes_acknowledged action by this team member
     return localHistory.some(event => 
@@ -96,27 +103,34 @@ export function useAcknowledgeNotes({
     );
   }, [teamMemberId, notes, localHistory]);
 
-  // Acknowledge admin notes - saves to history and cannot be undone
+  // REGRA 6.1: Acknowledge admin notes - PRIORITY: update local state FIRST, save async
   const acknowledgeNotes = useCallback(async (teamMemberName?: string) => {
     if (!teamMemberId || !notes || hasAcknowledged) return false;
 
+    // REGRA 4.1: Mark locally IMMEDIATELY (before async save)
+    hasLocalAckRef.current = true;
+    setSaveFailed(false);
+    
+    const newHistoryEntry: NotesAckHistoryEntry = {
+      timestamp: new Date().toISOString(),
+      team_member_id: teamMemberId,
+      team_member_name: teamMemberName || null,
+      role: 'cleaner',
+      action: 'notes_acknowledged',
+      from_status: scheduleStatus,
+      to_status: scheduleStatus,
+      payload: {
+        notes_hash: hashNotes(notes),
+      },
+    };
+
+    // REGRA 5.2: Update local state IMMEDIATELY so button unlocks right away
+    const updatedHistory = [...localHistory, newHistoryEntry as unknown as ScheduleHistoryEvent];
+    setLocalHistory(updatedHistory);
+
+    // REGRA 6.1: Save asynchronously without blocking UI
     setIsSubmitting(true);
     try {
-      const newHistoryEntry: NotesAckHistoryEntry = {
-        timestamp: new Date().toISOString(),
-        team_member_id: teamMemberId,
-        team_member_name: teamMemberName || null,
-        role: 'cleaner',
-        action: 'notes_acknowledged',
-        from_status: scheduleStatus,
-        to_status: scheduleStatus,
-        payload: {
-          notes_hash: hashNotes(notes),
-        },
-      };
-
-      const updatedHistory = [...localHistory, newHistoryEntry as unknown as ScheduleHistoryEvent];
-
       const { error } = await supabase
         .from('schedules')
         .update({ 
@@ -126,12 +140,14 @@ export function useAcknowledgeNotes({
 
       if (error) throw error;
 
-      // Mark that we've locally acknowledged to prevent prop override
-      hasLocalAckRef.current = true;
-      setLocalHistory(updatedHistory);
+      console.log('[useAcknowledgeNotes] Acknowledgment saved successfully');
       return true;
     } catch (err) {
       console.error('Error acknowledging notes:', err);
+      // REGRA 4.2: On failure, show warning but keep checkbox visually marked
+      setSaveFailed(true);
+      // Keep hasLocalAckRef.current = true so button stays unlocked
+      // User can retry if needed
       return false;
     } finally {
       setIsSubmitting(false);
@@ -142,5 +158,6 @@ export function useAcknowledgeNotes({
     hasAcknowledged,
     isSubmitting,
     acknowledgeNotes,
+    saveFailed,
   };
 }

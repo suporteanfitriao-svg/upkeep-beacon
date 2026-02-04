@@ -24,6 +24,7 @@ import { usePropertyAccess } from '@/hooks/usePropertyAccess';
 import { useCleaningCache } from '@/hooks/useCleaningCache';
 import { useCheckoutDayVerification } from '@/hooks/useCheckoutDayVerification';
 import { useCleaningConcurrencyCheck } from '@/hooks/useCleaningConcurrencyCheck';
+import { useConcurrentEditWarning } from '@/hooks/useConcurrentEditWarning';
 import { useProximityCheck, formatDistance } from '@/hooks/useGeolocation';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
@@ -432,6 +433,13 @@ export function ScheduleDetail({ schedule, onClose, onUpdateSchedule }: Schedule
     teamMemberId,
     notes: schedule.notes,
     scheduleStatus: schedule.status,
+  });
+
+  // REGRA 3.1-3.2: Concurrent edit warning - detect when another user edits the same card
+  const concurrentEditWarning = useConcurrentEditWarning({
+    scheduleId: schedule.id,
+    isEditing: schedule.status === 'cleaning', // Active when cleaning
+    currentUserId: teamMemberId,
   });
 
   // Check if important info exists
@@ -1197,6 +1205,28 @@ export function ScheduleDetail({ schedule, onClose, onUpdateSchedule }: Schedule
 
         {/* Main Content */}
         <main className="flex-1 flex flex-col gap-6 p-6 pb-6">
+          {/* REGRA 3.1: Concurrent Edit Warning Banner */}
+          {concurrentEditWarning.hasExternalUpdate && (
+            <div className="rounded-xl bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 p-4 flex items-start gap-3 animate-in fade-in slide-in-from-top-2">
+              <span className="material-symbols-outlined text-blue-500 text-[22px] mt-0.5">info</span>
+              <div className="flex-1">
+                <h4 className="font-bold text-blue-700 dark:text-blue-400 text-sm mb-1">
+                  Card atualizado por outro usuário
+                </h4>
+                <p className="text-xs text-blue-600 dark:text-blue-500/80 leading-relaxed">
+                  {concurrentEditWarning.updatedBy} fez alterações neste card. Suas edições não serão perdidas.
+                </p>
+              </div>
+              <button
+                onClick={concurrentEditWarning.clearWarning}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-blue-100 dark:bg-blue-800/50 text-blue-700 dark:text-blue-300 text-xs font-semibold hover:bg-blue-200 dark:hover:bg-blue-800 transition-colors"
+              >
+                <span className="material-symbols-outlined text-[16px]">close</span>
+                Fechar
+              </button>
+            </div>
+          )}
+
           {/* Waiting Status Alert Card - Rule 41 */}
           {schedule.status === 'waiting' && (
             <div className="rounded-2xl bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800/50 p-4 flex gap-3 items-start">
