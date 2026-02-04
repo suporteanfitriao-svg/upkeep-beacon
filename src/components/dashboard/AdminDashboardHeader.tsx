@@ -97,29 +97,30 @@ export function AdminDashboardHeader({ onRefresh, lastSyncTime, newReservationsC
         
         <div className="flex items-center gap-6">
           {/* Sync info and refresh button */}
-          <div className="flex items-center gap-3">
+          <div className="flex flex-col items-end gap-1">
+            <div className="flex items-center gap-3">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleRefresh}
+                disabled={isRefreshing}
+                className="gap-2"
+              >
+                <RefreshCw className={`w-4 h-4 ${isRefreshing ? 'animate-spin' : ''}`} />
+                <span className="hidden sm:inline">Sincronizar</span>
+                {newReservationsCount > 0 && (
+                  <Badge variant="default" className="ml-1 h-5 px-1.5 text-xs bg-primary">
+                    +{newReservationsCount}
+                  </Badge>
+                )}
+              </Button>
+            </div>
             {lastSyncTime && (
-              <div className="hidden md:flex items-center gap-2 text-xs text-muted-foreground">
-                <Calendar className="w-3.5 h-3.5" />
+              <div className="flex items-center gap-1.5 text-[10px] text-muted-foreground">
+                <Calendar className="w-3 h-3" />
                 <span>Última sync: {formatLastSync(lastSyncTime)}</span>
               </div>
             )}
-            
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={handleRefresh}
-              disabled={isRefreshing}
-              className="gap-2"
-            >
-              <RefreshCw className={`w-4 h-4 ${isRefreshing ? 'animate-spin' : ''}`} />
-              <span className="hidden sm:inline">Sincronizar</span>
-              {newReservationsCount > 0 && (
-                <Badge variant="default" className="ml-1 h-5 px-1.5 text-xs bg-primary">
-                  +{newReservationsCount}
-                </Badge>
-              )}
-            </Button>
           </div>
 
           <Button 
