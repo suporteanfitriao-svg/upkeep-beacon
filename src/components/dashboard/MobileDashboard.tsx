@@ -631,13 +631,20 @@ export function MobileDashboard({ schedules, onScheduleClick, onStartCleaning, o
               </div>
               <div className="flex items-center gap-2">
                 {onRefresh && (
-                  <button 
-                    onClick={() => handleRefresh(false)}
-                    disabled={isSyncing}
-                    className="relative flex h-10 w-10 items-center justify-center rounded-full transition-colors hover:bg-muted disabled:opacity-50"
-                  >
-                    <RefreshCw className={cn("w-5 h-5 text-muted-foreground", isSyncing && "animate-spin")} />
-                  </button>
+                  <div className="flex flex-col items-center">
+                    <button 
+                      onClick={() => handleRefresh(false)}
+                      disabled={isSyncing}
+                      className="relative flex h-10 w-10 items-center justify-center rounded-full transition-colors hover:bg-muted disabled:opacity-50"
+                    >
+                      <RefreshCw className={cn("w-5 h-5 text-muted-foreground", isSyncing && "animate-spin")} />
+                    </button>
+                    {lastSyncTime && (
+                      <span className="text-[9px] text-muted-foreground mt-0.5 whitespace-nowrap">
+                        {format(lastSyncTime, "dd/MM HH:mm", { locale: ptBR })}
+                      </span>
+                    )}
+                  </div>
                 )}
                 <button 
                   onClick={() => navigate('/minha-conta')}
