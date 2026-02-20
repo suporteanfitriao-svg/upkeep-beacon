@@ -499,6 +499,7 @@ export type Database = {
           name: string
           photo_taken_at: string | null
           photo_url: string | null
+          photos: Json | null
           quantity: number
           sort_order: number
           unit: string | null
@@ -513,6 +514,7 @@ export type Database = {
           name: string
           photo_taken_at?: string | null
           photo_url?: string | null
+          photos?: Json | null
           quantity?: number
           sort_order?: number
           unit?: string | null
@@ -527,6 +529,7 @@ export type Database = {
           name?: string
           photo_taken_at?: string | null
           photo_url?: string | null
+          photos?: Json | null
           quantity?: number
           sort_order?: number
           unit?: string | null
