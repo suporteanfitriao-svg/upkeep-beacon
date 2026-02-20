@@ -1363,8 +1363,8 @@ const Inventory = () => {
 
       {/* Item Dialog */}
       <Dialog open={itemDialogOpen} onOpenChange={setItemDialogOpen}>
-        <DialogContent>
-          <DialogHeader>
+        <DialogContent className="max-h-[90vh] flex flex-col p-0 gap-0">
+          <DialogHeader className="px-6 pt-6 pb-2">
             <DialogTitle>
               {editingItem ? 'Editar Item' : 'Novo Item'}
             </DialogTitle>
@@ -1372,139 +1372,141 @@ const Inventory = () => {
               {selectedCategory && `Adicionando item em: ${selectedCategory.name}`}
             </DialogDescription>
           </DialogHeader>
-          <div className="space-y-4 py-4">
-            <div className="space-y-2">
-              <Label htmlFor="item-name">Nome do Item *</Label>
-              <Input
-                id="item-name"
-                placeholder="Ex: Toalha de Banho, Travesseiro, Panela"
-                value={itemForm.name}
-                onChange={(e) => setItemForm(prev => ({ ...prev, name: e.target.value }))}
-              />
-            </div>
-            <div className="grid grid-cols-2 gap-4">
+          <div className="flex-1 overflow-y-auto px-6 pb-4">
+            <div className="space-y-4 py-2">
               <div className="space-y-2">
-                <Label htmlFor="item-qty">Quantidade</Label>
+                <Label htmlFor="item-name">Nome do Item *</Label>
                 <Input
-                  id="item-qty"
-                  type="number"
-                  min="1"
-                  value={itemForm.quantity}
-                  onChange={(e) => setItemForm(prev => ({ ...prev, quantity: parseInt(e.target.value) || 1 }))}
+                  id="item-name"
+                  placeholder="Ex: Toalha de Banho, Travesseiro, Panela"
+                  value={itemForm.name}
+                  onChange={(e) => setItemForm(prev => ({ ...prev, name: e.target.value }))}
                 />
               </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="item-qty">Quantidade</Label>
+                  <Input
+                    id="item-qty"
+                    type="number"
+                    min="1"
+                    value={itemForm.quantity}
+                    onChange={(e) => setItemForm(prev => ({ ...prev, quantity: parseInt(e.target.value) || 1 }))}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="item-unit">Unidade</Label>
+                  <Input
+                    id="item-unit"
+                    placeholder="Ex: unidade, pares, kg"
+                    value={itemForm.unit}
+                    onChange={(e) => setItemForm(prev => ({ ...prev, unit: e.target.value }))}
+                  />
+                </div>
+              </div>
               <div className="space-y-2">
-                <Label htmlFor="item-unit">Unidade</Label>
-                <Input
-                  id="item-unit"
-                  placeholder="Ex: unidade, pares, kg"
-                  value={itemForm.unit}
-                  onChange={(e) => setItemForm(prev => ({ ...prev, unit: e.target.value }))}
+                <Label htmlFor="item-details">Detalhes (opcional)</Label>
+                <Textarea
+                  id="item-details"
+                  placeholder="Marca, cor, tamanho, observações..."
+                  value={itemForm.details}
+                  onChange={(e) => setItemForm(prev => ({ ...prev, details: e.target.value }))}
+                  rows={2}
                 />
               </div>
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="item-details">Detalhes (opcional)</Label>
-              <Textarea
-                id="item-details"
-                placeholder="Marca, cor, tamanho, observações..."
-                value={itemForm.details}
-                onChange={(e) => setItemForm(prev => ({ ...prev, details: e.target.value }))}
-                rows={2}
-              />
-            </div>
 
-            {/* Photo upload section */}
-            <div className="space-y-2">
-              <Label>Fotos (opcional - máx. {MAX_PHOTOS})</Label>
-              <p className="text-xs text-muted-foreground">
-                As fotos serão compactadas e receberão carimbo de data/hora automaticamente.
-              </p>
-              
-              {/* Existing + pending photos grid */}
-              <div className="flex flex-wrap gap-2">
-                {/* Existing photos (not marked for deletion) */}
-                {existingPhotos
-                  .filter(p => !photosToDelete.includes(p.url))
-                  .map((photo, idx) => (
-                    <div key={`existing-${idx}`} className="relative">
+              {/* Photo upload section */}
+              <div className="space-y-2">
+                <Label>Fotos (opcional - máx. {MAX_PHOTOS})</Label>
+                <p className="text-xs text-muted-foreground">
+                  As fotos serão compactadas e receberão carimbo de data/hora automaticamente.
+                </p>
+                
+                {/* Existing + pending photos grid */}
+                <div className="flex flex-wrap gap-2">
+                  {/* Existing photos (not marked for deletion) */}
+                  {existingPhotos
+                    .filter(p => !photosToDelete.includes(p.url))
+                    .map((photo, idx) => (
+                      <div key={`existing-${idx}`} className="relative">
+                        <img 
+                          src={photo.url} 
+                          alt={`Foto ${idx + 1}`} 
+                          className="h-24 w-24 rounded-lg object-cover border"
+                        />
+                        <Button
+                          variant="destructive"
+                          size="icon"
+                          className="absolute -top-2 -right-2 h-6 w-6 rounded-full"
+                          onClick={() => handleRemoveExistingPhoto(photo.url)}
+                          type="button"
+                        >
+                          <X className="h-3 w-3" />
+                        </Button>
+                        {photo.taken_at && (
+                          <div className="absolute bottom-1 left-1 bg-background/80 text-[9px] px-1 py-0.5 rounded flex items-center gap-0.5">
+                            <Clock className="h-2.5 w-2.5" />
+                            {format(new Date(photo.taken_at), "dd/MM HH:mm", { locale: ptBR })}
+                          </div>
+                        )}
+                      </div>
+                    ))}
+
+                  {/* Pending (new) photos */}
+                  {pendingPhotoFiles.map((pending, idx) => (
+                    <div key={`pending-${idx}`} className="relative">
                       <img 
-                        src={photo.url} 
-                        alt={`Foto ${idx + 1}`} 
+                        src={pending.preview} 
+                        alt={`Nova ${idx + 1}`} 
                         className="h-24 w-24 rounded-lg object-cover border"
                       />
                       <Button
                         variant="destructive"
                         size="icon"
                         className="absolute -top-2 -right-2 h-6 w-6 rounded-full"
-                        onClick={() => handleRemoveExistingPhoto(photo.url)}
+                        onClick={() => handleRemovePendingPhoto(idx)}
                         type="button"
                       >
                         <X className="h-3 w-3" />
                       </Button>
-                      {photo.taken_at && (
-                        <div className="absolute bottom-1 left-1 bg-background/80 text-[9px] px-1 py-0.5 rounded flex items-center gap-0.5">
-                          <Clock className="h-2.5 w-2.5" />
-                          {format(new Date(photo.taken_at), "dd/MM HH:mm", { locale: ptBR })}
-                        </div>
-                      )}
+                      <div className="absolute bottom-1 left-1 bg-amber-500 text-white text-[10px] px-1.5 py-0.5 rounded font-medium">
+                        Nova
+                      </div>
                     </div>
                   ))}
 
-                {/* Pending (new) photos */}
-                {pendingPhotoFiles.map((pending, idx) => (
-                  <div key={`pending-${idx}`} className="relative">
-                    <img 
-                      src={pending.preview} 
-                      alt={`Nova ${idx + 1}`} 
-                      className="h-24 w-24 rounded-lg object-cover border"
-                    />
-                    <Button
-                      variant="destructive"
-                      size="icon"
-                      className="absolute -top-2 -right-2 h-6 w-6 rounded-full"
-                      onClick={() => handleRemovePendingPhoto(idx)}
-                      type="button"
-                    >
-                      <X className="h-3 w-3" />
-                    </Button>
-                    <div className="absolute bottom-1 left-1 bg-amber-500 text-white text-[10px] px-1.5 py-0.5 rounded font-medium">
-                      Nova
-                    </div>
-                  </div>
-                ))}
-
-                {/* Add photo buttons (show when under max) */}
-                {(existingPhotos.length - photosToDelete.length + pendingPhotoFiles.length) < MAX_PHOTOS && (
-                  <>
-                    <label className="flex flex-col items-center justify-center h-24 w-24 border-2 border-dashed rounded-lg cursor-pointer hover:bg-muted/50 transition-colors border-primary/30">
-                      <Camera className="h-5 w-5 text-primary mb-0.5" />
-                      <span className="text-[10px] text-primary font-medium">Câmera</span>
-                      <input
-                        type="file"
-                        accept="image/*"
-                        capture="environment"
-                        onChange={handlePhotoSelect}
-                        className="hidden"
-                      />
-                    </label>
-                    <label className="flex flex-col items-center justify-center h-24 w-24 border-2 border-dashed rounded-lg cursor-pointer hover:bg-muted/50 transition-colors">
-                      <ImageIcon className="h-5 w-5 text-muted-foreground mb-0.5" />
-                      <span className="text-[10px] text-muted-foreground">Galeria</span>
-                      <input
-                        type="file"
-                        accept="image/jpeg,image/jpg,image/png,image/webp"
-                        multiple
-                        onChange={handlePhotoSelect}
-                        className="hidden"
-                      />
-                    </label>
-                  </>
-                )}
+                  {/* Add photo buttons (show when under max) */}
+                  {(existingPhotos.length - photosToDelete.length + pendingPhotoFiles.length) < MAX_PHOTOS && (
+                    <>
+                      <label className="flex flex-col items-center justify-center h-24 w-24 border-2 border-dashed rounded-lg cursor-pointer hover:bg-muted/50 transition-colors border-primary/30">
+                        <Camera className="h-5 w-5 text-primary mb-0.5" />
+                        <span className="text-[10px] text-primary font-medium">Câmera</span>
+                        <input
+                          type="file"
+                          accept="image/*"
+                          capture="environment"
+                          onChange={handlePhotoSelect}
+                          className="hidden"
+                        />
+                      </label>
+                      <label className="flex flex-col items-center justify-center h-24 w-24 border-2 border-dashed rounded-lg cursor-pointer hover:bg-muted/50 transition-colors">
+                        <ImageIcon className="h-5 w-5 text-muted-foreground mb-0.5" />
+                        <span className="text-[10px] text-muted-foreground">Galeria</span>
+                        <input
+                          type="file"
+                          accept="image/jpeg,image/jpg,image/png,image/webp"
+                          multiple
+                          onChange={handlePhotoSelect}
+                          className="hidden"
+                        />
+                      </label>
+                    </>
+                  )}
+                </div>
               </div>
             </div>
           </div>
-          <DialogFooter>
+          <div className="sticky bottom-0 border-t bg-background px-6 py-4 flex flex-col-reverse sm:flex-row sm:justify-end gap-2">
             <Button variant="outline" onClick={() => setItemDialogOpen(false)} disabled={isUploading}>
               Cancelar
             </Button>
@@ -1518,7 +1520,7 @@ const Inventory = () => {
                 'Salvar'
               )}
             </Button>
-          </DialogFooter>
+          </div>
         </DialogContent>
       </Dialog>
 
