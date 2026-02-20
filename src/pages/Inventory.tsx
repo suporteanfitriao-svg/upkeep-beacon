@@ -171,6 +171,11 @@ interface InventoryCategory {
   items: InventoryItem[];
 }
 
+interface InventoryPhoto {
+  url: string;
+  taken_at?: string;
+}
+
 interface InventoryItem {
   id: string;
   name: string;
@@ -182,6 +187,7 @@ interface InventoryItem {
   is_active: boolean;
   photo_url?: string;
   photo_taken_at?: string;
+  photos?: InventoryPhoto[];
 }
 
 const Inventory = () => {
@@ -209,12 +215,12 @@ const Inventory = () => {
     quantity: 1, 
     unit: 'unidade', 
     details: '',
-    photo_url: '',
-    photo_taken_at: ''
   });
   const [savingItem, setSavingItem] = useState(false);
-  const [pendingPhotoFile, setPendingPhotoFile] = useState<File | null>(null);
-  const [photoPreview, setPhotoPreview] = useState<string>('');
+  const [existingPhotos, setExistingPhotos] = useState<InventoryPhoto[]>([]);
+  const [pendingPhotoFiles, setPendingPhotoFiles] = useState<{ file: File; preview: string }[]>([]);
+  const [photosToDelete, setPhotosToDelete] = useState<string[]>([]);
+  const MAX_PHOTOS = 5;
 
   // Photo upload hook
   const { compressAndUploadWithTimestamp, deletePhoto, isUploading } = useInventoryPhotoUpload();
@@ -455,36 +461,54 @@ const Inventory = () => {
         quantity: item.quantity || 1, 
         unit: item.unit || 'unidade', 
         details: item.details || '',
-        photo_url: item.photo_url || '',
-        photo_taken_at: item.photo_taken_at || ''
       });
-      setPhotoPreview(item.photo_url || '');
+      // Load existing photos from photos array, fallback to legacy single photo
+      const photos: InventoryPhoto[] = Array.isArray(item.photos) && item.photos.length > 0
+        ? item.photos
+        : item.photo_url 
+          ? [{ url: item.photo_url, taken_at: item.photo_taken_at }]
+          : [];
+      setExistingPhotos(photos);
     } else {
       setEditingItem(null);
-      setItemForm({ name: '', quantity: 1, unit: 'unidade', details: '', photo_url: '', photo_taken_at: '' });
-      setPhotoPreview('');
+      setItemForm({ name: '', quantity: 1, unit: 'unidade', details: '' });
+      setExistingPhotos([]);
     }
-    setPendingPhotoFile(null);
+    setPendingPhotoFiles([]);
+    setPhotosToDelete([]);
     setItemDialogOpen(true);
   };
 
   const handlePhotoSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      setPendingPhotoFile(file);
-      // Create preview
+    const files = Array.from(e.target.files || []);
+    const totalPhotos = existingPhotos.length - photosToDelete.length + pendingPhotoFiles.length;
+    const remaining = MAX_PHOTOS - totalPhotos;
+    
+    if (remaining <= 0) {
+      toast.error(`Máximo de ${MAX_PHOTOS} fotos por item`);
+      return;
+    }
+
+    const filesToAdd = files.slice(0, remaining);
+    
+    filesToAdd.forEach(file => {
       const reader = new FileReader();
       reader.onload = (event) => {
-        setPhotoPreview(event.target?.result as string);
+        setPendingPhotoFiles(prev => [...prev, { file, preview: event.target?.result as string }]);
       };
       reader.readAsDataURL(file);
-    }
+    });
+    
+    // Reset the input so the same file can be selected again
+    e.target.value = '';
   };
 
-  const handleRemovePhoto = () => {
-    setPendingPhotoFile(null);
-    setPhotoPreview('');
-    setItemForm(prev => ({ ...prev, photo_url: '', photo_taken_at: '' }));
+  const handleRemoveExistingPhoto = (url: string) => {
+    setPhotosToDelete(prev => [...prev, url]);
+  };
+
+  const handleRemovePendingPhoto = (index: number) => {
+    setPendingPhotoFiles(prev => prev.filter((_, i) => i !== index));
   };
 
   const handleSaveItem = async () => {
@@ -500,31 +524,23 @@ const Inventory = () => {
 
     setSavingItem(true);
     try {
-      let photoUrl = itemForm.photo_url;
-      let photoTakenAt = itemForm.photo_taken_at;
+      // Build final photos array
+      let finalPhotos: InventoryPhoto[] = existingPhotos.filter(p => !photosToDelete.includes(p.url));
 
-      // Handle photo for existing item
-      if (editingItem) {
-        // If there's a new photo to upload
-        if (pendingPhotoFile) {
-          // Delete old photo if exists
-          if (editingItem.photo_url) {
-            await deletePhoto(editingItem.photo_url);
-          }
-
-          // Upload new photo with timestamp
-          const result = await compressAndUploadWithTimestamp(pendingPhotoFile, editingItem.id);
-          photoUrl = result.url;
-          photoTakenAt = result.takenAt.toISOString();
-        } else if (!photoPreview && editingItem.photo_url) {
-          // Photo was removed
-          await deletePhoto(editingItem.photo_url);
-          photoUrl = '';
-          photoTakenAt = '';
-        }
+      // Delete removed photos from storage
+      for (const url of photosToDelete) {
+        await deletePhoto(url);
       }
 
+      const itemId = editingItem?.id;
+
       if (editingItem) {
+        // Upload new photos
+        for (const pending of pendingPhotoFiles) {
+          const result = await compressAndUploadWithTimestamp(pending.file, editingItem.id);
+          finalPhotos.push({ url: result.url, taken_at: result.takenAt.toISOString() });
+        }
+
         const { error } = await supabase
           .from('inventory_items')
           .update({
@@ -532,15 +548,16 @@ const Inventory = () => {
             quantity: itemForm.quantity,
             unit: itemForm.unit.trim() || null,
             details: itemForm.details.trim() || null,
-            photo_url: photoUrl || null,
-            photo_taken_at: photoTakenAt || null,
+            photo_url: finalPhotos[0]?.url || null,
+            photo_taken_at: finalPhotos[0]?.taken_at || null,
+            photos: finalPhotos as any,
           })
           .eq('id', editingItem.id);
 
         if (error) throw error;
         toast.success('Item atualizado!');
       } else {
-        // Create new item first, then upload photo if present
+        // Create new item first
         const { data: newItem, error } = await supabase
           .from('inventory_items')
           .insert({
@@ -556,22 +573,25 @@ const Inventory = () => {
 
         if (error) throw error;
 
-        // If there's a photo to upload for the new item
-        if (pendingPhotoFile && newItem) {
-          const result = await compressAndUploadWithTimestamp(pendingPhotoFile, newItem.id);
-          
-          // Update the item with the photo URL
+        // Upload photos for the new item
+        if (pendingPhotoFiles.length > 0 && newItem) {
+          for (const pending of pendingPhotoFiles) {
+            const result = await compressAndUploadWithTimestamp(pending.file, newItem.id);
+            finalPhotos.push({ url: result.url, taken_at: result.takenAt.toISOString() });
+          }
+
           const { error: updateError } = await supabase
             .from('inventory_items')
             .update({
-              photo_url: result.url,
-              photo_taken_at: result.takenAt.toISOString(),
+              photo_url: finalPhotos[0]?.url || null,
+              photo_taken_at: finalPhotos[0]?.taken_at || null,
+              photos: finalPhotos as any,
             })
             .eq('id', newItem.id);
 
           if (updateError) {
-            console.error('Error updating photo:', updateError);
-            toast.warning('Item criado, mas houve erro ao salvar a foto');
+            console.error('Error updating photos:', updateError);
+            toast.warning('Item criado, mas houve erro ao salvar as fotos');
           }
         }
         
@@ -579,8 +599,9 @@ const Inventory = () => {
       }
 
       setItemDialogOpen(false);
-      setPendingPhotoFile(null);
-      setPhotoPreview('');
+      setPendingPhotoFiles([]);
+      setPhotosToDelete([]);
+      setExistingPhotos([]);
       fetchInventory();
     } catch (error) {
       console.error('Error saving item:', error);
@@ -1146,6 +1167,7 @@ const Inventory = () => {
                                     details={item.details}
                                     photoUrl={item.photo_url}
                                     photoTakenAt={item.photo_taken_at}
+                                    photoCount={Array.isArray(item.photos) ? item.photos.length : (item.photo_url ? 1 : 0)}
                                     onEdit={() => handleOpenItemDialog(item)}
                                     onDelete={() => handleDeleteItem(item.id)}
                                     onPhotoClick={() => item.photo_url && window.open(item.photo_url, '_blank')}
@@ -1166,6 +1188,7 @@ const Inventory = () => {
                                       details={item.details}
                                       photoUrl={item.photo_url}
                                       photoTakenAt={item.photo_taken_at}
+                                      photoCount={Array.isArray(item.photos) ? item.photos.length : (item.photo_url ? 1 : 0)}
                                       onEdit={() => handleOpenItemDialog(item)}
                                       onDelete={() => handleDeleteItem(item.id)}
                                       onPhotoClick={() => item.photo_url && window.open(item.photo_url, '_blank')}
@@ -1221,6 +1244,7 @@ const Inventory = () => {
                               details={item.details}
                               photoUrl={item.photo_url}
                               photoTakenAt={item.photo_taken_at}
+                              photoCount={Array.isArray(item.photos) ? item.photos.length : (item.photo_url ? 1 : 0)}
                               onEdit={() => handleOpenItemDialog(item)}
                               onDelete={() => handleDeleteItem(item.id)}
                               onPhotoClick={() => item.photo_url && window.open(item.photo_url, '_blank')}
@@ -1250,6 +1274,7 @@ const Inventory = () => {
                                 details={item.details}
                                 photoUrl={item.photo_url}
                                 photoTakenAt={item.photo_taken_at}
+                                photoCount={Array.isArray(item.photos) ? item.photos.length : (item.photo_url ? 1 : 0)}
                                 onEdit={() => handleOpenItemDialog(item)}
                                 onDelete={() => handleDeleteItem(item.id)}
                                 onPhotoClick={() => item.photo_url && window.open(item.photo_url, '_blank')}
@@ -1391,66 +1416,92 @@ const Inventory = () => {
 
             {/* Photo upload section */}
             <div className="space-y-2">
-              <Label>Foto (opcional)</Label>
+              <Label>Fotos (opcional - máx. {MAX_PHOTOS})</Label>
               <p className="text-xs text-muted-foreground">
-                A foto será compactada e receberá carimbo de data/hora automaticamente.
+                As fotos serão compactadas e receberão carimbo de data/hora automaticamente.
               </p>
               
-              {photoPreview ? (
-                <div className="relative inline-block">
-                  <img 
-                    src={photoPreview} 
-                    alt="Preview" 
-                    className="h-32 w-32 rounded-lg object-cover border"
-                  />
-                  <Button
-                    variant="destructive"
-                    size="icon"
-                    className="absolute -top-2 -right-2 h-6 w-6 rounded-full"
-                    onClick={handleRemovePhoto}
-                    type="button"
-                  >
-                    <X className="h-3 w-3" />
-                  </Button>
-                  {pendingPhotoFile && (
+              {/* Existing + pending photos grid */}
+              <div className="flex flex-wrap gap-2">
+                {/* Existing photos (not marked for deletion) */}
+                {existingPhotos
+                  .filter(p => !photosToDelete.includes(p.url))
+                  .map((photo, idx) => (
+                    <div key={`existing-${idx}`} className="relative">
+                      <img 
+                        src={photo.url} 
+                        alt={`Foto ${idx + 1}`} 
+                        className="h-24 w-24 rounded-lg object-cover border"
+                      />
+                      <Button
+                        variant="destructive"
+                        size="icon"
+                        className="absolute -top-2 -right-2 h-6 w-6 rounded-full"
+                        onClick={() => handleRemoveExistingPhoto(photo.url)}
+                        type="button"
+                      >
+                        <X className="h-3 w-3" />
+                      </Button>
+                      {photo.taken_at && (
+                        <div className="absolute bottom-1 left-1 bg-background/80 text-[9px] px-1 py-0.5 rounded flex items-center gap-0.5">
+                          <Clock className="h-2.5 w-2.5" />
+                          {format(new Date(photo.taken_at), "dd/MM HH:mm", { locale: ptBR })}
+                        </div>
+                      )}
+                    </div>
+                  ))}
+
+                {/* Pending (new) photos */}
+                {pendingPhotoFiles.map((pending, idx) => (
+                  <div key={`pending-${idx}`} className="relative">
+                    <img 
+                      src={pending.preview} 
+                      alt={`Nova ${idx + 1}`} 
+                      className="h-24 w-24 rounded-lg object-cover border"
+                    />
+                    <Button
+                      variant="destructive"
+                      size="icon"
+                      className="absolute -top-2 -right-2 h-6 w-6 rounded-full"
+                      onClick={() => handleRemovePendingPhoto(idx)}
+                      type="button"
+                    >
+                      <X className="h-3 w-3" />
+                    </Button>
                     <div className="absolute bottom-1 left-1 bg-amber-500 text-white text-[10px] px-1.5 py-0.5 rounded font-medium">
                       Nova
                     </div>
-                  )}
-                  {itemForm.photo_taken_at && !pendingPhotoFile && (
-                    <div className="mt-1 flex items-center gap-1 text-xs text-muted-foreground">
-                      <Clock className="h-3 w-3" />
-                      {format(new Date(itemForm.photo_taken_at), "dd/MM/yyyy HH:mm", { locale: ptBR })}
-                    </div>
-                  )}
-                </div>
-              ) : (
-                <div className="flex gap-2">
-                  {/* Camera capture button for mobile */}
-                  <label className="flex flex-col items-center justify-center h-32 w-28 border-2 border-dashed rounded-lg cursor-pointer hover:bg-muted/50 transition-colors border-primary/30">
-                    <Camera className="h-6 w-6 text-primary mb-1" />
-                    <span className="text-xs text-primary font-medium">Câmera</span>
-                    <input
-                      type="file"
-                      accept="image/*"
-                      capture="environment"
-                      onChange={handlePhotoSelect}
-                      className="hidden"
-                    />
-                  </label>
-                  {/* Gallery selection button */}
-                  <label className="flex flex-col items-center justify-center h-32 w-28 border-2 border-dashed rounded-lg cursor-pointer hover:bg-muted/50 transition-colors">
-                    <ImageIcon className="h-6 w-6 text-muted-foreground mb-1" />
-                    <span className="text-xs text-muted-foreground">Galeria</span>
-                    <input
-                      type="file"
-                      accept="image/jpeg,image/jpg,image/png,image/webp"
-                      onChange={handlePhotoSelect}
-                      className="hidden"
-                    />
-                  </label>
-                </div>
-              )}
+                  </div>
+                ))}
+
+                {/* Add photo buttons (show when under max) */}
+                {(existingPhotos.length - photosToDelete.length + pendingPhotoFiles.length) < MAX_PHOTOS && (
+                  <>
+                    <label className="flex flex-col items-center justify-center h-24 w-24 border-2 border-dashed rounded-lg cursor-pointer hover:bg-muted/50 transition-colors border-primary/30">
+                      <Camera className="h-5 w-5 text-primary mb-0.5" />
+                      <span className="text-[10px] text-primary font-medium">Câmera</span>
+                      <input
+                        type="file"
+                        accept="image/*"
+                        capture="environment"
+                        onChange={handlePhotoSelect}
+                        className="hidden"
+                      />
+                    </label>
+                    <label className="flex flex-col items-center justify-center h-24 w-24 border-2 border-dashed rounded-lg cursor-pointer hover:bg-muted/50 transition-colors">
+                      <ImageIcon className="h-5 w-5 text-muted-foreground mb-0.5" />
+                      <span className="text-[10px] text-muted-foreground">Galeria</span>
+                      <input
+                        type="file"
+                        accept="image/jpeg,image/jpg,image/png,image/webp"
+                        multiple
+                        onChange={handlePhotoSelect}
+                        className="hidden"
+                      />
+                    </label>
+                  </>
+                )}
+              </div>
             </div>
           </div>
           <DialogFooter>

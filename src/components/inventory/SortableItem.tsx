@@ -14,6 +14,7 @@ interface SortableItemProps {
   details?: string;
   photoUrl?: string;
   photoTakenAt?: string;
+  photoCount?: number;
   onEdit: () => void;
   onDelete: () => void;
   onPhotoClick: () => void;
@@ -28,6 +29,7 @@ export const SortableItem = ({
   details,
   photoUrl,
   photoTakenAt,
+  photoCount = 0,
   onEdit,
   onDelete,
   onPhotoClick,
@@ -75,7 +77,12 @@ export const SortableItem = ({
                 alt={name}
                 className="h-10 w-10 rounded object-cover border group-hover:opacity-80 transition-opacity"
               />
-              {photoTakenAt && (
+              {photoCount > 1 && (
+                <div className="absolute -top-1 -right-1 bg-primary text-primary-foreground text-[9px] font-bold rounded-full h-4 w-4 flex items-center justify-center">
+                  {photoCount}
+                </div>
+              )}
+              {photoTakenAt && photoCount <= 1 && (
                 <div className="absolute -bottom-1 -right-1 bg-primary rounded-full p-0.5">
                   <Clock className="h-2.5 w-2.5 text-primary-foreground" />
                 </div>
@@ -128,6 +135,7 @@ export const SortableItemMobile = ({
   details,
   photoUrl,
   photoTakenAt,
+  photoCount = 0,
   onEdit,
   onDelete,
   onPhotoClick,
@@ -175,11 +183,15 @@ export const SortableItemMobile = ({
             alt={name}
             className="h-14 w-14 rounded-lg object-cover border-2 border-muted"
           />
-          {photoTakenAt && (
+          {photoCount > 1 ? (
+            <div className="absolute -top-1 -right-1 bg-primary text-primary-foreground text-[10px] font-bold rounded-full h-5 w-5 flex items-center justify-center">
+              {photoCount}
+            </div>
+          ) : photoTakenAt ? (
             <div className="absolute -bottom-1 -right-1 bg-primary rounded-full p-1">
               <Clock className="h-3 w-3 text-primary-foreground" />
             </div>
-          )}
+          ) : null}
         </div>
       ) : (
         <div className="h-14 w-14 rounded-lg bg-muted flex items-center justify-center text-muted-foreground text-xs flex-shrink-0">
