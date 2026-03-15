@@ -34,7 +34,7 @@ export function useCleaningCache({
   teamMemberId,
   isActive,
 }: UseCleaningCacheProps): UseCleaningCacheResult {
-  const debounceTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const debounceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const currentCacheRef = useRef<CleaningCacheData | null>(null);
 
   // Load cache from localStorage

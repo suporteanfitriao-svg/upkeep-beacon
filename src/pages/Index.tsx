@@ -323,7 +323,7 @@ const Index = () => {
 
   // Transition state for smooth filter changes
   const [isFilterTransitioning, setIsFilterTransitioning] = useState(false);
-  const filterTransitionTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const filterTransitionTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Reset page and trigger smooth transition when filters change
   useEffect(() => {
