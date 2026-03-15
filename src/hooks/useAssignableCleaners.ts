@@ -31,10 +31,11 @@ export function useAssignableCleaners(propertyId: string | null) {
           id,
           name,
           email,
+          role,
           has_all_properties,
           team_member_properties!left(property_id)
         `)
-        .eq('role', 'cleaner')
+        .in('role', ['cleaner', 'manager'])
         .eq('is_active', true);
 
       if (fetchError) throw fetchError;
