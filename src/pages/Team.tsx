@@ -79,6 +79,7 @@ export default function Team() {
     cpf: '',
     whatsapp: '',
     role: 'cleaner' as 'superadmin' | 'admin' | 'manager' | 'cleaner',
+    selectedRoles: ['cleaner'] as string[],
     hasAllProperties: true,
     selectedProperties: [] as string[],
     // Address fields
