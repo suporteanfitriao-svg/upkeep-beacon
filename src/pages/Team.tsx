@@ -177,6 +177,7 @@ export default function Team() {
       cpf: formatCPF(member.cpf),
       whatsapp: formatWhatsApp(member.whatsapp),
       role: member.role,
+      selectedRoles: [member.role],
       hasAllProperties: member.has_all_properties,
       selectedProperties: memberProperties,
       address_cep: member.address_cep ? formatCEP(member.address_cep) : '',
