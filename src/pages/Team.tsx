@@ -249,6 +249,7 @@ export default function Team() {
         cpf: cleanCPF,
         whatsapp: cleanWhatsApp,
         role: formData.role,
+        selected_roles: formData.selectedRoles,
         has_all_properties: formData.hasAllProperties,
         address_cep: cleanCEP || null,
         address_street: formData.address_street || null,
