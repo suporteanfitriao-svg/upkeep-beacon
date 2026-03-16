@@ -154,6 +154,7 @@ export default function Team() {
       cpf: '',
       whatsapp: '',
       role: 'cleaner',
+      selectedRoles: ['cleaner'],
       hasAllProperties: true,
       selectedProperties: [],
       address_cep: '',
