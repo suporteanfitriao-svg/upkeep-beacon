@@ -13,21 +13,80 @@ import { Button } from '@/components/ui/button';
 
 interface ViewModeSwitcherProps {
   collapsed?: boolean;
+  compact?: boolean;
 }
 
-const viewModes: { mode: ViewMode; icon: typeof Building2; description: string }[] = [
+const allViewModes: { mode: ViewMode; icon: typeof Building2; description: string }[] = [
   { mode: 'owner', icon: Building2, description: 'Visão completa de gestão' },
   { mode: 'manager', icon: UserCog, description: 'Visão de operações' },
   { mode: 'cleaner', icon: Brush, description: 'Visão mobile de execução' },
 ];
 
-export function ViewModeSwitcher({ collapsed = false }: ViewModeSwitcherProps) {
-  const { viewMode, setViewMode, canSwitchView, getViewLabel } = useViewMode();
+export function ViewModeSwitcher({ collapsed = false, compact = false }: ViewModeSwitcherProps) {
+  const { viewMode, setViewMode, canSwitchView, availableModes, getViewLabel } = useViewMode();
 
   if (!canSwitchView) return null;
 
+  // Filter to only show modes the user has access to
+  const viewModes = allViewModes.filter(v => availableModes.includes(v.mode));
+
   const currentView = viewModes.find(v => v.mode === viewMode) || viewModes[0];
-  const CurrentIcon = currentView.icon;
+  const CurrentIcon = currentView?.icon || Eye;
+
+  if (compact) {
+    return (
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <button
+            className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-full border border-dashed border-amber-500/50 bg-amber-50 dark:bg-amber-900/20 text-amber-700 dark:text-amber-300 text-xs font-semibold transition-colors hover:bg-amber-100 dark:hover:bg-amber-900/30"
+          >
+            <Eye className="h-3.5 w-3.5" />
+            <span>{getViewLabel(viewMode)}</span>
+          </button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="end" className="w-52">
+          <DropdownMenuLabel className="flex items-center gap-2 text-amber-600 text-xs">
+            <Eye className="h-3.5 w-3.5" />
+            Alternar Visão
+          </DropdownMenuLabel>
+          <DropdownMenuSeparator />
+          {viewModes.map(({ mode, icon: Icon, description }) => (
+            <DropdownMenuItem
+              key={mode}
+              onClick={() => setViewMode(mode)}
+              className={cn(
+                "flex items-center gap-3 cursor-pointer",
+                viewMode === mode && "bg-amber-50 dark:bg-amber-900/20"
+              )}
+            >
+              <div className={cn(
+                "h-7 w-7 rounded-lg flex items-center justify-center shrink-0",
+                viewMode === mode
+                  ? "bg-amber-500 text-white"
+                  : "bg-muted text-muted-foreground"
+              )}>
+                <Icon className="h-3.5 w-3.5" />
+              </div>
+              <div className="flex flex-col">
+                <span className={cn(
+                  "text-sm font-medium",
+                  viewMode === mode && "text-amber-700 dark:text-amber-300"
+                )}>
+                  {getViewLabel(mode)}
+                </span>
+                <span className="text-[10px] text-muted-foreground">
+                  {description}
+                </span>
+              </div>
+              {viewMode === mode && (
+                <div className="ml-auto h-2 w-2 rounded-full bg-amber-500" />
+              )}
+            </DropdownMenuItem>
+          ))}
+        </DropdownMenuContent>
+      </DropdownMenu>
+    );
+  }
 
   return (
     <DropdownMenu>

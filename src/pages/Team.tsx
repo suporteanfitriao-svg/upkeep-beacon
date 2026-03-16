@@ -34,6 +34,7 @@ interface TeamMember {
   has_all_properties: boolean;
   created_at: string;
   activated_at: string | null;
+  user_id: string | null;
   address_cep: string | null;
   address_street: string | null;
   address_number: string | null;
@@ -79,6 +80,7 @@ export default function Team() {
     cpf: '',
     whatsapp: '',
     role: 'cleaner' as 'superadmin' | 'admin' | 'manager' | 'cleaner',
+    selectedRoles: ['cleaner'] as string[],
     hasAllProperties: true,
     selectedProperties: [] as string[],
     // Address fields
@@ -153,6 +155,7 @@ export default function Team() {
       cpf: '',
       whatsapp: '',
       role: 'cleaner',
+      selectedRoles: ['cleaner'],
       hasAllProperties: true,
       selectedProperties: [],
       address_cep: '',
@@ -175,6 +178,7 @@ export default function Team() {
       cpf: formatCPF(member.cpf),
       whatsapp: formatWhatsApp(member.whatsapp),
       role: member.role,
+      selectedRoles: [member.role],
       hasAllProperties: member.has_all_properties,
       selectedProperties: memberProperties,
       address_cep: member.address_cep ? formatCEP(member.address_cep) : '',
@@ -246,6 +250,7 @@ export default function Team() {
         cpf: cleanCPF,
         whatsapp: cleanWhatsApp,
         role: formData.role,
+        selected_roles: formData.selectedRoles,
         has_all_properties: formData.hasAllProperties,
         address_cep: cleanCEP || null,
         address_street: formData.address_street || null,
@@ -281,6 +286,16 @@ export default function Team() {
             .insert(propertyInserts);
 
           if (propError) throw propError;
+        }
+
+        // Sync user_roles if member already has a user account
+        if (editingMember.user_id) {
+          await supabase.from('user_roles').delete().eq('user_id', editingMember.user_id);
+          const roleInserts = formData.selectedRoles.map(r => ({
+            user_id: editingMember.user_id!,
+            role: r as any,
+          }));
+          await supabase.from('user_roles').insert(roleInserts);
         }
 
         toast.success('Membro atualizado com sucesso');
@@ -520,23 +535,38 @@ export default function Team() {
                       </div>
                     </div>
 
-                    <div className="space-y-2">
-                      <Label htmlFor="role">Função</Label>
-                      <Select
-                        value={formData.role}
-                        onValueChange={(value: 'superadmin' | 'admin' | 'manager' | 'cleaner') =>
-                          setFormData({ ...formData, role: value })
-                        }
-                      >
-                        <SelectTrigger>
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="admin">Proprietário</SelectItem>
-                          <SelectItem value="manager">Anfitrião</SelectItem>
-                          <SelectItem value="cleaner">Cleaner</SelectItem>
-                        </SelectContent>
-                      </Select>
+                    <div className="space-y-3">
+                      <Label>Funções</Label>
+                      <p className="text-xs text-muted-foreground">Selecione uma ou mais funções para este membro</p>
+                      <div className="border rounded-lg p-3 space-y-2">
+                        {[
+                          { value: 'admin', label: 'Proprietário', desc: 'Gestão completa e faturamento' },
+                          { value: 'manager', label: 'Anfitrião', desc: 'Operações e checklists' },
+                          { value: 'cleaner', label: 'Cleaner', desc: 'Execução de limpezas' },
+                        ].map((r) => (
+                          <label
+                            key={r.value}
+                            className="flex items-center gap-3 p-2 rounded-md hover:bg-muted/50 cursor-pointer"
+                          >
+                            <Checkbox
+                              checked={formData.selectedRoles.includes(r.value)}
+                              onCheckedChange={(checked) => {
+                                const newRoles = checked
+                                  ? [...formData.selectedRoles, r.value]
+                                  : formData.selectedRoles.filter(role => role !== r.value);
+                                if (newRoles.length === 0) return; // min 1
+                                const priorityMap: Record<string, number> = { admin: 3, manager: 2, cleaner: 1 };
+                                const highest = newRoles.sort((a, b) => (priorityMap[b] || 0) - (priorityMap[a] || 0))[0];
+                                setFormData({ ...formData, selectedRoles: newRoles, role: highest as any });
+                              }}
+                            />
+                            <div>
+                              <span className="text-sm font-medium">{r.label}</span>
+                              <p className="text-xs text-muted-foreground">{r.desc}</p>
+                            </div>
+                          </label>
+                        ))}
+                      </div>
                     </div>
 
                     {/* Address section */}
