@@ -34,6 +34,7 @@ interface TeamMember {
   has_all_properties: boolean;
   created_at: string;
   activated_at: string | null;
+  user_id: string | null;
   address_cep: string | null;
   address_street: string | null;
   address_number: string | null;
