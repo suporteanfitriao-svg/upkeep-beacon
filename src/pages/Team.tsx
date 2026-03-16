@@ -287,6 +287,16 @@ export default function Team() {
           if (propError) throw propError;
         }
 
+        // Sync user_roles if member already has a user account
+        if (editingMember.user_id) {
+          await supabase.from('user_roles').delete().eq('user_id', editingMember.user_id);
+          const roleInserts = formData.selectedRoles.map(r => ({
+            user_id: editingMember.user_id!,
+            role: r as any,
+          }));
+          await supabase.from('user_roles').insert(roleInserts);
+        }
+
         toast.success('Membro atualizado com sucesso');
       } else {
         const { data: newMember, error } = await supabase
