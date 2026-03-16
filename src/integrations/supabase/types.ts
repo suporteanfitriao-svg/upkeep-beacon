@@ -1567,6 +1567,7 @@ export type Database = {
           is_active: boolean
           name: string
           role: Database["public"]["Enums"]["app_role"]
+          selected_roles: string[] | null
           updated_at: string
           user_id: string | null
           whatsapp: string
@@ -1588,6 +1589,7 @@ export type Database = {
           is_active?: boolean
           name: string
           role?: Database["public"]["Enums"]["app_role"]
+          selected_roles?: string[] | null
           updated_at?: string
           user_id?: string | null
           whatsapp: string
@@ -1609,6 +1611,7 @@ export type Database = {
           is_active?: boolean
           name?: string
           role?: Database["public"]["Enums"]["app_role"]
+          selected_roles?: string[] | null
           updated_at?: string
           user_id?: string | null
           whatsapp?: string
