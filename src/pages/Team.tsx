@@ -523,23 +523,38 @@ export default function Team() {
                       </div>
                     </div>
 
-                    <div className="space-y-2">
-                      <Label htmlFor="role">Função</Label>
-                      <Select
-                        value={formData.role}
-                        onValueChange={(value: 'superadmin' | 'admin' | 'manager' | 'cleaner') =>
-                          setFormData({ ...formData, role: value })
-                        }
-                      >
-                        <SelectTrigger>
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="admin">Proprietário</SelectItem>
-                          <SelectItem value="manager">Anfitrião</SelectItem>
-                          <SelectItem value="cleaner">Cleaner</SelectItem>
-                        </SelectContent>
-                      </Select>
+                    <div className="space-y-3">
+                      <Label>Funções</Label>
+                      <p className="text-xs text-muted-foreground">Selecione uma ou mais funções para este membro</p>
+                      <div className="border rounded-lg p-3 space-y-2">
+                        {[
+                          { value: 'admin', label: 'Proprietário', desc: 'Gestão completa e faturamento' },
+                          { value: 'manager', label: 'Anfitrião', desc: 'Operações e checklists' },
+                          { value: 'cleaner', label: 'Cleaner', desc: 'Execução de limpezas' },
+                        ].map((r) => (
+                          <label
+                            key={r.value}
+                            className="flex items-center gap-3 p-2 rounded-md hover:bg-muted/50 cursor-pointer"
+                          >
+                            <Checkbox
+                              checked={formData.selectedRoles.includes(r.value)}
+                              onCheckedChange={(checked) => {
+                                const newRoles = checked
+                                  ? [...formData.selectedRoles, r.value]
+                                  : formData.selectedRoles.filter(role => role !== r.value);
+                                if (newRoles.length === 0) return; // min 1
+                                const priorityMap: Record<string, number> = { admin: 3, manager: 2, cleaner: 1 };
+                                const highest = newRoles.sort((a, b) => (priorityMap[b] || 0) - (priorityMap[a] || 0))[0];
+                                setFormData({ ...formData, selectedRoles: newRoles, role: highest as any });
+                              }}
+                            />
+                            <div>
+                              <span className="text-sm font-medium">{r.label}</span>
+                              <p className="text-xs text-muted-foreground">{r.desc}</p>
+                            </div>
+                          </label>
+                        ))}
+                      </div>
                     </div>
 
                     {/* Address section */}
