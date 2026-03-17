@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useMemo, useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { format, startOfMonth, endOfMonth, differenceInMinutes, isWithinInterval, subMonths, setMonth, setYear, getYear, getMonth } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
@@ -10,6 +10,7 @@ import { ScheduleDetailReadOnly } from '@/components/reports/ScheduleDetailReadO
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { MobilePageHeader } from '@/components/mobile/MobilePageHeader';
 import { MobileEmptyState } from '@/components/mobile/MobileEmptyState';
+import { supabase } from '@/integrations/supabase/client';
 
 const ITEMS_PER_PAGE = 10;
 
