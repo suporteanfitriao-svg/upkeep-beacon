@@ -279,7 +279,7 @@ export default function CleaningHistory() {
             {/* Schedule List */}
             <div className="space-y-3">
               {displayedSchedules.map((schedule) => {
-                const issueCount = schedule.maintenanceIssues?.length || 0;
+                const issueCount = maintenanceIssueCounts[schedule.id] || 0;
                 const photoCount = Object.values(schedule.categoryPhotos || {}).reduce(
                   (acc, urls) => acc + (Array.isArray(urls) ? urls.length : 0),
                   0
