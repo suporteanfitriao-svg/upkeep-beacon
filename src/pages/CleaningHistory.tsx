@@ -128,7 +128,7 @@ export default function CleaningHistory() {
       growth,
       prevMonthTotal: prevMonthCompleted.length
     };
-  }, [schedules, selectedMonth, selectedYear]);
+  }, [schedules, selectedMonth, selectedYear, maintenanceIssueCounts]);
 
   // Reset page when filters change
   const handleMonthChange = (value: string) => {
