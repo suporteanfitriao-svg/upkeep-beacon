@@ -51,8 +51,9 @@ export const MobileBottomNav = memo(function MobileBottomNav({
 
   // Determine active manager tab based on current route
   const getActiveManagerTab = (): ManagerTab => {
+    if (location.pathname === '/equipe') return 'equipe';
     if (location.pathname === '/inspecoes') return 'inspecoes';
-    if (location.pathname === '/minha-conta') return 'perfil';
+    if (location.pathname === '/minha-conta' || location.pathname === '/inventario' || location.pathname === '/manutencao' || location.pathname === '/propriedades') return 'menu';
     if (activeTab === 'agenda') return 'calendario';
     return 'home';
   };
