@@ -80,6 +80,35 @@ export default function CleaningHistory() {
       });
   }, [schedules, selectedMonth, selectedYear]);
 
+  // Fetch real maintenance issues count from the maintenance_issues table
+  useEffect(() => {
+    const fetchMaintenanceCounts = async () => {
+      if (completedSchedules.length === 0) {
+        setMaintenanceIssueCounts({});
+        return;
+      }
+      const scheduleIds = completedSchedules.map(s => s.id);
+      const { data, error } = await supabase
+        .from('maintenance_issues')
+        .select('schedule_id')
+        .in('schedule_id', scheduleIds);
+      
+      if (error) {
+        console.error('Error fetching maintenance issues:', error);
+        return;
+      }
+      
+      const counts: Record<string, number> = {};
+      (data || []).forEach(item => {
+        if (item.schedule_id) {
+          counts[item.schedule_id] = (counts[item.schedule_id] || 0) + 1;
+        }
+      });
+      setMaintenanceIssueCounts(counts);
+    };
+    fetchMaintenanceCounts();
+  }, [completedSchedules]);
+
   // Calculate stats for the selected month
   const monthStats = useMemo(() => {
     const filterDate = setYear(setMonth(new Date(), selectedMonth), selectedYear);
