@@ -5,7 +5,7 @@ import { useUserRole } from '@/hooks/useUserRole';
 
 // Tab types for different roles
 type CleanerTab = 'inicio' | 'agenda' | 'menu';
-type ManagerTab = 'home' | 'calendario' | 'checklist' | 'inspecoes' | 'perfil';
+type ManagerTab = 'home' | 'equipe' | 'calendario' | 'inspecoes' | 'menu';
 
 interface MobileBottomNavProps {
   activeTab: CleanerTab;
