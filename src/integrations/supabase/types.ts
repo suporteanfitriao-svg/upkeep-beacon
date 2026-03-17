@@ -860,12 +860,14 @@ export type Database = {
           created_at: string
           default_check_in_time: string | null
           default_check_out_time: string | null
+          default_guests: number | null
           global_access_password: string | null
           id: string
           image_url: string | null
           is_active: boolean
           latitude: number | null
           longitude: number | null
+          max_guests: number | null
           name: string
           password_mode: Database["public"]["Enums"]["property_password_mode"]
           property_code: string | null
@@ -884,12 +886,14 @@ export type Database = {
           created_at?: string
           default_check_in_time?: string | null
           default_check_out_time?: string | null
+          default_guests?: number | null
           global_access_password?: string | null
           id?: string
           image_url?: string | null
           is_active?: boolean
           latitude?: number | null
           longitude?: number | null
+          max_guests?: number | null
           name: string
           password_mode?: Database["public"]["Enums"]["property_password_mode"]
           property_code?: string | null
@@ -908,12 +912,14 @@ export type Database = {
           created_at?: string
           default_check_in_time?: string | null
           default_check_out_time?: string | null
+          default_guests?: number | null
           global_access_password?: string | null
           id?: string
           image_url?: string | null
           is_active?: boolean
           latitude?: number | null
           longitude?: number | null
+          max_guests?: number | null
           name?: string
           password_mode?: Database["public"]["Enums"]["property_password_mode"]
           property_code?: string | null
