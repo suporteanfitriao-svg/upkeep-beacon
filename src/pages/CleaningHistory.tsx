@@ -46,6 +46,9 @@ export default function CleaningHistory() {
   const [currentPage, setCurrentPage] = useState(1);
   const [selectedSchedule, setSelectedSchedule] = useState<Schedule | null>(null);
   
+  // Real maintenance issues count from database
+  const [maintenanceIssueCounts, setMaintenanceIssueCounts] = useState<Record<string, number>>({});
+
   // Filter states
   const now = new Date();
   const [selectedMonth, setSelectedMonth] = useState<number>(getMonth(now));
