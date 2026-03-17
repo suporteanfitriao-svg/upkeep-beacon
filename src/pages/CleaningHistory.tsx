@@ -112,8 +112,9 @@ export default function CleaningHistory() {
       ? Math.round(totalDurationMinutes / thisMonthCompleted.length) 
       : 0;
 
+    // Count issues from the real maintenance_issues table
     const totalIssues = thisMonthCompleted.reduce((acc, s) => 
-      acc + (s.maintenanceIssues?.length || 0), 0
+      acc + (maintenanceIssueCounts[s.id] || 0), 0
     );
 
     const growth = prevMonthCompleted.length > 0 
