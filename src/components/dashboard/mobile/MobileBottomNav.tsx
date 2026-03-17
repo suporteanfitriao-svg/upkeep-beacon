@@ -96,6 +96,22 @@ export const MobileBottomNav = memo(function MobileBottomNav({
             <span className={cn("text-[9px]", activeManagerTab === 'home' ? "font-bold" : "font-medium")}>Home</span>
           </button>
 
+          {/* Equipe */}
+          <button 
+            type="button"
+            onClick={(e) => handleManagerNavClick('/equipe', e)}
+            className={cn(
+              "group flex flex-col items-center justify-center gap-0.5 p-2 min-w-[56px] transition-colors touch-manipulation select-none",
+              activeManagerTab === 'equipe' ? "text-primary" : "text-muted-foreground active:text-primary"
+            )}
+          >
+            <span className={cn(
+              "material-symbols-outlined text-[24px]",
+              activeManagerTab === 'equipe' && "filled"
+            )}>groups</span>
+            <span className={cn("text-[9px]", activeManagerTab === 'equipe' ? "font-bold" : "font-medium")}>Equipe</span>
+          </button>
+
           {/* Calendário */}
           <button 
             type="button"
@@ -116,29 +132,13 @@ export const MobileBottomNav = memo(function MobileBottomNav({
             <span className={cn("text-[9px]", activeManagerTab === 'calendario' ? "font-bold" : "font-medium")}>Calendário</span>
           </button>
 
-          {/* Checklist - Opens property checklist view */}
-          <button 
-            type="button"
-            onClick={(e) => handleManagerNavClick('/inventario', e)}
-            className={cn(
-              "group flex flex-col items-center justify-center gap-0.5 p-2 min-w-[56px] transition-colors touch-manipulation select-none",
-              location.pathname === '/inventario' ? "text-primary" : "text-[#8A8B88] active:text-primary"
-            )}
-          >
-            <span className={cn(
-              "material-symbols-outlined text-[24px]",
-              location.pathname === '/inventario' && "filled"
-            )}>checklist</span>
-            <span className={cn("text-[9px]", location.pathname === '/inventario' ? "font-bold" : "font-medium")}>Checklist</span>
-          </button>
-
           {/* Inspeções */}
           <button 
             type="button"
             onClick={(e) => handleManagerNavClick('/inspecoes', e)}
             className={cn(
               "group flex flex-col items-center justify-center gap-0.5 p-2 min-w-[56px] transition-colors touch-manipulation select-none",
-              activeManagerTab === 'inspecoes' ? "text-primary" : "text-[#8A8B88] active:text-primary"
+              activeManagerTab === 'inspecoes' ? "text-primary" : "text-muted-foreground active:text-primary"
             )}
           >
             <span className={cn(
@@ -148,20 +148,20 @@ export const MobileBottomNav = memo(function MobileBottomNav({
             <span className={cn("text-[9px]", activeManagerTab === 'inspecoes' ? "font-bold" : "font-medium")}>Inspeções</span>
           </button>
 
-          {/* Perfil */}
+          {/* Menu */}
           <button 
             type="button"
             onClick={(e) => handleManagerNavClick('/minha-conta', e)}
             className={cn(
               "group flex flex-col items-center justify-center gap-0.5 p-2 min-w-[56px] transition-colors touch-manipulation select-none",
-              activeManagerTab === 'perfil' ? "text-primary" : "text-[#8A8B88] active:text-primary"
+              activeManagerTab === 'menu' ? "text-primary" : "text-muted-foreground active:text-primary"
             )}
           >
             <span className={cn(
               "material-symbols-outlined text-[24px]",
-              activeManagerTab === 'perfil' && "filled"
-            )}>person</span>
-            <span className={cn("text-[9px]", activeManagerTab === 'perfil' ? "font-bold" : "font-medium")}>Perfil</span>
+              activeManagerTab === 'menu' && "filled"
+            )}>menu</span>
+            <span className={cn("text-[9px]", activeManagerTab === 'menu' ? "font-bold" : "font-medium")}>Menu</span>
           </button>
         </div>
       </nav>
