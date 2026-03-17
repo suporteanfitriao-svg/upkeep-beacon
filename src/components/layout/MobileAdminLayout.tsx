@@ -14,7 +14,7 @@ import { cn } from '@/lib/utils';
 import { Skeleton } from '@/components/ui/skeleton';
 
 // Tab types para roles admin/manager
-type ManagerTab = 'home' | 'calendario' | 'checklist' | 'inspecoes' | 'perfil';
+type ManagerTab = 'home' | 'equipe' | 'calendario' | 'inspecoes' | 'menu';
 
 interface MobileAdminLayoutProps {
   children?: React.ReactNode;
@@ -28,11 +28,9 @@ const MobileAdminNavBar = memo(function MobileAdminNavBar() {
   // Determina a aba ativa baseado na rota atual
   const getActiveTab = (): ManagerTab => {
     const path = location.pathname;
+    if (path === '/equipe') return 'equipe';
     if (path === '/inspecoes') return 'inspecoes';
-    if (path === '/inventario') return 'checklist';
-    if (path === '/minha-conta') return 'perfil';
-    // Home e Calendário são abas internas da página Index
-    // Quando na raiz, consideramos como 'home' por padrão
+    if (path === '/minha-conta' || path === '/inventario' || path === '/manutencao' || path === '/propriedades') return 'menu';
     return 'home';
   };
 
@@ -42,14 +40,12 @@ const MobileAdminNavBar = memo(function MobileAdminNavBar() {
   const handleNavClick = useCallback((route: string, e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
-    // Usa requestAnimationFrame para garantir feedback visual suave
     requestAnimationFrame(() => {
       navigate(route);
     });
   }, [navigate]);
 
-  // Para as abas Home e Calendário que são internas à página Index,
-  // navegamos para / com um state que indica qual aba ativar
+  // Para as abas Home e Calendário que são internas à página Index
   const handleHomeClick = useCallback((e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
@@ -95,6 +91,22 @@ const MobileAdminNavBar = memo(function MobileAdminNavBar() {
           <span className={cn("text-[9px]", effectiveTab === 'home' ? "font-bold" : "font-medium")}>Home</span>
         </button>
 
+        {/* Equipe */}
+        <button 
+          type="button"
+          onClick={(e) => handleNavClick('/equipe', e)}
+          className={cn(
+            "group flex flex-col items-center justify-center gap-0.5 p-2 min-w-[56px] transition-colors touch-manipulation select-none",
+            effectiveTab === 'equipe' ? "text-primary" : "text-muted-foreground active:text-primary"
+          )}
+        >
+          <span className={cn(
+            "material-symbols-outlined text-[24px]",
+            effectiveTab === 'equipe' && "filled"
+          )}>groups</span>
+          <span className={cn("text-[9px]", effectiveTab === 'equipe' ? "font-bold" : "font-medium")}>Equipe</span>
+        </button>
+
         {/* Calendário */}
         <button 
           type="button"
@@ -111,29 +123,13 @@ const MobileAdminNavBar = memo(function MobileAdminNavBar() {
           <span className={cn("text-[9px]", effectiveTab === 'calendario' ? "font-bold" : "font-medium")}>Calendário</span>
         </button>
 
-        {/* Checklist */}
-        <button 
-          type="button"
-          onClick={(e) => handleNavClick('/inventario', e)}
-          className={cn(
-            "group flex flex-col items-center justify-center gap-0.5 p-2 min-w-[56px] transition-colors touch-manipulation select-none",
-            effectiveTab === 'checklist' ? "text-primary" : "text-[#8A8B88] active:text-primary"
-          )}
-        >
-          <span className={cn(
-            "material-symbols-outlined text-[24px]",
-            effectiveTab === 'checklist' && "filled"
-          )}>checklist</span>
-          <span className={cn("text-[9px]", effectiveTab === 'checklist' ? "font-bold" : "font-medium")}>Checklist</span>
-        </button>
-
         {/* Inspeções */}
         <button 
           type="button"
           onClick={(e) => handleNavClick('/inspecoes', e)}
           className={cn(
             "group flex flex-col items-center justify-center gap-0.5 p-2 min-w-[56px] transition-colors touch-manipulation select-none",
-            effectiveTab === 'inspecoes' ? "text-primary" : "text-[#8A8B88] active:text-primary"
+            effectiveTab === 'inspecoes' ? "text-primary" : "text-muted-foreground active:text-primary"
           )}
         >
           <span className={cn(
@@ -143,20 +139,20 @@ const MobileAdminNavBar = memo(function MobileAdminNavBar() {
           <span className={cn("text-[9px]", effectiveTab === 'inspecoes' ? "font-bold" : "font-medium")}>Inspeções</span>
         </button>
 
-        {/* Perfil */}
+        {/* Menu */}
         <button 
           type="button"
           onClick={(e) => handleNavClick('/minha-conta', e)}
           className={cn(
             "group flex flex-col items-center justify-center gap-0.5 p-2 min-w-[56px] transition-colors touch-manipulation select-none",
-            effectiveTab === 'perfil' ? "text-primary" : "text-[#8A8B88] active:text-primary"
+            effectiveTab === 'menu' ? "text-primary" : "text-muted-foreground active:text-primary"
           )}
         >
           <span className={cn(
             "material-symbols-outlined text-[24px]",
-            effectiveTab === 'perfil' && "filled"
-          )}>person</span>
-          <span className={cn("text-[9px]", effectiveTab === 'perfil' ? "font-bold" : "font-medium")}>Perfil</span>
+            effectiveTab === 'menu' && "filled"
+          )}>menu</span>
+          <span className={cn("text-[9px]", effectiveTab === 'menu' ? "font-bold" : "font-medium")}>Menu</span>
         </button>
       </div>
     </nav>

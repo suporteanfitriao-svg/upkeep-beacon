@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useMemo, useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { format, startOfMonth, endOfMonth, differenceInMinutes, isWithinInterval, subMonths, setMonth, setYear, getYear, getMonth } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
@@ -10,6 +10,7 @@ import { ScheduleDetailReadOnly } from '@/components/reports/ScheduleDetailReadO
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { MobilePageHeader } from '@/components/mobile/MobilePageHeader';
 import { MobileEmptyState } from '@/components/mobile/MobileEmptyState';
+import { supabase } from '@/integrations/supabase/client';
 
 const ITEMS_PER_PAGE = 10;
 
@@ -45,6 +46,9 @@ export default function CleaningHistory() {
   const [currentPage, setCurrentPage] = useState(1);
   const [selectedSchedule, setSelectedSchedule] = useState<Schedule | null>(null);
   
+  // Real maintenance issues count from database
+  const [maintenanceIssueCounts, setMaintenanceIssueCounts] = useState<Record<string, number>>({});
+
   // Filter states
   const now = new Date();
   const [selectedMonth, setSelectedMonth] = useState<number>(getMonth(now));
@@ -75,6 +79,35 @@ export default function CleaningHistory() {
         return bEnd - aEnd; // Most recent first
       });
   }, [schedules, selectedMonth, selectedYear]);
+
+  // Fetch real maintenance issues count from the maintenance_issues table
+  useEffect(() => {
+    const fetchMaintenanceCounts = async () => {
+      if (completedSchedules.length === 0) {
+        setMaintenanceIssueCounts({});
+        return;
+      }
+      const scheduleIds = completedSchedules.map(s => s.id);
+      const { data, error } = await supabase
+        .from('maintenance_issues')
+        .select('schedule_id')
+        .in('schedule_id', scheduleIds);
+      
+      if (error) {
+        console.error('Error fetching maintenance issues:', error);
+        return;
+      }
+      
+      const counts: Record<string, number> = {};
+      (data || []).forEach(item => {
+        if (item.schedule_id) {
+          counts[item.schedule_id] = (counts[item.schedule_id] || 0) + 1;
+        }
+      });
+      setMaintenanceIssueCounts(counts);
+    };
+    fetchMaintenanceCounts();
+  }, [completedSchedules]);
 
   // Calculate stats for the selected month
   const monthStats = useMemo(() => {
@@ -108,8 +141,9 @@ export default function CleaningHistory() {
       ? Math.round(totalDurationMinutes / thisMonthCompleted.length) 
       : 0;
 
+    // Count issues from the real maintenance_issues table
     const totalIssues = thisMonthCompleted.reduce((acc, s) => 
-      acc + (s.maintenanceIssues?.length || 0), 0
+      acc + (maintenanceIssueCounts[s.id] || 0), 0
     );
 
     const growth = prevMonthCompleted.length > 0 
@@ -123,7 +157,7 @@ export default function CleaningHistory() {
       growth,
       prevMonthTotal: prevMonthCompleted.length
     };
-  }, [schedules, selectedMonth, selectedYear]);
+  }, [schedules, selectedMonth, selectedYear, maintenanceIssueCounts]);
 
   // Reset page when filters change
   const handleMonthChange = (value: string) => {
@@ -275,7 +309,7 @@ export default function CleaningHistory() {
             {/* Schedule List */}
             <div className="space-y-3">
               {displayedSchedules.map((schedule) => {
-                const issueCount = schedule.maintenanceIssues?.length || 0;
+                const issueCount = maintenanceIssueCounts[schedule.id] || 0;
                 const photoCount = Object.values(schedule.categoryPhotos || {}).reduce(
                   (acc, urls) => acc + (Array.isArray(urls) ? urls.length : 0),
                   0
