@@ -94,6 +94,9 @@ export function MobileDashboard({ schedules, onScheduleClick, onStartCleaning, o
   const [activeTab, setActiveTab] = useState<'inicio' | 'agenda' | 'menu'>(() => {
     const tabParam = searchParams.get('tab');
     if (tabParam === 'agenda') return 'agenda';
+    if (tabParam === 'inicio') return 'inicio';
+    // Cleaners default to agenda (today's calendar)
+    if (isCleaner && !canSwitchView) return 'agenda';
     return 'inicio';
   });
   const [viewMode, setViewMode] = useState<'dia' | 'calendario'>('dia');
