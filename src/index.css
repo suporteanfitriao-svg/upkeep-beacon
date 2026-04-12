@@ -126,6 +126,16 @@
   body {
     @apply bg-background text-foreground antialiased;
     font-family: 'Manrope', system-ui, sans-serif;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  /* Optimize scroll performance globally */
+  .overflow-y-auto,
+  .overflow-auto,
+  .overflow-x-auto,
+  [class*="scroll"] {
+    will-change: scroll-position;
+    -webkit-overflow-scrolling: touch;
   }
 
   h1, h2, h3, h4, h5, h6 {
