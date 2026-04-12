@@ -270,10 +270,12 @@ export default function Team() {
         if (error) throw error;
 
         // Update property access
-        await supabase
+        const { error: deleteError } = await supabase
           .from('team_member_properties')
           .delete()
           .eq('team_member_id', editingMember.id);
+
+        if (deleteError) throw deleteError;
 
         if (!formData.hasAllProperties && formData.selectedProperties.length > 0) {
           const propertyInserts = formData.selectedProperties.map(propertyId => ({
