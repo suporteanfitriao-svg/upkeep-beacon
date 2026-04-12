@@ -43,7 +43,7 @@ export function PropertyTeamManager({ propertyId, propertyName }: PropertyTeamMa
       const { data: cleanersData, error: cleanersError } = await supabase
         .from('team_members')
         .select('id, name, email, role, is_active, has_all_properties')
-        .eq('role', 'cleaner')
+        .in('role', ['cleaner', 'manager'])
         .eq('is_active', true)
         .order('name');
 
