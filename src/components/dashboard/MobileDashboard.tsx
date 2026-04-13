@@ -929,7 +929,7 @@ export function MobileDashboard({ schedules, onScheduleClick, onStartCleaning, o
 
           {viewMode === 'calendario' ? (
             // Calendar View
-            <main className="flex flex-col px-4 pt-2 pb-6">
+            <main className="flex-1 flex flex-col px-4 pt-2 pb-6 overflow-y-auto overscroll-contain" style={{ WebkitOverflowScrolling: 'touch' }}>
 
               {/* Weekday headers */}
               <div className="grid grid-cols-7 mb-3">
