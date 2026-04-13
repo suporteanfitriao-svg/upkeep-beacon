@@ -95,7 +95,7 @@ export function ScheduleDetailReadOnly({ schedule, onClose }: ScheduleDetailRead
         </header>
 
         {/* Main Content */}
-        <main className="flex flex-col gap-6 p-6 overflow-y-auto" style={{ maxHeight: 'calc(100vh - 80px)' }}>
+        <main className="flex flex-col gap-6 p-6 overflow-y-auto overscroll-contain" style={{ maxHeight: 'calc(100vh - 80px)', WebkitOverflowScrolling: 'touch' }}>
           {/* Summary Info */}
           <section className="rounded-2xl bg-white dark:bg-[#2d3138] shadow-sm p-5 border border-slate-100 dark:border-slate-700">
             <h3 className="text-sm font-bold uppercase tracking-wide text-slate-900 dark:text-white mb-4 flex items-center gap-2">
@@ -335,32 +335,43 @@ export function ScheduleDetailReadOnly({ schedule, onClose }: ScheduleDetailRead
             </div>
           </section>
 
-          {/* Notes Section */}
+          {/* Notes Section - Admin */}
           {schedule.notes && (
             <section className="rounded-2xl bg-white dark:bg-[#2d3138] shadow-sm p-5 border border-slate-100 dark:border-slate-700">
               <h3 className="text-sm font-bold uppercase tracking-wide text-slate-900 dark:text-white mb-4 flex items-center gap-2">
                 <span className="material-symbols-outlined text-primary text-[20px]">description</span>
-                Observações
+                Observações do Admin
               </h3>
               <p className="text-sm text-slate-600 dark:text-slate-300 whitespace-pre-wrap">{schedule.notes}</p>
             </section>
           )}
+
+          {/* Cleaner Observations */}
+          {schedule.cleanerObservations && (
+            <section className="rounded-2xl bg-white dark:bg-[#2d3138] shadow-sm p-5 border border-slate-100 dark:border-slate-700">
+              <h3 className="text-sm font-bold uppercase tracking-wide text-slate-900 dark:text-white mb-4 flex items-center gap-2">
+                <span className="material-symbols-outlined text-blue-500 text-[20px]">chat</span>
+                Observações do Limpeza
+              </h3>
+              <p className="text-sm text-slate-600 dark:text-slate-300 whitespace-pre-wrap">{schedule.cleanerObservations}</p>
+            </section>
+          )}
+
+          {/* All Photos Section */}
+          {allPhotosForGallery.length > 0 && (
+            <section className="rounded-2xl bg-white dark:bg-[#2d3138] shadow-sm p-5 border border-slate-100 dark:border-slate-700">
+              <h3 className="text-sm font-bold uppercase tracking-wide text-slate-900 dark:text-white mb-4 flex items-center gap-2">
+                <span className="material-symbols-outlined text-primary text-[20px]">photo_library</span>
+                Todas as Fotos ({allPhotosForGallery.length})
+              </h3>
+              <PhotoGallery 
+                photos={allPhotosForGallery} 
+                title=""
+              />
+            </section>
+          )}
         </main>
       </div>
-
-      {/* All Photos Section */}
-      {allPhotosForGallery.length > 0 && (
-        <section className="mt-6 rounded-2xl bg-white dark:bg-[#2d3138] shadow-sm p-5 border border-slate-100 dark:border-slate-700 mx-6">
-          <h3 className="text-sm font-bold uppercase tracking-wide text-slate-900 dark:text-white mb-4 flex items-center gap-2">
-            <span className="material-symbols-outlined text-primary text-[20px]">photo_library</span>
-            Todas as Fotos ({allPhotosForGallery.length})
-          </h3>
-          <PhotoGallery 
-            photos={allPhotosForGallery} 
-            title=""
-          />
-        </section>
-      )}
     </div>
   );
 }
