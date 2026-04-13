@@ -1070,7 +1070,7 @@ export function MobileDashboard({ schedules, onScheduleClick, onStartCleaning, o
             // Day View - Day strip is already rendered above
             <>
               {/* Main Content */}
-              <main className="flex flex-col">
+              <main className="flex-1 flex flex-col overflow-y-auto overscroll-contain" style={{ WebkitOverflowScrolling: 'touch' }}>
                 <div className="px-6 pt-6 pb-3 flex items-baseline justify-between">
                   <h2 className="text-[26px] font-bold leading-tight text-slate-900 dark:text-white tracking-tight">
                     {isSelectedToday ? 'Hoje' : format(selectedDate, "d 'de' MMMM", { locale: ptBR })}
