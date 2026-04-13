@@ -854,10 +854,10 @@ export function MobileDashboard({ schedules, onScheduleClick, onStartCleaning, o
 
       {/* AGENDA TAB */}
       {activeTab === 'agenda' && (
-        <div className="animate-fade-in">
-          {/* Agenda Header */}
+        <div className="animate-fade-in flex flex-col h-[calc(100dvh-64px)]">
+          {/* Agenda Header - Fixed */}
           <header 
-            className="sticky top-0 z-30 bg-stone-50 dark:bg-[#22252a] px-6 py-4 shadow-sm"
+            className="flex-shrink-0 z-30 bg-stone-50 dark:bg-[#22252a] px-6 py-4 shadow-sm"
             style={{ transform: pullDistance > 0 ? `translateY(${pullDistance * 0.3}px)` : undefined }}
           >
             {/* Title Row */}
@@ -916,13 +916,15 @@ export function MobileDashboard({ schedules, onScheduleClick, onStartCleaning, o
             </div>
           </header>
 
-          {/* Infinite Day Strip for "Hoje" or "Data" views */}
+          {/* Infinite Day Strip - Fixed below header */}
           {viewMode === 'dia' && (
-            <MobileInfiniteDayStrip
-              selectedDate={selectedDate}
-              onDateSelect={handleDateSelect}
-              dayIndicators={dayIndicators}
-            />
+            <div className="flex-shrink-0 z-20 bg-stone-50 dark:bg-[#22252a]">
+              <MobileInfiniteDayStrip
+                selectedDate={selectedDate}
+                onDateSelect={handleDateSelect}
+                dayIndicators={dayIndicators}
+              />
+            </div>
           )}
 
           {viewMode === 'calendario' ? (
