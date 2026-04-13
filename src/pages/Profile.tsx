@@ -337,57 +337,62 @@ export default function Profile() {
   }
 
   // REGRA 2.3: Menu hambúrguer apenas na tela Perfil (mobile)
-  const MobileMenuSheet = () => (
-    <Sheet open={showMobileMenu} onOpenChange={setShowMobileMenu}>
-      <SheetContent side="left" className="w-[280px] p-0">
-        <SheetHeader className="p-4 border-b border-border">
-          <SheetTitle className="text-left">Menu</SheetTitle>
-        </SheetHeader>
-        <nav className="flex flex-col p-4 gap-1">
-          <button
-            onClick={() => { setShowMobileMenu(false); navigate('/'); }}
-            className="flex items-center gap-3 px-4 py-3 rounded-xl text-left hover:bg-muted transition-colors"
-          >
-            <span className="material-symbols-outlined text-muted-foreground">home</span>
-            <span className="font-medium">Início</span>
-          </button>
-          <button
-            onClick={() => { setShowMobileMenu(false); navigate('/historico-limpezas'); }}
-            className="flex items-center gap-3 px-4 py-3 rounded-xl text-left hover:bg-muted transition-colors"
-          >
-            <History className="w-5 h-5 text-muted-foreground" />
-            <span className="font-medium">Histórico</span>
-          </button>
-          {!isCleaner && (
-            <>
-              <button
-                onClick={() => { setShowMobileMenu(false); navigate('/inventario'); }}
-                className="flex items-center gap-3 px-4 py-3 rounded-xl text-left hover:bg-muted transition-colors"
-              >
-                <ClipboardCheck className="w-5 h-5 text-muted-foreground" />
-                <span className="font-medium">Checklist</span>
-              </button>
-              <button
-                onClick={() => { setShowMobileMenu(false); navigate('/inspecoes'); }}
-                className="flex items-center gap-3 px-4 py-3 rounded-xl text-left hover:bg-muted transition-colors"
-              >
-                <span className="material-symbols-outlined text-muted-foreground">search</span>
-                <span className="font-medium">Inspeções</span>
-              </button>
-            </>
-          )}
-          <Separator className="my-2" />
-          <button
-            onClick={() => { setShowMobileMenu(false); signOut(); }}
-            className="flex items-center gap-3 px-4 py-3 rounded-xl text-left text-destructive hover:bg-destructive/10 transition-colors"
-          >
-            <LogOut className="w-5 h-5" />
-            <span className="font-medium">Sair</span>
-          </button>
-        </nav>
-      </SheetContent>
-    </Sheet>
-  );
+  const MobileMenuSheet = () => {
+    const isSimulatingCleaner = canSwitchView && viewMode === 'cleaner';
+    const effectiveIsCleaner = (isCleaner && !canSwitchView) || isSimulatingCleaner;
+
+    return (
+      <Sheet open={showMobileMenu} onOpenChange={setShowMobileMenu}>
+        <SheetContent side="left" className="w-[280px] p-0">
+          <SheetHeader className="p-4 border-b border-border">
+            <SheetTitle className="text-left">Menu</SheetTitle>
+          </SheetHeader>
+          <nav className="flex flex-col p-4 gap-1">
+            <button
+              onClick={() => { setShowMobileMenu(false); navigate('/'); }}
+              className="flex items-center gap-3 px-4 py-3 rounded-xl text-left hover:bg-muted transition-colors"
+            >
+              <span className="material-symbols-outlined text-muted-foreground">home</span>
+              <span className="font-medium">Início</span>
+            </button>
+            <button
+              onClick={() => { setShowMobileMenu(false); navigate('/historico-limpezas'); }}
+              className="flex items-center gap-3 px-4 py-3 rounded-xl text-left hover:bg-muted transition-colors"
+            >
+              <History className="w-5 h-5 text-muted-foreground" />
+              <span className="font-medium">Histórico</span>
+            </button>
+            {!effectiveIsCleaner && (
+              <>
+                <button
+                  onClick={() => { setShowMobileMenu(false); navigate('/inventario'); }}
+                  className="flex items-center gap-3 px-4 py-3 rounded-xl text-left hover:bg-muted transition-colors"
+                >
+                  <ClipboardCheck className="w-5 h-5 text-muted-foreground" />
+                  <span className="font-medium">Checklist</span>
+                </button>
+                <button
+                  onClick={() => { setShowMobileMenu(false); navigate('/inspecoes'); }}
+                  className="flex items-center gap-3 px-4 py-3 rounded-xl text-left hover:bg-muted transition-colors"
+                >
+                  <span className="material-symbols-outlined text-muted-foreground">search</span>
+                  <span className="font-medium">Inspeções</span>
+                </button>
+              </>
+            )}
+            <Separator className="my-2" />
+            <button
+              onClick={() => { setShowMobileMenu(false); signOut(); }}
+              className="flex items-center gap-3 px-4 py-3 rounded-xl text-left text-destructive hover:bg-destructive/10 transition-colors"
+            >
+              <LogOut className="w-5 h-5" />
+              <span className="font-medium">Sair</span>
+            </button>
+          </nav>
+        </SheetContent>
+      </Sheet>
+    );
+  };
 
   // Mobile version of the profile page
   if (isMobile) {
