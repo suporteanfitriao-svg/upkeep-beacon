@@ -12,10 +12,12 @@ import {
   HelpCircle,
   LogOut,
   Menu,
-  X
+  X,
+  History
 } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { useUserRole } from '@/hooks/useUserRole';
+import { useViewMode } from '@/hooks/useViewMode';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
@@ -27,20 +29,20 @@ interface MenuItem {
   url: string;
   icon: React.ComponentType<{ className?: string }>;
   requiresSuperAdmin?: boolean;
-  requiresOwner?: boolean; // REGRA: Bloqueado para Anfitrião - apenas Owner (admin/superadmin)
-  requiresManager?: boolean; // Permite manager + admin + superadmin
+  requiresOwner?: boolean;
+  requiresManager?: boolean;
+  cleanerVisible?: boolean;
 }
 
 const menuItems: MenuItem[] = [
-  { title: 'Início', url: '/', icon: Home },
-  // REGRA: Propriedades e Equipe são bloqueados para Anfitrião - apenas Owner
+  { title: 'Início', url: '/', icon: Home, cleanerVisible: true },
   { title: 'Propriedades', url: '/propriedades', icon: Building2, requiresOwner: true },
   { title: 'Equipe', url: '/equipe', icon: Users, requiresOwner: true },
-  // REGRA: Inspeção, Inventário e Relatórios são permitidos para Anfitrião
   { title: 'Inspeção', url: '/inspecoes', icon: ClipboardCheck, requiresManager: true },
   { title: 'Inventário', url: '/inventario', icon: Package, requiresManager: true },
   { title: 'Relatórios', url: '/manutencao', icon: Wrench, requiresManager: true },
-  { title: 'Minha Conta', url: '/minha-conta', icon: UserCog },
+  { title: 'Histórico', url: '/historico-limpezas', icon: History, cleanerVisible: true },
+  { title: 'Minha Conta', url: '/minha-conta', icon: UserCog, cleanerVisible: true },
   { title: 'Super Admin', url: '/super-admin', icon: Crown, requiresSuperAdmin: true },
 ];
 
@@ -50,6 +52,7 @@ export function MobileAdminNav() {
   const location = useLocation();
   const { signOut } = useAuth();
   const { isSuperAdmin, isAdmin, hasManagerAccess, isCleaner } = useUserRole();
+  const { viewMode, canSwitchView } = useViewMode();
 
   const handleNavigate = useCallback((url: string) => {
     setOpen(false);
@@ -65,18 +68,23 @@ export function MobileAdminNav() {
     navigate('/auth');
   }, [signOut, navigate]);
 
-  // Filter menu items based on role
+  // Determine effective role considering view mode simulation
+  const isSimulatingCleaner = canSwitchView && viewMode === 'cleaner';
+  const effectiveIsCleaner = (isCleaner && !canSwitchView) || isSimulatingCleaner;
+
+  // Filter menu items based on role (or simulated view mode)
   const visibleItems = menuItems.filter(item => {
+    if (effectiveIsCleaner) {
+      return item.cleanerVisible === true;
+    }
     if (item.requiresSuperAdmin && !isSuperAdmin) return false;
-    // REGRA: Owner-only routes (Proprietário/Equipe) - apenas admin/superadmin, NOT manager
     if (item.requiresOwner && !isAdmin && !isSuperAdmin) return false;
-    // Manager routes - allows manager + admin + superadmin
     if (item.requiresManager && !hasManagerAccess) return false;
     return true;
   });
 
-  // Don't show for cleaners - they use the mobile dashboard
-  if (isCleaner) return null;
+  // Don't show for pure cleaners (no view switching) - they use mobile dashboard bottom nav
+  if (isCleaner && !canSwitchView) return null;
 
   const isActive = (url: string) => {
     if (url === '/') return location.pathname === '/';
