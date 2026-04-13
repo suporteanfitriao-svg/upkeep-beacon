@@ -854,10 +854,10 @@ export function MobileDashboard({ schedules, onScheduleClick, onStartCleaning, o
 
       {/* AGENDA TAB */}
       {activeTab === 'agenda' && (
-        <div className="animate-fade-in">
-          {/* Agenda Header */}
+        <div className="animate-fade-in flex flex-col h-[calc(100dvh-64px)]">
+          {/* Agenda Header - Fixed */}
           <header 
-            className="sticky top-0 z-30 bg-stone-50 dark:bg-[#22252a] px-6 py-4 shadow-sm"
+            className="flex-shrink-0 z-30 bg-stone-50 dark:bg-[#22252a] px-6 py-4 shadow-sm"
             style={{ transform: pullDistance > 0 ? `translateY(${pullDistance * 0.3}px)` : undefined }}
           >
             {/* Title Row */}
@@ -916,18 +916,20 @@ export function MobileDashboard({ schedules, onScheduleClick, onStartCleaning, o
             </div>
           </header>
 
-          {/* Infinite Day Strip for "Hoje" or "Data" views */}
+          {/* Infinite Day Strip - Fixed below header */}
           {viewMode === 'dia' && (
-            <MobileInfiniteDayStrip
-              selectedDate={selectedDate}
-              onDateSelect={handleDateSelect}
-              dayIndicators={dayIndicators}
-            />
+            <div className="flex-shrink-0 z-20 bg-stone-50 dark:bg-[#22252a]">
+              <MobileInfiniteDayStrip
+                selectedDate={selectedDate}
+                onDateSelect={handleDateSelect}
+                dayIndicators={dayIndicators}
+              />
+            </div>
           )}
 
           {viewMode === 'calendario' ? (
             // Calendar View
-            <main className="flex flex-col px-4 pt-2 pb-6">
+            <main className="flex-1 flex flex-col px-4 pt-2 pb-6 overflow-y-auto overscroll-contain" style={{ WebkitOverflowScrolling: 'touch' }}>
 
               {/* Weekday headers */}
               <div className="grid grid-cols-7 mb-3">
@@ -1068,7 +1070,7 @@ export function MobileDashboard({ schedules, onScheduleClick, onStartCleaning, o
             // Day View - Day strip is already rendered above
             <>
               {/* Main Content */}
-              <main className="flex flex-col">
+              <main className="flex-1 flex flex-col overflow-y-auto overscroll-contain" style={{ WebkitOverflowScrolling: 'touch' }}>
                 <div className="px-6 pt-6 pb-3 flex items-baseline justify-between">
                   <h2 className="text-[26px] font-bold leading-tight text-slate-900 dark:text-white tracking-tight">
                     {isSelectedToday ? 'Hoje' : format(selectedDate, "d 'de' MMMM", { locale: ptBR })}
