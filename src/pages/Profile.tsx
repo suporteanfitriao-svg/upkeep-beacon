@@ -86,6 +86,7 @@ export default function Profile() {
   const isMobile = useIsMobile();
   const { user, signOut, updatePassword } = useAuth();
   const { role, isAdmin, isManager, isCleaner, loading: roleLoading } = useUserRole();
+  const { viewMode, canSwitchView } = useViewMode();
   const { fetching: fetchingCep, handleCepChange } = useCepLookup();
   const [teamMember, setTeamMember] = useState<TeamMember | null>(null);
   const [loading, setLoading] = useState(true);
