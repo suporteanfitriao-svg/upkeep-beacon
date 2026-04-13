@@ -95,7 +95,7 @@ export function ScheduleDetailReadOnly({ schedule, onClose }: ScheduleDetailRead
         </header>
 
         {/* Main Content */}
-        <main className="flex flex-col gap-6 p-6 overflow-y-auto" style={{ maxHeight: 'calc(100vh - 80px)' }}>
+        <main className="flex flex-col gap-6 p-6 overflow-y-auto overscroll-contain" style={{ maxHeight: 'calc(100vh - 80px)', WebkitOverflowScrolling: 'touch' }}>
           {/* Summary Info */}
           <section className="rounded-2xl bg-white dark:bg-[#2d3138] shadow-sm p-5 border border-slate-100 dark:border-slate-700">
             <h3 className="text-sm font-bold uppercase tracking-wide text-slate-900 dark:text-white mb-4 flex items-center gap-2">
