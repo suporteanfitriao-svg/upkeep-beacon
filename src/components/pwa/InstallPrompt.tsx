@@ -14,8 +14,13 @@ export function InstallPrompt() {
   const [isInstalled, setIsInstalled] = useState(false);
 
   useEffect(() => {
-    // Check if already installed
-    if (window.matchMedia('(display-mode: standalone)').matches) {
+    // Check if already installed (standalone or iOS standalone)
+    const isStandalone =
+      window.matchMedia('(display-mode: standalone)').matches ||
+      (window.navigator as any).standalone === true ||
+      document.referrer.startsWith('android-app://');
+
+    if (isStandalone) {
       setIsInstalled(true);
       return;
     }
@@ -48,10 +53,28 @@ export function InstallPrompt() {
       setShowPrompt(true);
     };
 
+    // Hide prompt as soon as the app is installed
+    const handleAppInstalled = () => {
+      setIsInstalled(true);
+      setShowPrompt(false);
+      setDeferredPrompt(null);
+      localStorage.setItem('pwa-installed', 'true');
+    };
+
+    // Also react to display-mode changes (user installs while app is open)
+    const standaloneQuery = window.matchMedia('(display-mode: standalone)');
+    const handleDisplayModeChange = (e: MediaQueryListEvent) => {
+      if (e.matches) handleAppInstalled();
+    };
+    standaloneQuery.addEventListener?.('change', handleDisplayModeChange);
+
     window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+    window.addEventListener('appinstalled', handleAppInstalled);
 
     return () => {
       window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+      window.removeEventListener('appinstalled', handleAppInstalled);
+      standaloneQuery.removeEventListener?.('change', handleDisplayModeChange);
     };
   }, []);
 
