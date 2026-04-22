@@ -323,7 +323,10 @@ export default function Properties() {
           address: fullAddress || null,
           default_check_in_time: formData.default_check_in_time,
           default_check_out_time: formData.default_check_out_time,
-          image_url: imageUrl
+          image_url: imageUrl,
+          min_guests: formData.min_guests,
+          default_guests: formData.default_guests,
+          max_guests: formData.max_guests,
         };
 
         const oldCheckIn = editingProperty.default_check_in_time?.slice(0, 5);
@@ -368,7 +371,10 @@ export default function Properties() {
           name: formData.name.trim(),
           address: newFullAddress || null,
           default_check_in_time: formData.default_check_in_time,
-          default_check_out_time: formData.default_check_out_time
+          default_check_out_time: formData.default_check_out_time,
+          min_guests: formData.min_guests,
+          default_guests: formData.default_guests,
+          max_guests: formData.max_guests,
         };
 
         const { data: newProperty, error } = await supabase
