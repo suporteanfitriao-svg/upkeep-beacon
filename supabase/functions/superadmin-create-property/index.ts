@@ -15,6 +15,7 @@ interface PropertyPayload {
   max_guests?: number;
   default_guests?: number;
   airbnb_ical_url?: string;
+  ical_sync_start_date?: string; // YYYY-MM-DD
 }
 
 Deno.serve(async (req) => {
@@ -98,6 +99,19 @@ Deno.serve(async (req) => {
         status: 400,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
+    }
+
+    // If iCal URL provided, also create a property_ical_sources row so sync picks it up
+    const trimmedIcal = payload.airbnb_ical_url?.trim();
+    if (trimmedIcal && created?.id) {
+      const { error: icalErr } = await admin.from('property_ical_sources').insert({
+        property_id: created.id,
+        ical_url: trimmedIcal,
+        sync_start_date: payload.ical_sync_start_date || null,
+      });
+      if (icalErr) {
+        console.error('Failed to create ical source:', icalErr.message);
+      }
     }
 
     return new Response(JSON.stringify({ success: true, property: created }), {

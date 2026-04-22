@@ -28,6 +28,7 @@ interface IcalSource {
   property_id: string;
   ical_url: string;
   last_sync_at: string | null;
+  sync_start_date: string | null;
 }
 
 export function SyncStep({ onNext, onBack }: SyncStepProps) {
@@ -35,6 +36,7 @@ export function SyncStep({ onNext, onBack }: SyncStepProps) {
   const [icalSources, setIcalSources] = useState<IcalSource[]>([]);
   const [selectedPropertyId, setSelectedPropertyId] = useState<string>('');
   const [icalUrl, setIcalUrl] = useState('');
+  const [syncStartDate, setSyncStartDate] = useState('');
   const [isSyncing, setIsSyncing] = useState(false);
   const [loading, setLoading] = useState(true);
 
@@ -46,7 +48,9 @@ export function SyncStep({ onNext, onBack }: SyncStepProps) {
     try {
       const [propertiesRes, sourcesRes] = await Promise.all([
         supabase.from('properties').select('id, name').order('name'),
-        supabase.from('property_ical_sources').select('property_id, ical_url, last_sync_at'),
+        supabase
+          .from('property_ical_sources')
+          .select('property_id, ical_url, last_sync_at, sync_start_date'),
       ]);
 
       if (propertiesRes.error) throw propertiesRes.error;
@@ -91,6 +95,7 @@ export function SyncStep({ onNext, onBack }: SyncStepProps) {
           .from('property_ical_sources')
           .update({ 
             ical_url: icalUrl.trim(),
+            sync_start_date: syncStartDate || null,
             updated_at: new Date().toISOString()
           })
           .eq('property_id', selectedPropertyId);
@@ -102,6 +107,7 @@ export function SyncStep({ onNext, onBack }: SyncStepProps) {
           .insert({
             property_id: selectedPropertyId,
             ical_url: icalUrl.trim(),
+            sync_start_date: syncStartDate || null,
           });
 
         if (error) throw error;
@@ -110,6 +116,7 @@ export function SyncStep({ onNext, onBack }: SyncStepProps) {
       // Refresh data
       await fetchData();
       setIcalUrl('');
+      setSyncStartDate('');
       toast.success('Calendário sincronizado com sucesso!');
     } catch (error) {
       console.error('Error syncing:', error);
@@ -204,7 +211,20 @@ export function SyncStep({ onNext, onBack }: SyncStepProps) {
                   onChange={(e) => setIcalUrl(e.target.value)}
                 />
               </div>
-              
+
+              <div className="space-y-2">
+                <Label htmlFor="sync-start-date">Sincronizar reservas a partir de — opcional</Label>
+                <Input
+                  id="sync-start-date"
+                  type="date"
+                  value={syncStartDate}
+                  onChange={(e) => setSyncStartDate(e.target.value)}
+                />
+                <p className="text-xs text-muted-foreground">
+                  Reservas com check-in anterior a essa data serão ignoradas, evitando importar histórico antigo.
+                </p>
+              </div>
+
               <Button 
                 onClick={handleSync} 
                 disabled={isSyncing || !icalUrl.trim() || !selectedPropertyId}

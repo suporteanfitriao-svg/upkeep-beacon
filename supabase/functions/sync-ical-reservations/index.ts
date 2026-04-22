@@ -329,6 +329,7 @@ serve(async (req) => {
         property_id,
         ical_url,
         custom_name,
+        sync_start_date,
         properties (
           id,
           name,
@@ -409,10 +410,21 @@ serve(async (req) => {
           // Track UIDs from this sync to detect removed reservations
           const currentUIDs: string[] = [];
 
+          // Compute sync cutoff date (ignore reservations that start before this)
+          const syncStartDate: Date | null = source.sync_start_date
+            ? new Date(`${source.sync_start_date}T00:00:00Z`)
+            : null;
+
           for (const event of events) {
             const thirtyDaysAgo = new Date();
             thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
             if (event.dtend < thirtyDaysAgo) {
+              continue;
+            }
+
+            // Skip reservations starting before the owner-defined sync start date
+            if (syncStartDate && event.dtstart < syncStartDate) {
+              console.log(`[SYNC_START_SKIP] "${event.summary}" starts ${event.dtstart.toISOString()} before cutoff ${syncStartDate.toISOString()}`);
               continue;
             }
 

@@ -144,6 +144,7 @@ export function OwnersSection() {
     default_check_out_time: '11:00',
     max_guests: 10,
     airbnb_ical_url: '',
+    ical_sync_start_date: '',
   });
 
   const openPropertyWizard = async (owner: { user_id: string; legal_name: string }) => {
@@ -156,6 +157,7 @@ export function OwnersSection() {
       default_check_out_time: '11:00',
       max_guests: 10,
       airbnb_ical_url: '',
+      ical_sync_start_date: '',
     });
     const { data } = await supabase
       .from('properties')
@@ -188,6 +190,7 @@ export function OwnersSection() {
             : undefined,
           max_guests: Number(propForm.max_guests) || 10,
           airbnb_ical_url: propForm.airbnb_ical_url || undefined,
+          ical_sync_start_date: propForm.ical_sync_start_date || undefined,
         },
       });
       const fnError = (data as { error?: string } | null)?.error;
@@ -202,6 +205,7 @@ export function OwnersSection() {
         default_check_out_time: '11:00',
         max_guests: 10,
         airbnb_ical_url: '',
+        ical_sync_start_date: '',
       });
       // Refresh list
       const { data: refreshed } = await supabase
@@ -767,6 +771,20 @@ export function OwnersSection() {
                     onChange={(e) => setPropForm({ ...propForm, airbnb_ical_url: e.target.value })}
                     placeholder="https://..."
                   />
+                </div>
+                <div className="space-y-1 col-span-2">
+                  <Label>Sincronizar reservas a partir de — opcional</Label>
+                  <Input
+                    type="date"
+                    value={propForm.ical_sync_start_date}
+                    onChange={(e) =>
+                      setPropForm({ ...propForm, ical_sync_start_date: e.target.value })
+                    }
+                    disabled={!propForm.airbnb_ical_url}
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    Reservas com check-in anterior a essa data serão ignoradas, evitando importar histórico antigo.
+                  </p>
                 </div>
               </div>
             </section>
