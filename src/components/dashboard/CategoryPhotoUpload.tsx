@@ -67,13 +67,8 @@ export function CategoryPhotoUpload({
 
       if (error) throw error;
 
-      // Get public URL
-      const { data: urlData } = supabase.storage
-        .from('checklist-photos')
-        .getPublicUrl(data.path);
-
       const newPhoto: CategoryPhoto = {
-        url: urlData.publicUrl,
+        url: data.path, // Storage path (bucket is private); signed URLs are generated on read
         uploadedAt: new Date().toISOString(),
       };
 
@@ -93,10 +88,11 @@ export function CategoryPhotoUpload({
   const handleDeletePhoto = async (photoUrl: string) => {
     setDeletingUrl(photoUrl);
     try {
-      // Extract path from URL
-      const urlParts = photoUrl.split('/checklist-photos/');
-      if (urlParts.length > 1) {
-        const path = urlParts[1];
+      // Handle both legacy public URLs and direct storage paths
+      const marker = '/checklist-photos/';
+      const idx = photoUrl.indexOf(marker);
+      const path = idx >= 0 ? photoUrl.substring(idx + marker.length) : photoUrl;
+      if (path) {
         await supabase.storage.from('checklist-photos').remove([path]);
       }
       
@@ -138,7 +134,6 @@ export function CategoryPhotoUpload({
                 <SignedImage
                   src={photo.url}
                   bucket="checklist-photos"
-                  preferRaw
                   alt={`Foto ${idx + 1} - ${category}`}
                   className="w-full h-full object-cover"
                 />
