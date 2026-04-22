@@ -460,8 +460,9 @@ export function OwnersSection() {
                   <Label>Número *</Label>
                   <Input
                     value={form.document_number}
-                    onChange={(e) => setForm({ ...form, document_number: e.target.value })}
+                    onChange={(e) => setForm({ ...form, document_number: formatDocument(e.target.value, form.document_type) })}
                     placeholder={form.document_type === 'cpf' ? '000.000.000-00' : '00.000.000/0000-00'}
+                    inputMode="numeric"
                   />
                 </div>
                 <div className="space-y-1 col-span-2">
