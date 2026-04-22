@@ -211,7 +211,20 @@ export function SyncStep({ onNext, onBack }: SyncStepProps) {
                   onChange={(e) => setIcalUrl(e.target.value)}
                 />
               </div>
-              
+
+              <div className="space-y-2">
+                <Label htmlFor="sync-start-date">Sincronizar reservas a partir de — opcional</Label>
+                <Input
+                  id="sync-start-date"
+                  type="date"
+                  value={syncStartDate}
+                  onChange={(e) => setSyncStartDate(e.target.value)}
+                />
+                <p className="text-xs text-muted-foreground">
+                  Reservas com check-in anterior a essa data serão ignoradas, evitando importar histórico antigo.
+                </p>
+              </div>
+
               <Button 
                 onClick={handleSync} 
                 disabled={isSyncing || !icalUrl.trim() || !selectedPropertyId}
