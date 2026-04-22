@@ -791,6 +791,60 @@ export type Database = {
         }
         Relationships: []
       }
+      owner_profiles: {
+        Row: {
+          billing_address: string | null
+          billing_cep: string | null
+          billing_city: string | null
+          billing_email: string | null
+          billing_phone: string | null
+          billing_state: string | null
+          created_at: string
+          document_number: string
+          document_type: string
+          id: string
+          legal_name: string
+          notes: string | null
+          trade_name: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          billing_address?: string | null
+          billing_cep?: string | null
+          billing_city?: string | null
+          billing_email?: string | null
+          billing_phone?: string | null
+          billing_state?: string | null
+          created_at?: string
+          document_number: string
+          document_type?: string
+          id?: string
+          legal_name: string
+          notes?: string | null
+          trade_name?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          billing_address?: string | null
+          billing_cep?: string | null
+          billing_city?: string | null
+          billing_email?: string | null
+          billing_phone?: string | null
+          billing_state?: string | null
+          created_at?: string
+          document_number?: string
+          document_type?: string
+          id?: string
+          legal_name?: string
+          notes?: string | null
+          trade_name?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       password_audit_logs: {
         Row: {
           action: string
@@ -962,6 +1016,7 @@ export type Database = {
           max_guests: number | null
           min_guests: number
           name: string
+          owner_user_id: string | null
           password_mode: Database["public"]["Enums"]["property_password_mode"]
           property_code: string | null
           require_checklist: boolean
@@ -989,6 +1044,7 @@ export type Database = {
           max_guests?: number | null
           min_guests?: number
           name: string
+          owner_user_id?: string | null
           password_mode?: Database["public"]["Enums"]["property_password_mode"]
           property_code?: string | null
           require_checklist?: boolean
@@ -1016,6 +1072,7 @@ export type Database = {
           max_guests?: number | null
           min_guests?: number
           name?: string
+          owner_user_id?: string | null
           password_mode?: Database["public"]["Enums"]["property_password_mode"]
           property_code?: string | null
           require_checklist?: boolean
@@ -1702,6 +1759,7 @@ export type Database = {
           id: string
           is_active: boolean
           name: string
+          owner_user_id: string | null
           role: Database["public"]["Enums"]["app_role"]
           selected_roles: string[] | null
           updated_at: string
@@ -1724,6 +1782,7 @@ export type Database = {
           id?: string
           is_active?: boolean
           name: string
+          owner_user_id?: string | null
           role?: Database["public"]["Enums"]["app_role"]
           selected_roles?: string[] | null
           updated_at?: string
@@ -1746,6 +1805,7 @@ export type Database = {
           id?: string
           is_active?: boolean
           name?: string
+          owner_user_id?: string | null
           role?: Database["public"]["Enums"]["app_role"]
           selected_roles?: string[] | null
           updated_at?: string
@@ -2165,6 +2225,7 @@ export type Database = {
           subscription_id: string
         }[]
       }
+      get_my_owner_user_id: { Args: never; Returns: string }
       get_property_global_password: {
         Args: { p_property_id: string }
         Returns: string
@@ -2194,6 +2255,10 @@ export type Database = {
       is_admin_or_superadmin: { Args: { _user_id?: string }; Returns: boolean }
       is_cleaner_assigned_to_schedule: {
         Args: { p_schedule_id: string }
+        Returns: boolean
+      }
+      is_owner_of_property: {
+        Args: { p_property_id: string }
         Returns: boolean
       }
       is_schedule_completed: {
