@@ -470,12 +470,8 @@ export default function Manutencao() {
 
       if (uploadError) throw uploadError;
 
-      const { data: urlData } = supabase.storage
-        .from('issue-photos')
-        .getPublicUrl(fileName);
-
       const newPhoto: IssuePhoto = {
-        url: urlData.publicUrl,
+        url: fileName, // Storage path (bucket is private)
         timestamp: new Date().toISOString(),
         uploaded_by: profile?.name || 'Usuário',
       };

@@ -39,11 +39,8 @@ export function useCreateMaintenanceIssue() {
       throw new Error(`Erro ao fazer upload: ${uploadError.message}`);
     }
 
-    const { data: publicUrl } = supabase.storage
-      .from('maintenance-photos')
-      .getPublicUrl(filePath);
-
-    return publicUrl.publicUrl;
+    // Return storage path (bucket is private). Signed URLs are generated on read.
+    return filePath;
   }, []);
 
   const createIssue = useCallback(async (params: CreateMaintenanceIssueParams) => {
