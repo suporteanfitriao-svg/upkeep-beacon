@@ -5,6 +5,7 @@ import { Resend } from "https://esm.sh/resend@2.0.0";
 const resend = new Resend(Deno.env.get("RESEND_API_KEY"));
 const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
 const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+const supabaseAnonKey = Deno.env.get("SUPABASE_ANON_KEY")!;
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -25,32 +26,41 @@ const handler = async (req: Request): Promise<Response> => {
   }
 
   try {
-    const supabase = createClient(supabaseUrl, supabaseServiceKey);
-    
-    // Verify the user is admin or manager
+    // Verify caller authentication
     const authHeader = req.headers.get("Authorization");
-    if (!authHeader) {
+    if (!authHeader?.startsWith("Bearer ")) {
       return new Response(
         JSON.stringify({ error: "Não autorizado" }),
         { status: 401, headers: { "Content-Type": "application/json", ...corsHeaders } }
       );
     }
 
+    // Use anon client with caller's token to validate identity
+    const supabaseAuth = createClient(supabaseUrl, supabaseAnonKey, {
+      global: { headers: { Authorization: authHeader } },
+    });
     const token = authHeader.replace("Bearer ", "");
-    const { data: { user }, error: authError } = await supabase.auth.getUser(token);
-    
-    if (authError || !user) {
+    const { data: claimsData, error: claimsError } = await supabaseAuth.auth.getClaims(token);
+
+    if (claimsError || !claimsData?.claims) {
+      console.error("Auth error:", claimsError);
       return new Response(
-        JSON.stringify({ error: "Usuário não autenticado" }),
+        JSON.stringify({ error: "Token inválido ou expirado" }),
         { status: 401, headers: { "Content-Type": "application/json", ...corsHeaders } }
       );
     }
+
+    const callerUserId = claimsData.claims.sub;
+    const callerEmail = claimsData.claims.email;
+
+    // Service role client for admin operations
+    const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
     // Check if user has admin or manager role
     const { data: roleData, error: roleError } = await supabase
       .from("user_roles")
       .select("role")
-      .eq("user_id", user.id)
+      .eq("user_id", callerUserId)
       .single();
 
     if (roleError || !roleData || !["admin", "manager"].includes(roleData.role)) {
@@ -117,9 +127,9 @@ const handler = async (req: Request): Promise<Response> => {
     // Log audit event
     await supabase.from("team_member_audit_logs").insert({
       team_member_id: teamMemberId,
-      user_id: user.id,
+      user_id: callerUserId,
       action: "enviou_reset_senha",
-      details: { email, sent_by: user.email },
+      details: { email, sent_by: callerEmail },
     });
 
     return new Response(
