@@ -190,6 +190,7 @@ export function OwnersSection() {
             : undefined,
           max_guests: Number(propForm.max_guests) || 10,
           airbnb_ical_url: propForm.airbnb_ical_url || undefined,
+          ical_sync_start_date: propForm.ical_sync_start_date || undefined,
         },
       });
       const fnError = (data as { error?: string } | null)?.error;
