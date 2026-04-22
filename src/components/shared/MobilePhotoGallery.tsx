@@ -19,6 +19,8 @@ interface MobilePhotoGalleryProps {
   className?: string;
   /** When provided, images are loaded via signed URLs from this storage bucket. */
   bucket?: string;
+  /** When true, uses raw URLs instead of signed URLs (for legacy public buckets). */
+  preferRaw?: boolean;
 }
 
 export function MobilePhotoGallery({ 
@@ -27,6 +29,7 @@ export function MobilePhotoGallery({
   editable = false,
   className = '',
   bucket,
+  preferRaw = false,
 }: MobilePhotoGalleryProps) {
   const [selectedIndex, setSelectedIndex] = useState<number | null>(null);
 
@@ -99,7 +102,7 @@ export function MobilePhotoGallery({
                 <SignedImage
                   src={photo.url}
                   bucket={bucket}
-                  preferRaw
+                  preferRaw={preferRaw}
                   alt={`Foto ${index + 1}`}
                   className="w-full h-full object-cover transition-transform group-hover:scale-105"
                 />
@@ -215,7 +218,7 @@ export function MobilePhotoGallery({
               <SignedImage
                 src={selectedPhoto.url}
                 bucket={bucket}
-                preferRaw
+                preferRaw={preferRaw}
                 alt={`Foto ${selectedIndex + 1}`}
                 className="max-w-full max-h-full object-contain"
               />
