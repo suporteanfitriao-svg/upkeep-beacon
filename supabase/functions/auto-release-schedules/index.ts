@@ -31,7 +31,23 @@ Deno.serve(async (req) => {
 
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
-    
+    const cronSecret = Deno.env.get('CRON_SECRET');
+
+    // Auth: accept either the service role key (internal) or a configured CRON_SECRET (cron job)
+    const authHeader = req.headers.get('Authorization') ?? '';
+    const bearer = authHeader.startsWith('Bearer ') ? authHeader.slice(7) : '';
+    const isAuthorized =
+      (cronSecret && bearer === cronSecret) ||
+      (supabaseServiceKey && bearer === supabaseServiceKey);
+
+    if (!isAuthorized) {
+      console.error('[auto-release-schedules] Unauthorized invocation');
+      return new Response(
+        JSON.stringify({ error: 'Unauthorized' }),
+        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
     const now = getSaoPauloNow();
