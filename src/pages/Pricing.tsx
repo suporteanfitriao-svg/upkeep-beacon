@@ -3,8 +3,7 @@
  * REGRA: Apenas Proprietário vê preços e faz upgrade
  */
 
-import { Check, Building2, Calendar, ClipboardCheck, Wrench, Bell, Package } from 'lucide-react';
-import { FaWhatsapp } from 'react-icons/fa';
+import { Check, Building2, Calendar, ClipboardCheck, Wrench, Bell, Package, MessageCircle } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -197,7 +196,7 @@ export default function Pricing() {
                       {isCurrentPlan ? (
                         'Plano Atual'
                       ) : (
-                        <><FaWhatsapp className="mr-2 h-4 w-4" /> Começar Agora</>
+                        <><MessageCircle className="mr-2 h-4 w-4" /> Falar no WhatsApp</>
                       )}
                     </Button>
                   </CardContent>
