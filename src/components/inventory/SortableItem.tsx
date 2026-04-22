@@ -75,7 +75,6 @@ export const SortableItem = ({
             >
               <SignedImage
                 bucket="inventory-photos"
-                preferRaw
                 src={photoUrl}
                 alt={name}
                 className="h-10 w-10 rounded object-cover border group-hover:opacity-80 transition-opacity"
@@ -183,7 +182,6 @@ export const SortableItemMobile = ({
         >
           <SignedImage
             bucket="inventory-photos"
-            preferRaw
             src={photoUrl}
             alt={name}
             className="h-14 w-14 rounded-lg object-cover border-2 border-muted"

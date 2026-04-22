@@ -1428,7 +1428,6 @@ const Inventory = () => {
                       <div key={`existing-${idx}`} className="relative">
                         <SignedImage
                           bucket="inventory-photos"
-                          preferRaw
                           src={photo.url} 
                           alt={`Foto ${idx + 1}`} 
                           className="h-24 w-24 rounded-lg object-cover border"
