@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent } from '@/components/ui/dialog';
 import { format, parseISO, isValid } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
+import { SignedImage } from '@/components/shared/SignedImage';
 
 export interface PhotoWithTimestamp {
   url: string;
@@ -16,13 +17,16 @@ interface PhotoGalleryProps {
   title?: string;
   emptyMessage?: string;
   className?: string;
+  /** When provided, images are loaded via signed URLs from this storage bucket. */
+  bucket?: string;
 }
 
 export function PhotoGallery({ 
   photos, 
   title = 'Fotos',
   emptyMessage = 'Nenhuma foto disponível',
-  className = '' 
+  className = '',
+  bucket,
 }: PhotoGalleryProps) {
   const [selectedIndex, setSelectedIndex] = useState<number | null>(null);
   
