@@ -64,7 +64,7 @@ const roleColors: Record<string, string> = {
 };
 
 export default function Team() {
-  const { isAdmin, isSuperAdmin, hasAdminAccess, role, loading: roleLoading } = useUserRole();
+  const { isAdmin, isManager, isSuperAdmin, hasAdminAccess, hasManagerAccess, role, loading: roleLoading } = useUserRole();
   const { fetching: fetchingCep, handleCepChange } = useCepLookup();
   const [members, setMembers] = useState<TeamMember[]>([]);
   const [properties, setProperties] = useState<Property[]>([]);
@@ -74,6 +74,12 @@ export default function Team() {
   const [submitting, setSubmitting] = useState(false);
   const [resetDialogOpen, setResetDialogOpen] = useState(false);
   const [sendingReset, setSendingReset] = useState(false);
+
+  // Set new password (manual) state
+  const [setPwdDialogOpen, setSetPwdDialogOpen] = useState(false);
+  const [newPwdValue, setNewPwdValue] = useState('');
+  const [newPwdConfirm, setNewPwdConfirm] = useState('');
+  const [savingPwd, setSavingPwd] = useState(false);
   const [formData, setFormData] = useState({
     name: '',
     email: '',
