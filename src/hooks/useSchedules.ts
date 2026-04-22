@@ -47,7 +47,7 @@ interface ScheduleRow {
   is_active: boolean | null;
   checklist_loaded_at: string | null;
   admin_revert_reason: string | null;
-  access_password: string | null;
+  access_password?: string | null;
   category_photos: Json | null;
   properties?: {
     image_url: string | null;
@@ -331,7 +331,7 @@ export function useSchedules() {
 
       const { data, error: fetchError } = await supabase
         .from('schedules')
-        .select('*, properties(image_url, latitude, longitude, min_guests, default_guests, max_guests), reservations(check_in, check_out, guest_name, listing_name, number_of_guests, description)')
+        .select('id, property_id, property_name, property_address, guest_name, listing_name, number_of_guests, check_in_time, check_out_time, status, maintenance_status, priority, cleaner_name, cleaner_avatar, estimated_duration, checklists, checklist_state, maintenance_issues, notes, cleaner_observations, start_at, end_at, responsible_team_member_id, important_info, ack_by_team_members, history, is_active, checklist_loaded_at, admin_revert_reason, category_photos, properties(image_url, latitude, longitude, min_guests, default_guests, max_guests), reservations(check_in, check_out, guest_name, listing_name, number_of_guests, description)')
         .eq('is_active', true)
         .order('check_out_time', { ascending: true });
 
