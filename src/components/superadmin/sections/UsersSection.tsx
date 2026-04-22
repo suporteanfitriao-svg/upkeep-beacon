@@ -375,6 +375,39 @@ export function UsersSection() {
     }
   };
 
+  const handleSetPassword = async () => {
+    if (!memberToSetPwd) return;
+    if (newPasswordValue.length < 8) {
+      toast.error('Senha deve ter no mínimo 8 caracteres');
+      return;
+    }
+    if (newPasswordValue !== newPasswordConfirm) {
+      toast.error('As senhas não coincidem');
+      return;
+    }
+    setSavingPassword(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('set-team-member-password', {
+        body: {
+          teamMemberId: memberToSetPwd.id,
+          newPassword: newPasswordValue,
+        },
+      });
+      if (error) throw error;
+      if (data && data.error) throw new Error(data.error);
+      toast.success(`Senha de ${memberToSetPwd.name} atualizada com sucesso!`);
+      setSetPasswordDialogOpen(false);
+      setMemberToSetPwd(null);
+      setNewPasswordValue('');
+      setNewPasswordConfirm('');
+    } catch (err: any) {
+      console.error('Error setting password:', err);
+      toast.error(err?.message || 'Erro ao atualizar senha');
+    } finally {
+      setSavingPassword(false);
+    }
+  };
+
   const filteredMembers = members.filter(m => {
     switch (activeFilter) {
       case 'admin':
