@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent } from '@/components/ui/dialog';
 import { format, parseISO, isValid } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
+import { SignedImage } from '@/components/shared/SignedImage';
 
 export interface PhotoWithTimestamp {
   url: string;
@@ -16,13 +17,16 @@ interface PhotoGalleryProps {
   title?: string;
   emptyMessage?: string;
   className?: string;
+  /** When provided, images are loaded via signed URLs from this storage bucket. */
+  bucket?: string;
 }
 
 export function PhotoGallery({ 
   photos, 
   title = 'Fotos',
   emptyMessage = 'Nenhuma foto disponível',
-  className = '' 
+  className = '',
+  bucket,
 }: PhotoGalleryProps) {
   const [selectedIndex, setSelectedIndex] = useState<number | null>(null);
   
@@ -98,11 +102,21 @@ export function PhotoGallery({
             className="relative aspect-square group cursor-pointer overflow-hidden rounded-lg border bg-muted"
             onClick={() => setSelectedIndex(index)}
           >
-            <img 
-              src={photo.url} 
-              alt={`Foto ${index + 1}`}
-              className="w-full h-full object-cover transition-transform group-hover:scale-105"
-            />
+            {bucket ? (
+              <SignedImage
+                src={photo.url}
+                bucket={bucket}
+                preferRaw
+                alt={`Foto ${index + 1}`}
+                className="w-full h-full object-cover transition-transform group-hover:scale-105"
+              />
+            ) : (
+              <img 
+                src={photo.url} 
+                alt={`Foto ${index + 1}`}
+                className="w-full h-full object-cover transition-transform group-hover:scale-105"
+              />
+            )}
             <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors flex items-center justify-center">
               <ZoomIn className="h-6 w-6 text-white opacity-0 group-hover:opacity-100 transition-opacity" />
             </div>
@@ -159,11 +173,21 @@ export function PhotoGallery({
 
               {/* Image */}
               <div className="flex items-center justify-center min-h-[400px] max-h-[70vh]">
-                <img 
-                  src={selectedPhoto.url} 
-                  alt={`Foto ${(selectedIndex ?? 0) + 1}`}
-                  className="max-w-full max-h-[70vh] object-contain"
-                />
+                {bucket ? (
+                  <SignedImage
+                    src={selectedPhoto.url}
+                    bucket={bucket}
+                    preferRaw
+                    alt={`Foto ${(selectedIndex ?? 0) + 1}`}
+                    className="max-w-full max-h-[70vh] object-contain"
+                  />
+                ) : (
+                  <img 
+                    src={selectedPhoto.url} 
+                    alt={`Foto ${(selectedIndex ?? 0) + 1}`}
+                    className="max-w-full max-h-[70vh] object-contain"
+                  />
+                )}
               </div>
 
               {/* Footer with info and download */}

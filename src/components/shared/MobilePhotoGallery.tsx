@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button';
 import { format, parseISO, isValid } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
+import { SignedImage } from '@/components/shared/SignedImage';
 
 export interface PhotoWithTimestamp {
   url: string;
@@ -16,13 +17,16 @@ interface MobilePhotoGalleryProps {
   onRemove?: (index: number) => void;
   editable?: boolean;
   className?: string;
+  /** When provided, images are loaded via signed URLs from this storage bucket. */
+  bucket?: string;
 }
 
 export function MobilePhotoGallery({ 
   photos, 
   onRemove,
   editable = false,
-  className = '' 
+  className = '',
+  bucket,
 }: MobilePhotoGalleryProps) {
   const [selectedIndex, setSelectedIndex] = useState<number | null>(null);
 
@@ -91,11 +95,21 @@ export function MobilePhotoGallery({
               onClick={() => setSelectedIndex(index)}
               className="w-20 h-20 rounded-lg overflow-hidden focus:outline-none focus:ring-2 focus:ring-primary"
             >
-              <img 
-                src={photo.url} 
-                alt={`Foto ${index + 1}`}
-                className="w-full h-full object-cover transition-transform group-hover:scale-105"
-              />
+              {bucket ? (
+                <SignedImage
+                  src={photo.url}
+                  bucket={bucket}
+                  preferRaw
+                  alt={`Foto ${index + 1}`}
+                  className="w-full h-full object-cover transition-transform group-hover:scale-105"
+                />
+              ) : (
+                <img 
+                  src={photo.url} 
+                  alt={`Foto ${index + 1}`}
+                  className="w-full h-full object-cover transition-transform group-hover:scale-105"
+                />
+              )}
               {/* Zoom overlay on hover */}
               <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors flex items-center justify-center rounded-lg">
                 <ZoomIn className="h-5 w-5 text-white opacity-0 group-hover:opacity-100 transition-opacity" />
@@ -197,11 +211,21 @@ export function MobilePhotoGallery({
             )}
 
             {/* Image */}
-            <img 
-              src={selectedPhoto.url} 
-              alt={`Foto ${selectedIndex + 1}`}
-              className="max-w-full max-h-full object-contain"
-            />
+            {bucket ? (
+              <SignedImage
+                src={selectedPhoto.url}
+                bucket={bucket}
+                preferRaw
+                alt={`Foto ${selectedIndex + 1}`}
+                className="max-w-full max-h-full object-contain"
+              />
+            ) : (
+              <img 
+                src={selectedPhoto.url} 
+                alt={`Foto ${selectedIndex + 1}`}
+                className="max-w-full max-h-full object-contain"
+              />
+            )}
 
             {/* Next button */}
             {selectedIndex < photos.length - 1 && (

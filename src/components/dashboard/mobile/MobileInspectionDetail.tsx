@@ -630,6 +630,7 @@ export function MobileInspectionDetail({
                     photos={photos}
                     onRemove={handleRemovePhoto}
                     editable={true}
+                    bucket="inspection-photos"
                   />
 
                   {/* Upload Button */}
