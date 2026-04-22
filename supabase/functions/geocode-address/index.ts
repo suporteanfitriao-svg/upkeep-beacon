@@ -131,9 +131,90 @@ serve(async (req) => {
   try {
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+    const supabaseAnonKey = Deno.env.get('SUPABASE_ANON_KEY')!;
+
+    // ---- AuthN: require a logged-in user ----
+    const authHeader = req.headers.get('Authorization');
+    if (!authHeader) {
+      return new Response(
+        JSON.stringify({ error: 'Unauthorized' }),
+        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+    const supabaseAuth = createClient(supabaseUrl, supabaseAnonKey, {
+      global: { headers: { Authorization: authHeader } },
+    });
+    const { data: userRes, error: userErr } = await supabaseAuth.auth.getUser();
+    if (userErr || !userRes?.user) {
+      return new Response(
+        JSON.stringify({ error: 'Unauthorized' }),
+        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-    const { action, propertyId, address } = await req.json();
+    // ---- AuthZ: only admin/manager/superadmin ----
+    const { data: roles } = await supabase
+      .from('user_roles')
+      .select('role')
+      .eq('user_id', userRes.user.id);
+    const roleSet = new Set((roles ?? []).map((r: { role: string }) => r.role));
+    const isAdmin = roleSet.has('admin') || roleSet.has('superadmin');
+    const isManager = roleSet.has('manager');
+    if (!isAdmin && !isManager) {
+      return new Response(
+        JSON.stringify({ error: 'Forbidden' }),
+        { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // ---- Input validation ----
+    let body: { action?: unknown; propertyId?: unknown; address?: unknown };
+    try {
+      body = await req.json();
+    } catch {
+      return new Response(
+        JSON.stringify({ error: 'Invalid JSON body' }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+    const action = body.action;
+    const propertyId = body.propertyId;
+    const address = body.address;
+
+    const validActions = ['geocode_single', 'geocode_all_missing', 'on_property_update'];
+    if (typeof action !== 'string' || !validActions.includes(action)) {
+      return new Response(
+        JSON.stringify({ error: 'Invalid action' }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+    if (propertyId !== undefined && propertyId !== null) {
+      if (typeof propertyId !== 'string' || !uuidRegex.test(propertyId)) {
+        return new Response(
+          JSON.stringify({ error: 'Invalid propertyId' }),
+          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+    }
+    if (address !== undefined && address !== null) {
+      if (typeof address !== 'string' || address.length > 500) {
+        return new Response(
+          JSON.stringify({ error: 'Invalid address (max 500 chars)' }),
+          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+    }
+
+    // Mass geocode is admin-only
+    if (action === 'geocode_all_missing' && !isAdmin) {
+      return new Response(
+        JSON.stringify({ error: 'Only admins can geocode all properties' }),
+        { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
 
     console.log(`[geocode] Action: ${action}, PropertyId: ${propertyId}, Address: ${address}`);
 
