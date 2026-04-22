@@ -22,6 +22,7 @@ import { InventoryItemHistory } from '@/components/inventory/InventoryItemHistor
 import { InventoryTemplateEditor } from '@/components/inventory/InventoryTemplateEditor';
 import { SortableCategory } from '@/components/inventory/SortableCategory';
 import { SortableItem, SortableItemMobile } from '@/components/inventory/SortableItem';
+import { SignedImage } from '@/components/shared/SignedImage';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { useInventoryPhotoUpload } from '@/hooks/useInventoryPhotoUpload';
 import { useInventoryItemHistory } from '@/hooks/useInventoryItemHistory';
