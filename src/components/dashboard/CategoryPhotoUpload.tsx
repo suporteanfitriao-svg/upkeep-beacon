@@ -88,10 +88,11 @@ export function CategoryPhotoUpload({
   const handleDeletePhoto = async (photoUrl: string) => {
     setDeletingUrl(photoUrl);
     try {
-      // Extract path from URL
-      const urlParts = photoUrl.split('/checklist-photos/');
-      if (urlParts.length > 1) {
-        const path = urlParts[1];
+      // Handle both legacy public URLs and direct storage paths
+      const marker = '/checklist-photos/';
+      const idx = photoUrl.indexOf(marker);
+      const path = idx >= 0 ? photoUrl.substring(idx + marker.length) : photoUrl;
+      if (path) {
         await supabase.storage.from('checklist-photos').remove([path]);
       }
       
