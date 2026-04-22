@@ -785,25 +785,50 @@ export default function Team() {
                     {editingMember && canManage && (
                       <>
                         <Separator />
-                        <div className="flex items-center justify-between p-3 bg-muted/30 rounded-lg">
-                          <div className="space-y-0.5">
-                            <Label className="flex items-center gap-2">
-                              <Key className="h-4 w-4" />
-                              Redefinição de Senha
-                            </Label>
-                            <p className="text-sm text-muted-foreground">
-                              Enviar link para redefinir senha por email
-                            </p>
+                        <div className="space-y-2">
+                          <div className="flex items-center justify-between p-3 bg-muted/30 rounded-lg">
+                            <div className="space-y-0.5">
+                              <Label className="flex items-center gap-2">
+                                <Key className="h-4 w-4" />
+                                Definir nova senha
+                              </Label>
+                              <p className="text-sm text-muted-foreground">
+                                Definir manualmente uma nova senha para este usuário
+                              </p>
+                            </div>
+                            <Button
+                              type="button"
+                              variant="default"
+                              size="sm"
+                              onClick={() => {
+                                setNewPwdValue('');
+                                setNewPwdConfirm('');
+                                setSetPwdDialogOpen(true);
+                              }}
+                            >
+                              <Key className="h-4 w-4 mr-2" />
+                              Definir senha
+                            </Button>
                           </div>
-                          <Button
-                            type="button"
-                            variant="outline"
-                            size="sm"
-                            onClick={() => setResetDialogOpen(true)}
-                          >
-                            <Key className="h-4 w-4 mr-2" />
-                            Enviar Nova Senha
-                          </Button>
+                          <div className="flex items-center justify-between p-3 bg-muted/30 rounded-lg">
+                            <div className="space-y-0.5">
+                              <Label className="flex items-center gap-2 text-muted-foreground">
+                                <Mail className="h-4 w-4" />
+                                Enviar redefinição por e-mail
+                              </Label>
+                              <p className="text-xs text-muted-foreground">
+                                O usuário define a nova senha pelo link recebido
+                              </p>
+                            </div>
+                            <Button
+                              type="button"
+                              variant="outline"
+                              size="sm"
+                              onClick={() => setResetDialogOpen(true)}
+                            >
+                              Enviar e-mail
+                            </Button>
+                          </div>
                         </div>
                       </>
                     )}
