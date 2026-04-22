@@ -28,9 +28,11 @@ interface PropertyTeamManagerProps {
 export function PropertyTeamManager({ propertyId, propertyName }: PropertyTeamManagerProps) {
   const [cleaners, setCleaners] = useState<TeamMember[]>([]);
   const [assignedCleanerIds, setAssignedCleanerIds] = useState<Set<string>>(new Set());
+  const [primaryCleanerId, setPrimaryCleanerId] = useState<string | null>(null);
   const [scheduleCounts, setScheduleCounts] = useState<CleanerScheduleCounts>({});
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState<string | null>(null);
+  const [settingPrimary, setSettingPrimary] = useState<string | null>(null);
   useEffect(() => {
     fetchCleanersAndAssignments();
   }, [propertyId]);
@@ -52,7 +54,7 @@ export function PropertyTeamManager({ propertyId, propertyName }: PropertyTeamMa
       // Fetch current assignments for this property
       const { data: assignmentsData, error: assignmentsError } = await supabase
         .from('team_member_properties')
-        .select('team_member_id')
+        .select('team_member_id, is_primary')
         .eq('property_id', propertyId);
 
       if (assignmentsError) throw assignmentsError;
@@ -83,6 +85,8 @@ export function PropertyTeamManager({ propertyId, propertyName }: PropertyTeamMa
 
       setCleaners(cleanersData || []);
       setAssignedCleanerIds(new Set(assignmentsData?.map(a => a.team_member_id) || []));
+      const primary = assignmentsData?.find((a: any) => a.is_primary);
+      setPrimaryCleanerId(primary ? primary.team_member_id : null);
       setScheduleCounts(counts);
     } catch (error) {
       console.error('Error fetching cleaners:', error);
@@ -166,6 +170,51 @@ export function PropertyTeamManager({ propertyId, propertyName }: PropertyTeamMa
     }
   };
 
+  const handleSetPrimary = async (cleanerId: string) => {
+    setSettingPrimary(cleanerId);
+    try {
+      const isAlreadyPrimary = primaryCleanerId === cleanerId;
+
+      if (isAlreadyPrimary) {
+        // Unset primary
+        const { error } = await supabase
+          .from('team_member_properties')
+          .update({ is_primary: false })
+          .eq('team_member_id', cleanerId)
+          .eq('property_id', propertyId);
+        if (error) throw error;
+        setPrimaryCleanerId(null);
+        toast.success('Principal removido');
+        return;
+      }
+
+      // First, clear any existing primary for this property
+      if (primaryCleanerId) {
+        await supabase
+          .from('team_member_properties')
+          .update({ is_primary: false })
+          .eq('team_member_id', primaryCleanerId)
+          .eq('property_id', propertyId);
+      }
+
+      // Set new primary
+      const { error } = await supabase
+        .from('team_member_properties')
+        .update({ is_primary: true })
+        .eq('team_member_id', cleanerId)
+        .eq('property_id', propertyId);
+      if (error) throw error;
+
+      setPrimaryCleanerId(cleanerId);
+      toast.success('Principal definido');
+    } catch (error: any) {
+      console.error('Error setting primary:', error);
+      toast.error('Erro ao definir principal');
+    } finally {
+      setSettingPrimary(null);
+    }
+  };
+
   if (loading) {
     return (
       <div className="flex items-center justify-center py-8">
@@ -206,16 +255,21 @@ export function PropertyTeamManager({ propertyId, propertyName }: PropertyTeamMa
           const isSaving = saving === cleaner.id;
           const counts = scheduleCounts[cleaner.id];
           const hasActiveSchedules = counts && (counts.cleaning > 0 || counts.completed > 0);
+          const isPrimary = primaryCleanerId === cleaner.id;
+          const canBePrimary = isAssigned || hasAllAccess;
+          const isSettingThis = settingPrimary === cleaner.id;
           return (
             <div
               key={cleaner.id}
               className={cn(
                 "flex items-center justify-between p-3 rounded-xl border transition-colors",
-                hasAllAccess 
-                  ? "bg-primary/5 border-primary/20" 
-                  : isAssigned 
-                    ? "bg-muted/50 border-border" 
-                    : "bg-card border-border/50 hover:border-border"
+                isPrimary
+                  ? "bg-amber-500/5 border-amber-500/40 ring-1 ring-amber-500/30"
+                  : hasAllAccess 
+                    ? "bg-primary/5 border-primary/20" 
+                    : isAssigned 
+                      ? "bg-muted/50 border-border" 
+                      : "bg-card border-border/50 hover:border-border"
               )}
             >
               <div className="flex items-center gap-3">
@@ -223,7 +277,15 @@ export function PropertyTeamManager({ propertyId, propertyName }: PropertyTeamMa
                   {cleaner.name.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase()}
                 </div>
                 <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium text-foreground">{cleaner.name}</p>
+                  <div className="flex items-center gap-1.5">
+                    <p className="text-sm font-medium text-foreground">{cleaner.name}</p>
+                    {isPrimary && (
+                      <span className="inline-flex items-center gap-0.5 rounded-full bg-amber-500/15 px-1.5 py-0.5 text-[9px] font-bold uppercase text-amber-600">
+                        <span className="material-symbols-outlined text-[10px]">star</span>
+                        Principal
+                      </span>
+                    )}
+                  </div>
                   <p className="text-xs text-muted-foreground">{cleaner.email}</p>
                   {hasActiveSchedules && (
                     <div className="flex items-center gap-2 mt-1">
@@ -244,6 +306,26 @@ export function PropertyTeamManager({ propertyId, propertyName }: PropertyTeamMa
                 </div>
               </div>
               <div className="flex items-center gap-2">
+                {canBePrimary && (
+                  <button
+                    type="button"
+                    onClick={() => handleSetPrimary(cleaner.id)}
+                    disabled={isSettingThis}
+                    title={isPrimary ? 'Remover como principal' : 'Definir como principal'}
+                    className={cn(
+                      "flex h-8 w-8 items-center justify-center rounded-lg transition-colors disabled:opacity-50",
+                      isPrimary 
+                        ? "text-amber-500 hover:bg-amber-500/10" 
+                        : "text-muted-foreground hover:bg-muted hover:text-amber-500"
+                    )}
+                  >
+                    {isSettingThis ? (
+                      <div className="animate-spin rounded-full h-4 w-4 border-2 border-amber-500 border-t-transparent" />
+                    ) : (
+                      <span className="material-symbols-outlined text-[18px]" style={{ fontVariationSettings: isPrimary ? "'FILL' 1" : "'FILL' 0" }}>star</span>
+                    )}
+                  </button>
+                )}
                 {hasAllAccess ? (
                   <span className="inline-flex items-center gap-1 rounded-full bg-primary/10 px-2.5 py-1 text-xs font-medium text-primary">
                     <span className="material-symbols-outlined text-[12px]">check_circle</span>
