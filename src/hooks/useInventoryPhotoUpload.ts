@@ -168,12 +168,9 @@ export function useInventoryPhotoUpload() {
 
       if (uploadError) throw uploadError;
 
-      // Get public URL
-      const { data: { publicUrl } } = supabase.storage
-        .from('inventory-photos')
-        .getPublicUrl(fileName);
-
-      return { url: publicUrl, takenAt: imageBlob.takenAt };
+      // Bucket is private — return storage path instead of public URL.
+      // SignedImage will resolve it to a short-lived signed URL.
+      return { url: fileName, takenAt: imageBlob.takenAt };
     } finally {
       setIsUploading(false);
     }
@@ -181,12 +178,12 @@ export function useInventoryPhotoUpload() {
 
   const deletePhoto = useCallback(async (photoUrl: string) => {
     try {
-      // Extract file path from URL
-      const urlParts = photoUrl.split('/inventory-photos/');
-      if (urlParts.length < 2) return;
-      
-      const filePath = urlParts[1];
-      
+      // Accept either a storage path or a legacy public URL
+      const marker = '/inventory-photos/';
+      const idx = photoUrl.indexOf(marker);
+      const filePath = idx >= 0 ? photoUrl.substring(idx + marker.length) : photoUrl;
+      if (!filePath) return;
+
       const { error } = await supabase.storage
         .from('inventory-photos')
         .remove([filePath]);
