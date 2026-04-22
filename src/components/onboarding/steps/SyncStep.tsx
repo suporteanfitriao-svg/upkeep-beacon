@@ -28,6 +28,7 @@ interface IcalSource {
   property_id: string;
   ical_url: string;
   last_sync_at: string | null;
+  sync_start_date: string | null;
 }
 
 export function SyncStep({ onNext, onBack }: SyncStepProps) {
@@ -35,6 +36,7 @@ export function SyncStep({ onNext, onBack }: SyncStepProps) {
   const [icalSources, setIcalSources] = useState<IcalSource[]>([]);
   const [selectedPropertyId, setSelectedPropertyId] = useState<string>('');
   const [icalUrl, setIcalUrl] = useState('');
+  const [syncStartDate, setSyncStartDate] = useState('');
   const [isSyncing, setIsSyncing] = useState(false);
   const [loading, setLoading] = useState(true);
 
@@ -46,7 +48,9 @@ export function SyncStep({ onNext, onBack }: SyncStepProps) {
     try {
       const [propertiesRes, sourcesRes] = await Promise.all([
         supabase.from('properties').select('id, name').order('name'),
-        supabase.from('property_ical_sources').select('property_id, ical_url, last_sync_at'),
+        supabase
+          .from('property_ical_sources')
+          .select('property_id, ical_url, last_sync_at, sync_start_date'),
       ]);
 
       if (propertiesRes.error) throw propertiesRes.error;
