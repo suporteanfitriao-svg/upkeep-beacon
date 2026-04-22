@@ -15,6 +15,8 @@ import { useStayStatus } from '@/hooks/useStayStatus';
 import { useReleaseCountdown } from '@/hooks/useReleaseCountdown';
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
+import { InlineGuestEditor } from './InlineGuestEditor';
+import { useUserRole } from '@/hooks/useUserRole';
 
 interface ScheduleCardProps {
   schedule: Schedule;
@@ -57,6 +59,11 @@ export function ScheduleCard({ schedule, onClick, isLoading = false }: ScheduleC
   const buttonStyle = buttonConfig[schedule.status];
   const stayStatus = useStayStatus(schedule);
   const releaseCountdown = useReleaseCountdown(schedule);
+  const { hasManagerAccess } = useUserRole();
+  const [localGuests, setLocalGuests] = useState(schedule.numberOfGuests);
+  useEffect(() => {
+    setLocalGuests(schedule.numberOfGuests);
+  }, [schedule.numberOfGuests]);
   const completedTasks = schedule.checklist.filter(item => item.completed).length;
   const totalTasks = schedule.checklist.length;
   const progressPercent = totalTasks > 0 ? (completedTasks / totalTasks) * 100 : 0;
@@ -201,6 +208,14 @@ export function ScheduleCard({ schedule, onClick, isLoading = false }: ScheduleC
             <span className="text-xs text-muted-foreground">
               {getContextMessage()}
             </span>
+            <InlineGuestEditor
+              scheduleId={schedule.id}
+              currentGuests={localGuests}
+              minGuests={schedule.propertyMinGuests ?? 1}
+              maxGuests={schedule.propertyMaxGuests ?? 99}
+              canEdit={hasManagerAccess && schedule.status !== 'completed'}
+              onSaved={(v) => setLocalGuests(v)}
+            />
           </div>
 
           {/* Progress bar for cleaning status - only show if checklist is required */}
