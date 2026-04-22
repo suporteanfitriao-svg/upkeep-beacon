@@ -99,14 +99,14 @@ export default function Team() {
     address_state: '',
   });
 
-  const canManage = hasAdminAccess;
+  const canManage = hasManagerAccess;
 
   useEffect(() => {
-    if (hasAdminAccess) {
+    if (hasManagerAccess) {
       fetchMembers();
       fetchProperties();
     }
-  }, [hasAdminAccess]);
+  }, [hasManagerAccess]);
 
   async function fetchMembers() {
     try {
@@ -456,7 +456,7 @@ export default function Team() {
     );
   }
 
-  if (!isAdmin) {
+  if (!hasManagerAccess) {
     return <Navigate to="/" replace />;
   }
 
