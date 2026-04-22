@@ -53,6 +53,9 @@ interface ScheduleRow {
     image_url: string | null;
     latitude: number | null;
     longitude: number | null;
+    min_guests: number | null;
+    default_guests: number | null;
+    max_guests: number | null;
   } | null;
   reservations?: {
     check_in: string;
@@ -259,7 +262,14 @@ const mapRowToSchedule = (row: ScheduleRow): Schedule => {
   
   const guestNameSource = row.reservations?.guest_name || row.guest_name;
   const listingNameSource = row.reservations?.listing_name || row.listing_name || row.property_name;
-  const numberOfGuestsSource = row.reservations?.number_of_guests || row.number_of_guests || 1;
+  // Per business rule: prioritize property's default_guests over iCal data.
+  // iCal guest count is ignored. Schedule's number_of_guests (manual override)
+  // takes priority, then property default, then reservation as last resort, then 1.
+  const numberOfGuestsSource =
+    row.number_of_guests ||
+    row.properties?.default_guests ||
+    row.reservations?.number_of_guests ||
+    1;
   const doorPassword = extractDoorPassword(row.reservations?.description || null);
 
   return {
@@ -272,6 +282,9 @@ const mapRowToSchedule = (row: ScheduleRow): Schedule => {
     propertyLongitude: row.properties?.longitude || undefined,
     guestName: guestNameSource || 'Hóspede não informado',
     numberOfGuests: numberOfGuestsSource,
+    propertyMinGuests: row.properties?.min_guests ?? undefined,
+    propertyMaxGuests: row.properties?.max_guests ?? undefined,
+    propertyDefaultGuests: row.properties?.default_guests ?? undefined,
     checkIn: combineDateTime(checkInDate, checkInTime),
     checkOut: combineDateTime(checkOutDate, checkOutTime),
     status: mapStatus(row.status),
@@ -318,7 +331,7 @@ export function useSchedules() {
 
       const { data, error: fetchError } = await supabase
         .from('schedules')
-        .select('*, properties(image_url, latitude, longitude), reservations(check_in, check_out, guest_name, listing_name, number_of_guests, description)')
+        .select('*, properties(image_url, latitude, longitude, min_guests, default_guests, max_guests), reservations(check_in, check_out, guest_name, listing_name, number_of_guests, description)')
         .eq('is_active', true)
         .order('check_out_time', { ascending: true });
 
