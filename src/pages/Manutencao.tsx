@@ -49,6 +49,7 @@ import { CompletedScheduleRow } from '@/components/reports/CompletedScheduleRow'
 import { ScheduleDetailReadOnly } from '@/components/reports/ScheduleDetailReadOnly';
 import { NokItemsReport } from '@/components/reports/NokItemsReport';
 import { PhotoGallery } from '@/components/shared/PhotoGallery';
+import { SignedImage } from '@/components/shared/SignedImage';
 import { Schedule } from '@/types/scheduling';
 
 function MaintenanceStatCard({ 
