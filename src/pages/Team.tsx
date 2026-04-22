@@ -425,6 +425,38 @@ export default function Team() {
     }
   }
 
+  async function handleSetPasswordManual() {
+    if (!editingMember) return;
+    if (newPwdValue.length < 8) {
+      toast.error('Senha deve ter no mínimo 8 caracteres');
+      return;
+    }
+    if (newPwdValue !== newPwdConfirm) {
+      toast.error('As senhas não coincidem');
+      return;
+    }
+    setSavingPwd(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('set-team-member-password', {
+        body: {
+          teamMemberId: editingMember.id,
+          newPassword: newPwdValue,
+        },
+      });
+      if (error) throw error;
+      if (data && data.error) throw new Error(data.error);
+      toast.success(`Senha de ${editingMember.name} atualizada!`);
+      setSetPwdDialogOpen(false);
+      setNewPwdValue('');
+      setNewPwdConfirm('');
+    } catch (err: any) {
+      console.error('Error setting password:', err);
+      toast.error(err?.message || 'Erro ao atualizar senha');
+    } finally {
+      setSavingPwd(false);
+    }
+  }
+
   function toggleProperty(propertyId: string) {
     setFormData(prev => ({
       ...prev,
