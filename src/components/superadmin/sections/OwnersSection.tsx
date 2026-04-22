@@ -678,6 +678,112 @@ export function OwnersSection() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Assisted property onboarding */}
+      <Dialog open={propOpen} onOpenChange={(v) => { setPropOpen(v); if (!v) setPropError(null); }}>
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Imóveis de {propOwner?.legal_name}</DialogTitle>
+            <DialogDescription>
+              Cadastre imóveis em nome deste cliente. Eles aparecerão na conta dele automaticamente.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-6 py-2">
+            {propError && (
+              <Alert variant="destructive">
+                <AlertCircle className="h-4 w-4" />
+                <AlertDescription>{propError}</AlertDescription>
+              </Alert>
+            )}
+
+            {propList.length > 0 && (
+              <section className="space-y-2">
+                <h3 className="text-sm font-semibold">Imóveis já cadastrados ({propList.length})</h3>
+                <div className="rounded-md border divide-y">
+                  {propList.map((p) => (
+                    <div key={p.id} className="flex items-center justify-between px-3 py-2 text-sm">
+                      <div className="flex items-center gap-2">
+                        <Building2 className="h-3 w-3 text-muted-foreground" />
+                        <span className="font-medium">{p.name}</span>
+                      </div>
+                      {p.property_code && (
+                        <Badge variant="outline" className="font-mono text-xs">{p.property_code}</Badge>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </section>
+            )}
+
+            <section className="space-y-3">
+              <h3 className="text-sm font-semibold">Adicionar novo imóvel</h3>
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1 col-span-2">
+                  <Label>Nome do imóvel *</Label>
+                  <Input
+                    value={propForm.name}
+                    onChange={(e) => setPropForm({ ...propForm, name: e.target.value })}
+                    placeholder="Ex: Apto Copacabana 502"
+                  />
+                </div>
+                <div className="space-y-1 col-span-2">
+                  <Label>Endereço completo</Label>
+                  <Input
+                    value={propForm.address}
+                    onChange={(e) => setPropForm({ ...propForm, address: e.target.value })}
+                  />
+                </div>
+                <div className="space-y-1">
+                  <Label>Check-in padrão</Label>
+                  <Input
+                    type="time"
+                    value={propForm.default_check_in_time}
+                    onChange={(e) => setPropForm({ ...propForm, default_check_in_time: e.target.value })}
+                  />
+                </div>
+                <div className="space-y-1">
+                  <Label>Check-out padrão</Label>
+                  <Input
+                    type="time"
+                    value={propForm.default_check_out_time}
+                    onChange={(e) => setPropForm({ ...propForm, default_check_out_time: e.target.value })}
+                  />
+                </div>
+                <div className="space-y-1">
+                  <Label>Capacidade máxima</Label>
+                  <Input
+                    type="number"
+                    min={1}
+                    max={50}
+                    value={propForm.max_guests}
+                    onChange={(e) => setPropForm({ ...propForm, max_guests: Number(e.target.value) })}
+                  />
+                </div>
+                <div className="space-y-1 col-span-2">
+                  <Label>URL iCal (Airbnb / Booking) — opcional</Label>
+                  <Input
+                    value={propForm.airbnb_ical_url}
+                    onChange={(e) => setPropForm({ ...propForm, airbnb_ical_url: e.target.value })}
+                    placeholder="https://..."
+                  />
+                </div>
+              </div>
+            </section>
+          </div>
+
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setPropOpen(false)} disabled={propSubmitting}>
+              Concluir
+            </Button>
+            <Button onClick={handleAddProperty} disabled={propSubmitting}>
+              {propSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              <Plus className="mr-1 h-4 w-4" />
+              Adicionar imóvel
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
