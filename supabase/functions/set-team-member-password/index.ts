@@ -157,7 +157,12 @@ const handler = async (req: Request): Promise<Response> => {
 
     if (updateErr) {
       console.error("[set-team-member-password] update error", updateErr);
-      return new Response(JSON.stringify({ error: "Erro ao atualizar senha: " + updateErr.message }), {
+      const code = (updateErr as any)?.code;
+      const isWeak = code === "weak_password" || /weak|pwned|known to be/i.test(updateErr.message || "");
+      const friendly = isWeak
+        ? "Esta senha é muito fraca ou apareceu em vazamentos de dados conhecidos. Use uma senha mais forte (evite sequências como '123', '12345678', 'senha', 'password', 'teste', etc). Recomendado: combine letras maiúsculas, minúsculas, números e símbolos."
+        : "Erro ao atualizar senha: " + updateErr.message;
+      return new Response(JSON.stringify({ error: friendly, code: code || null }), {
         status: 400, headers: { "Content-Type": "application/json", ...corsHeaders },
       });
     }
