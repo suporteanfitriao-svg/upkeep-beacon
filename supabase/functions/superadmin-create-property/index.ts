@@ -15,6 +15,7 @@ interface PropertyPayload {
   max_guests?: number;
   default_guests?: number;
   airbnb_ical_url?: string;
+  ical_sync_start_date?: string; // YYYY-MM-DD
 }
 
 Deno.serve(async (req) => {
