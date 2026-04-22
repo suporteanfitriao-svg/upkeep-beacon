@@ -329,6 +329,7 @@ serve(async (req) => {
         property_id,
         ical_url,
         custom_name,
+        sync_start_date,
         properties (
           id,
           name,
