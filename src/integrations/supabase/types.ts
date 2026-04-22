@@ -2227,6 +2227,10 @@ export type Database = {
         }
         Returns: Json
       }
+      user_can_view_team_member: {
+        Args: { p_team_member_id: string }
+        Returns: boolean
+      }
       validate_input: {
         Args: { p_allow_html?: boolean; p_input: string; p_max_length?: number }
         Returns: string
