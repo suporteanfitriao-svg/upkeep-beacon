@@ -173,11 +173,21 @@ export function PhotoGallery({
 
               {/* Image */}
               <div className="flex items-center justify-center min-h-[400px] max-h-[70vh]">
-                <img 
-                  src={selectedPhoto.url} 
-                  alt={`Foto ${(selectedIndex ?? 0) + 1}`}
-                  className="max-w-full max-h-[70vh] object-contain"
-                />
+                {bucket ? (
+                  <SignedImage
+                    src={selectedPhoto.url}
+                    bucket={bucket}
+                    preferRaw
+                    alt={`Foto ${(selectedIndex ?? 0) + 1}`}
+                    className="max-w-full max-h-[70vh] object-contain"
+                  />
+                ) : (
+                  <img 
+                    src={selectedPhoto.url} 
+                    alt={`Foto ${(selectedIndex ?? 0) + 1}`}
+                    className="max-w-full max-h-[70vh] object-contain"
+                  />
+                )}
               </div>
 
               {/* Footer with info and download */}
