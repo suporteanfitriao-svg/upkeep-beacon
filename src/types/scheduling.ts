@@ -63,6 +63,12 @@ export interface Schedule {
   propertyLongitude?: number;
   guestName: string;
   numberOfGuests: number;
+  /** Property's min allowed guests — used to clamp inline edits on schedule cards */
+  propertyMinGuests?: number;
+  /** Property's max allowed guests — used to clamp inline edits on schedule cards */
+  propertyMaxGuests?: number;
+  /** Property's default guest count */
+  propertyDefaultGuests?: number;
   checkIn: Date;
   checkOut: Date;
   status: ScheduleStatus;
