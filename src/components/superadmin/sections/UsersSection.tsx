@@ -339,6 +339,13 @@ export function UsersSection() {
 
     setResettingPassword(true);
     try {
+      const { data: authData, error: authError } = await supabase.auth.getUser();
+      if (authError || !authData.user) {
+        await supabase.auth.signOut();
+        toast.error('Sua sessão expirou. Faça login novamente para enviar a redefinição.');
+        return;
+      }
+
       const { error } = await supabase.functions.invoke('send-password-reset', {
         body: {
           teamMemberId: memberToReset.id,
