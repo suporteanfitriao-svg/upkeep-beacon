@@ -1426,7 +1426,9 @@ const Inventory = () => {
                     .filter(p => !photosToDelete.includes(p.url))
                     .map((photo, idx) => (
                       <div key={`existing-${idx}`} className="relative">
-                        <img 
+                        <SignedImage
+                          bucket="inventory-photos"
+                          preferRaw
                           src={photo.url} 
                           alt={`Foto ${idx + 1}`} 
                           className="h-24 w-24 rounded-lg object-cover border"
