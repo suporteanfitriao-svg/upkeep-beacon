@@ -28,7 +28,8 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
-import { Loader2, Plus, Building2, Users } from 'lucide-react';
+import { Loader2, Plus, Building2, Users, AlertCircle } from 'lucide-react';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 import { toast } from 'sonner';
 
 interface OwnerRow {
@@ -71,6 +72,56 @@ const initialForm = {
   plan_expires_at: '',
 };
 
+// --- Validation helpers ---
+const onlyDigits = (v: string) => v.replace(/\D/g, '');
+
+const formatDocument = (v: string, type: 'cpf' | 'cnpj') => {
+  const d = onlyDigits(v);
+  if (type === 'cpf') {
+    return d
+      .slice(0, 11)
+      .replace(/(\d{3})(\d)/, '$1.$2')
+      .replace(/(\d{3})(\d)/, '$1.$2')
+      .replace(/(\d{3})(\d{1,2})$/, '$1-$2');
+  }
+  return d
+    .slice(0, 14)
+    .replace(/^(\d{2})(\d)/, '$1.$2')
+    .replace(/^(\d{2})\.(\d{3})(\d)/, '$1.$2.$3')
+    .replace(/\.(\d{3})(\d)/, '.$1/$2')
+    .replace(/(\d{4})(\d{1,2})$/, '$1-$2');
+};
+
+const isValidCPF = (cpf: string): boolean => {
+  const d = onlyDigits(cpf);
+  if (d.length !== 11 || /^(\d)\1{10}$/.test(d)) return false;
+  let sum = 0;
+  for (let i = 0; i < 9; i++) sum += parseInt(d[i]) * (10 - i);
+  let rev = 11 - (sum % 11);
+  if (rev >= 10) rev = 0;
+  if (rev !== parseInt(d[9])) return false;
+  sum = 0;
+  for (let i = 0; i < 10; i++) sum += parseInt(d[i]) * (11 - i);
+  rev = 11 - (sum % 11);
+  if (rev >= 10) rev = 0;
+  return rev === parseInt(d[10]);
+};
+
+const isValidCNPJ = (cnpj: string): boolean => {
+  const d = onlyDigits(cnpj);
+  if (d.length !== 14 || /^(\d)\1{13}$/.test(d)) return false;
+  const calc = (base: string, weights: number[]) => {
+    const sum = weights.reduce((acc, w, i) => acc + parseInt(base[i]) * w, 0);
+    const rest = sum % 11;
+    return rest < 2 ? 0 : 11 - rest;
+  };
+  const w1 = [5, 4, 3, 2, 9, 8, 7, 6, 5, 4, 3, 2];
+  const w2 = [6, ...w1];
+  return calc(d.slice(0, 12), w1) === parseInt(d[12]) && calc(d.slice(0, 13), w2) === parseInt(d[13]);
+};
+
+const isValidEmail = (e: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e);
+
 export function OwnersSection() {
   const [owners, setOwners] = useState<OwnerRow[]>([]);
   const [plans, setPlans] = useState<Plan[]>([]);
@@ -78,6 +129,7 @@ export function OwnersSection() {
   const [open, setOpen] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [form, setForm] = useState(initialForm);
+  const [formError, setFormError] = useState<string | null>(null);
 
   const loadData = async () => {
     setLoading(true);
