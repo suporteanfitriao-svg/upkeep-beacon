@@ -772,6 +772,20 @@ export function OwnersSection() {
                     placeholder="https://..."
                   />
                 </div>
+                <div className="space-y-1 col-span-2">
+                  <Label>Sincronizar reservas a partir de — opcional</Label>
+                  <Input
+                    type="date"
+                    value={propForm.ical_sync_start_date}
+                    onChange={(e) =>
+                      setPropForm({ ...propForm, ical_sync_start_date: e.target.value })
+                    }
+                    disabled={!propForm.airbnb_ical_url}
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    Reservas com check-in anterior a essa data serão ignoradas, evitando importar histórico antigo.
+                  </p>
+                </div>
               </div>
             </section>
           </div>
