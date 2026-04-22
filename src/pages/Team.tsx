@@ -970,6 +970,61 @@ export default function Team() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Set new password dialog */}
+      <Dialog open={setPwdDialogOpen} onOpenChange={(o) => {
+        setSetPwdDialogOpen(o);
+        if (!o) {
+          setNewPwdValue('');
+          setNewPwdConfirm('');
+        }
+      }}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Key className="h-5 w-5" />
+              Definir nova senha
+            </DialogTitle>
+          </DialogHeader>
+          <p className="text-sm text-muted-foreground">
+            Definindo nova senha para <strong>{editingMember?.name}</strong> ({editingMember?.email}).
+            O usuário poderá entrar com a nova senha imediatamente.
+          </p>
+          <div className="space-y-4 py-2">
+            <div className="space-y-2">
+              <Label htmlFor="team-new-pwd">Nova senha</Label>
+              <Input
+                id="team-new-pwd"
+                type="password"
+                placeholder="Mínimo 8 caracteres"
+                value={newPwdValue}
+                onChange={(e) => setNewPwdValue(e.target.value)}
+                autoComplete="new-password"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="team-new-pwd-confirm">Confirmar senha</Label>
+              <Input
+                id="team-new-pwd-confirm"
+                type="password"
+                placeholder="Repita a senha"
+                value={newPwdConfirm}
+                onChange={(e) => setNewPwdConfirm(e.target.value)}
+                autoComplete="new-password"
+              />
+            </div>
+          </div>
+          <div className="flex justify-end gap-2 pt-2">
+            <Button variant="outline" onClick={() => setSetPwdDialogOpen(false)} disabled={savingPwd}>
+              Cancelar
+            </Button>
+            <Button onClick={handleSetPasswordManual} disabled={savingPwd}>
+              {savingPwd && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+              Salvar nova senha
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </SidebarProvider>
   );
 }
