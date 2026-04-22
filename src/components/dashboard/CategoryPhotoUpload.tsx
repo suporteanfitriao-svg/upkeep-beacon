@@ -67,13 +67,8 @@ export function CategoryPhotoUpload({
 
       if (error) throw error;
 
-      // Get public URL
-      const { data: urlData } = supabase.storage
-        .from('checklist-photos')
-        .getPublicUrl(data.path);
-
       const newPhoto: CategoryPhoto = {
-        url: urlData.publicUrl,
+        url: data.path, // Storage path (bucket is private); signed URLs are generated on read
         uploadedAt: new Date().toISOString(),
       };
 
@@ -138,7 +133,6 @@ export function CategoryPhotoUpload({
                 <SignedImage
                   src={photo.url}
                   bucket="checklist-photos"
-                  preferRaw
                   alt={`Foto ${idx + 1} - ${category}`}
                   className="w-full h-full object-cover"
                 />
