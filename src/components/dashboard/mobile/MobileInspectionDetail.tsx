@@ -291,13 +291,8 @@ export function MobileInspectionDetail({
 
       if (uploadError) throw uploadError;
 
-      // Get public URL
-      const { data: urlData } = supabase.storage
-        .from('inspection-photos')
-        .getPublicUrl(uploadData.path);
-
       const newPhoto: InspectionPhoto = {
-        url: urlData.publicUrl,
+        url: uploadData.path,
         timestamp: new Date().toISOString(),
         uploaded_by: userName,
       };
