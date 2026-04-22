@@ -4,12 +4,14 @@ import { SuperAdminHeader } from '@/components/superadmin/SuperAdminHeader';
 import { OverviewSection } from '@/components/superadmin/sections/OverviewSection';
 import { PropertiesSection } from '@/components/superadmin/sections/PropertiesSection';
 import { UsersSection } from '@/components/superadmin/sections/UsersSection';
+import { OwnersSection } from '@/components/superadmin/sections/OwnersSection';
 import { AuditSection } from '@/components/superadmin/sections/AuditSection';
 import { PlansSection } from '@/components/superadmin/sections/PlansSection';
 import { SecuritySection } from '@/components/superadmin/sections/SecuritySection';
 
 export type SuperAdminSection = 
   | 'overview'
+  | 'owners'
   | 'properties'
   | 'users'
   | 'audit'
@@ -29,6 +31,8 @@ export default function SuperAdmin() {
             onNavigateToSection={(section) => setActiveSection(section as SuperAdminSection)} 
           />
         );
+      case 'owners':
+        return <OwnersSection />;
       case 'properties':
         return <PropertiesSection />;
       case 'users':

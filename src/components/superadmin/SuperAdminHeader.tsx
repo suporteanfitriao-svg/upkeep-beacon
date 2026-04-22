@@ -11,6 +11,7 @@ interface SuperAdminHeaderProps {
 
 const sectionTitles: Record<SuperAdminSection, string> = {
   overview: 'Visão Geral Global',
+  owners: 'Clientes (Proprietários)',
   properties: 'Propriedades Globais',
   users: 'Gestão de Usuários',
   audit: 'Auditoria',

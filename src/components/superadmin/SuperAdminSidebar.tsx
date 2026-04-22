@@ -10,7 +10,8 @@ import {
   Shield,
   LogOut,
   HelpCircle,
-  ArrowLeft
+  ArrowLeft,
+  UserCog
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
@@ -23,6 +24,7 @@ interface SuperAdminSidebarProps {
 
 const menuItems: { id: SuperAdminSection; label: string; icon: React.ElementType }[] = [
   { id: 'overview', label: 'Visão Geral', icon: LayoutDashboard },
+  { id: 'owners', label: 'Clientes (Proprietários)', icon: UserCog },
   { id: 'properties', label: 'Propriedades Globais', icon: Building2 },
   { id: 'users', label: 'Gestão de Usuários', icon: Users },
   { id: 'audit', label: 'Auditoria', icon: FileText },
