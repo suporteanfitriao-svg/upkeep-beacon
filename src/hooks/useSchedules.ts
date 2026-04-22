@@ -47,7 +47,7 @@ interface ScheduleRow {
   is_active: boolean | null;
   checklist_loaded_at: string | null;
   admin_revert_reason: string | null;
-  access_password: string | null;
+  access_password?: string | null;
   category_photos: Json | null;
   properties?: {
     image_url: string | null;
