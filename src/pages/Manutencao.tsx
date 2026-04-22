@@ -194,6 +194,7 @@ function IssueCard({
                     uploaded_by: p.uploaded_by
                   }))}
                   emptyMessage="Nenhuma foto"
+                  bucket="issue-photos"
                 />
               </div>
             )}
