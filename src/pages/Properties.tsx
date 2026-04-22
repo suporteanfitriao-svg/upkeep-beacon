@@ -295,6 +295,20 @@ export default function Properties() {
       return;
     }
 
+    // Validate guest range
+    if (formData.min_guests < 1) {
+      toast.error('Mínimo de hóspedes deve ser pelo menos 1');
+      return;
+    }
+    if (formData.max_guests < formData.min_guests) {
+      toast.error('Máximo de hóspedes deve ser maior ou igual ao mínimo');
+      return;
+    }
+    if (formData.default_guests < formData.min_guests || formData.default_guests > formData.max_guests) {
+      toast.error('Padrão de hóspedes deve estar entre o mínimo e o máximo');
+      return;
+    }
+
     setIsUploading(true);
 
     try {
