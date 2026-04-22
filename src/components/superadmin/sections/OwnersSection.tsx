@@ -379,10 +379,18 @@ export function OwnersSection() {
       }
 
       toast.success('Proprietário cadastrado com sucesso');
+      const createdOwner = {
+        user_id: (data as { user_id?: string } | null)?.user_id || '',
+        legal_name: form.legal_name,
+      };
       setForm(initialForm);
       setFormError(null);
       setOpen(false);
       loadData();
+      // Auto-open assisted property wizard
+      if (createdOwner.user_id) {
+        setTimeout(() => openPropertyWizard(createdOwner), 300);
+      }
     } catch (err) {
       const raw = err instanceof Error ? err.message : 'Erro desconhecido ao cadastrar';
       // Friendlier mapping of common backend errors
