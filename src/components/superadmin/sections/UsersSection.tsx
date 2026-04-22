@@ -999,6 +999,68 @@ export function UsersSection() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Set New Password Dialog */}
+      <Dialog open={setPasswordDialogOpen} onOpenChange={(o) => {
+        setSetPasswordDialogOpen(o);
+        if (!o) {
+          setMemberToSetPwd(null);
+          setNewPasswordValue('');
+          setNewPasswordConfirm('');
+        }
+      }}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <KeyRound className="h-5 w-5" />
+              Definir nova senha
+            </DialogTitle>
+            <DialogDescription>
+              Defina uma nova senha para <strong>{memberToSetPwd?.name}</strong> ({memberToSetPwd?.email}).
+              O usuário poderá entrar imediatamente com a nova senha.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-2">
+            <div className="space-y-2">
+              <Label htmlFor="new-password">Nova senha</Label>
+              <Input
+                id="new-password"
+                type="password"
+                placeholder="Mínimo 8 caracteres"
+                value={newPasswordValue}
+                onChange={(e) => setNewPasswordValue(e.target.value)}
+                autoComplete="new-password"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="new-password-confirm">Confirmar senha</Label>
+              <Input
+                id="new-password-confirm"
+                type="password"
+                placeholder="Repita a senha"
+                value={newPasswordConfirm}
+                onChange={(e) => setNewPasswordConfirm(e.target.value)}
+                autoComplete="new-password"
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setSetPasswordDialogOpen(false)}>
+              Cancelar
+            </Button>
+            <Button onClick={handleSetPassword} disabled={savingPassword}>
+              {savingPassword ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  Salvando...
+                </>
+              ) : (
+                'Salvar nova senha'
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
