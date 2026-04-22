@@ -125,6 +125,13 @@ export function UsersSection() {
   const [memberToReset, setMemberToReset] = useState<TeamMember | null>(null);
   const [resettingPassword, setResettingPassword] = useState(false);
 
+  // Set new password (manual) state
+  const [setPasswordDialogOpen, setSetPasswordDialogOpen] = useState(false);
+  const [memberToSetPwd, setMemberToSetPwd] = useState<TeamMember | null>(null);
+  const [newPasswordValue, setNewPasswordValue] = useState('');
+  const [newPasswordConfirm, setNewPasswordConfirm] = useState('');
+  const [savingPassword, setSavingPassword] = useState(false);
+
   useEffect(() => {
     fetchMembers();
     fetchProperties();
