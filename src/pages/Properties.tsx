@@ -33,6 +33,9 @@ interface Property {
   property_code: string | null;
   require_checklist: boolean;
   created_at: string;
+  min_guests: number;
+  default_guests: number | null;
+  max_guests: number | null;
 }
 
 interface ICalSource {
@@ -68,7 +71,10 @@ export default function Properties() {
   const [formData, setFormData] = useState({
     name: '',
     default_check_in_time: '14:00',
-    default_check_out_time: '11:00'
+    default_check_out_time: '11:00',
+    min_guests: 1,
+    default_guests: 1,
+    max_guests: 4,
   });
   const [addressFormData, setAddressFormData] = useState<AddressFormData>(initialAddressData);
   const [addressLoaded, setAddressLoaded] = useState(false);
@@ -106,7 +112,7 @@ export default function Properties() {
     setIsLoading(true);
     const { data, error } = await supabase
       .from('properties')
-      .select('id, name, address, default_check_in_time, default_check_out_time, image_url, property_code, require_checklist, created_at')
+      .select('id, name, address, default_check_in_time, default_check_out_time, image_url, property_code, require_checklist, created_at, min_guests, default_guests, max_guests')
       .order('name', { ascending: true });
 
     if (error) {
@@ -161,7 +167,10 @@ export default function Properties() {
     setFormData({ 
       name: '', 
       default_check_in_time: '14:00',
-      default_check_out_time: '11:00'
+      default_check_out_time: '11:00',
+      min_guests: 1,
+      default_guests: 1,
+      max_guests: 4,
     });
     setAddressFormData(initialAddressData);
     setAddressLoaded(false);
@@ -181,7 +190,10 @@ export default function Properties() {
     setFormData({
       name: property.name,
       default_check_in_time: property.default_check_in_time?.slice(0, 5) || '14:00',
-      default_check_out_time: property.default_check_out_time?.slice(0, 5) || '11:00'
+      default_check_out_time: property.default_check_out_time?.slice(0, 5) || '11:00',
+      min_guests: property.min_guests ?? 1,
+      default_guests: property.default_guests ?? 1,
+      max_guests: property.max_guests ?? 4,
     });
     // Parse existing address into form data
     const parsedAddress = parseAddressToFormData(property.address);
@@ -283,6 +295,20 @@ export default function Properties() {
       return;
     }
 
+    // Validate guest range
+    if (formData.min_guests < 1) {
+      toast.error('Mínimo de hóspedes deve ser pelo menos 1');
+      return;
+    }
+    if (formData.max_guests < formData.min_guests) {
+      toast.error('Máximo de hóspedes deve ser maior ou igual ao mínimo');
+      return;
+    }
+    if (formData.default_guests < formData.min_guests || formData.default_guests > formData.max_guests) {
+      toast.error('Padrão de hóspedes deve estar entre o mínimo e o máximo');
+      return;
+    }
+
     setIsUploading(true);
 
     try {
@@ -311,7 +337,10 @@ export default function Properties() {
           address: fullAddress || null,
           default_check_in_time: formData.default_check_in_time,
           default_check_out_time: formData.default_check_out_time,
-          image_url: imageUrl
+          image_url: imageUrl,
+          min_guests: formData.min_guests,
+          default_guests: formData.default_guests,
+          max_guests: formData.max_guests,
         };
 
         const oldCheckIn = editingProperty.default_check_in_time?.slice(0, 5);
@@ -356,7 +385,10 @@ export default function Properties() {
           name: formData.name.trim(),
           address: newFullAddress || null,
           default_check_in_time: formData.default_check_in_time,
-          default_check_out_time: formData.default_check_out_time
+          default_check_out_time: formData.default_check_out_time,
+          min_guests: formData.min_guests,
+          default_guests: formData.default_guests,
+          max_guests: formData.max_guests,
         };
 
         const { data: newProperty, error } = await supabase
@@ -704,6 +736,50 @@ export default function Properties() {
                           </div>
                         </div>
                       </div>
+                      <div className="space-y-2">
+                        <div className="flex items-center gap-2 text-sm font-medium">
+                          <span className="material-symbols-outlined text-primary text-[18px]">groups</span>
+                          <span>Hóspedes *</span>
+                        </div>
+                        <p className="text-xs text-muted-foreground">
+                          Mínimo ≤ Padrão ≤ Máximo. O padrão é usado nas novas limpezas.
+                        </p>
+                        <div className="grid grid-cols-3 gap-3">
+                          <div className="space-y-1">
+                            <Label htmlFor="min_guests" className="text-xs">Mínimo *</Label>
+                            <Input
+                              id="min_guests"
+                              type="number"
+                              min={1}
+                              value={formData.min_guests}
+                              onChange={(e) => setFormData({ ...formData, min_guests: Math.max(1, parseInt(e.target.value) || 1) })}
+                              className="rounded-xl"
+                            />
+                          </div>
+                          <div className="space-y-1">
+                            <Label htmlFor="default_guests" className="text-xs">Padrão *</Label>
+                            <Input
+                              id="default_guests"
+                              type="number"
+                              min={1}
+                              value={formData.default_guests}
+                              onChange={(e) => setFormData({ ...formData, default_guests: Math.max(1, parseInt(e.target.value) || 1) })}
+                              className="rounded-xl"
+                            />
+                          </div>
+                          <div className="space-y-1">
+                            <Label htmlFor="max_guests" className="text-xs">Máximo *</Label>
+                            <Input
+                              id="max_guests"
+                              type="number"
+                              min={1}
+                              value={formData.max_guests}
+                              onChange={(e) => setFormData({ ...formData, max_guests: Math.max(1, parseInt(e.target.value) || 1) })}
+                              className="rounded-xl"
+                            />
+                          </div>
+                        </div>
+                      </div>
                       <button 
                         onClick={handleSubmit}
                         disabled={isUploading || isCompressing}
@@ -841,6 +917,10 @@ export default function Properties() {
                               <span className="flex items-center gap-1">
                                 <span className="material-symbols-outlined text-[14px]">login</span>
                                 {property.default_check_in_time?.slice(0, 5) || '14:00'}
+                              </span>
+                              <span className="flex items-center gap-1">
+                                <span className="material-symbols-outlined text-[14px]">groups</span>
+                                {property.min_guests ?? 1}–{property.max_guests ?? '?'} (padrão {property.default_guests ?? 1})
                               </span>
                             </div>
                           </div>
