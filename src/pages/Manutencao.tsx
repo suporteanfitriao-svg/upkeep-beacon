@@ -994,7 +994,6 @@ export default function Manutencao() {
                       key={idx}
                       src={photo.url}
                       bucket="issue-photos"
-                      preferRaw
                       alt={`Foto ${idx + 1}`}
                       className="h-16 w-16 object-cover rounded flex-shrink-0"
                     />
