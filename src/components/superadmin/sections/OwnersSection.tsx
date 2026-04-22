@@ -144,6 +144,7 @@ export function OwnersSection() {
     default_check_out_time: '11:00',
     max_guests: 10,
     airbnb_ical_url: '',
+    ical_sync_start_date: '',
   });
 
   const openPropertyWizard = async (owner: { user_id: string; legal_name: string }) => {
@@ -156,6 +157,7 @@ export function OwnersSection() {
       default_check_out_time: '11:00',
       max_guests: 10,
       airbnb_ical_url: '',
+      ical_sync_start_date: '',
     });
     const { data } = await supabase
       .from('properties')
