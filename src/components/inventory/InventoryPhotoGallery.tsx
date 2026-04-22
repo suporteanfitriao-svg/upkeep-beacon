@@ -6,6 +6,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Images, ChevronLeft, ChevronRight, X, Clock, Package, FolderOpen } from 'lucide-react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
+import { SignedImage } from '@/components/shared/SignedImage';
 
 interface InventoryPhoto {
   url: string;
@@ -139,7 +140,9 @@ export function InventoryPhotoGallery({
             )}
 
             <div className="flex-1 flex items-center justify-center p-4 bg-muted/30">
-              <img
+              <SignedImage
+                bucket="inventory-photos"
+                preferRaw
                 src={selectedPhoto.url}
                 alt={selectedPhoto.itemName}
                 className="max-h-full max-w-full object-contain rounded-lg shadow-lg"
@@ -193,7 +196,9 @@ export function InventoryPhotoGallery({
                       className="group relative aspect-square rounded-lg overflow-hidden border cursor-pointer hover:ring-2 hover:ring-primary transition-all"
                       onClick={() => setSelectedPhotoIndex(index)}
                     >
-                      <img
+                      <SignedImage
+                        bucket="inventory-photos"
+                        preferRaw
                         src={photo.url}
                         alt={photo.itemName}
                         className="h-full w-full object-cover group-hover:scale-105 transition-transform"

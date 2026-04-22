@@ -22,6 +22,7 @@ import { InventoryItemHistory } from '@/components/inventory/InventoryItemHistor
 import { InventoryTemplateEditor } from '@/components/inventory/InventoryTemplateEditor';
 import { SortableCategory } from '@/components/inventory/SortableCategory';
 import { SortableItem, SortableItemMobile } from '@/components/inventory/SortableItem';
+import { SignedImage } from '@/components/shared/SignedImage';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { useInventoryPhotoUpload } from '@/hooks/useInventoryPhotoUpload';
 import { useInventoryItemHistory } from '@/hooks/useInventoryItemHistory';
@@ -1425,7 +1426,9 @@ const Inventory = () => {
                     .filter(p => !photosToDelete.includes(p.url))
                     .map((photo, idx) => (
                       <div key={`existing-${idx}`} className="relative">
-                        <img 
+                        <SignedImage
+                          bucket="inventory-photos"
+                          preferRaw
                           src={photo.url} 
                           alt={`Foto ${idx + 1}`} 
                           className="h-24 w-24 rounded-lg object-cover border"

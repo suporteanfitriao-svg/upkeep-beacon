@@ -1,4 +1,5 @@
 import { useSortable } from '@dnd-kit/sortable';
+import { SignedImage } from '@/components/shared/SignedImage';
 import { CSS } from '@dnd-kit/utilities';
 import { TableCell, TableRow } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
@@ -72,7 +73,9 @@ export const SortableItem = ({
               className="relative cursor-pointer group"
               onClick={onPhotoClick}
             >
-              <img
+              <SignedImage
+                bucket="inventory-photos"
+                preferRaw
                 src={photoUrl}
                 alt={name}
                 className="h-10 w-10 rounded object-cover border group-hover:opacity-80 transition-opacity"
@@ -178,7 +181,9 @@ export const SortableItemMobile = ({
           className="relative flex-shrink-0 active:opacity-80"
           onClick={onPhotoClick}
         >
-          <img
+          <SignedImage
+            bucket="inventory-photos"
+            preferRaw
             src={photoUrl}
             alt={name}
             className="h-14 w-14 rounded-lg object-cover border-2 border-muted"
