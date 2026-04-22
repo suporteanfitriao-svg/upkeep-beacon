@@ -142,7 +142,6 @@ export function InventoryPhotoGallery({
             <div className="flex-1 flex items-center justify-center p-4 bg-muted/30">
               <SignedImage
                 bucket="inventory-photos"
-                preferRaw
                 src={selectedPhoto.url}
                 alt={selectedPhoto.itemName}
                 className="max-h-full max-w-full object-contain rounded-lg shadow-lg"
@@ -198,7 +197,6 @@ export function InventoryPhotoGallery({
                     >
                       <SignedImage
                         bucket="inventory-photos"
-                        preferRaw
                         src={photo.url}
                         alt={photo.itemName}
                         className="h-full w-full object-cover group-hover:scale-105 transition-transform"
