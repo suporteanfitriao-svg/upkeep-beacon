@@ -28,7 +28,7 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
-import { Loader2, Plus, Building2, Users, AlertCircle, Home, Trash2 } from 'lucide-react';
+import { Loader2, Plus, Building2, Users, AlertCircle, Home } from 'lucide-react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { toast } from 'sonner';
 
