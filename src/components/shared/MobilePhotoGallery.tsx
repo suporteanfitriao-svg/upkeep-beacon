@@ -95,11 +95,21 @@ export function MobilePhotoGallery({
               onClick={() => setSelectedIndex(index)}
               className="w-20 h-20 rounded-lg overflow-hidden focus:outline-none focus:ring-2 focus:ring-primary"
             >
-              <img 
-                src={photo.url} 
-                alt={`Foto ${index + 1}`}
-                className="w-full h-full object-cover transition-transform group-hover:scale-105"
-              />
+              {bucket ? (
+                <SignedImage
+                  src={photo.url}
+                  bucket={bucket}
+                  preferRaw
+                  alt={`Foto ${index + 1}`}
+                  className="w-full h-full object-cover transition-transform group-hover:scale-105"
+                />
+              ) : (
+                <img 
+                  src={photo.url} 
+                  alt={`Foto ${index + 1}`}
+                  className="w-full h-full object-cover transition-transform group-hover:scale-105"
+                />
+              )}
               {/* Zoom overlay on hover */}
               <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors flex items-center justify-center rounded-lg">
                 <ZoomIn className="h-5 w-5 text-white opacity-0 group-hover:opacity-100 transition-opacity" />
