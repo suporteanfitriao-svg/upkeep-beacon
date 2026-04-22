@@ -211,11 +211,21 @@ export function MobilePhotoGallery({
             )}
 
             {/* Image */}
-            <img 
-              src={selectedPhoto.url} 
-              alt={`Foto ${selectedIndex + 1}`}
-              className="max-w-full max-h-full object-contain"
-            />
+            {bucket ? (
+              <SignedImage
+                src={selectedPhoto.url}
+                bucket={bucket}
+                preferRaw
+                alt={`Foto ${selectedIndex + 1}`}
+                className="max-w-full max-h-full object-contain"
+              />
+            ) : (
+              <img 
+                src={selectedPhoto.url} 
+                alt={`Foto ${selectedIndex + 1}`}
+                className="max-w-full max-h-full object-contain"
+              />
+            )}
 
             {/* Next button */}
             {selectedIndex < photos.length - 1 && (
