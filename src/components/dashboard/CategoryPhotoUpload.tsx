@@ -3,6 +3,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import { useImageCompression } from '@/hooks/useImageCompression';
+import { SignedImage } from '@/components/shared/SignedImage';
 
 interface CategoryPhoto {
   url: string;
@@ -134,8 +135,10 @@ export function CategoryPhotoUpload({
           <div className="grid grid-cols-3 gap-2 mb-4">
             {photos.map((photo, idx) => (
               <div key={idx} className="relative aspect-square rounded-lg overflow-hidden border border-slate-200 dark:border-slate-700">
-                <img 
-                  src={photo.url} 
+                <SignedImage
+                  src={photo.url}
+                  bucket="checklist-photos"
+                  preferRaw
                   alt={`Foto ${idx + 1} - ${category}`}
                   className="w-full h-full object-cover"
                 />
