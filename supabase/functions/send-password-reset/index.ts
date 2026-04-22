@@ -35,12 +35,12 @@ const handler = async (req: Request): Promise<Response> => {
       );
     }
 
-    // Use anon client with caller's token to validate identity
-    const supabaseAuth = createClient(supabaseUrl, supabaseAnonKey, {
-      global: { headers: { Authorization: authHeader } },
-    });
+    // Service role client for admin operations
+    const supabase = createClient(supabaseUrl, supabaseServiceKey);
+
+    // Validate the caller's JWT using the service role client (bypasses session requirement)
     const token = authHeader.replace("Bearer ", "");
-    const { data: userData, error: userError } = await supabaseAuth.auth.getUser(token);
+    const { data: userData, error: userError } = await supabase.auth.getUser(token);
 
     if (userError || !userData?.user) {
       console.error("Auth error:", userError);
@@ -52,9 +52,6 @@ const handler = async (req: Request): Promise<Response> => {
 
     const callerUserId = userData.user.id;
     const callerEmail = userData.user.email;
-
-    // Service role client for admin operations
-    const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
     // Check if user has admin or manager role
     const { data: roleData, error: roleError } = await supabase
