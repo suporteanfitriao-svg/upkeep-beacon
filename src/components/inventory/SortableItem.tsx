@@ -181,7 +181,9 @@ export const SortableItemMobile = ({
           className="relative flex-shrink-0 active:opacity-80"
           onClick={onPhotoClick}
         >
-          <img
+          <SignedImage
+            bucket="inventory-photos"
+            preferRaw
             src={photoUrl}
             alt={name}
             className="h-14 w-14 rounded-lg object-cover border-2 border-muted"
