@@ -39,7 +39,7 @@ const BYPASS_ROUTES = [
  */
 export function SubscriptionGuard({ 
   children, 
-  allowWithoutSubscription = true // TODO: Mudar para false em produção
+  allowWithoutSubscription = false
 }: SubscriptionGuardProps) {
   const location = useLocation();
   const { user, loading: authLoading } = useAuth();
