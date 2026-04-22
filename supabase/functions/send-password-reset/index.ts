@@ -40,18 +40,18 @@ const handler = async (req: Request): Promise<Response> => {
       global: { headers: { Authorization: authHeader } },
     });
     const token = authHeader.replace("Bearer ", "");
-    const { data: claimsData, error: claimsError } = await supabaseAuth.auth.getClaims(token);
+    const { data: userData, error: userError } = await supabaseAuth.auth.getUser(token);
 
-    if (claimsError || !claimsData?.claims) {
-      console.error("Auth error:", claimsError);
+    if (userError || !userData?.user) {
+      console.error("Auth error:", userError);
       return new Response(
         JSON.stringify({ error: "Token inválido ou expirado" }),
         { status: 401, headers: { "Content-Type": "application/json", ...corsHeaders } }
       );
     }
 
-    const callerUserId = claimsData.claims.sub;
-    const callerEmail = claimsData.claims.email;
+    const callerUserId = userData.user.id;
+    const callerEmail = userData.user.email;
 
     // Service role client for admin operations
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
