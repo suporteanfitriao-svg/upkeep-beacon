@@ -17,6 +17,7 @@ import { PasswordModeConfig } from '@/components/properties/PasswordModeConfig';
 import { AdvancedRulesConfig } from '@/components/properties/AdvancedRulesConfig';
 import { CleaningRatesManager } from '@/components/properties/CleaningRatesManager';
 import { PropertyTeamManager } from '@/components/properties/PropertyTeamManager';
+import { PropertyGuestsManager } from '@/components/properties/PropertyGuestsManager';
 import { DeletePropertyModal } from '@/components/properties/DeletePropertyModal';
 import { PropertyAddressEditor, AddressFormData, initialAddressData, parseAddressToFormData, buildFullAddress } from '@/components/properties/PropertyAddressEditor';
 import { cn } from '@/lib/utils';
@@ -953,7 +954,7 @@ export default function Properties() {
                         <Tabs defaultValue="ical" className="w-full">
                           <TabsList className={cn(
                             "grid w-full mb-4 bg-muted/50 rounded-xl p-1",
-                            canManage ? 'grid-cols-6' : 'grid-cols-2'
+                            canManage ? 'grid-cols-7' : 'grid-cols-2'
                           )}>
                             <TabsTrigger value="ical" className="rounded-lg text-xs data-[state=active]:bg-card data-[state=active]:shadow-sm">
                               <span className="material-symbols-outlined text-[14px] mr-1">link</span>
@@ -967,6 +968,12 @@ export default function Properties() {
                               <TabsTrigger value="team" className="rounded-lg text-xs data-[state=active]:bg-card data-[state=active]:shadow-sm">
                                 <span className="material-symbols-outlined text-[14px] mr-1">group</span>
                                 <span className="hidden sm:inline">Equipe</span>
+                              </TabsTrigger>
+                            )}
+                            {canManage && (
+                              <TabsTrigger value="guests" className="rounded-lg text-xs data-[state=active]:bg-card data-[state=active]:shadow-sm">
+                                <span className="material-symbols-outlined text-[14px] mr-1">groups</span>
+                                <span className="hidden sm:inline">Hóspedes</span>
                               </TabsTrigger>
                             )}
                             {canManage && (
@@ -1128,6 +1135,19 @@ export default function Properties() {
                               <PropertyTeamManager 
                                 propertyId={property.id} 
                                 propertyName={property.name} 
+                              />
+                            </TabsContent>
+                          )}
+
+                          {canManage && (
+                            <TabsContent value="guests" className="mt-0">
+                              <PropertyGuestsManager
+                                propertyId={property.id}
+                                propertyName={property.name}
+                                initialMin={property.min_guests ?? 1}
+                                initialDefault={property.default_guests ?? 1}
+                                initialMax={property.max_guests ?? 4}
+                                onSaved={fetchProperties}
                               />
                             </TabsContent>
                           )}
