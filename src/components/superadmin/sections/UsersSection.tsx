@@ -645,10 +645,12 @@ export function UsersSection() {
                             variant="ghost"
                             size="icon"
                             className="h-8 w-8 text-muted-foreground hover:text-primary"
-                            title="Resetar Senha"
+                            title="Definir nova senha"
                             onClick={() => {
-                              setMemberToReset(member);
-                              setResetPasswordDialogOpen(true);
+                              setMemberToSetPwd(member);
+                              setNewPasswordValue('');
+                              setNewPasswordConfirm('');
+                              setSetPasswordDialogOpen(true);
                             }}
                           >
                             <KeyRound className="h-4 w-4" />
