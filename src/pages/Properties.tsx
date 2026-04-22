@@ -23,6 +23,7 @@ import { PropertyAddressEditor, AddressFormData, initialAddressData, parseAddres
 import { cn } from '@/lib/utils';
 import { useImageCompression } from '@/hooks/useImageCompression';
 import { usePropertyGeocoding } from '@/hooks/usePropertyGeocoding';
+import { PropertyImage } from '@/components/properties/PropertyImage';
 
 interface Property {
   id: string;
