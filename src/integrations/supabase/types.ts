@@ -861,6 +861,30 @@ export type Database = {
           },
         ]
       }
+      password_reset_tokens: {
+        Row: {
+          created_at: string
+          expires_at: string
+          id: string
+          token_hash: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          expires_at: string
+          id?: string
+          token_hash: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          expires_at?: string
+          id?: string
+          token_hash?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           activated_at: string | null
@@ -872,8 +896,6 @@ export type Database = {
           must_reset_password: boolean | null
           name: string | null
           onboarding_completed: boolean
-          reset_token_expires_at: string | null
-          reset_token_hash: string | null
           team_member_id: string | null
           updated_at: string
         }
@@ -887,8 +909,6 @@ export type Database = {
           must_reset_password?: boolean | null
           name?: string | null
           onboarding_completed?: boolean
-          reset_token_expires_at?: string | null
-          reset_token_hash?: string | null
           team_member_id?: string | null
           updated_at?: string
         }
@@ -902,8 +922,6 @@ export type Database = {
           must_reset_password?: boolean | null
           name?: string | null
           onboarding_completed?: boolean
-          reset_token_expires_at?: string | null
-          reset_token_hash?: string | null
           team_member_id?: string | null
           updated_at?: string
         }
