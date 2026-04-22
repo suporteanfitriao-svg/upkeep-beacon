@@ -30,16 +30,20 @@ export function usePropertyPassword({
       }
 
       try {
-        const { data, error } = await supabase
+        // Read non-sensitive mode from table; sensitive password via SECURITY DEFINER RPC
+        const { data: modeData, error: modeError } = await supabase
           .from('properties')
-          .select('password_mode, global_access_password')
+          .select('password_mode')
           .eq('id', propertyId)
           .single();
 
-        if (error) throw error;
-        
-        setPasswordMode((data?.password_mode as PropertyPasswordMode) || 'ical');
-        setGlobalPassword(data?.global_access_password || null);
+        if (modeError) throw modeError;
+        setPasswordMode((modeData?.password_mode as PropertyPasswordMode) || 'ical');
+
+        // Only admin/manager/superadmin will receive a non-null value
+        const { data: pwd } = await supabase
+          .rpc('get_property_global_password', { p_property_id: propertyId });
+        setGlobalPassword((pwd as string) || null);
       } catch (err) {
         console.error('Error fetching password settings:', err);
       } finally {
