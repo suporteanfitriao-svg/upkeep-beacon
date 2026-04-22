@@ -95,6 +95,7 @@ export function SyncStep({ onNext, onBack }: SyncStepProps) {
           .from('property_ical_sources')
           .update({ 
             ical_url: icalUrl.trim(),
+            sync_start_date: syncStartDate || null,
             updated_at: new Date().toISOString()
           })
           .eq('property_id', selectedPropertyId);
@@ -106,6 +107,7 @@ export function SyncStep({ onNext, onBack }: SyncStepProps) {
           .insert({
             property_id: selectedPropertyId,
             ical_url: icalUrl.trim(),
+            sync_start_date: syncStartDate || null,
           });
 
         if (error) throw error;
@@ -114,6 +116,7 @@ export function SyncStep({ onNext, onBack }: SyncStepProps) {
       // Refresh data
       await fetchData();
       setIcalUrl('');
+      setSyncStartDate('');
       toast.success('Calendário sincronizado com sucesso!');
     } catch (error) {
       console.error('Error syncing:', error);
