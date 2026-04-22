@@ -28,7 +28,8 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
-import { Loader2, Plus, Building2, Users } from 'lucide-react';
+import { Loader2, Plus, Building2, Users, AlertCircle } from 'lucide-react';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 import { toast } from 'sonner';
 
 interface OwnerRow {
@@ -71,6 +72,56 @@ const initialForm = {
   plan_expires_at: '',
 };
 
+// --- Validation helpers ---
+const onlyDigits = (v: string) => v.replace(/\D/g, '');
+
+const formatDocument = (v: string, type: 'cpf' | 'cnpj') => {
+  const d = onlyDigits(v);
+  if (type === 'cpf') {
+    return d
+      .slice(0, 11)
+      .replace(/(\d{3})(\d)/, '$1.$2')
+      .replace(/(\d{3})(\d)/, '$1.$2')
+      .replace(/(\d{3})(\d{1,2})$/, '$1-$2');
+  }
+  return d
+    .slice(0, 14)
+    .replace(/^(\d{2})(\d)/, '$1.$2')
+    .replace(/^(\d{2})\.(\d{3})(\d)/, '$1.$2.$3')
+    .replace(/\.(\d{3})(\d)/, '.$1/$2')
+    .replace(/(\d{4})(\d{1,2})$/, '$1-$2');
+};
+
+const isValidCPF = (cpf: string): boolean => {
+  const d = onlyDigits(cpf);
+  if (d.length !== 11 || /^(\d)\1{10}$/.test(d)) return false;
+  let sum = 0;
+  for (let i = 0; i < 9; i++) sum += parseInt(d[i]) * (10 - i);
+  let rev = 11 - (sum % 11);
+  if (rev >= 10) rev = 0;
+  if (rev !== parseInt(d[9])) return false;
+  sum = 0;
+  for (let i = 0; i < 10; i++) sum += parseInt(d[i]) * (11 - i);
+  rev = 11 - (sum % 11);
+  if (rev >= 10) rev = 0;
+  return rev === parseInt(d[10]);
+};
+
+const isValidCNPJ = (cnpj: string): boolean => {
+  const d = onlyDigits(cnpj);
+  if (d.length !== 14 || /^(\d)\1{13}$/.test(d)) return false;
+  const calc = (base: string, weights: number[]) => {
+    const sum = weights.reduce((acc, w, i) => acc + parseInt(base[i]) * w, 0);
+    const rest = sum % 11;
+    return rest < 2 ? 0 : 11 - rest;
+  };
+  const w1 = [5, 4, 3, 2, 9, 8, 7, 6, 5, 4, 3, 2];
+  const w2 = [6, ...w1];
+  return calc(d.slice(0, 12), w1) === parseInt(d[12]) && calc(d.slice(0, 13), w2) === parseInt(d[13]);
+};
+
+const isValidEmail = (e: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e);
+
 export function OwnersSection() {
   const [owners, setOwners] = useState<OwnerRow[]>([]);
   const [plans, setPlans] = useState<Plan[]>([]);
@@ -78,6 +129,7 @@ export function OwnersSection() {
   const [open, setOpen] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [form, setForm] = useState(initialForm);
+  const [formError, setFormError] = useState<string | null>(null);
 
   const loadData = async () => {
     setLoading(true);
@@ -157,19 +209,56 @@ export function OwnersSection() {
   }, []);
 
   const handleCreate = async () => {
+    setFormError(null);
+
+    // 1. Required fields
     if (!form.email || !form.password || !form.name || !form.document_number || !form.legal_name) {
-      toast.error('Preencha email, senha, nome, documento e razão social');
+      setFormError('Preencha todos os campos obrigatórios (*).');
       return;
     }
+    // 2. Email
+    if (!isValidEmail(form.email)) {
+      setFormError('Email inválido.');
+      return;
+    }
+    // 3. Password
+    if (form.password.length < 8) {
+      setFormError('A senha temporária deve ter pelo menos 8 caracteres.');
+      return;
+    }
+    // 4. Document validity (digits + checksum)
+    const cleanedDoc = onlyDigits(form.document_number);
+    if (form.document_type === 'cpf' && !isValidCPF(cleanedDoc)) {
+      setFormError('CPF inválido. Verifique os dígitos.');
+      return;
+    }
+    if (form.document_type === 'cnpj' && !isValidCNPJ(cleanedDoc)) {
+      setFormError('CNPJ inválido. Verifique os dígitos.');
+      return;
+    }
+
     setSubmitting(true);
     try {
+      // 5. Pre-check duplicate document on the database (avoids transactional rollback)
+      const { data: dupDoc } = await supabase
+        .from('owner_profiles')
+        .select('user_id, legal_name')
+        .eq('document_type', form.document_type)
+        .eq('document_number', cleanedDoc)
+        .maybeSingle();
+      if (dupDoc) {
+        setFormError(`Já existe um cliente com este ${form.document_type.toUpperCase()} (${dupDoc.legal_name}).`);
+        setSubmitting(false);
+        return;
+      }
+
       const { data, error } = await supabase.functions.invoke('superadmin-create-owner', {
         body: {
           email: form.email,
           password: form.password,
           name: form.name,
           document_type: form.document_type,
-          document_number: form.document_number,
+          document_number: cleanedDoc,
           legal_name: form.legal_name,
           trade_name: form.trade_name || undefined,
           billing_phone: form.billing_phone || undefined,
@@ -183,16 +272,41 @@ export function OwnersSection() {
         },
       });
 
-      if (error) throw error;
-      if (data?.error) throw new Error(data.error);
+      // Edge function returns structured error in body even on non-2xx
+      const fnError = (data as { error?: string } | null)?.error;
+      if (fnError) throw new Error(fnError);
+      if (error) {
+        // Try to surface the body error message
+        const ctx = (error as { context?: { body?: string } }).context;
+        if (ctx?.body) {
+          try {
+            const parsed = JSON.parse(ctx.body);
+            if (parsed?.error) throw new Error(parsed.error);
+          } catch {
+            // fallthrough
+          }
+        }
+        throw error;
+      }
 
       toast.success('Proprietário cadastrado com sucesso');
       setForm(initialForm);
+      setFormError(null);
       setOpen(false);
       loadData();
     } catch (err) {
-      const message = err instanceof Error ? err.message : 'Erro ao cadastrar';
-      toast.error(message);
+      const raw = err instanceof Error ? err.message : 'Erro desconhecido ao cadastrar';
+      // Friendlier mapping of common backend errors
+      let friendly = raw;
+      if (/duplicate|já existe|already/i.test(raw)) {
+        friendly = 'Já existe um cliente com este documento ou email.';
+      } else if (/email/i.test(raw) && /registered|exists/i.test(raw)) {
+        friendly = 'Este email já está cadastrado em outra conta.';
+      } else if (/role|owner_profile|subscription/i.test(raw)) {
+        friendly = `Falha ao configurar o cliente (${raw}). A conta foi revertida — tente novamente.`;
+      }
+      setFormError(friendly);
+      toast.error(friendly);
     } finally {
       setSubmitting(false);
     }
@@ -280,7 +394,7 @@ export function OwnersSection() {
         )}
       </div>
 
-      <Dialog open={open} onOpenChange={setOpen}>
+      <Dialog open={open} onOpenChange={(v) => { setOpen(v); if (!v) setFormError(null); }}>
         <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Cadastrar novo cliente</DialogTitle>
@@ -290,6 +404,12 @@ export function OwnersSection() {
           </DialogHeader>
 
           <div className="space-y-6 py-2">
+            {formError && (
+              <Alert variant="destructive">
+                <AlertCircle className="h-4 w-4" />
+                <AlertDescription>{formError}</AlertDescription>
+              </Alert>
+            )}
             <section className="space-y-3">
               <h3 className="text-sm font-semibold">Conta de acesso</h3>
               <div className="grid grid-cols-2 gap-3">
@@ -340,8 +460,9 @@ export function OwnersSection() {
                   <Label>Número *</Label>
                   <Input
                     value={form.document_number}
-                    onChange={(e) => setForm({ ...form, document_number: e.target.value })}
+                    onChange={(e) => setForm({ ...form, document_number: formatDocument(e.target.value, form.document_type) })}
                     placeholder={form.document_type === 'cpf' ? '000.000.000-00' : '00.000.000/0000-00'}
+                    inputMode="numeric"
                   />
                 </div>
                 <div className="space-y-1 col-span-2">
