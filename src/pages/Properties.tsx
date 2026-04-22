@@ -882,17 +882,16 @@ export default function Properties() {
                       {/* Property Header */}
                       <div className="flex items-start justify-between gap-4 p-4 border-b border-border bg-muted/30">
                         <div className="flex items-start gap-3">
-                          {property.image_url ? (
-                            <img 
-                              src={property.image_url} 
-                              alt={property.name}
-                              className="h-11 w-11 rounded-xl object-cover shrink-0 border border-border"
-                            />
-                          ) : (
-                            <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-primary/10 shrink-0">
-                              <span className="material-symbols-outlined text-primary text-[22px]">home</span>
-                            </div>
-                          )}
+                          <PropertyImage
+                            imageUrl={property.image_url}
+                            alt={property.name}
+                            className="h-11 w-11 rounded-xl shrink-0 border border-border"
+                            fallback={
+                              <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-primary/10 shrink-0">
+                                <span className="material-symbols-outlined text-primary text-[22px]">home</span>
+                              </div>
+                            }
+                          />
                             <div className="min-w-0">
                             <div className="flex items-center gap-2 flex-wrap">
                               <h3 className="font-bold text-foreground truncate">{property.name}</h3>
