@@ -49,6 +49,7 @@ import { CompletedScheduleRow } from '@/components/reports/CompletedScheduleRow'
 import { ScheduleDetailReadOnly } from '@/components/reports/ScheduleDetailReadOnly';
 import { NokItemsReport } from '@/components/reports/NokItemsReport';
 import { PhotoGallery } from '@/components/shared/PhotoGallery';
+import { SignedImage } from '@/components/shared/SignedImage';
 import { Schedule } from '@/types/scheduling';
 
 function MaintenanceStatCard({ 
@@ -193,6 +194,7 @@ function IssueCard({
                     uploaded_by: p.uploaded_by
                   }))}
                   emptyMessage="Nenhuma foto"
+                  bucket="issue-photos"
                 />
               </div>
             )}
@@ -992,10 +994,12 @@ export default function Manutencao() {
                 <Label>Fotos existentes ({selectedIssue.photos.length})</Label>
                 <div className="flex gap-2 overflow-x-auto pb-2">
                   {selectedIssue.photos.map((photo, idx) => (
-                    <img 
+                    <SignedImage
                       key={idx}
-                      src={photo.url} 
-                      alt={`Foto ${idx + 1}`} 
+                      src={photo.url}
+                      bucket="issue-photos"
+                      preferRaw
+                      alt={`Foto ${idx + 1}`}
                       className="h-16 w-16 object-cover rounded flex-shrink-0"
                     />
                   ))}
