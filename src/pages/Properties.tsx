@@ -736,6 +736,50 @@ export default function Properties() {
                           </div>
                         </div>
                       </div>
+                      <div className="space-y-2">
+                        <div className="flex items-center gap-2 text-sm font-medium">
+                          <span className="material-symbols-outlined text-primary text-[18px]">groups</span>
+                          <span>Hóspedes *</span>
+                        </div>
+                        <p className="text-xs text-muted-foreground">
+                          Mínimo ≤ Padrão ≤ Máximo. O padrão é usado nas novas limpezas.
+                        </p>
+                        <div className="grid grid-cols-3 gap-3">
+                          <div className="space-y-1">
+                            <Label htmlFor="min_guests" className="text-xs">Mínimo *</Label>
+                            <Input
+                              id="min_guests"
+                              type="number"
+                              min={1}
+                              value={formData.min_guests}
+                              onChange={(e) => setFormData({ ...formData, min_guests: Math.max(1, parseInt(e.target.value) || 1) })}
+                              className="rounded-xl"
+                            />
+                          </div>
+                          <div className="space-y-1">
+                            <Label htmlFor="default_guests" className="text-xs">Padrão *</Label>
+                            <Input
+                              id="default_guests"
+                              type="number"
+                              min={1}
+                              value={formData.default_guests}
+                              onChange={(e) => setFormData({ ...formData, default_guests: Math.max(1, parseInt(e.target.value) || 1) })}
+                              className="rounded-xl"
+                            />
+                          </div>
+                          <div className="space-y-1">
+                            <Label htmlFor="max_guests" className="text-xs">Máximo *</Label>
+                            <Input
+                              id="max_guests"
+                              type="number"
+                              min={1}
+                              value={formData.max_guests}
+                              onChange={(e) => setFormData({ ...formData, max_guests: Math.max(1, parseInt(e.target.value) || 1) })}
+                              className="rounded-xl"
+                            />
+                          </div>
+                        </div>
+                      </div>
                       <button 
                         onClick={handleSubmit}
                         disabled={isUploading || isCompressing}
@@ -873,6 +917,10 @@ export default function Properties() {
                               <span className="flex items-center gap-1">
                                 <span className="material-symbols-outlined text-[14px]">login</span>
                                 {property.default_check_in_time?.slice(0, 5) || '14:00'}
+                              </span>
+                              <span className="flex items-center gap-1">
+                                <span className="material-symbols-outlined text-[14px]">groups</span>
+                                {property.min_guests ?? 1}–{property.max_guests ?? '?'} (padrão {property.default_guests ?? 1})
                               </span>
                             </div>
                           </div>
