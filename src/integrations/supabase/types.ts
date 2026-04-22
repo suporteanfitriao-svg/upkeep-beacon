@@ -1238,6 +1238,7 @@ export type Database = {
           last_sync_at: string | null
           property_id: string
           reservations_count: number | null
+          sync_start_date: string | null
           updated_at: string
         }
         Insert: {
@@ -1249,6 +1250,7 @@ export type Database = {
           last_sync_at?: string | null
           property_id: string
           reservations_count?: number | null
+          sync_start_date?: string | null
           updated_at?: string
         }
         Update: {
@@ -1260,6 +1262,7 @@ export type Database = {
           last_sync_at?: string | null
           property_id?: string
           reservations_count?: number | null
+          sync_start_date?: string | null
           updated_at?: string
         }
         Relationships: [
