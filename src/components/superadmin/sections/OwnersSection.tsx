@@ -28,7 +28,7 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
-import { Loader2, Plus, Building2, Users, AlertCircle } from 'lucide-react';
+import { Loader2, Plus, Building2, Users, AlertCircle, Home } from 'lucide-react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { toast } from 'sonner';
 
@@ -130,6 +130,95 @@ export function OwnersSection() {
   const [submitting, setSubmitting] = useState(false);
   const [form, setForm] = useState(initialForm);
   const [formError, setFormError] = useState<string | null>(null);
+
+  // Assisted property onboarding state
+  const [propOpen, setPropOpen] = useState(false);
+  const [propOwner, setPropOwner] = useState<{ user_id: string; legal_name: string } | null>(null);
+  const [propSubmitting, setPropSubmitting] = useState(false);
+  const [propError, setPropError] = useState<string | null>(null);
+  const [propList, setPropList] = useState<{ id: string; name: string; property_code: string | null }[]>([]);
+  const [propForm, setPropForm] = useState({
+    name: '',
+    address: '',
+    default_check_in_time: '14:00',
+    default_check_out_time: '11:00',
+    max_guests: 10,
+    airbnb_ical_url: '',
+  });
+
+  const openPropertyWizard = async (owner: { user_id: string; legal_name: string }) => {
+    setPropOwner(owner);
+    setPropError(null);
+    setPropForm({
+      name: '',
+      address: '',
+      default_check_in_time: '14:00',
+      default_check_out_time: '11:00',
+      max_guests: 10,
+      airbnb_ical_url: '',
+    });
+    const { data } = await supabase
+      .from('properties')
+      .select('id, name, property_code')
+      .eq('owner_user_id', owner.user_id)
+      .order('created_at', { ascending: false });
+    setPropList(data || []);
+    setPropOpen(true);
+  };
+
+  const handleAddProperty = async () => {
+    if (!propOwner) return;
+    setPropError(null);
+    if (!propForm.name.trim()) {
+      setPropError('Informe o nome do imóvel.');
+      return;
+    }
+    setPropSubmitting(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('superadmin-create-property', {
+        body: {
+          owner_user_id: propOwner.user_id,
+          name: propForm.name,
+          address: propForm.address || undefined,
+          default_check_in_time: propForm.default_check_in_time
+            ? `${propForm.default_check_in_time}:00`
+            : undefined,
+          default_check_out_time: propForm.default_check_out_time
+            ? `${propForm.default_check_out_time}:00`
+            : undefined,
+          max_guests: Number(propForm.max_guests) || 10,
+          airbnb_ical_url: propForm.airbnb_ical_url || undefined,
+        },
+      });
+      const fnError = (data as { error?: string } | null)?.error;
+      if (fnError) throw new Error(fnError);
+      if (error) throw error;
+
+      toast.success(`Imóvel "${propForm.name}" cadastrado`);
+      setPropForm({
+        name: '',
+        address: '',
+        default_check_in_time: '14:00',
+        default_check_out_time: '11:00',
+        max_guests: 10,
+        airbnb_ical_url: '',
+      });
+      // Refresh list
+      const { data: refreshed } = await supabase
+        .from('properties')
+        .select('id, name, property_code')
+        .eq('owner_user_id', propOwner.user_id)
+        .order('created_at', { ascending: false });
+      setPropList(refreshed || []);
+      loadData();
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : 'Erro ao cadastrar imóvel';
+      setPropError(msg);
+      toast.error(msg);
+    } finally {
+      setPropSubmitting(false);
+    }
+  };
 
   const loadData = async () => {
     setLoading(true);
@@ -290,10 +379,18 @@ export function OwnersSection() {
       }
 
       toast.success('Proprietário cadastrado com sucesso');
+      const createdOwner = {
+        user_id: (data as { user_id?: string } | null)?.user_id || '',
+        legal_name: form.legal_name,
+      };
       setForm(initialForm);
       setFormError(null);
       setOpen(false);
       loadData();
+      // Auto-open assisted property wizard
+      if (createdOwner.user_id) {
+        setTimeout(() => openPropertyWizard(createdOwner), 300);
+      }
     } catch (err) {
       const raw = err instanceof Error ? err.message : 'Erro desconhecido ao cadastrar';
       // Friendlier mapping of common backend errors
@@ -347,6 +444,7 @@ export function OwnersSection() {
                 <TableHead className="text-center">Imóveis</TableHead>
                 <TableHead className="text-center">Equipe</TableHead>
                 <TableHead>Cadastrado em</TableHead>
+                <TableHead className="text-right">Ações</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -386,6 +484,16 @@ export function OwnersSection() {
                   </TableCell>
                   <TableCell className="text-sm text-muted-foreground">
                     {new Date(o.created_at).toLocaleDateString('pt-BR')}
+                  </TableCell>
+                  <TableCell className="text-right">
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => openPropertyWizard({ user_id: o.user_id, legal_name: o.legal_name })}
+                    >
+                      <Home className="mr-1 h-3 w-3" />
+                      Imóveis
+                    </Button>
                   </TableCell>
                 </TableRow>
               ))}
@@ -566,6 +674,112 @@ export function OwnersSection() {
             <Button onClick={handleCreate} disabled={submitting}>
               {submitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
               Cadastrar cliente
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Assisted property onboarding */}
+      <Dialog open={propOpen} onOpenChange={(v) => { setPropOpen(v); if (!v) setPropError(null); }}>
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Imóveis de {propOwner?.legal_name}</DialogTitle>
+            <DialogDescription>
+              Cadastre imóveis em nome deste cliente. Eles aparecerão na conta dele automaticamente.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-6 py-2">
+            {propError && (
+              <Alert variant="destructive">
+                <AlertCircle className="h-4 w-4" />
+                <AlertDescription>{propError}</AlertDescription>
+              </Alert>
+            )}
+
+            {propList.length > 0 && (
+              <section className="space-y-2">
+                <h3 className="text-sm font-semibold">Imóveis já cadastrados ({propList.length})</h3>
+                <div className="rounded-md border divide-y">
+                  {propList.map((p) => (
+                    <div key={p.id} className="flex items-center justify-between px-3 py-2 text-sm">
+                      <div className="flex items-center gap-2">
+                        <Building2 className="h-3 w-3 text-muted-foreground" />
+                        <span className="font-medium">{p.name}</span>
+                      </div>
+                      {p.property_code && (
+                        <Badge variant="outline" className="font-mono text-xs">{p.property_code}</Badge>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </section>
+            )}
+
+            <section className="space-y-3">
+              <h3 className="text-sm font-semibold">Adicionar novo imóvel</h3>
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1 col-span-2">
+                  <Label>Nome do imóvel *</Label>
+                  <Input
+                    value={propForm.name}
+                    onChange={(e) => setPropForm({ ...propForm, name: e.target.value })}
+                    placeholder="Ex: Apto Copacabana 502"
+                  />
+                </div>
+                <div className="space-y-1 col-span-2">
+                  <Label>Endereço completo</Label>
+                  <Input
+                    value={propForm.address}
+                    onChange={(e) => setPropForm({ ...propForm, address: e.target.value })}
+                  />
+                </div>
+                <div className="space-y-1">
+                  <Label>Check-in padrão</Label>
+                  <Input
+                    type="time"
+                    value={propForm.default_check_in_time}
+                    onChange={(e) => setPropForm({ ...propForm, default_check_in_time: e.target.value })}
+                  />
+                </div>
+                <div className="space-y-1">
+                  <Label>Check-out padrão</Label>
+                  <Input
+                    type="time"
+                    value={propForm.default_check_out_time}
+                    onChange={(e) => setPropForm({ ...propForm, default_check_out_time: e.target.value })}
+                  />
+                </div>
+                <div className="space-y-1">
+                  <Label>Capacidade máxima</Label>
+                  <Input
+                    type="number"
+                    min={1}
+                    max={50}
+                    value={propForm.max_guests}
+                    onChange={(e) => setPropForm({ ...propForm, max_guests: Number(e.target.value) })}
+                  />
+                </div>
+                <div className="space-y-1 col-span-2">
+                  <Label>URL iCal (Airbnb / Booking) — opcional</Label>
+                  <Input
+                    value={propForm.airbnb_ical_url}
+                    onChange={(e) => setPropForm({ ...propForm, airbnb_ical_url: e.target.value })}
+                    placeholder="https://..."
+                  />
+                </div>
+              </div>
+            </section>
+          </div>
+
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setPropOpen(false)} disabled={propSubmitting}>
+              Concluir
+            </Button>
+            <Button onClick={handleAddProperty} disabled={propSubmitting}>
+              {propSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              <Plus className="mr-1 h-4 w-4" />
+              Adicionar imóvel
             </Button>
           </DialogFooter>
         </DialogContent>
