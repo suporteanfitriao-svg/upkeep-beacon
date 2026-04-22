@@ -209,19 +209,56 @@ export function OwnersSection() {
   }, []);
 
   const handleCreate = async () => {
+    setFormError(null);
+
+    // 1. Required fields
     if (!form.email || !form.password || !form.name || !form.document_number || !form.legal_name) {
-      toast.error('Preencha email, senha, nome, documento e razão social');
+      setFormError('Preencha todos os campos obrigatórios (*).');
       return;
     }
+    // 2. Email
+    if (!isValidEmail(form.email)) {
+      setFormError('Email inválido.');
+      return;
+    }
+    // 3. Password
+    if (form.password.length < 8) {
+      setFormError('A senha temporária deve ter pelo menos 8 caracteres.');
+      return;
+    }
+    // 4. Document validity (digits + checksum)
+    const cleanedDoc = onlyDigits(form.document_number);
+    if (form.document_type === 'cpf' && !isValidCPF(cleanedDoc)) {
+      setFormError('CPF inválido. Verifique os dígitos.');
+      return;
+    }
+    if (form.document_type === 'cnpj' && !isValidCNPJ(cleanedDoc)) {
+      setFormError('CNPJ inválido. Verifique os dígitos.');
+      return;
+    }
+
     setSubmitting(true);
     try {
+      // 5. Pre-check duplicate document on the database (avoids transactional rollback)
+      const { data: dupDoc } = await supabase
+        .from('owner_profiles')
+        .select('user_id, legal_name')
+        .eq('document_type', form.document_type)
+        .eq('document_number', cleanedDoc)
+        .maybeSingle();
+      if (dupDoc) {
+        setFormError(`Já existe um cliente com este ${form.document_type.toUpperCase()} (${dupDoc.legal_name}).`);
+        setSubmitting(false);
+        return;
+      }
+
       const { data, error } = await supabase.functions.invoke('superadmin-create-owner', {
         body: {
           email: form.email,
           password: form.password,
           name: form.name,
           document_type: form.document_type,
-          document_number: form.document_number,
+          document_number: cleanedDoc,
           legal_name: form.legal_name,
           trade_name: form.trade_name || undefined,
           billing_phone: form.billing_phone || undefined,
@@ -235,16 +272,41 @@ export function OwnersSection() {
         },
       });
 
-      if (error) throw error;
-      if (data?.error) throw new Error(data.error);
+      // Edge function returns structured error in body even on non-2xx
+      const fnError = (data as { error?: string } | null)?.error;
+      if (fnError) throw new Error(fnError);
+      if (error) {
+        // Try to surface the body error message
+        const ctx = (error as { context?: { body?: string } }).context;
+        if (ctx?.body) {
+          try {
+            const parsed = JSON.parse(ctx.body);
+            if (parsed?.error) throw new Error(parsed.error);
+          } catch {
+            // fallthrough
+          }
+        }
+        throw error;
+      }
 
       toast.success('Proprietário cadastrado com sucesso');
       setForm(initialForm);
+      setFormError(null);
       setOpen(false);
       loadData();
     } catch (err) {
-      const message = err instanceof Error ? err.message : 'Erro ao cadastrar';
-      toast.error(message);
+      const raw = err instanceof Error ? err.message : 'Erro desconhecido ao cadastrar';
+      // Friendlier mapping of common backend errors
+      let friendly = raw;
+      if (/duplicate|já existe|already/i.test(raw)) {
+        friendly = 'Já existe um cliente com este documento ou email.';
+      } else if (/email/i.test(raw) && /registered|exists/i.test(raw)) {
+        friendly = 'Este email já está cadastrado em outra conta.';
+      } else if (/role|owner_profile|subscription/i.test(raw)) {
+        friendly = `Falha ao configurar o cliente (${raw}). A conta foi revertida — tente novamente.`;
+      }
+      setFormError(friendly);
+      toast.error(friendly);
     } finally {
       setSubmitting(false);
     }
