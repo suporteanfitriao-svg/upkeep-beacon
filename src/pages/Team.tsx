@@ -64,7 +64,7 @@ const roleColors: Record<string, string> = {
 };
 
 export default function Team() {
-  const { isAdmin, isSuperAdmin, hasAdminAccess, role, loading: roleLoading } = useUserRole();
+  const { isAdmin, isManager, isSuperAdmin, hasAdminAccess, hasManagerAccess, role, loading: roleLoading } = useUserRole();
   const { fetching: fetchingCep, handleCepChange } = useCepLookup();
   const [members, setMembers] = useState<TeamMember[]>([]);
   const [properties, setProperties] = useState<Property[]>([]);
@@ -74,6 +74,12 @@ export default function Team() {
   const [submitting, setSubmitting] = useState(false);
   const [resetDialogOpen, setResetDialogOpen] = useState(false);
   const [sendingReset, setSendingReset] = useState(false);
+
+  // Set new password (manual) state
+  const [setPwdDialogOpen, setSetPwdDialogOpen] = useState(false);
+  const [newPwdValue, setNewPwdValue] = useState('');
+  const [newPwdConfirm, setNewPwdConfirm] = useState('');
+  const [savingPwd, setSavingPwd] = useState(false);
   const [formData, setFormData] = useState({
     name: '',
     email: '',
@@ -93,14 +99,14 @@ export default function Team() {
     address_state: '',
   });
 
-  const canManage = hasAdminAccess;
+  const canManage = hasManagerAccess;
 
   useEffect(() => {
-    if (hasAdminAccess) {
+    if (hasManagerAccess) {
       fetchMembers();
       fetchProperties();
     }
-  }, [hasAdminAccess]);
+  }, [hasManagerAccess]);
 
   async function fetchMembers() {
     try {
@@ -419,6 +425,38 @@ export default function Team() {
     }
   }
 
+  async function handleSetPasswordManual() {
+    if (!editingMember) return;
+    if (newPwdValue.length < 8) {
+      toast.error('Senha deve ter no mínimo 8 caracteres');
+      return;
+    }
+    if (newPwdValue !== newPwdConfirm) {
+      toast.error('As senhas não coincidem');
+      return;
+    }
+    setSavingPwd(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('set-team-member-password', {
+        body: {
+          teamMemberId: editingMember.id,
+          newPassword: newPwdValue,
+        },
+      });
+      if (error) throw error;
+      if (data && data.error) throw new Error(data.error);
+      toast.success(`Senha de ${editingMember.name} atualizada!`);
+      setSetPwdDialogOpen(false);
+      setNewPwdValue('');
+      setNewPwdConfirm('');
+    } catch (err: any) {
+      console.error('Error setting password:', err);
+      toast.error(err?.message || 'Erro ao atualizar senha');
+    } finally {
+      setSavingPwd(false);
+    }
+  }
+
   function toggleProperty(propertyId: string) {
     setFormData(prev => ({
       ...prev,
@@ -450,7 +488,7 @@ export default function Team() {
     );
   }
 
-  if (!isAdmin) {
+  if (!hasManagerAccess) {
     return <Navigate to="/" replace />;
   }
 
@@ -747,25 +785,50 @@ export default function Team() {
                     {editingMember && canManage && (
                       <>
                         <Separator />
-                        <div className="flex items-center justify-between p-3 bg-muted/30 rounded-lg">
-                          <div className="space-y-0.5">
-                            <Label className="flex items-center gap-2">
-                              <Key className="h-4 w-4" />
-                              Redefinição de Senha
-                            </Label>
-                            <p className="text-sm text-muted-foreground">
-                              Enviar link para redefinir senha por email
-                            </p>
+                        <div className="space-y-2">
+                          <div className="flex items-center justify-between p-3 bg-muted/30 rounded-lg">
+                            <div className="space-y-0.5">
+                              <Label className="flex items-center gap-2">
+                                <Key className="h-4 w-4" />
+                                Definir nova senha
+                              </Label>
+                              <p className="text-sm text-muted-foreground">
+                                Definir manualmente uma nova senha para este usuário
+                              </p>
+                            </div>
+                            <Button
+                              type="button"
+                              variant="default"
+                              size="sm"
+                              onClick={() => {
+                                setNewPwdValue('');
+                                setNewPwdConfirm('');
+                                setSetPwdDialogOpen(true);
+                              }}
+                            >
+                              <Key className="h-4 w-4 mr-2" />
+                              Definir senha
+                            </Button>
                           </div>
-                          <Button
-                            type="button"
-                            variant="outline"
-                            size="sm"
-                            onClick={() => setResetDialogOpen(true)}
-                          >
-                            <Key className="h-4 w-4 mr-2" />
-                            Enviar Nova Senha
-                          </Button>
+                          <div className="flex items-center justify-between p-3 bg-muted/30 rounded-lg">
+                            <div className="space-y-0.5">
+                              <Label className="flex items-center gap-2 text-muted-foreground">
+                                <Mail className="h-4 w-4" />
+                                Enviar redefinição por e-mail
+                              </Label>
+                              <p className="text-xs text-muted-foreground">
+                                O usuário define a nova senha pelo link recebido
+                              </p>
+                            </div>
+                            <Button
+                              type="button"
+                              variant="outline"
+                              size="sm"
+                              onClick={() => setResetDialogOpen(true)}
+                            >
+                              Enviar e-mail
+                            </Button>
+                          </div>
                         </div>
                       </>
                     )}
@@ -907,6 +970,61 @@ export default function Team() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Set new password dialog */}
+      <Dialog open={setPwdDialogOpen} onOpenChange={(o) => {
+        setSetPwdDialogOpen(o);
+        if (!o) {
+          setNewPwdValue('');
+          setNewPwdConfirm('');
+        }
+      }}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Key className="h-5 w-5" />
+              Definir nova senha
+            </DialogTitle>
+          </DialogHeader>
+          <p className="text-sm text-muted-foreground">
+            Definindo nova senha para <strong>{editingMember?.name}</strong> ({editingMember?.email}).
+            O usuário poderá entrar com a nova senha imediatamente.
+          </p>
+          <div className="space-y-4 py-2">
+            <div className="space-y-2">
+              <Label htmlFor="team-new-pwd">Nova senha</Label>
+              <Input
+                id="team-new-pwd"
+                type="password"
+                placeholder="Mínimo 8 caracteres"
+                value={newPwdValue}
+                onChange={(e) => setNewPwdValue(e.target.value)}
+                autoComplete="new-password"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="team-new-pwd-confirm">Confirmar senha</Label>
+              <Input
+                id="team-new-pwd-confirm"
+                type="password"
+                placeholder="Repita a senha"
+                value={newPwdConfirm}
+                onChange={(e) => setNewPwdConfirm(e.target.value)}
+                autoComplete="new-password"
+              />
+            </div>
+          </div>
+          <div className="flex justify-end gap-2 pt-2">
+            <Button variant="outline" onClick={() => setSetPwdDialogOpen(false)} disabled={savingPwd}>
+              Cancelar
+            </Button>
+            <Button onClick={handleSetPasswordManual} disabled={savingPwd}>
+              {savingPwd && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+              Salvar nova senha
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </SidebarProvider>
   );
 }
