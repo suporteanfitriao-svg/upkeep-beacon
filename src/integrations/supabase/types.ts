@@ -2165,6 +2165,14 @@ export type Database = {
           subscription_id: string
         }[]
       }
+      get_property_global_password: {
+        Args: { p_property_id: string }
+        Returns: string
+      }
+      get_property_ical_url: {
+        Args: { p_property_id: string }
+        Returns: string
+      }
       get_property_password: {
         Args: { p_property_id: string; p_schedule_id?: string }
         Returns: string
