@@ -28,7 +28,7 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
-import { Loader2, Plus, Building2, Users, AlertCircle } from 'lucide-react';
+import { Loader2, Plus, Building2, Users, AlertCircle, Home, Trash2 } from 'lucide-react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { toast } from 'sonner';
 
@@ -130,6 +130,95 @@ export function OwnersSection() {
   const [submitting, setSubmitting] = useState(false);
   const [form, setForm] = useState(initialForm);
   const [formError, setFormError] = useState<string | null>(null);
+
+  // Assisted property onboarding state
+  const [propOpen, setPropOpen] = useState(false);
+  const [propOwner, setPropOwner] = useState<{ user_id: string; legal_name: string } | null>(null);
+  const [propSubmitting, setPropSubmitting] = useState(false);
+  const [propError, setPropError] = useState<string | null>(null);
+  const [propList, setPropList] = useState<{ id: string; name: string; property_code: string | null }[]>([]);
+  const [propForm, setPropForm] = useState({
+    name: '',
+    address: '',
+    default_check_in_time: '14:00',
+    default_check_out_time: '11:00',
+    max_guests: 10,
+    airbnb_ical_url: '',
+  });
+
+  const openPropertyWizard = async (owner: { user_id: string; legal_name: string }) => {
+    setPropOwner(owner);
+    setPropError(null);
+    setPropForm({
+      name: '',
+      address: '',
+      default_check_in_time: '14:00',
+      default_check_out_time: '11:00',
+      max_guests: 10,
+      airbnb_ical_url: '',
+    });
+    const { data } = await supabase
+      .from('properties')
+      .select('id, name, property_code')
+      .eq('owner_user_id', owner.user_id)
+      .order('created_at', { ascending: false });
+    setPropList(data || []);
+    setPropOpen(true);
+  };
+
+  const handleAddProperty = async () => {
+    if (!propOwner) return;
+    setPropError(null);
+    if (!propForm.name.trim()) {
+      setPropError('Informe o nome do imóvel.');
+      return;
+    }
+    setPropSubmitting(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('superadmin-create-property', {
+        body: {
+          owner_user_id: propOwner.user_id,
+          name: propForm.name,
+          address: propForm.address || undefined,
+          default_check_in_time: propForm.default_check_in_time
+            ? `${propForm.default_check_in_time}:00`
+            : undefined,
+          default_check_out_time: propForm.default_check_out_time
+            ? `${propForm.default_check_out_time}:00`
+            : undefined,
+          max_guests: Number(propForm.max_guests) || 10,
+          airbnb_ical_url: propForm.airbnb_ical_url || undefined,
+        },
+      });
+      const fnError = (data as { error?: string } | null)?.error;
+      if (fnError) throw new Error(fnError);
+      if (error) throw error;
+
+      toast.success(`Imóvel "${propForm.name}" cadastrado`);
+      setPropForm({
+        name: '',
+        address: '',
+        default_check_in_time: '14:00',
+        default_check_out_time: '11:00',
+        max_guests: 10,
+        airbnb_ical_url: '',
+      });
+      // Refresh list
+      const { data: refreshed } = await supabase
+        .from('properties')
+        .select('id, name, property_code')
+        .eq('owner_user_id', propOwner.user_id)
+        .order('created_at', { ascending: false });
+      setPropList(refreshed || []);
+      loadData();
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : 'Erro ao cadastrar imóvel';
+      setPropError(msg);
+      toast.error(msg);
+    } finally {
+      setPropSubmitting(false);
+    }
+  };
 
   const loadData = async () => {
     setLoading(true);
