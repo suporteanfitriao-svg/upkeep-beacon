@@ -149,12 +149,12 @@ export default function Checkout() {
           </Card>
         )}
 
-        {/* Payment Notice */}
+        {/* Contact Notice */}
         <Alert className="mb-6">
-          <CreditCard className="h-4 w-4" />
+          <MessageCircle className="h-4 w-4" />
           <AlertDescription>
-            Você será redirecionado para a Hotmart para concluir o pagamento com segurança.
-            Aceitamos cartão de crédito, boleto e PIX.
+            Você será redirecionado para o WhatsApp do nosso time comercial
+            para finalizar a contratação do plano.
           </AlertDescription>
         </Alert>
 
@@ -172,8 +172,8 @@ export default function Checkout() {
             </>
           ) : (
             <>
-              <CreditCard className="mr-2 h-4 w-4" />
-              Ir para Pagamento
+              <MessageCircle className="mr-2 h-4 w-4" />
+              Falar no WhatsApp
             </>
           )}
         </Button>
