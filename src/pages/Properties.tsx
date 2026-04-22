@@ -245,11 +245,8 @@ export default function Properties() {
 
       if (uploadError) throw uploadError;
 
-      const { data } = supabase.storage
-        .from('property-images')
-        .getPublicUrl(fileName);
-
-      return data.publicUrl;
+      // Bucket is private; store the path and let SignedImage generate signed URLs on read
+      return fileName;
     } catch (error) {
       console.error('Upload error:', error);
       throw error;
