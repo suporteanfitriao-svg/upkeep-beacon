@@ -3,8 +3,8 @@
  * REGRA: Apenas Proprietário vê preços e faz upgrade
  */
 
-import { useState } from 'react';
-import { Check, Building2, Users, Calendar, ClipboardCheck, Wrench, Bell, Package, ArrowRight } from 'lucide-react';
+import { Check, Building2, Calendar, ClipboardCheck, Wrench, Bell, Package } from 'lucide-react';
+import { FaWhatsapp } from 'react-icons/fa';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -13,6 +13,16 @@ import { useSubscriptionPlans, useSubscription } from '@/hooks/useSubscription';
 import { useAuth } from '@/hooks/useAuth';
 import { cn } from '@/lib/utils';
 import logo from '@/assets/logo.png';
+
+const WHATSAPP_NUMBER = '5534984256809';
+const WHATSAPP_MESSAGE = 'Quero implementar a solução de limpeza nos meus imóveis.';
+
+const buildWhatsappUrl = (planName?: string) => {
+  const message = planName
+    ? `${WHATSAPP_MESSAGE} (Plano: ${planName})`
+    : WHATSAPP_MESSAGE;
+  return `https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent(message)}`;
+};
 
 const FEATURE_ICONS: Record<string, React.ComponentType<{ className?: string }>> = {
   limpezas: Calendar,
@@ -39,18 +49,9 @@ export default function Pricing() {
   const { user } = useAuth();
   const { plans, loading: plansLoading } = useSubscriptionPlans();
   const { subscription, hasActiveSubscription } = useSubscription();
-  const [selectedPlan, setSelectedPlan] = useState<string | null>(null);
 
-  const handleSelectPlan = (planSlug: string) => {
-    setSelectedPlan(planSlug);
-    
-    if (!user) {
-      // Redireciona para auth com o plano selecionado
-      navigate(`/auth?plan=${planSlug}`);
-    } else {
-      // Redireciona para checkout (futuro: integração Hotmart)
-      navigate(`/checkout?plan=${planSlug}`);
-    }
+  const handleSelectPlan = (planName: string) => {
+    window.open(buildWhatsappUrl(planName), '_blank', 'noopener,noreferrer');
   };
 
   return (
@@ -191,14 +192,12 @@ export default function Pricing() {
                       variant={isPopular ? "default" : "outline"}
                       size="lg"
                       disabled={isCurrentPlan}
-                      onClick={() => handleSelectPlan(plan.slug)}
+                      onClick={() => handleSelectPlan(plan.name)}
                     >
                       {isCurrentPlan ? (
                         'Plano Atual'
-                      ) : hasActiveSubscription ? (
-                        <>Fazer Upgrade <ArrowRight className="ml-2 h-4 w-4" /></>
                       ) : (
-                        <>Começar Agora <ArrowRight className="ml-2 h-4 w-4" /></>
+                        <><FaWhatsapp className="mr-2 h-4 w-4" /> Começar Agora</>
                       )}
                     </Button>
                   </CardContent>
@@ -210,8 +209,8 @@ export default function Pricing() {
 
         {/* Footer Note */}
         <div className="text-center mt-12 text-sm text-muted-foreground">
-          <p>Pagamento processado com segurança via Hotmart.</p>
-          <p className="mt-1">Cancele a qualquer momento sem taxas adicionais.</p>
+          <p>Fale com nosso time pelo WhatsApp para contratar.</p>
+          <p className="mt-1">Atendimento personalizado para cada propriedade.</p>
         </div>
       </section>
     </div>
