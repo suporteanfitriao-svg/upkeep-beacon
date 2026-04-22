@@ -753,8 +753,11 @@ export default function Properties() {
                               id="min_guests"
                               type="number"
                               min={1}
-                              value={formData.min_guests}
-                              onChange={(e) => setFormData({ ...formData, min_guests: Math.max(1, parseInt(e.target.value) || 1) })}
+                              value={formData.min_guests === 0 ? '' : formData.min_guests}
+                              onChange={(e) => {
+                                const v = e.target.value;
+                                setFormData({ ...formData, min_guests: v === '' ? 0 : parseInt(v, 10) || 0 });
+                              }}
                               className="rounded-xl"
                             />
                           </div>
@@ -764,8 +767,11 @@ export default function Properties() {
                               id="default_guests"
                               type="number"
                               min={1}
-                              value={formData.default_guests}
-                              onChange={(e) => setFormData({ ...formData, default_guests: Math.max(1, parseInt(e.target.value) || 1) })}
+                              value={formData.default_guests === 0 ? '' : formData.default_guests}
+                              onChange={(e) => {
+                                const v = e.target.value;
+                                setFormData({ ...formData, default_guests: v === '' ? 0 : parseInt(v, 10) || 0 });
+                              }}
                               className="rounded-xl"
                             />
                           </div>
@@ -775,8 +781,11 @@ export default function Properties() {
                               id="max_guests"
                               type="number"
                               min={1}
-                              value={formData.max_guests}
-                              onChange={(e) => setFormData({ ...formData, max_guests: Math.max(1, parseInt(e.target.value) || 1) })}
+                              value={formData.max_guests === 0 ? '' : formData.max_guests}
+                              onChange={(e) => {
+                                const v = e.target.value;
+                                setFormData({ ...formData, max_guests: v === '' ? 0 : parseInt(v, 10) || 0 });
+                              }}
                               className="rounded-xl"
                             />
                           </div>
