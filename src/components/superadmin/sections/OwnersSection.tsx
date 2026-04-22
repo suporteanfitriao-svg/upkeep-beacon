@@ -204,6 +204,7 @@ export function OwnersSection() {
         default_check_out_time: '11:00',
         max_guests: 10,
         airbnb_ical_url: '',
+        ical_sync_start_date: '',
       });
       // Refresh list
       const { data: refreshed } = await supabase
