@@ -49,7 +49,7 @@ export function PropertyGuestsManager({
       return 'Preencha todos os campos';
     }
     if (minNum < 1) return 'Mínimo deve ser pelo menos 1';
-    if (defNum <= minNum) return 'Padrão deve ser maior que o mínimo';
+    if (defNum < minNum) return 'Padrão deve ser maior ou igual ao mínimo';
     if (maxNum < defNum) return 'Máximo deve ser maior ou igual ao padrão';
     return null;
   };
