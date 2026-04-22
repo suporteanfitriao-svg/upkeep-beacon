@@ -26,23 +26,31 @@ export function PropertyGuestsManager({
   initialMax,
   onSaved,
 }: PropertyGuestsManagerProps) {
-  const [min, setMin] = useState(initialMin);
-  const [def, setDef] = useState(initialDefault);
-  const [max, setMax] = useState(initialMax);
+  const [min, setMin] = useState<string>(String(initialMin));
+  const [def, setDef] = useState<string>(String(initialDefault));
+  const [max, setMax] = useState<string>(String(initialMax));
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
-    setMin(initialMin);
-    setDef(initialDefault);
-    setMax(initialMax);
+    setMin(String(initialMin));
+    setDef(String(initialDefault));
+    setMax(String(initialMax));
   }, [initialMin, initialDefault, initialMax]);
 
-  const dirty = min !== initialMin || def !== initialDefault || max !== initialMax;
+  const minNum = parseInt(min, 10);
+  const defNum = parseInt(def, 10);
+  const maxNum = parseInt(max, 10);
+
+  const dirty =
+    minNum !== initialMin || defNum !== initialDefault || maxNum !== initialMax;
 
   const validate = (): string | null => {
-    if (min < 1) return 'Mínimo deve ser pelo menos 1';
-    if (max < min) return 'Máximo deve ser maior ou igual ao mínimo';
-    if (def < min || def > max) return 'Padrão deve estar entre mínimo e máximo';
+    if (!Number.isFinite(minNum) || !Number.isFinite(defNum) || !Number.isFinite(maxNum)) {
+      return 'Preencha todos os campos';
+    }
+    if (minNum < 1) return 'Mínimo deve ser pelo menos 1';
+    if (defNum <= minNum) return 'Padrão deve ser maior que o mínimo';
+    if (maxNum < defNum) return 'Máximo deve ser maior ou igual ao padrão';
     return null;
   };
 
@@ -55,7 +63,7 @@ export function PropertyGuestsManager({
     setSaving(true);
     const { error } = await supabase
       .from('properties')
-      .update({ min_guests: min, default_guests: def, max_guests: max })
+      .update({ min_guests: minNum, default_guests: defNum, max_guests: maxNum })
       .eq('id', propertyId);
     setSaving(false);
     if (error) {
