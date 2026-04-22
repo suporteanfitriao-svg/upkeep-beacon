@@ -1004,6 +1004,7 @@ const Inspections = () => {
                       photos={selectedInspection.inspection_photos}
                       title=""
                       emptyMessage="Nenhuma foto disponível"
+                      bucket="inspection-photos"
                     />
                   </div>
                 )}
