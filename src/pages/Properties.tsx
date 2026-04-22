@@ -33,6 +33,9 @@ interface Property {
   property_code: string | null;
   require_checklist: boolean;
   created_at: string;
+  min_guests: number;
+  default_guests: number | null;
+  max_guests: number | null;
 }
 
 interface ICalSource {
@@ -68,7 +71,10 @@ export default function Properties() {
   const [formData, setFormData] = useState({
     name: '',
     default_check_in_time: '14:00',
-    default_check_out_time: '11:00'
+    default_check_out_time: '11:00',
+    min_guests: 1,
+    default_guests: 1,
+    max_guests: 4,
   });
   const [addressFormData, setAddressFormData] = useState<AddressFormData>(initialAddressData);
   const [addressLoaded, setAddressLoaded] = useState(false);
@@ -106,7 +112,7 @@ export default function Properties() {
     setIsLoading(true);
     const { data, error } = await supabase
       .from('properties')
-      .select('id, name, address, default_check_in_time, default_check_out_time, image_url, property_code, require_checklist, created_at')
+      .select('id, name, address, default_check_in_time, default_check_out_time, image_url, property_code, require_checklist, created_at, min_guests, default_guests, max_guests')
       .order('name', { ascending: true });
 
     if (error) {
@@ -161,7 +167,10 @@ export default function Properties() {
     setFormData({ 
       name: '', 
       default_check_in_time: '14:00',
-      default_check_out_time: '11:00'
+      default_check_out_time: '11:00',
+      min_guests: 1,
+      default_guests: 1,
+      max_guests: 4,
     });
     setAddressFormData(initialAddressData);
     setAddressLoaded(false);
@@ -181,7 +190,10 @@ export default function Properties() {
     setFormData({
       name: property.name,
       default_check_in_time: property.default_check_in_time?.slice(0, 5) || '14:00',
-      default_check_out_time: property.default_check_out_time?.slice(0, 5) || '11:00'
+      default_check_out_time: property.default_check_out_time?.slice(0, 5) || '11:00',
+      min_guests: property.min_guests ?? 1,
+      default_guests: property.default_guests ?? 1,
+      max_guests: property.max_guests ?? 4,
     });
     // Parse existing address into form data
     const parsedAddress = parseAddressToFormData(property.address);
