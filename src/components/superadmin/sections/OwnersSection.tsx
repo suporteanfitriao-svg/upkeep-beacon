@@ -444,6 +444,7 @@ export function OwnersSection() {
                 <TableHead className="text-center">Imóveis</TableHead>
                 <TableHead className="text-center">Equipe</TableHead>
                 <TableHead>Cadastrado em</TableHead>
+                <TableHead className="text-right">Ações</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -483,6 +484,16 @@ export function OwnersSection() {
                   </TableCell>
                   <TableCell className="text-sm text-muted-foreground">
                     {new Date(o.created_at).toLocaleDateString('pt-BR')}
+                  </TableCell>
+                  <TableCell className="text-right">
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => openPropertyWizard({ user_id: o.user_id, legal_name: o.legal_name })}
+                    >
+                      <Home className="mr-1 h-3 w-3" />
+                      Imóveis
+                    </Button>
                   </TableCell>
                 </TableRow>
               ))}
