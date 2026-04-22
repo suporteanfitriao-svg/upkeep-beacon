@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button';
 import { format, parseISO, isValid } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
+import { SignedImage } from '@/components/shared/SignedImage';
 
 export interface PhotoWithTimestamp {
   url: string;
@@ -16,13 +17,16 @@ interface MobilePhotoGalleryProps {
   onRemove?: (index: number) => void;
   editable?: boolean;
   className?: string;
+  /** When provided, images are loaded via signed URLs from this storage bucket. */
+  bucket?: string;
 }
 
 export function MobilePhotoGallery({ 
   photos, 
   onRemove,
   editable = false,
-  className = '' 
+  className = '',
+  bucket,
 }: MobilePhotoGalleryProps) {
   const [selectedIndex, setSelectedIndex] = useState<number | null>(null);
 
