@@ -95,7 +95,7 @@ export function PropertyGuestsManager({
             type="number"
             min={1}
             value={min}
-            onChange={(e) => setMin(Math.max(1, parseInt(e.target.value, 10) || 1))}
+            onChange={(e) => setMin(e.target.value)}
             className="rounded-xl"
           />
         </div>
@@ -106,7 +106,7 @@ export function PropertyGuestsManager({
             type="number"
             min={1}
             value={def}
-            onChange={(e) => setDef(Math.max(1, parseInt(e.target.value, 10) || 1))}
+            onChange={(e) => setDef(e.target.value)}
             className="rounded-xl"
           />
         </div>
@@ -117,7 +117,7 @@ export function PropertyGuestsManager({
             type="number"
             min={1}
             value={max}
-            onChange={(e) => setMax(Math.max(1, parseInt(e.target.value, 10) || 1))}
+            onChange={(e) => setMax(e.target.value)}
             className="rounded-xl"
           />
         </div>
