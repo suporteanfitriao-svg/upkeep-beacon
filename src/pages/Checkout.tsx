@@ -5,7 +5,7 @@
 
 import { useEffect, useState } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
-import { Loader2, CreditCard, Shield, ArrowLeft } from 'lucide-react';
+import { Loader2, MessageCircle, Shield, ArrowLeft } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Alert, AlertDescription } from '@/components/ui/alert';
@@ -36,12 +36,9 @@ export default function Checkout() {
     setIsProcessing(true);
 
     try {
-      // TODO: Integrar com Hotmart
-      // Por enquanto, mostra mensagem de que a integração está em desenvolvimento
-      alert('Integração com Hotmart em desenvolvimento. Entre em contato para ativação manual.');
-      
-      // Futuro: Redirecionar para URL do Hotmart com parâmetros
-      // window.location.href = `https://pay.hotmart.com/PRODUCT_ID?email=${user.email}&name=${user.name}`;
+      const message = `Quero implementar a solução de limpeza nos meus imóveis. (Plano: ${selectedPlan.name})`;
+      const url = `https://wa.me/5534984256809?text=${encodeURIComponent(message)}`;
+      window.open(url, '_blank', 'noopener,noreferrer');
     } catch (error) {
       console.error('Error processing checkout:', error);
     } finally {
