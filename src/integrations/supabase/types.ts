@@ -176,6 +176,80 @@ export type Database = {
           },
         ]
       }
+      cleaning_standard_steps: {
+        Row: {
+          created_at: string
+          description: string | null
+          id: string
+          photos: Json
+          sort_order: number
+          template_id: string
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          photos?: Json
+          sort_order?: number
+          template_id: string
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          photos?: Json
+          sort_order?: number
+          template_id?: string
+          title?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "cleaning_standard_steps_template_id_fkey"
+            columns: ["template_id"]
+            isOneToOne: false
+            referencedRelation: "cleaning_standard_templates"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      cleaning_standard_templates: {
+        Row: {
+          area: string | null
+          created_at: string
+          description: string | null
+          id: string
+          is_active: boolean
+          name: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          area?: string | null
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_active?: boolean
+          name: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          area?: string | null
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_active?: boolean
+          name?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       default_checklists: {
         Row: {
           created_at: string
@@ -868,6 +942,7 @@ export type Database = {
           latitude: number | null
           longitude: number | null
           max_guests: number | null
+          min_guests: number
           name: string
           password_mode: Database["public"]["Enums"]["property_password_mode"]
           property_code: string | null
@@ -894,6 +969,7 @@ export type Database = {
           latitude?: number | null
           longitude?: number | null
           max_guests?: number | null
+          min_guests?: number
           name: string
           password_mode?: Database["public"]["Enums"]["property_password_mode"]
           property_code?: string | null
@@ -920,6 +996,7 @@ export type Database = {
           latitude?: number | null
           longitude?: number | null
           max_guests?: number | null
+          min_guests?: number
           name?: string
           password_mode?: Database["public"]["Enums"]["property_password_mode"]
           property_code?: string | null
@@ -975,6 +1052,38 @@ export type Database = {
             columns: ["property_id"]
             isOneToOne: false
             referencedRelation: "properties_public"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      property_cleaning_standards: {
+        Row: {
+          created_at: string
+          id: string
+          property_id: string
+          sort_order: number
+          template_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          property_id: string
+          sort_order?: number
+          template_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          property_id?: string
+          sort_order?: number
+          template_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "property_cleaning_standards_template_id_fkey"
+            columns: ["template_id"]
+            isOneToOne: false
+            referencedRelation: "cleaning_standard_templates"
             referencedColumns: ["id"]
           },
         ]
@@ -1509,18 +1618,21 @@ export type Database = {
         Row: {
           created_at: string
           id: string
+          is_primary: boolean
           property_id: string
           team_member_id: string
         }
         Insert: {
           created_at?: string
           id?: string
+          is_primary?: boolean
           property_id: string
           team_member_id: string
         }
         Update: {
           created_at?: string
           id?: string
+          is_primary?: boolean
           property_id?: string
           team_member_id?: string
         }
