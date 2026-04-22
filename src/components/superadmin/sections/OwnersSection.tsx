@@ -394,7 +394,7 @@ export function OwnersSection() {
         )}
       </div>
 
-      <Dialog open={open} onOpenChange={setOpen}>
+      <Dialog open={open} onOpenChange={(v) => { setOpen(v); if (!v) setFormError(null); }}>
         <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Cadastrar novo cliente</DialogTitle>
@@ -404,6 +404,12 @@ export function OwnersSection() {
           </DialogHeader>
 
           <div className="space-y-6 py-2">
+            {formError && (
+              <Alert variant="destructive">
+                <AlertCircle className="h-4 w-4" />
+                <AlertDescription>{formError}</AlertDescription>
+              </Alert>
+            )}
             <section className="space-y-3">
               <h3 className="text-sm font-semibold">Conta de acesso</h3>
               <div className="grid grid-cols-2 gap-3">
