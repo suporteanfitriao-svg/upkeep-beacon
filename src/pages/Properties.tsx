@@ -23,6 +23,7 @@ import { PropertyAddressEditor, AddressFormData, initialAddressData, parseAddres
 import { cn } from '@/lib/utils';
 import { useImageCompression } from '@/hooks/useImageCompression';
 import { usePropertyGeocoding } from '@/hooks/usePropertyGeocoding';
+import { PropertyImage } from '@/components/properties/PropertyImage';
 
 interface Property {
   id: string;
@@ -752,8 +753,11 @@ export default function Properties() {
                               id="min_guests"
                               type="number"
                               min={1}
-                              value={formData.min_guests}
-                              onChange={(e) => setFormData({ ...formData, min_guests: Math.max(1, parseInt(e.target.value) || 1) })}
+                              value={formData.min_guests === 0 ? '' : formData.min_guests}
+                              onChange={(e) => {
+                                const v = e.target.value;
+                                setFormData({ ...formData, min_guests: v === '' ? 0 : parseInt(v, 10) || 0 });
+                              }}
                               className="rounded-xl"
                             />
                           </div>
@@ -763,8 +767,11 @@ export default function Properties() {
                               id="default_guests"
                               type="number"
                               min={1}
-                              value={formData.default_guests}
-                              onChange={(e) => setFormData({ ...formData, default_guests: Math.max(1, parseInt(e.target.value) || 1) })}
+                              value={formData.default_guests === 0 ? '' : formData.default_guests}
+                              onChange={(e) => {
+                                const v = e.target.value;
+                                setFormData({ ...formData, default_guests: v === '' ? 0 : parseInt(v, 10) || 0 });
+                              }}
                               className="rounded-xl"
                             />
                           </div>
@@ -774,8 +781,11 @@ export default function Properties() {
                               id="max_guests"
                               type="number"
                               min={1}
-                              value={formData.max_guests}
-                              onChange={(e) => setFormData({ ...formData, max_guests: Math.max(1, parseInt(e.target.value) || 1) })}
+                              value={formData.max_guests === 0 ? '' : formData.max_guests}
+                              onChange={(e) => {
+                                const v = e.target.value;
+                                setFormData({ ...formData, max_guests: v === '' ? 0 : parseInt(v, 10) || 0 });
+                              }}
                               className="rounded-xl"
                             />
                           </div>
@@ -881,17 +891,16 @@ export default function Properties() {
                       {/* Property Header */}
                       <div className="flex items-start justify-between gap-4 p-4 border-b border-border bg-muted/30">
                         <div className="flex items-start gap-3">
-                          {property.image_url ? (
-                            <img 
-                              src={property.image_url} 
-                              alt={property.name}
-                              className="h-11 w-11 rounded-xl object-cover shrink-0 border border-border"
-                            />
-                          ) : (
-                            <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-primary/10 shrink-0">
-                              <span className="material-symbols-outlined text-primary text-[22px]">home</span>
-                            </div>
-                          )}
+                          <PropertyImage
+                            imageUrl={property.image_url}
+                            alt={property.name}
+                            className="h-11 w-11 rounded-xl shrink-0 border border-border"
+                            fallback={
+                              <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-primary/10 shrink-0">
+                                <span className="material-symbols-outlined text-primary text-[22px]">home</span>
+                              </div>
+                            }
+                          />
                             <div className="min-w-0">
                             <div className="flex items-center gap-2 flex-wrap">
                               <h3 className="font-bold text-foreground truncate">{property.name}</h3>
