@@ -14,20 +14,22 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
-import { 
-  CalendarCheck, 
-  Users, 
-  ClipboardList, 
-  Bell, 
-  BarChart3, 
-  Smartphone,
+import { Link } from "react-router-dom";
+import {
+  CalendarCheck,
+  Users,
+  ClipboardList,
+  Bell,
+  BarChart3,
   CheckCircle2,
   Sparkles,
-  Home,
   Wrench,
+  ArrowRight,
+  ShieldCheck,
   Zap,
-  Gift
+  Star,
 } from "lucide-react";
+import logo from "@/assets/cleanbnb-logo.png";
 
 const propertyCountOptions = [
   { value: "1", label: "1 imóvel" },
@@ -50,49 +52,67 @@ const propertyTypeOptions = [
 ];
 
 const brazilianStates = [
-  "AC", "AL", "AP", "AM", "BA", "CE", "DF", "ES", "GO", "MA", 
-  "MT", "MS", "MG", "PA", "PB", "PR", "PE", "PI", "RJ", "RN", 
-  "RS", "RO", "RR", "SC", "SP", "SE", "TO"
+  "AC", "AL", "AP", "AM", "BA", "CE", "DF", "ES", "GO", "MA",
+  "MT", "MS", "MG", "PA", "PB", "PR", "PE", "PI", "RJ", "RN",
+  "RS", "RO", "RR", "SC", "SP", "SE", "TO",
 ];
 
 const features = [
   {
     icon: CalendarCheck,
-    title: "Agendamento Automático",
-    description: "Sincronização com Airbnb e outras plataformas"
+    title: "Sincronização Automática",
+    description: "Conecte Airbnb, Booking e iCal. Suas reservas viram tarefas de limpeza automaticamente.",
+    span: "md:col-span-2",
   },
   {
     icon: Users,
     title: "Gestão de Equipe",
-    description: "Controle completo da sua equipe de limpeza"
+    description: "Atribua faxineiras, controle pagamentos e acompanhe performance.",
+    span: "",
   },
   {
     icon: ClipboardList,
-    title: "Checklists Personalizados",
-    description: "Checklists específicos para cada imóvel"
+    title: "Checklists por Imóvel",
+    description: "Padronize a operação com checklists personalizados.",
+    span: "",
   },
   {
     icon: Wrench,
-    title: "Controle de Avarias",
-    description: "Problemas de manutenção em tempo real"
+    title: "Avarias em Tempo Real",
+    description: "Sua equipe reporta, você resolve. Tudo registrado com fotos.",
+    span: "",
   },
   {
     icon: Bell,
-    title: "Notificações WhatsApp",
-    description: "Alertas automáticos para sua equipe"
+    title: "Notificações Inteligentes",
+    description: "Alertas automáticos via WhatsApp para nunca perder um checkout.",
+    span: "md:col-span-2",
   },
   {
     icon: BarChart3,
-    title: "Relatórios Detalhados",
-    description: "Métricas e performance da operação"
+    title: "Relatórios e Analytics",
+    description: "Visualize métricas operacionais e tome decisões com dados.",
+    span: "md:col-span-2",
   },
+  {
+    icon: ShieldCheck,
+    title: "Segurança em Camadas",
+    description: "Permissões por papel, auditoria completa e dados criptografados.",
+    span: "",
+  },
+];
+
+const stats = [
+  { value: "100%", label: "Automatizado" },
+  { value: "24/7", label: "Suporte" },
+  { value: "+30", label: "Imóveis no beta" },
 ];
 
 export default function Landing() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
   const { toast } = useToast();
-  
+
   const [formData, setFormData] = useState({
     name: "",
     email: "",
@@ -108,7 +128,7 @@ export default function Landing() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     if (!formData.name || !formData.email || !formData.whatsapp || !formData.propertyCount || !formData.city || !formData.state || !formData.propertyType) {
       toast({
         title: "Campos obrigatórios",
@@ -128,7 +148,7 @@ export default function Landing() {
     }
 
     setIsSubmitting(true);
-    
+
     try {
       const { error } = await supabase.from("waitlist" as any).insert({
         name: formData.name.trim(),
@@ -163,283 +183,309 @@ export default function Landing() {
   };
 
   return (
-    <div className="min-h-screen bg-[#0a0a0f] text-white overflow-hidden">
-      {/* Neon background effects */}
-      <div className="fixed inset-0 pointer-events-none">
-        <div className="absolute top-0 left-1/4 w-48 sm:w-96 h-48 sm:h-96 bg-cyan-500/15 sm:bg-cyan-500/20 rounded-full blur-[80px] sm:blur-[120px]" />
-        <div className="absolute bottom-0 right-1/4 w-48 sm:w-96 h-48 sm:h-96 bg-purple-500/15 sm:bg-purple-500/20 rounded-full blur-[80px] sm:blur-[120px]" />
-        <div className="hidden sm:block absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[400px] lg:w-[600px] h-[400px] lg:h-[600px] bg-blue-500/10 rounded-full blur-[150px]" />
-      </div>
+    <div className="min-h-screen bg-background text-foreground">
+      {/* Navigation */}
+      <header className="sticky top-0 z-50 backdrop-blur-xl bg-background/80 border-b border-border/60">
+        <div className="container mx-auto px-4 sm:px-6 h-16 flex items-center justify-between">
+          <a href="#" className="flex items-center gap-2.5">
+            <img src={logo} alt="Clean&bnb" className="h-9 w-9 object-contain" />
+            <span className="font-display font-bold text-lg tracking-tight">
+              Clean<span className="text-accent">&</span>bnb
+            </span>
+          </a>
+          <nav className="hidden md:flex items-center gap-8 text-sm font-medium text-muted-foreground">
+            <a href="#features" className="hover:text-foreground transition-colors">Recursos</a>
+            <a href="#workflow" className="hover:text-foreground transition-colors">Como funciona</a>
+            <a href="#waitlist" className="hover:text-foreground transition-colors">Lista de espera</a>
+          </nav>
+          <Link to="/auth">
+            <Button variant="ghost" size="sm" className="font-medium">
+              Entrar
+            </Button>
+          </Link>
+        </div>
+      </header>
 
-      {/* Floating Badge */}
-      <div className="absolute top-4 left-1/2 -translate-x-1/2 md:fixed md:top-6 md:left-6 md:translate-x-0 z-50 animate-pulse">
-        <Badge className="bg-gradient-to-r from-cyan-500 to-purple-500 text-white border-0 px-3 py-1.5 text-xs sm:px-4 sm:py-2 sm:text-sm font-bold shadow-lg shadow-cyan-500/30">
-          <Zap className="w-3 h-3 sm:w-4 sm:h-4 mr-1.5 sm:mr-2" />
-          INÉDITO NO BRASIL
-        </Badge>
-      </div>
+      {/* Hero */}
+      <section className="relative overflow-hidden">
+        <div className="absolute inset-0 bg-gradient-soft" aria-hidden />
+        <div className="absolute top-20 -right-32 w-[500px] h-[500px] rounded-full bg-accent/10 blur-3xl" aria-hidden />
+        <div className="absolute -bottom-20 -left-20 w-96 h-96 rounded-full bg-primary/10 blur-3xl" aria-hidden />
 
-      {/* Hero Section */}
-      <div className="relative container mx-auto px-4 pt-16 pb-8 sm:py-12 lg:py-20">
-        <div className="grid lg:grid-cols-2 gap-8 lg:gap-12 items-start">
-          {/* Left side - Content */}
-          <div className="space-y-6 sm:space-y-8 text-center lg:text-left">
-            <div className="space-y-4">
-              <Badge variant="outline" className="border-cyan-500/50 text-cyan-400 px-3 sm:px-4 py-1 sm:py-1.5 text-xs sm:text-sm bg-cyan-500/10">
-                <Sparkles className="w-3 h-3 sm:w-4 sm:h-4 mr-1.5 sm:mr-2" />
-                Lançamento em breve
-              </Badge>
-              
-              <h1 className="text-4xl sm:text-5xl lg:text-7xl font-black">
-                <span className="bg-gradient-to-r from-white via-cyan-200 to-white bg-clip-text text-transparent">
-                  Superhost
+        <div className="relative container mx-auto px-4 sm:px-6 pt-16 pb-20 lg:pt-24 lg:pb-32">
+          <div className="max-w-4xl mx-auto text-center space-y-8">
+            <Badge className="bg-accent/10 text-primary border border-accent/30 px-4 py-1.5 text-xs uppercase tracking-widest font-semibold rounded-full hover:bg-accent/15">
+              <Sparkles className="w-3.5 h-3.5 mr-2" />
+              Beta exclusivo · Vagas limitadas
+            </Badge>
+
+            <h1 className="font-display text-5xl sm:text-6xl lg:text-7xl font-extrabold tracking-tight leading-[1.05]">
+              A operação da sua{" "}
+              <span className="relative inline-block">
+                <span className="relative z-10 bg-gradient-brand bg-clip-text text-transparent">
+                  hospedagem
                 </span>
-                <br />
-                <span className="bg-gradient-to-r from-cyan-400 via-purple-400 to-pink-400 bg-clip-text text-transparent">
-                  Lab
-                </span>
-              </h1>
-              
-              <p className="text-xl sm:text-2xl lg:text-3xl font-light text-cyan-300">
-                Gestão de Limpeza
-              </p>
-              
-              <p className="text-base sm:text-lg text-gray-400 max-w-md mx-auto lg:mx-0 leading-relaxed">
-                A plataforma completa para gestão de limpeza de imóveis de temporada. 
-                Automatize sua operação e nunca mais perca um checkout.
-              </p>
+                <span className="absolute -bottom-1 left-0 right-0 h-3 bg-accent/30 -z-0 rounded" aria-hidden />
+              </span>
+              <br className="hidden sm:block" /> sob controle total.
+            </h1>
+
+            <p className="text-lg sm:text-xl text-muted-foreground max-w-2xl mx-auto leading-relaxed">
+              <strong className="text-foreground font-semibold">Clean&bnb</strong> é a plataforma que automatiza limpeza, manutenção e equipe dos seus imóveis de temporada — sem planilhas, sem ruído, sem checkouts perdidos.
+            </p>
+
+            <div className="flex flex-col sm:flex-row gap-3 justify-center pt-2">
+              <a href="#waitlist">
+                <Button size="lg" className="bg-primary text-primary-foreground hover:bg-primary-dark shadow-brand h-12 px-8 text-base font-semibold w-full sm:w-auto group">
+                  Garantir acesso ao beta
+                  <ArrowRight className="ml-2 h-4 w-4 transition-transform group-hover:translate-x-0.5" />
+                </Button>
+              </a>
+              <a href="#features">
+                <Button size="lg" variant="outline" className="h-12 px-8 text-base font-medium border-border w-full sm:w-auto">
+                  Ver recursos
+                </Button>
+              </a>
             </div>
 
-            {/* Free Card */}
-            <Card className="bg-gradient-to-r from-cyan-600 to-purple-700 border-0 max-w-md mx-auto lg:mx-0 shadow-2xl shadow-purple-500/30 relative overflow-hidden">
-              <div className="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAiIGhlaWdodD0iNDAiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PGRlZnM+PHBhdHRlcm4gaWQ9ImdyaWQiIHdpZHRoPSI0MCIgaGVpZ2h0PSI0MCIgcGF0dGVyblVuaXRzPSJ1c2VyU3BhY2VPblVzZSI+PHBhdGggZD0iTSAwIDEwIEwgNDAgMTAgTSAxMCAwIEwgMTAgNDAgTSAwIDIwIEwgNDAgMjAgTSAyMCAwIEwgMjAgNDAgTSAwIDMwIEwgNDAgMzAgTSAzMCAwIEwgMzAgNDAiIGZpbGw9Im5vbmUiIHN0cm9rZT0icmdiYSgyNTUsMjU1LDI1NSwwLjA1KSIgc3Ryb2tlLXdpZHRoPSIxIi8+PC9wYXR0ZXJuPjwvZGVmcz48cmVjdCB3aWR0aD0iMTAwJSIgaGVpZ2h0PSIxMDAlIiBmaWxsPSJ1cmwoI2dyaWQpIi8+PC9zdmc+')] opacity-30" />
-              <CardContent className="p-4 sm:p-5 flex flex-col sm:flex-row items-center sm:items-start gap-3 sm:gap-4 relative text-center sm:text-left">
-                <div className="w-11 h-11 sm:w-12 sm:h-12 rounded-xl bg-white/15 backdrop-blur-sm flex items-center justify-center flex-shrink-0">
-                  <Sparkles className="w-5 h-5 sm:w-6 sm:h-6 text-white" />
-                </div>
-                <div className="space-y-1">
-                  <div className="flex flex-wrap items-center justify-center sm:justify-start gap-2">
-                    <h3 className="text-base sm:text-lg font-bold text-white">Acesso Gratuito ao Beta</h3>
-                    <Badge className="bg-white/20 text-white text-[10px] sm:text-xs font-medium border-0 backdrop-blur-sm">
-                      Vagas Limitadas
-                    </Badge>
-                  </div>
-                  <p className="text-xs sm:text-sm text-white/80 leading-relaxed">
-                    Seja um dos primeiros a testar. Candidatos selecionados terão acesso completo e gratuito durante o período beta.
-                  </p>
-                </div>
-              </CardContent>
-            </Card>
-
-            {/* Features Grid */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4 pt-2 sm:pt-4">
-              {features.map((feature, index) => (
-                <div 
-                  key={index} 
-                  className="flex items-start gap-3 p-3 sm:p-4 rounded-lg bg-white/5 border border-white/10 hover:border-cyan-500/50 transition-colors"
-                >
-                  <feature.icon className="w-5 h-5 sm:w-6 sm:h-6 text-cyan-400 flex-shrink-0 mt-0.5" />
-                  <div className="text-left">
-                    <h4 className="text-sm font-semibold text-white">{feature.title}</h4>
-                    <p className="text-xs text-gray-400">{feature.description}</p>
-                  </div>
+            {/* Stats */}
+            <div className="grid grid-cols-3 gap-4 sm:gap-8 max-w-xl mx-auto pt-8">
+              {stats.map((stat) => (
+                <div key={stat.label} className="text-center">
+                  <div className="font-display text-2xl sm:text-3xl font-bold text-primary">{stat.value}</div>
+                  <div className="text-xs sm:text-sm text-muted-foreground mt-1">{stat.label}</div>
                 </div>
               ))}
             </div>
           </div>
 
-          {/* Right side - Form */}
-          <div className="mt-4 lg:mt-0 lg:sticky lg:top-8">
-            <Card className="bg-[#12121a]/90 border border-white/10 backdrop-blur-xl shadow-2xl shadow-cyan-500/10">
-              <CardHeader className="text-center pb-4 px-4 sm:px-6">
-                <CardTitle className="text-xl sm:text-2xl text-white">
-                  {submitted ? "Obrigado pelo interesse!" : "Seja um dos primeiros"}
-                </CardTitle>
-                <CardDescription className="text-gray-400 text-sm">
-                  {submitted 
-                    ? "Entraremos em contato quando lançarmos." 
-                    : "Garanta seu acesso antecipado e gratuito"
-                  }
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="px-4 sm:px-6">
-                {submitted ? (
-                  <div className="text-center py-6 sm:py-8">
-                    <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-full bg-gradient-to-br from-cyan-400 to-purple-500 flex items-center justify-center mx-auto mb-4">
-                      <CheckCircle2 className="w-8 h-8 sm:w-10 sm:h-10 text-white" />
-                    </div>
-                    <p className="text-gray-400 text-sm sm:text-base">
-                      Você receberá atualizações no email e WhatsApp cadastrados.
-                    </p>
+          {/* Hero brand showcase */}
+          <div className="relative mt-16 lg:mt-20 max-w-5xl mx-auto">
+            <div className="relative rounded-3xl overflow-hidden bg-gradient-brand shadow-brand p-8 sm:p-12 lg:p-16">
+              <div className="absolute inset-0 bg-[radial-gradient(circle_at_30%_50%,rgba(255,255,255,0.1),transparent_50%)]" aria-hidden />
+              <div className="relative grid md:grid-cols-2 gap-8 items-center">
+                <div className="text-primary-foreground space-y-4">
+                  <Badge className="bg-accent/20 text-accent-foreground border-accent/40 backdrop-blur-sm">
+                    <Zap className="w-3 h-3 mr-1" /> Inédito no Brasil
+                  </Badge>
+                  <h2 className="font-display text-3xl sm:text-4xl font-bold leading-tight">
+                    Tudo que você precisa em uma só tela.
+                  </h2>
+                  <p className="text-primary-foreground/80 text-base leading-relaxed">
+                    Calendário sincronizado, equipe alinhada, checklists executados, avarias resolvidas. Sua operação inteira, sem fricção.
+                  </p>
+                </div>
+                <div className="flex justify-center md:justify-end">
+                  <div className="bg-card/95 backdrop-blur rounded-2xl p-8 shadow-2xl">
+                    <img src={logo} alt="Clean&bnb logo" className="w-44 h-44 sm:w-52 sm:h-52 object-contain" />
                   </div>
-                ) : (
-                  <form onSubmit={handleSubmit} className="space-y-4 sm:space-y-5">
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                      <div className="sm:col-span-2 space-y-2">
-                        <Label htmlFor="name" className="text-gray-300 text-sm">Nome *</Label>
-                        <Input
-                          id="name"
-                          placeholder="Seu nome completo"
-                          value={formData.name}
-                          onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                          className="bg-white/5 border-white/20 text-white placeholder:text-gray-500 focus:border-cyan-500 h-11 sm:h-10"
-                          required
-                        />
-                      </div>
-
-                      <div className="space-y-2">
-                        <Label htmlFor="email" className="text-gray-300 text-sm">Email *</Label>
-                        <Input
-                          id="email"
-                          type="email"
-                          placeholder="seu@email.com"
-                          value={formData.email}
-                          onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                          className="bg-white/5 border-white/20 text-white placeholder:text-gray-500 focus:border-cyan-500 h-11 sm:h-10"
-                          required
-                        />
-                      </div>
-
-                      <div className="space-y-2">
-                        <Label htmlFor="whatsapp" className="text-gray-300 text-sm">WhatsApp *</Label>
-                        <Input
-                          id="whatsapp"
-                          placeholder="(11) 99999-9999"
-                          value={formData.whatsapp}
-                          onChange={(e) => setFormData({ ...formData, whatsapp: e.target.value })}
-                          className="bg-white/5 border-white/20 text-white placeholder:text-gray-500 focus:border-cyan-500 h-11 sm:h-10"
-                          required
-                        />
-                      </div>
-
-                      <div className="space-y-2">
-                        <Label htmlFor="city" className="text-gray-300 text-sm">Cidade *</Label>
-                        <Input
-                          id="city"
-                          placeholder="Sua cidade"
-                          value={formData.city}
-                          onChange={(e) => setFormData({ ...formData, city: e.target.value })}
-                          className="bg-white/5 border-white/20 text-white placeholder:text-gray-500 focus:border-cyan-500 h-11 sm:h-10"
-                          required
-                        />
-                      </div>
-
-                      <div className="space-y-2">
-                        <Label htmlFor="state" className="text-gray-300 text-sm">Estado *</Label>
-                        <Select
-                          value={formData.state}
-                          onValueChange={(value) => setFormData({ ...formData, state: value })}
-                        >
-                          <SelectTrigger className="bg-white/5 border-white/20 text-white focus:border-cyan-500 h-11 sm:h-10">
-                            <SelectValue placeholder="UF" />
-                          </SelectTrigger>
-                          <SelectContent className="bg-[#1a1a24] border-white/20">
-                            {brazilianStates.map((state) => (
-                              <SelectItem key={state} value={state} className="text-white hover:bg-white/10">
-                                {state}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      </div>
-
-                      <div className="space-y-2">
-                        <Label htmlFor="propertyCount" className="text-gray-300 text-sm">Qtd. de imóveis *</Label>
-                        <Select
-                          value={formData.propertyCount}
-                          onValueChange={(value) => setFormData({ ...formData, propertyCount: value })}
-                        >
-                          <SelectTrigger className="bg-white/5 border-white/20 text-white focus:border-cyan-500 h-11 sm:h-10">
-                            <SelectValue placeholder="Selecione" />
-                          </SelectTrigger>
-                          <SelectContent className="bg-[#1a1a24] border-white/20">
-                            {propertyCountOptions.map((option) => (
-                              <SelectItem key={option.value} value={option.value} className="text-white hover:bg-white/10">
-                                {option.label}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      </div>
-
-                      <div className="space-y-2">
-                        <Label htmlFor="propertyType" className="text-gray-300 text-sm">Tipo de imóvel *</Label>
-                        <Select
-                          value={formData.propertyType}
-                          onValueChange={(value) => setFormData({ ...formData, propertyType: value, propertyTypeOther: "" })}
-                        >
-                          <SelectTrigger className="bg-white/5 border-white/20 text-white focus:border-cyan-500 h-11 sm:h-10">
-                            <SelectValue placeholder="Selecione" />
-                          </SelectTrigger>
-                          <SelectContent className="bg-[#1a1a24] border-white/20">
-                            {propertyTypeOptions.map((option) => (
-                              <SelectItem key={option.value} value={option.value} className="text-white hover:bg-white/10">
-                                {option.label}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      </div>
-
-                      {formData.propertyType === "outros" && (
-                        <div className="sm:col-span-2 space-y-2">
-                          <Label htmlFor="propertyTypeOther" className="text-gray-300 text-sm">Especifique o tipo *</Label>
-                          <Input
-                            id="propertyTypeOther"
-                            placeholder="Descreva o tipo de imóvel"
-                            value={formData.propertyTypeOther}
-                            onChange={(e) => setFormData({ ...formData, propertyTypeOther: e.target.value })}
-                            className="bg-white/5 border-white/20 text-white placeholder:text-gray-500 focus:border-cyan-500 h-11 sm:h-10"
-                          />
-                        </div>
-                      )}
-
-                      <div className="sm:col-span-2 space-y-2">
-                        <Label htmlFor="propertyLink" className="text-gray-300 text-sm">Link do seu imóvel (Airbnb, Booking, etc.)</Label>
-                        <Input
-                          id="propertyLink"
-                          placeholder="https://airbnb.com/rooms/..."
-                          value={formData.propertyLink}
-                          onChange={(e) => setFormData({ ...formData, propertyLink: e.target.value })}
-                          className="bg-white/5 border-white/20 text-white placeholder:text-gray-500 focus:border-cyan-500 h-11 sm:h-10"
-                        />
-                      </div>
-
-                      <div className="sm:col-span-2 space-y-2">
-                        <Label htmlFor="challenges" className="text-gray-300 text-sm">
-                          Maiores dificuldades com gestão de limpeza?
-                        </Label>
-                        <Textarea
-                          id="challenges"
-                          placeholder="Conte-nos sobre seus desafios..."
-                          rows={3}
-                          value={formData.challenges}
-                          onChange={(e) => setFormData({ ...formData, challenges: e.target.value })}
-                          className="bg-white/5 border-white/20 text-white placeholder:text-gray-500 focus:border-cyan-500 resize-none"
-                        />
-                      </div>
-                    </div>
-
-                    <Button 
-                      type="submit" 
-                      className="w-full bg-gradient-to-r from-cyan-500 to-purple-500 hover:from-cyan-400 hover:to-purple-400 text-white font-bold py-4 sm:py-6 text-base sm:text-lg shadow-lg shadow-cyan-500/30 transition-all hover:shadow-cyan-500/50" 
-                      size="lg"
-                      disabled={isSubmitting}
-                    >
-                      {isSubmitting ? "Cadastrando..." : "Quero participar do lançamento"}
-                    </Button>
-                  </form>
-                )}
-              </CardContent>
-            </Card>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
-      </div>
+      </section>
+
+      {/* Features Bento */}
+      <section id="features" className="relative py-20 lg:py-28">
+        <div className="container mx-auto px-4 sm:px-6">
+          <div className="max-w-2xl mx-auto text-center mb-12 lg:mb-16">
+            <Badge variant="outline" className="border-accent/40 text-primary mb-4">Recursos</Badge>
+            <h2 className="font-display text-4xl sm:text-5xl font-bold tracking-tight mb-4">
+              Construído para anfitriões{" "}
+              <span className="bg-gradient-brand bg-clip-text text-transparent">obsessivos por qualidade.</span>
+            </h2>
+            <p className="text-muted-foreground text-lg">
+              Cada recurso pensado para eliminar tarefas manuais e dar visibilidade real da sua operação.
+            </p>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 max-w-6xl mx-auto">
+            {features.map((feature) => (
+              <Card
+                key={feature.title}
+                className={`${feature.span} group relative overflow-hidden border-border/60 hover:border-accent/40 hover:shadow-brand transition-all duration-300 bg-card`}
+              >
+                <CardContent className="p-6 sm:p-8 h-full flex flex-col">
+                  <div className="w-11 h-11 rounded-xl bg-gradient-accent flex items-center justify-center mb-5 shadow-glow group-hover:scale-105 transition-transform">
+                    <feature.icon className="w-5 h-5 text-primary-foreground" />
+                  </div>
+                  <h3 className="font-display text-xl font-bold mb-2 text-foreground">{feature.title}</h3>
+                  <p className="text-muted-foreground text-sm leading-relaxed">{feature.description}</p>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* Workflow / How it works */}
+      <section id="workflow" className="relative py-20 lg:py-28 bg-gradient-soft">
+        <div className="container mx-auto px-4 sm:px-6">
+          <div className="max-w-2xl mx-auto text-center mb-16">
+            <Badge variant="outline" className="border-accent/40 text-primary mb-4">Como funciona</Badge>
+            <h2 className="font-display text-4xl sm:text-5xl font-bold tracking-tight mb-4">
+              Em 3 passos sua operação roda sozinha.
+            </h2>
+          </div>
+
+          <div className="grid md:grid-cols-3 gap-8 max-w-5xl mx-auto">
+            {[
+              { n: "01", t: "Conecte seu calendário", d: "Cole o link iCal do Airbnb, Booking ou da sua plataforma. As reservas chegam em tempo real." },
+              { n: "02", t: "Configure seus imóveis", d: "Cadastre checklists, equipes e regras de cobrança. Personalize por unidade." },
+              { n: "03", t: "Acompanhe e relaxe", d: "Sua equipe é notificada, executa, fotografa e finaliza. Você acompanha tudo pelo dashboard." },
+            ].map((step) => (
+              <div key={step.n} className="relative group">
+                <div className="absolute -inset-px rounded-2xl bg-gradient-brand opacity-0 group-hover:opacity-10 transition-opacity" />
+                <div className="relative bg-card border border-border/60 rounded-2xl p-8 h-full">
+                  <div className="font-display text-5xl font-extrabold bg-gradient-brand bg-clip-text text-transparent mb-4">
+                    {step.n}
+                  </div>
+                  <h3 className="font-display text-xl font-bold mb-2">{step.t}</h3>
+                  <p className="text-muted-foreground text-sm leading-relaxed">{step.d}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* Waitlist Form */}
+      <section id="waitlist" className="relative py-20 lg:py-28">
+        <div className="container mx-auto px-4 sm:px-6">
+          <div className="grid lg:grid-cols-5 gap-12 max-w-6xl mx-auto items-start">
+            {/* Left - Pitch */}
+            <div className="lg:col-span-2 lg:sticky lg:top-24 space-y-6">
+              <Badge className="bg-accent/10 text-primary border border-accent/30 rounded-full">
+                <Star className="w-3 h-3 mr-1.5" /> Acesso gratuito ao beta
+              </Badge>
+              <h2 className="font-display text-4xl sm:text-5xl font-bold tracking-tight leading-tight">
+                Seja um dos primeiros a operar com{" "}
+                <span className="bg-gradient-brand bg-clip-text text-transparent">Clean&bnb.</span>
+              </h2>
+              <p className="text-muted-foreground text-base leading-relaxed">
+                Os selecionados para o beta terão acesso completo e gratuito durante todo o período de testes — e influenciarão diretamente o roadmap.
+              </p>
+              <ul className="space-y-3 pt-2">
+                {[
+                  "Acesso completo sem cobrança no período beta",
+                  "Onboarding personalizado por especialista",
+                  "Canal direto com o time de produto",
+                  "Condições especiais no lançamento oficial",
+                ].map((item) => (
+                  <li key={item} className="flex items-start gap-3 text-sm text-foreground">
+                    <CheckCircle2 className="w-5 h-5 text-accent flex-shrink-0 mt-0.5" />
+                    <span>{item}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+
+            {/* Right - Form */}
+            <div className="lg:col-span-3">
+              <Card className="border-border/60 shadow-brand">
+                <CardHeader className="pb-4">
+                  <CardTitle className="font-display text-2xl">
+                    {submitted ? "Obrigado pelo interesse!" : "Garantir minha vaga"}
+                  </CardTitle>
+                  <CardDescription>
+                    {submitted ? "Entraremos em contato quando lançarmos." : "Preencha em menos de 1 minuto."}
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  {submitted ? (
+                    <div className="text-center py-10">
+                      <div className="w-20 h-20 rounded-full bg-gradient-brand flex items-center justify-center mx-auto mb-4 shadow-brand">
+                        <CheckCircle2 className="w-10 h-10 text-primary-foreground" />
+                      </div>
+                      <p className="text-muted-foreground">
+                        Você receberá atualizações no email e WhatsApp cadastrados.
+                      </p>
+                    </div>
+                  ) : (
+                    <form onSubmit={handleSubmit} className="space-y-5">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div className="sm:col-span-2 space-y-2">
+                          <Label htmlFor="name">Nome *</Label>
+                          <Input id="name" placeholder="Seu nome completo" value={formData.name} onChange={(e) => setFormData({ ...formData, name: e.target.value })} required />
+                        </div>
+                        <div className="space-y-2">
+                          <Label htmlFor="email">Email *</Label>
+                          <Input id="email" type="email" placeholder="seu@email.com" value={formData.email} onChange={(e) => setFormData({ ...formData, email: e.target.value })} required />
+                        </div>
+                        <div className="space-y-2">
+                          <Label htmlFor="whatsapp">WhatsApp *</Label>
+                          <Input id="whatsapp" placeholder="(11) 99999-9999" value={formData.whatsapp} onChange={(e) => setFormData({ ...formData, whatsapp: e.target.value })} required />
+                        </div>
+                        <div className="space-y-2">
+                          <Label htmlFor="city">Cidade *</Label>
+                          <Input id="city" placeholder="Sua cidade" value={formData.city} onChange={(e) => setFormData({ ...formData, city: e.target.value })} required />
+                        </div>
+                        <div className="space-y-2">
+                          <Label htmlFor="state">Estado *</Label>
+                          <Select value={formData.state} onValueChange={(value) => setFormData({ ...formData, state: value })}>
+                            <SelectTrigger><SelectValue placeholder="UF" /></SelectTrigger>
+                            <SelectContent>
+                              {brazilianStates.map((s) => (<SelectItem key={s} value={s}>{s}</SelectItem>))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        <div className="space-y-2">
+                          <Label htmlFor="propertyCount">Qtd. de imóveis *</Label>
+                          <Select value={formData.propertyCount} onValueChange={(value) => setFormData({ ...formData, propertyCount: value })}>
+                            <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
+                            <SelectContent>
+                              {propertyCountOptions.map((o) => (<SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        <div className="space-y-2">
+                          <Label htmlFor="propertyType">Tipo de imóvel *</Label>
+                          <Select value={formData.propertyType} onValueChange={(value) => setFormData({ ...formData, propertyType: value, propertyTypeOther: "" })}>
+                            <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
+                            <SelectContent>
+                              {propertyTypeOptions.map((o) => (<SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        {formData.propertyType === "outros" && (
+                          <div className="sm:col-span-2 space-y-2">
+                            <Label htmlFor="propertyTypeOther">Especifique o tipo *</Label>
+                            <Input id="propertyTypeOther" placeholder="Descreva o tipo de imóvel" value={formData.propertyTypeOther} onChange={(e) => setFormData({ ...formData, propertyTypeOther: e.target.value })} />
+                          </div>
+                        )}
+                        <div className="sm:col-span-2 space-y-2">
+                          <Label htmlFor="propertyLink">Link do seu imóvel (opcional)</Label>
+                          <Input id="propertyLink" placeholder="https://airbnb.com/rooms/..." value={formData.propertyLink} onChange={(e) => setFormData({ ...formData, propertyLink: e.target.value })} />
+                        </div>
+                        <div className="sm:col-span-2 space-y-2">
+                          <Label htmlFor="challenges">Maiores dificuldades com gestão de limpeza?</Label>
+                          <Textarea id="challenges" placeholder="Conte-nos sobre seus desafios..." rows={3} value={formData.challenges} onChange={(e) => setFormData({ ...formData, challenges: e.target.value })} className="resize-none" />
+                        </div>
+                      </div>
+                      <Button type="submit" size="lg" className="w-full bg-primary text-primary-foreground hover:bg-primary-dark shadow-brand h-12 text-base font-semibold" disabled={isSubmitting}>
+                        {isSubmitting ? "Cadastrando..." : "Quero participar do beta"}
+                        {!isSubmitting && <ArrowRight className="ml-2 h-4 w-4" />}
+                      </Button>
+                    </form>
+                  )}
+                </CardContent>
+              </Card>
+            </div>
+          </div>
+        </div>
+      </section>
 
       {/* Footer */}
-      <footer className="relative border-t border-white/10 py-6 sm:py-8 mt-8 sm:mt-16">
-        <div className="container mx-auto px-4 text-center text-gray-500 text-xs sm:text-sm">
-          <p>© 2024 Superhost Lab. Todos os direitos reservados.</p>
+      <footer className="border-t border-border/60 py-10 bg-card">
+        <div className="container mx-auto px-4 sm:px-6 flex flex-col sm:flex-row items-center justify-between gap-4">
+          <div className="flex items-center gap-2.5">
+            <img src={logo} alt="Clean&bnb" className="h-7 w-7 object-contain" />
+            <span className="font-display font-bold text-sm">
+              Clean<span className="text-accent">&</span>bnb
+            </span>
+          </div>
+          <p className="text-xs text-muted-foreground">© {new Date().getFullYear()} Clean&bnb. Todos os direitos reservados.</p>
         </div>
       </footer>
     </div>
