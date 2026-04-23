@@ -39,6 +39,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '
 import { Label } from '@/components/ui/label';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { useMaintenanceIssues, MaintenanceIssue, ProgressNote, IssuePhoto } from '@/hooks/useMaintenanceIssues';
 import { useCompletedSchedules } from '@/hooks/useCompletedSchedules';
 import { useQuery } from '@tanstack/react-query';
@@ -583,11 +584,18 @@ export default function Manutencao() {
                 <span className="hidden sm:inline">Itens NOK</span>
                 <span className="sm:hidden">NOK</span>
               </TabsTrigger>
-              <TabsTrigger value="relatorios" className="gap-1 md:gap-2 text-xs md:text-sm py-2.5 touch-manipulation">
-                <FileText className="w-3.5 h-3.5 md:w-4 md:h-4" />
-                <span className="hidden sm:inline">Limpezas Fechadas</span>
-                <span className="sm:hidden">Limpezas</span>
-              </TabsTrigger>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <TabsTrigger value="relatorios" className="gap-1 md:gap-2 text-xs md:text-sm py-2.5 touch-manipulation">
+                    <FileText className="w-3.5 h-3.5 md:w-4 md:h-4" />
+                    <span className="hidden sm:inline">Limpezas Fechadas</span>
+                    <span className="sm:hidden">Limpezas</span>
+                  </TabsTrigger>
+                </TooltipTrigger>
+                <TooltipContent side="bottom" className="sm:hidden">
+                  Limpezas Fechadas
+                </TooltipContent>
+              </Tooltip>
             </TabsList>
 
             {/* NOK Items Tab */}

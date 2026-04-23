@@ -685,7 +685,7 @@ export function MobileAdminDashboard({
           {/* Total do período destacado */}
           <div className="mb-4 p-4 rounded-xl bg-primary/5 border border-primary/20">
             <div className="flex items-center justify-between">
-              <span className="text-sm font-medium text-foreground">Total de Tarefas</span>
+              <span className="text-sm font-medium text-foreground">Total de Limpezas Fechadas</span>
               <span className="text-2xl font-bold text-primary">{periodStats.total}</span>
             </div>
           </div>

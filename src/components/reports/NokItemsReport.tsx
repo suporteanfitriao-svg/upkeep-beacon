@@ -229,7 +229,7 @@ export function NokItemsReport({ className }: NokItemsReportProps) {
           <CardContent className="p-4">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-muted-foreground">Tarefas com NOK</p>
+                <p className="text-sm text-muted-foreground">Limpezas com NOK</p>
                 <p className="text-2xl font-bold">{uniqueSchedules}</p>
               </div>
               <Calendar className="w-8 h-8 text-muted-foreground" />
