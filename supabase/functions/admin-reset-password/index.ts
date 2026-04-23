@@ -68,7 +68,7 @@ const handler = async (req: Request): Promise<Response> => {
 
     const roles = (roleData ?? []).map((r) => r.role);
     if (roleError || !roles.some((r) => r === "admin" || r === "superadmin")) {
-      console.error("Permission denied for user:", callerUserId);
+      console.error("Permission denied for user:", callerUserId, "roles:", JSON.stringify(roles), "error:", roleError);
       return new Response(
         JSON.stringify({ error: "Permissão negada. Apenas administradores podem redefinir senhas." }),
         { status: 403, headers: { "Content-Type": "application/json", ...corsHeaders } }
