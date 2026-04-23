@@ -14,8 +14,8 @@ export default {
     },
     extend: {
       fontFamily: {
-        display: ['Manrope', 'system-ui', 'sans-serif'],
-        sans: ['Manrope', 'system-ui', 'sans-serif'],
+        display: ['Outfit', 'system-ui', 'sans-serif'],
+        sans: ['Figtree', 'system-ui', 'sans-serif'],
       },
       colors: {
         border: "hsl(var(--border))",
@@ -94,7 +94,13 @@ export default {
       },
       boxShadow: {
         soft: "0 4px 20px -2px rgba(0, 0, 0, 0.05)",
-        glow: "0 4px 20px -2px rgba(51, 153, 153, 0.3)",
+        glow: "0 10px 40px -10px hsl(188 56% 40% / 0.4)",
+        brand: "0 20px 60px -20px hsl(213 60% 14% / 0.35)",
+      },
+      backgroundImage: {
+        'gradient-brand': 'var(--gradient-brand)',
+        'gradient-soft': 'var(--gradient-soft)',
+        'gradient-accent': 'var(--gradient-accent)',
       },
       keyframes: {
         "accordion-down": {
