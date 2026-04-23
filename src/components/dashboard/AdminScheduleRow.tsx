@@ -825,6 +825,57 @@ export function AdminScheduleRow({ schedule, onClick, onScheduleUpdated }: Admin
               </div>
             </div>
 
+            {/* Guests Section - Editable by admin/manager */}
+            <div className="px-5 pt-4">
+              <div className="bg-muted/30 rounded-xl p-4 flex items-center justify-between gap-3">
+                <div className="flex items-center gap-3">
+                  <Users className="w-4 h-4 text-muted-foreground" />
+                  <div className="flex flex-col">
+                    <span className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
+                      Hóspedes
+                    </span>
+                    <span className="text-[11px] text-muted-foreground">
+                      Padrão: {localSchedule.propertyDefaultGuests ?? localSchedule.propertyMinGuests ?? 1}
+                      {localSchedule.propertyMaxGuests ? ` · Máx: ${localSchedule.propertyMaxGuests}` : ''}
+                    </span>
+                  </div>
+                </div>
+                {canManage && !isCompleted ? (
+                  <Select
+                    value={String(localGuests)}
+                    onValueChange={handleUpdateGuests}
+                    disabled={savingGuests}
+                  >
+                    <SelectTrigger
+                      className="w-40"
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent onClick={(e) => e.stopPropagation()}>
+                      {Array.from({
+                        length:
+                          (localSchedule.propertyMaxGuests ?? 10) -
+                          (localSchedule.propertyMinGuests ?? 1) +
+                          1,
+                      }).map((_, i) => {
+                        const n = (localSchedule.propertyMinGuests ?? 1) + i;
+                        return (
+                          <SelectItem key={n} value={String(n)}>
+                            {n} {n === 1 ? 'hóspede' : 'hóspedes'}
+                          </SelectItem>
+                        );
+                      })}
+                    </SelectContent>
+                  </Select>
+                ) : (
+                  <span className="text-sm font-semibold text-foreground">
+                    {localGuests} {localGuests === 1 ? 'hóspede' : 'hóspedes'}
+                  </span>
+                )}
+              </div>
+            </div>
+
             {/* Observations Section */}
             <div className="px-5 pb-5 pt-0 grid grid-cols-1 md:grid-cols-2 gap-4">
               {/* Admin Notes - Editable */}
