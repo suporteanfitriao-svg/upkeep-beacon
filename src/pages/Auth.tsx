@@ -7,8 +7,9 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { toast } from 'sonner';
-import { Loader2, Building2, ArrowLeft, Mail } from 'lucide-react';
+import { Loader2, ArrowLeft, Mail } from 'lucide-react';
 import { AddToHomeScreen } from '@/components/pwa/AddToHomeScreen';
+import logo from '@/assets/cleanbnb-logo.png';
 
 // Password strength validation
 const passwordSchema = z.string()
@@ -204,8 +205,19 @@ const Auth = () => {
   };
 
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center bg-background px-4 py-8 gap-4">
-      <Card className="w-full max-w-md">
+    <div className="relative min-h-screen flex flex-col items-center justify-center bg-gradient-soft px-4 py-8 gap-4 overflow-hidden">
+      {/* Decorative background */}
+      <div className="pointer-events-none absolute inset-0">
+        <div className="absolute -top-40 -left-40 w-96 h-96 rounded-full bg-accent/20 blur-3xl" />
+        <div className="absolute -bottom-40 -right-40 w-96 h-96 rounded-full bg-primary/15 blur-3xl" />
+      </div>
+
+      <div className="relative flex flex-col items-center gap-2">
+        <img src={logo} alt="Clean&bnb" className="h-20 w-20 object-contain drop-shadow-lg" />
+        <p className="text-xs uppercase tracking-[0.3em] text-muted-foreground font-medium">Clean&bnb</p>
+      </div>
+
+      <Card className="relative w-full max-w-md border-border/60 shadow-brand backdrop-blur-sm bg-card/95">
         <CardHeader className="text-center">
           {(view === 'forgot-password' || view === 'reset-password') && (
             <button
@@ -221,12 +233,7 @@ const Auth = () => {
               <ArrowLeft className="h-5 w-5" />
             </button>
           )}
-          <div className="flex justify-center mb-4">
-            <div className="p-3 bg-primary/10 rounded-xl">
-              <Building2 className="h-8 w-8 text-primary" />
-            </div>
-          </div>
-          <CardTitle className="text-2xl">{getTitle()}</CardTitle>
+          <CardTitle className="text-2xl font-display">{getTitle()}</CardTitle>
           <CardDescription>{getDescription()}</CardDescription>
         </CardHeader>
         <CardContent>
