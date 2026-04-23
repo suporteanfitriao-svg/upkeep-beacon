@@ -827,7 +827,7 @@ export default function Properties() {
                     <p className="text-sm font-semibold text-foreground">
                       {lastSync ? format(lastSync, "dd/MM HH:mm", { locale: ptBR }) : 'Nunca'}
                     </p>
-                    <p className="text-xs text-muted-foreground">Última Sync</p>
+                     <p className="text-xs text-muted-foreground">Última Sincronização</p>
                   </div>
                 </div>
               </div>
