@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import { Schedule, ScheduleStatus, STATUS_FLOW, STATUS_LABELS, STATUS_ALLOWED_ROLES, ChecklistItem } from '@/types/scheduling';
 import { cn } from '@/lib/utils';
-import { AlertTriangle, Check, Clock, Sparkles, ChevronDown, ChevronUp, ExternalLink, User, Timer, Play, CircleCheck, KeyRound, MessageSquare, Send, AlertCircle } from 'lucide-react';
+import { AlertTriangle, Check, Clock, Sparkles, ChevronDown, ChevronUp, ExternalLink, User, Timer, Play, CircleCheck, KeyRound, MessageSquare, Send, AlertCircle, Users } from 'lucide-react';
 import { wasCompletedWithDelay, getDelayMinutes } from '@/hooks/useCleaningTimeAlert';
 import { format, isSameDay, isAfter, startOfDay } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
@@ -13,6 +13,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import {
   DropdownMenu,
   DropdownMenuContent,
