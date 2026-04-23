@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import { Schedule, ScheduleStatus, STATUS_FLOW, STATUS_LABELS, STATUS_ALLOWED_ROLES, ChecklistItem } from '@/types/scheduling';
 import { cn } from '@/lib/utils';
-import { AlertTriangle, Check, Clock, Sparkles, ChevronDown, ChevronUp, ExternalLink, User, Timer, Play, CircleCheck, KeyRound, MessageSquare, Send, AlertCircle } from 'lucide-react';
+import { AlertTriangle, Check, Clock, Sparkles, ChevronDown, ChevronUp, ExternalLink, User, Timer, Play, CircleCheck, KeyRound, MessageSquare, Send, AlertCircle, Users } from 'lucide-react';
 import { wasCompletedWithDelay, getDelayMinutes } from '@/hooks/useCleaningTimeAlert';
 import { format, isSameDay, isAfter, startOfDay } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
@@ -13,6 +13,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -121,6 +122,37 @@ export function AdminScheduleRow({ schedule, onClick, onScheduleUpdated }: Admin
   const [showPasswordModal, setShowPasswordModal] = useState(false);
   const [adminNotes, setAdminNotes] = useState(schedule.notes || '');
   const [isSavingNotes, setIsSavingNotes] = useState(false);
+  const [localGuests, setLocalGuests] = useState<number>(
+    schedule.numberOfGuests || schedule.propertyDefaultGuests || 1,
+  );
+  const [savingGuests, setSavingGuests] = useState(false);
+
+  useEffect(() => {
+    setLocalGuests(schedule.numberOfGuests || schedule.propertyDefaultGuests || 1);
+  }, [schedule.numberOfGuests, schedule.propertyDefaultGuests]);
+
+  const handleUpdateGuests = async (value: string) => {
+    const next = parseInt(value, 10);
+    const min = localSchedule.propertyMinGuests ?? 1;
+    const max = localSchedule.propertyMaxGuests ?? 20;
+    const clamped = Math.max(min, Math.min(max, next));
+    setLocalGuests(clamped);
+    setSavingGuests(true);
+    const { error } = await supabase
+      .from('schedules')
+      .update({ number_of_guests: clamped })
+      .eq('id', localSchedule.id);
+    setSavingGuests(false);
+    if (error) {
+      toast.error('Erro ao atualizar hóspedes');
+      setLocalGuests(localSchedule.numberOfGuests);
+      return;
+    }
+    const updated = { ...localSchedule, numberOfGuests: clamped };
+    setLocalSchedule(updated);
+    onScheduleUpdated?.(updated);
+    toast.success(`Hóspedes atualizados para ${clamped}`);
+  };
 
   const statusStyle = statusConfig[localSchedule.status];
   const hasIssue = localSchedule.maintenanceStatus !== 'ok';
@@ -790,6 +822,57 @@ export function AdminScheduleRow({ schedule, onClick, onScheduleUpdated }: Admin
                   <ExternalLink className="w-4 h-4" />
                   Acessar Detalhes
                 </Button>
+              </div>
+            </div>
+
+            {/* Guests Section - Editable by admin/manager */}
+            <div className="px-5 pt-4">
+              <div className="bg-muted/30 rounded-xl p-4 flex items-center justify-between gap-3">
+                <div className="flex items-center gap-3">
+                  <Users className="w-4 h-4 text-muted-foreground" />
+                  <div className="flex flex-col">
+                    <span className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
+                      Hóspedes
+                    </span>
+                    <span className="text-[11px] text-muted-foreground">
+                      Padrão: {localSchedule.propertyDefaultGuests ?? localSchedule.propertyMinGuests ?? 1}
+                      {localSchedule.propertyMaxGuests ? ` · Máx: ${localSchedule.propertyMaxGuests}` : ''}
+                    </span>
+                  </div>
+                </div>
+                {canManage && !isCompleted ? (
+                  <Select
+                    value={String(localGuests)}
+                    onValueChange={handleUpdateGuests}
+                    disabled={savingGuests}
+                  >
+                    <SelectTrigger
+                      className="w-40"
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent onClick={(e) => e.stopPropagation()}>
+                      {Array.from({
+                        length:
+                          (localSchedule.propertyMaxGuests ?? 10) -
+                          (localSchedule.propertyMinGuests ?? 1) +
+                          1,
+                      }).map((_, i) => {
+                        const n = (localSchedule.propertyMinGuests ?? 1) + i;
+                        return (
+                          <SelectItem key={n} value={String(n)}>
+                            {n} {n === 1 ? 'hóspede' : 'hóspedes'}
+                          </SelectItem>
+                        );
+                      })}
+                    </SelectContent>
+                  </Select>
+                ) : (
+                  <span className="text-sm font-semibold text-foreground">
+                    {localGuests} {localGuests === 1 ? 'hóspede' : 'hóspedes'}
+                  </span>
+                )}
               </div>
             </div>
 

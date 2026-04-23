@@ -227,7 +227,15 @@ export function OwnersSection() {
   const loadData = async () => {
     setLoading(true);
     try {
-      const [{ data: ownerProfiles }, { data: plansData }] = await Promise.all([
+      // Load owner profiles, plans, and ALL property owner_user_ids in parallel.
+      // We surface ANY user that owns a property — not just those with an
+      // owner_profiles row — so admins/superadmins who own properties
+      // directly also show up in the customer list.
+      const [
+        { data: ownerProfiles },
+        { data: plansData },
+        { data: propertyOwners },
+      ] = await Promise.all([
         supabase
           .from('owner_profiles')
           .select('user_id, legal_name, document_type, document_number, billing_email, created_at')
@@ -237,16 +245,35 @@ export function OwnersSection() {
           .select('id, name, slug, max_properties')
           .eq('is_active', true)
           .order('price_monthly'),
+        supabase
+          .from('properties')
+          .select('owner_user_id')
+          .not('owner_user_id', 'is', null),
       ]);
 
       setPlans(plansData || []);
 
-      if (!ownerProfiles || ownerProfiles.length === 0) {
+      // Merge owner_profiles + distinct property owners.
+      const profileMapByUser = new Map(
+        (ownerProfiles || []).map((o) => [o.user_id, o]),
+      );
+      const extraOwnerIds = Array.from(
+        new Set(
+          (propertyOwners || [])
+            .map((p) => p.owner_user_id as string | null)
+            .filter((id): id is string => Boolean(id) && !profileMapByUser.has(id!)),
+        ),
+      );
+
+      const userIds = [
+        ...(ownerProfiles || []).map((o) => o.user_id),
+        ...extraOwnerIds,
+      ];
+
+      if (userIds.length === 0) {
         setOwners([]);
         return;
       }
-
-      const userIds = ownerProfiles.map((o) => o.user_id);
 
       const [profilesRes, propsRes, teamRes, subsRes] = await Promise.all([
         supabase.from('profiles').select('id, email, name').in('id', userIds),
@@ -269,26 +296,36 @@ export function OwnersSection() {
       });
       const subMap = new Map(subsRes.data?.map((s) => [s.user_id, s]) || []);
 
-      setOwners(
-        ownerProfiles.map((o) => {
-          const sub = subMap.get(o.user_id) as { status: string; subscription_plans: { name: string } | null } | undefined;
-          const profile = profileMap.get(o.user_id);
-          return {
-            user_id: o.user_id,
-            legal_name: o.legal_name,
-            document_type: o.document_type,
-            document_number: o.document_number,
-            billing_email: o.billing_email,
-            created_at: o.created_at,
-            email: profile?.email ?? null,
-            name: profile?.name ?? null,
-            property_count: propCount.get(o.user_id) || 0,
-            team_count: teamCount.get(o.user_id) || 0,
-            plan_name: sub?.subscription_plans?.name ?? null,
-            plan_status: sub?.status ?? null,
-          };
-        }),
-      );
+      const rows: OwnerRow[] = userIds.map((uid) => {
+        const op = profileMapByUser.get(uid);
+        const profile = profileMap.get(uid);
+        const sub = subMap.get(uid) as
+          | { status: string; subscription_plans: { name: string } | null }
+          | undefined;
+        return {
+          user_id: uid,
+          legal_name:
+            op?.legal_name ||
+            profile?.name ||
+            profile?.email ||
+            'Cliente sem cadastro fiscal',
+          document_type: op?.document_type ?? '-',
+          document_number: op?.document_number ?? '-',
+          billing_email: op?.billing_email ?? null,
+          created_at: op?.created_at ?? new Date().toISOString(),
+          email: profile?.email ?? null,
+          name: profile?.name ?? null,
+          property_count: propCount.get(uid) || 0,
+          team_count: teamCount.get(uid) || 0,
+          plan_name: sub?.subscription_plans?.name ?? null,
+          plan_status: sub?.status ?? null,
+        };
+      });
+
+      // Sort: most recent first, but owners with properties prioritized
+      rows.sort((a, b) => b.property_count - a.property_count);
+
+      setOwners(rows);
     } catch (err) {
       console.error(err);
       toast.error('Erro ao carregar proprietários');
