@@ -122,6 +122,37 @@ export function AdminScheduleRow({ schedule, onClick, onScheduleUpdated }: Admin
   const [showPasswordModal, setShowPasswordModal] = useState(false);
   const [adminNotes, setAdminNotes] = useState(schedule.notes || '');
   const [isSavingNotes, setIsSavingNotes] = useState(false);
+  const [localGuests, setLocalGuests] = useState<number>(
+    schedule.numberOfGuests || schedule.propertyDefaultGuests || 1,
+  );
+  const [savingGuests, setSavingGuests] = useState(false);
+
+  useEffect(() => {
+    setLocalGuests(schedule.numberOfGuests || schedule.propertyDefaultGuests || 1);
+  }, [schedule.numberOfGuests, schedule.propertyDefaultGuests]);
+
+  const handleUpdateGuests = async (value: string) => {
+    const next = parseInt(value, 10);
+    const min = localSchedule.propertyMinGuests ?? 1;
+    const max = localSchedule.propertyMaxGuests ?? 20;
+    const clamped = Math.max(min, Math.min(max, next));
+    setLocalGuests(clamped);
+    setSavingGuests(true);
+    const { error } = await supabase
+      .from('schedules')
+      .update({ number_of_guests: clamped })
+      .eq('id', localSchedule.id);
+    setSavingGuests(false);
+    if (error) {
+      toast.error('Erro ao atualizar hóspedes');
+      setLocalGuests(localSchedule.numberOfGuests);
+      return;
+    }
+    const updated = { ...localSchedule, numberOfGuests: clamped };
+    setLocalSchedule(updated);
+    onScheduleUpdated?.(updated);
+    toast.success(`Hóspedes atualizados para ${clamped}`);
+  };
 
   const statusStyle = statusConfig[localSchedule.status];
   const hasIssue = localSchedule.maintenanceStatus !== 'ok';
