@@ -74,6 +74,12 @@ export function ScheduleDetail({ schedule, onClose, onUpdateSchedule }: Schedule
   const [notes, setNotes] = useState(schedule.notes);
   const [cleanerObservations, setCleanerObservations] = useState(schedule.cleanerObservations || '');
   const [checklist, setChecklist] = useState(schedule.checklist);
+  // Inline guest editor state
+  const [localGuests, setLocalGuests] = useState<number>(schedule.numberOfGuests || schedule.propertyDefaultGuests || 1);
+  const [savingGuests, setSavingGuests] = useState(false);
+  useEffect(() => {
+    setLocalGuests(schedule.numberOfGuests || schedule.propertyDefaultGuests || 1);
+  }, [schedule.numberOfGuests, schedule.propertyDefaultGuests]);
   // Keep reference to latest checklist for callbacks to avoid stale closures
   const checklistRef = useRef<ChecklistItem[]>(schedule.checklist);
   useEffect(() => {
