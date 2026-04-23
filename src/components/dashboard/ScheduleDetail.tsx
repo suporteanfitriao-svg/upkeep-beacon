@@ -29,8 +29,9 @@ import { useProximityCheck, formatDistance } from '@/hooks/useGeolocation';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { CategoryPhotoUpload } from './CategoryPhotoUpload';
-import { MapPin, Navigation } from 'lucide-react';
+import { MapPin, Navigation, Users } from 'lucide-react';
 import { useDebouncedCategorySave } from '@/hooks/useDebouncedCategorySave';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 interface ScheduleDetailProps {
   schedule: Schedule;
   onClose: () => void;
