@@ -1949,6 +1949,71 @@ export function ScheduleDetail({ schedule, onClose, onUpdateSchedule }: Schedule
                 Reportar Avaria
               </button>
             </section>
+            {/* Guests Section - Editable by admin/manager, read-only for cleaner */}
+            <section className="flex flex-col gap-3">
+              <div className="flex items-center gap-2">
+                <Users className="text-slate-400 w-5 h-5" />
+                <h3 className="text-xs font-bold uppercase tracking-widest text-slate-500">Hóspedes</h3>
+              </div>
+              <div className="bg-white dark:bg-[#2d3138] border border-slate-200 dark:border-slate-800 rounded-xl p-4 flex items-center justify-between gap-3">
+                <div className="flex flex-col">
+                  <span className="text-2xl font-bold text-foreground">{localGuests}</span>
+                  <span className="text-[11px] text-muted-foreground">
+                    Padrão: {schedule.propertyDefaultGuests ?? schedule.propertyMinGuests ?? 1}
+                    {schedule.propertyMaxGuests ? ` · Máx: ${schedule.propertyMaxGuests}` : ''}
+                  </span>
+                </div>
+                {(isAdmin || isManager) && schedule.status !== 'completed' ? (
+                  <Select
+                    value={String(localGuests)}
+                    onValueChange={async (v) => {
+                      const next = parseInt(v, 10);
+                      const min = schedule.propertyMinGuests ?? 1;
+                      const max = schedule.propertyMaxGuests ?? 20;
+                      const clamped = Math.max(min, Math.min(max, next));
+                      setLocalGuests(clamped);
+                      setSavingGuests(true);
+                      const { error } = await supabase
+                        .from('schedules')
+                        .update({ number_of_guests: clamped })
+                        .eq('id', schedule.id);
+                      setSavingGuests(false);
+                      if (error) {
+                        toast.error('Erro ao atualizar hóspedes');
+                        setLocalGuests(schedule.numberOfGuests);
+                        return;
+                      }
+                      toast.success(`Hóspedes atualizados para ${clamped}`);
+                      onUpdateSchedule({ ...schedule, numberOfGuests: clamped });
+                    }}
+                    disabled={savingGuests}
+                  >
+                    <SelectTrigger className="w-32">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {Array.from({
+                        length:
+                          (schedule.propertyMaxGuests ?? 10) -
+                          (schedule.propertyMinGuests ?? 1) +
+                          1,
+                      }).map((_, i) => {
+                        const n = (schedule.propertyMinGuests ?? 1) + i;
+                        return (
+                          <SelectItem key={n} value={String(n)}>
+                            {n} {n === 1 ? 'hóspede' : 'hóspedes'}
+                          </SelectItem>
+                        );
+                      })}
+                    </SelectContent>
+                  </Select>
+                ) : (
+                  <span className="text-xs text-muted-foreground">
+                    {localGuests === 1 ? 'hóspede' : 'hóspedes'}
+                  </span>
+                )}
+              </div>
+            </section>
             {/* Cleaner Observations Section - Editable during cleaning */}
             <section className="flex flex-col gap-3">
               <div className="flex items-center gap-2">
