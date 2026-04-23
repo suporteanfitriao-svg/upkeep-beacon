@@ -1,47 +1,53 @@
-@import url('https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap');
-
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
 @layer base {
   :root {
-    --background: 40 6% 97%;
-    --foreground: 215 25% 27%;
+    --background: 210 30% 98%;
+    --foreground: 213 60% 14%;
 
     --card: 0 0% 100%;
-    --card-foreground: 215 25% 27%;
+    --card-foreground: 213 60% 14%;
 
     --popover: 0 0% 100%;
-    --popover-foreground: 215 25% 27%;
+    --popover-foreground: 213 60% 14%;
 
-    --primary: 180 50% 40%;
+    --primary: 213 60% 14%;
     --primary-foreground: 0 0% 100%;
-    --primary-dark: 180 50% 30%;
+    --primary-dark: 213 70% 9%;
+    --primary-glow: 188 56% 40%;
 
-    --secondary: 220 14% 96%;
-    --secondary-foreground: 220 20% 20%;
+    --secondary: 207 47% 27%;
+    --secondary-foreground: 0 0% 100%;
 
-    --muted: 220 14% 96%;
-    --muted-foreground: 100 3% 54%;
+    --muted: 210 25% 95%;
+    --muted-foreground: 213 20% 45%;
 
-    --accent: 45 65% 60%;
-    --accent-foreground: 215 25% 27%;
+    --accent: 178 56% 55%;
+    --accent-foreground: 213 60% 14%;
 
     --destructive: 0 72% 51%;
     --destructive-foreground: 0 0% 100%;
 
-    --border: 220 13% 91%;
-    --input: 220 13% 91%;
-    --ring: 180 50% 40%;
+    --border: 210 25% 90%;
+    --input: 210 25% 90%;
+    --ring: 188 56% 40%;
 
     --radius: 0.5rem;
+
+    /* Brand gradients */
+    --gradient-brand: linear-gradient(135deg, hsl(213 60% 14%) 0%, hsl(207 47% 27%) 50%, hsl(188 56% 40%) 100%);
+    --gradient-soft: linear-gradient(180deg, hsl(210 30% 98%) 0%, hsl(188 40% 95%) 100%);
+    --gradient-accent: linear-gradient(135deg, hsl(188 56% 40%) 0%, hsl(178 56% 55%) 100%);
+    --shadow-brand: 0 20px 60px -20px hsl(213 60% 14% / 0.35);
+    --shadow-glow: 0 10px 40px -10px hsl(188 56% 40% / 0.4);
 
     /* Status colors */
     --status-waiting: 220 70% 50%;
     --status-waiting-bg: 220 70% 96%;
-    --status-released: 180 50% 40%;
-    --status-released-bg: 180 50% 95%;
+    --status-released: 188 56% 40%;
+    --status-released-bg: 188 56% 95%;
     --status-progress: 38 92% 50%;
     --status-progress-bg: 38 92% 95%;
     --status-completed: 152 69% 31%;
@@ -55,17 +61,17 @@
     --priority-low: 142 71% 45%;
 
     --sidebar-background: 0 0% 100%;
-    --sidebar-foreground: 220 20% 20%;
-    --sidebar-primary: 180 50% 40%;
+    --sidebar-foreground: 213 60% 14%;
+    --sidebar-primary: 213 60% 14%;
     --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 220 14% 96%;
-    --sidebar-accent-foreground: 220 20% 10%;
-    --sidebar-border: 220 13% 91%;
-    --sidebar-ring: 180 50% 40%;
+    --sidebar-accent: 210 25% 95%;
+    --sidebar-accent-foreground: 213 60% 14%;
+    --sidebar-border: 210 25% 90%;
+    --sidebar-ring: 188 56% 40%;
 
     /* Custom colors from HTML */
-    --accent-gold: 45 65% 60%;
-    --accent-taupe: 100 3% 54%;
+    --accent-gold: 178 56% 55%;
+    --accent-taupe: 213 20% 45%;
     --surface: 0 0% 100%;
   }
 
@@ -125,7 +131,7 @@
 
   body {
     @apply bg-background text-foreground antialiased;
-    font-family: 'Manrope', system-ui, sans-serif;
+    font-family: 'Figtree', system-ui, sans-serif;
     -webkit-overflow-scrolling: touch;
   }
 
@@ -139,7 +145,7 @@
   }
 
   h1, h2, h3, h4, h5, h6 {
-    font-family: 'Manrope', system-ui, sans-serif;
+    font-family: 'Outfit', system-ui, sans-serif;
     @apply font-bold tracking-tight;
   }
 }
