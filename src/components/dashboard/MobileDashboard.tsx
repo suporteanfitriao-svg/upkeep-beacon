@@ -745,7 +745,7 @@ export function MobileDashboard({ schedules, onScheduleClick, onStartCleaning, o
                   </div>
                   <div>
                     <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
-                      Tarefas de {periodStats.periodLabel}
+                      Limpezas Fechadas de {periodStats.periodLabel}
                       {overdueCount > 0 && (
                         <span className="ml-1 text-red-600 dark:text-red-400">(+{overdueCount} atrasadas)</span>
                       )}
@@ -1020,7 +1020,7 @@ export function MobileDashboard({ schedules, onScheduleClick, onStartCleaning, o
                   <h2 className="text-lg font-bold text-slate-900 dark:text-white">
                     {format(selectedDate, "d 'de' MMMM", { locale: ptBR })}
                   </h2>
-                  <span className="text-xs font-semibold text-primary">{selectedDaySchedules.length} Tarefas</span>
+                  <span className="text-xs font-semibold text-primary">{selectedDaySchedules.length} Limpezas</span>
                 </div>
 
                 <div className="flex flex-col gap-3 pb-4">
@@ -1075,7 +1075,7 @@ export function MobileDashboard({ schedules, onScheduleClick, onStartCleaning, o
                   <h2 className="text-[26px] font-bold leading-tight text-slate-900 dark:text-white tracking-tight">
                     {isSelectedToday ? 'Hoje' : format(selectedDate, "d 'de' MMMM", { locale: ptBR })}
                   </h2>
-                  <span className="text-sm font-semibold text-primary">{selectedDaySchedules.length + selectedDayInspections.length} Tarefas</span>
+                  <span className="text-sm font-semibold text-primary">{selectedDaySchedules.length + selectedDayInspections.length} Limpezas</span>
                 </div>
 
                 <div className="px-6 flex flex-col gap-4">

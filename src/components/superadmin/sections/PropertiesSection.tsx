@@ -543,7 +543,7 @@ export function PropertiesSection() {
                   Última Sinc.
                 </TableHead>
                 <TableHead className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider text-center">
-                  Tarefas
+                  Limpezas
                 </TableHead>
                 <TableHead className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider text-right">
                   Ações

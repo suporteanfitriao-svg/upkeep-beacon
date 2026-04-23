@@ -70,9 +70,9 @@ export const MobileOverdueDrawer = memo(function MobileOverdueDrawer({
               <AlertCircle className="w-5 h-5 text-red-600 dark:text-red-400" />
             </div>
             <div>
-              <h2 className="text-lg font-bold text-foreground">Tarefas Atrasadas</h2>
+              <h2 className="text-lg font-bold text-foreground">Limpezas Atrasadas</h2>
               <p className="text-xs text-muted-foreground">
-                {overdueSchedules.length} {overdueSchedules.length === 1 ? 'tarefa pendente' : 'tarefas pendentes'}
+                {overdueSchedules.length} {overdueSchedules.length === 1 ? 'limpeza pendente' : 'limpezas pendentes'}
               </p>
             </div>
           </div>

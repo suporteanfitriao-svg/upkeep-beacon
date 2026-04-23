@@ -197,7 +197,7 @@ export function OverviewSection({ viewMode, onNavigateToSection }: OverviewSecti
       iconColor: 'text-blue-500'
     },
     { 
-      label: 'Tarefas Finaliz.', 
+      label: 'Limpezas Finaliz.', 
       value: stats.completedTasks >= 1000 
         ? `${(stats.completedTasks / 1000).toFixed(1)}k` 
         : stats.completedTasks.toString(), 
