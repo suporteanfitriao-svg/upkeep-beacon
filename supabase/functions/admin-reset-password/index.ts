@@ -64,10 +64,10 @@ const handler = async (req: Request): Promise<Response> => {
     const { data: roleData, error: roleError } = await supabaseAdmin
       .from("user_roles")
       .select("role")
-      .eq("user_id", callerUserId)
-      .single();
+      .eq("user_id", callerUserId);
 
-    if (roleError || !roleData || roleData.role !== "admin") {
+    const roles = (roleData ?? []).map((r) => r.role);
+    if (roleError || !roles.some((r) => r === "admin" || r === "superadmin")) {
       console.error("Permission denied for user:", callerUserId);
       return new Response(
         JSON.stringify({ error: "Permissão negada. Apenas administradores podem redefinir senhas." }),
