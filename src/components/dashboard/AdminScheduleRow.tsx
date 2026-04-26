@@ -10,7 +10,6 @@ import { EditTimesPopover } from './EditTimesPopover';
 import { PasswordModal } from './PasswordModal';
 import { useUserRole } from '@/hooks/useUserRole';
 import { useAuth } from '@/hooks/useAuth';
-import { useTeamMemberId } from '@/hooks/useTeamMemberId';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
