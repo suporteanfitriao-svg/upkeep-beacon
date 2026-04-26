@@ -136,6 +136,8 @@ export function AdminScheduleRow({ schedule, onClick, onScheduleUpdated }: Admin
     const min = localSchedule.propertyMinGuests ?? 1;
     const max = localSchedule.propertyMaxGuests ?? 20;
     const clamped = Math.max(min, Math.min(max, next));
+    const previous = localSchedule.numberOfGuests ?? localSchedule.propertyDefaultGuests ?? 1;
+    if (clamped === previous) return;
     setLocalGuests(clamped);
     setSavingGuests(true);
     const { error } = await supabase
@@ -147,6 +149,24 @@ export function AdminScheduleRow({ schedule, onClick, onScheduleUpdated }: Admin
       toast.error('Erro ao atualizar hóspedes');
       setLocalGuests(localSchedule.numberOfGuests);
       return;
+    }
+    // Audit log: register guest count change in schedule history
+    if (teamMemberId) {
+      const { error: historyError } = await supabase.rpc('append_schedule_history', {
+        p_schedule_id: localSchedule.id,
+        p_team_member_id: teamMemberId,
+        p_action: 'guests_updated',
+        p_from_status: localSchedule.status,
+        p_to_status: localSchedule.status,
+        p_payload: {
+          previous_guests: previous,
+          new_guests: clamped,
+          changed_at: new Date().toISOString(),
+        },
+      });
+      if (historyError) {
+        console.warn('[AdminScheduleRow] Failed to log guest change:', historyError);
+      }
     }
     const updated = { ...localSchedule, numberOfGuests: clamped };
     setLocalSchedule(updated);
