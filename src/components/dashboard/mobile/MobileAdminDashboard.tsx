@@ -1,7 +1,8 @@
 import { useState, useMemo, useCallback, useRef, useEffect } from 'react';
 import { format, formatDistanceToNow, isSameDay, startOfDay, addDays, startOfMonth, endOfMonth, isWithinInterval, parseISO } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { RefreshCw, ChevronRight, AlertTriangle, Building2, Calendar, Search, Clock, User, Check, Play, Eye, ChevronLeft, Settings, ClipboardList, X, ChevronDown, Wrench } from 'lucide-react';
+import { RefreshCw, ChevronRight, AlertTriangle, Building2, Calendar, Search, Clock, User, Check, Play, Eye, ChevronLeft, Settings, ClipboardList, X, ChevronDown, Wrench, DownloadCloud } from 'lucide-react';
+import { forceAppUpdate } from '@/lib/forceAppUpdate';
 import { Schedule, ScheduleStatus } from '@/types/scheduling';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
@@ -441,6 +442,19 @@ export function MobileAdminDashboard({
                 )}
               </div>
             )}
+            <button
+              onClick={() => {
+                if (window.confirm('Atualizar o aplicativo? Isso apaga o cache local e recarrega a versão mais recente.')) {
+                  toast.loading('Atualizando o app...');
+                  forceAppUpdate();
+                }
+              }}
+              title="Atualizar app (apaga cache)"
+              aria-label="Atualizar app"
+              className="relative flex h-10 w-10 items-center justify-center rounded-full transition-colors hover:bg-muted"
+            >
+              <DownloadCloud className="w-5 h-5 text-muted-foreground" />
+            </button>
             <button 
               onClick={() => navigate('/minha-conta')}
               className="relative flex h-10 w-10 overflow-hidden rounded-full border-2 border-white shadow-sm dark:border-slate-600"
