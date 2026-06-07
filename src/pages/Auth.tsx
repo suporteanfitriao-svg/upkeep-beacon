@@ -54,8 +54,10 @@ const Auth = () => {
   const [errors, setErrors] = useState<{ email?: string; password?: string; confirmPassword?: string }>({});
   const [resetEmailSent, setResetEmailSent] = useState(false);
   
-  const { signIn, signUp, user, resetPassword, updatePassword } = useAuth();
+  const { signIn, signInWithMagicLink, signUp, user, resetPassword, updatePassword } = useAuth();
   const navigate = useNavigate();
+
+  const [magicLinkSent, setMagicLinkSent] = useState(false);
 
   useEffect(() => {
     // Don't redirect if in reset password mode
@@ -72,6 +74,19 @@ const Auth = () => {
   }, [isResetMode]);
 
   const validateForm = (): boolean => {
+    if (view === 'login') {
+      try {
+        z.string().email({ message: 'Email inválido' }).parse(email);
+        setErrors({});
+        return true;
+      } catch (err) {
+        if (err instanceof z.ZodError) {
+          setErrors({ email: err.errors[0]?.message });
+        }
+        return false;
+      }
+    }
+
     if (view === 'forgot-password') {
       try {
         z.string().email({ message: 'Email inválido' }).parse(email);
@@ -149,16 +164,16 @@ const Auth = () => {
           setView('login');
         }
       } else if (view === 'login') {
-        const { error } = await signIn(email, password);
+        const { error } = await signInWithMagicLink(email);
         if (error) {
-          if (error.message.includes('Invalid login credentials')) {
-            toast.error('Email ou senha incorretos');
+          if (error.message.toLowerCase().includes('signups not allowed') || error.message.toLowerCase().includes('user not found')) {
+            toast.error('E-mail não cadastrado. Solicite acesso ao administrador.');
           } else {
             toast.error(error.message);
           }
         } else {
-          toast.success('Login realizado com sucesso!');
-          navigate('/');
+          setMagicLinkSent(true);
+          toast.success('Link de acesso enviado para seu e-mail!');
         }
       } else {
         const { error } = await signUp(email, password);
