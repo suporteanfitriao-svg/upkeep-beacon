@@ -215,7 +215,7 @@ const Auth = () => {
       case 'signup':
         return 'Crie uma conta para começar';
       default:
-        return 'Acesse sua conta para gerenciar as limpezas';
+        return 'Receba um link de acesso no seu e-mail';
     }
   };
 
@@ -252,7 +252,29 @@ const Auth = () => {
           <CardDescription>{getDescription()}</CardDescription>
         </CardHeader>
         <CardContent>
-          {view === 'forgot-password' && resetEmailSent ? (
+          {view === 'login' && magicLinkSent ? (
+            <div className="text-center space-y-4">
+              <div className="p-4 bg-primary/10 rounded-xl inline-flex mx-auto">
+                <Mail className="h-12 w-12 text-primary" />
+              </div>
+              <div>
+                <h3 className="font-semibold text-foreground">Link Enviado!</h3>
+                <p className="text-sm text-muted-foreground mt-2">
+                  Verifique sua caixa de entrada e clique no link para entrar. O link expira em 1 hora.
+                </p>
+              </div>
+              <Button
+                variant="outline"
+                className="w-full"
+                onClick={() => {
+                  setMagicLinkSent(false);
+                  setEmail('');
+                }}
+              >
+                Usar outro e-mail
+              </Button>
+            </div>
+          ) : view === 'forgot-password' && resetEmailSent ? (
             <div className="text-center space-y-4">
               <div className="p-4 bg-primary/10 rounded-xl inline-flex mx-auto">
                 <Mail className="h-12 w-12 text-primary" />
@@ -294,7 +316,7 @@ const Auth = () => {
                 </div>
               )}
               
-              {view !== 'forgot-password' && (
+              {view !== 'forgot-password' && view !== 'login' && (
                 <div className="space-y-2">
                   <Label htmlFor="password">
                     {view === 'reset-password' ? 'Nova Senha' : 'Senha'}
@@ -373,43 +395,19 @@ const Auth = () => {
 
               <Button type="submit" className="w-full" disabled={loading}>
                 {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                {view === 'forgot-password' ? 'Enviar Email' : 
+                {view === 'login' ? 'Enviar link de acesso' :
+                 view === 'forgot-password' ? 'Enviar Email' : 
                  view === 'reset-password' ? 'Atualizar Senha' :
-                 view === 'login' ? 'Entrar' : 'Criar Conta'}
+                 'Criar Conta'}
               </Button>
             </form>
           )}
 
-          {view === 'login' && (
-            <div className="mt-4 text-center">
-              <button
-                type="button"
-                onClick={() => {
-                  setView('forgot-password');
-                  setErrors({});
-                }}
-                className="text-sm text-primary hover:underline transition-colors"
-              >
-                Esqueci minha senha
-              </button>
-            </div>
-          )}
-
-          {(view === 'login' || view === 'signup') && (
+          {view === 'login' && !magicLinkSent && (
             <div className="mt-6 text-center">
-              <button
-                type="button"
-                onClick={() => {
-                  setView(view === 'login' ? 'signup' : 'login');
-                  setErrors({});
-                }}
-                className="text-sm text-muted-foreground hover:text-foreground transition-colors"
-              >
-                {view === 'login' 
-                  ? 'Não tem uma conta? Criar conta' 
-                  : 'Já tem uma conta? Entrar'
-                }
-              </button>
+              <p className="text-xs text-muted-foreground">
+                Acesso liberado apenas para usuários cadastrados pelo administrador.
+              </p>
             </div>
           )}
         </CardContent>
