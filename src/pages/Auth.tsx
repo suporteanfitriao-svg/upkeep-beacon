@@ -77,6 +77,10 @@ const Auth = () => {
     if (view === 'login') {
       try {
         z.string().email({ message: 'Email inválido' }).parse(email);
+        if (!password) {
+          setErrors({ password: 'Digite sua senha' });
+          return false;
+        }
         setErrors({});
         return true;
       } catch (err) {
@@ -164,16 +168,9 @@ const Auth = () => {
           setView('login');
         }
       } else if (view === 'login') {
-        const { error } = await signInWithMagicLink(email);
+        const { error } = await signIn(email, password);
         if (error) {
-          if (error.message.toLowerCase().includes('signups not allowed') || error.message.toLowerCase().includes('user not found')) {
-            toast.error('E-mail não cadastrado. Solicite acesso ao administrador.');
-          } else {
-            toast.error(error.message);
-          }
-        } else {
-          setMagicLinkSent(true);
-          toast.success('Link de acesso enviado para seu e-mail!');
+          toast.error(error.message.includes('Invalid login') ? 'E-mail ou senha incorretos' : error.message);
         }
       } else {
         const { error } = await signUp(email, password);
@@ -215,7 +212,7 @@ const Auth = () => {
       case 'signup':
         return 'Crie uma conta para começar';
       default:
-        return 'Receba um link de acesso no seu e-mail';
+        return 'Entre com seu e-mail e senha';
     }
   };
 
@@ -316,7 +313,7 @@ const Auth = () => {
                 </div>
               )}
               
-              {view !== 'forgot-password' && view !== 'login' && (
+              {view !== 'forgot-password' && (
                 <div className="space-y-2">
                   <Label htmlFor="password">
                     {view === 'reset-password' ? 'Nova Senha' : 'Senha'}
@@ -395,7 +392,7 @@ const Auth = () => {
 
               <Button type="submit" className="w-full" disabled={loading}>
                 {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                {view === 'login' ? 'Enviar link de acesso' :
+                {view === 'login' ? 'Entrar' :
                  view === 'forgot-password' ? 'Enviar Email' : 
                  view === 'reset-password' ? 'Atualizar Senha' :
                  'Criar Conta'}
@@ -404,7 +401,10 @@ const Auth = () => {
           )}
 
           {view === 'login' && !magicLinkSent && (
-            <div className="mt-6 text-center">
+            <div className="mt-6 text-center space-y-2">
+              <button type="button" onClick={() => { setView('forgot-password'); setErrors({}); }} className="text-sm text-primary hover:underline">
+                Esqueci minha senha
+              </button>
               <p className="text-xs text-muted-foreground">
                 Acesso liberado apenas para usuários cadastrados pelo administrador.
               </p>
