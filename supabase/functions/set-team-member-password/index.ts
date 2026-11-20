@@ -141,7 +141,12 @@ const handler = async (req: Request): Promise<Response> => {
 
     const sameOwner = !!callerOwnerUserId && callerOwnerUserId === target.owner_user_id;
     const isSelf = target.user_id === callerUserId;
-    const verdict = canChange(callerRoles, target.role as AppRole, sameOwner, isSelf);
+    // Use the target's real (highest) login role, not just the team record label
+    const { data: targetRoleRows } = await admin.from("user_roles").select("role").eq("user_id", target.user_id);
+    const prio: Record<AppRole, number> = { superadmin: 4, admin: 3, manager: 2, cleaner: 1 };
+    const targetRoles = [(target.role as AppRole), ...((targetRoleRows || []).map((r) => r.role as AppRole))];
+    const effectiveTargetRole = targetRoles.sort((a, b) => (prio[b] ?? 0) - (prio[a] ?? 0))[0];
+    const verdict = canChange(callerRoles, effectiveTargetRole, sameOwner, isSelf);
 
     if (!verdict.ok) {
       console.warn("[set-team-member-password] denied", { callerUserId, callerRoles, target: target.id, reason: verdict.reason });

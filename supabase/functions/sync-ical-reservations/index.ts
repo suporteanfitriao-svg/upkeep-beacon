@@ -267,6 +267,7 @@ serve(async (req) => {
     
     // Allow requests with anon_key (for cron jobs that can only use anon key)
     const isCronRequest = token === anonKey;
+    let allowedPropertyIds: string[] | null = null;
     
     if (isServiceRoleRequest) {
       console.log('Service role authenticated - automatic/cron sync');
@@ -305,6 +306,10 @@ serve(async (req) => {
         );
       }
       
+      // Limit manual syncs to the properties this user is allowed to see
+      const userClient = createClient(Deno.env.get('SUPABASE_URL')!, anonKey, { global: { headers: { Authorization: `Bearer ${token}` } } });
+      const { data: visibleProps } = await userClient.from('properties').select('id');
+      allowedPropertyIds = (visibleProps || []).map((p: { id: string }) => p.id);
       const userRoles = roleData.map(r => r.role).join(', ');
       console.log(`User ${user.id} (${userRoles}) triggered manual sync`);
     }
@@ -343,6 +348,9 @@ serve(async (req) => {
       query = query.eq('id', sourceId);
     } else if (propertyId) {
       query = query.eq('property_id', propertyId);
+    }
+    if (allowedPropertyIds) {
+      query = query.in('property_id', allowedPropertyIds.length ? allowedPropertyIds : ['00000000-0000-0000-0000-000000000000']);
     }
 
     const { data: sources, error: sourcesError } = await query;

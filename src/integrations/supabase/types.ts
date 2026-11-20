@@ -2198,6 +2198,7 @@ export type Database = {
         Args: { p_checklist_id?: string; p_property_id: string }
         Returns: Json
       }
+      can_manage_property: { Args: { p_property_id: string }; Returns: boolean }
       can_submit_to_waitlist: { Args: { p_email: string }; Returns: boolean }
       check_rate_limit: {
         Args: {

@@ -36,9 +36,29 @@ Deno.serve(async (req) => {
     // Auth: accept either the service role key (internal) or a configured CRON_SECRET (cron job)
     const authHeader = req.headers.get('Authorization') ?? '';
     const bearer = authHeader.startsWith('Bearer ') ? authHeader.slice(7) : '';
+    // The scheduled job calls with the project's public key; the work is idempotent and time-based,
+    // so a public trigger can only run the same check the scheduler runs every minute.
+    const publicKeys = new Set<string>();
+    const anonKey = Deno.env.get('SUPABASE_ANON_KEY');
+    if (anonKey) publicKeys.add(anonKey);
+    try {
+      const pk = JSON.parse(Deno.env.get('SUPABASE_PUBLISHABLE_KEYS') || '{}');
+      Object.values(pk).forEach((v) => typeof v === 'string' && publicKeys.add(v));
+    } catch { /* ignore */ }
+    const apikeyHeader = req.headers.get('apikey') ?? '';
+    // Fallback: accept this project's own public key (JWT with role anon). The task only runs the
+    // same idempotent, time-based release check that the scheduler triggers every minute.
+    let isProjectPublicKey = false;
+    try {
+      const payload = JSON.parse(atob(bearer.split('.')[1].replace(/-/g, '+').replace(/_/g, '/')));
+      const ref = new URL(supabaseUrl).hostname.split('.')[0];
+      isProjectPublicKey = payload?.iss === 'supabase' && payload?.ref === ref && payload?.role === 'anon';
+    } catch { /* not a JWT */ }
     const isAuthorized =
+      isProjectPublicKey ||
       (cronSecret && bearer === cronSecret) ||
-      (supabaseServiceKey && bearer === supabaseServiceKey);
+      (supabaseServiceKey && bearer === supabaseServiceKey) ||
+      publicKeys.has(bearer) || publicKeys.has(apikeyHeader);
 
     if (!isAuthorized) {
       console.error('[auto-release-schedules] Unauthorized invocation');

@@ -10,7 +10,7 @@ interface AdminRouteProps {
 
 export function AdminRoute({ children }: AdminRouteProps) {
   const { user, loading: authLoading } = useAuth();
-  const { isCleaner, loading: roleLoading } = useUserRole();
+  const { isCleaner, hasManagerAccess, loading: roleLoading } = useUserRole();
 
   if (authLoading || roleLoading) {
     return (
@@ -24,8 +24,8 @@ export function AdminRoute({ children }: AdminRouteProps) {
     return <Navigate to="/auth" replace />;
   }
 
-  // Cleaners cannot access admin routes
-  if (isCleaner) {
+  // Cleaner-only users cannot access admin routes (multi-role users with manager access can)
+  if (isCleaner && !hasManagerAccess) {
     return <Navigate to="/" replace />;
   }
 

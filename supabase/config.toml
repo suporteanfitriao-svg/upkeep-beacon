@@ -15,14 +15,8 @@ verify_jwt = false
 [functions.geocode-address]
 verify_jwt = false
 
-[functions.create-user-with-password]
-verify_jwt = false
 
-[functions.admin-reset-password]
-verify_jwt = false
 
-[functions.admin-create-user]
-verify_jwt = false
 
 [functions.hotmart-webhook]
 verify_jwt = false

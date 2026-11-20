@@ -30,14 +30,17 @@ export function useUserRole(): UserRoleState {
   const { user } = useAuth();
   const [roles, setRoles] = useState<AppRole[]>([]);
   const [loading, setLoading] = useState(true);
+  const [fetchedFor, setFetchedFor] = useState<string | null>(null);
 
   useEffect(() => {
     async function fetchRoles() {
       if (!user) {
         setRoles([]);
+        setFetchedFor(null);
         setLoading(false);
         return;
       }
+      setLoading(true);
 
       try {
         // Fetch ALL roles for the user (can have multiple)
@@ -57,6 +60,7 @@ export function useUserRole(): UserRoleState {
         console.error('Error:', err);
         setRoles([]);
       } finally {
+        setFetchedFor(user.id);
         setLoading(false);
       }
     }
@@ -75,10 +79,13 @@ export function useUserRole(): UserRoleState {
   const isManager = roles.includes('manager');
   const isCleaner = roles.includes('cleaner');
 
+  // Still loading while roles for the current user have not been fetched yet
+  const effectiveLoading = loading || (!!user && fetchedFor !== user.id);
+
   return {
     role,
     roles,
-    loading,
+    loading: effectiveLoading,
     isSuperAdmin,
     isAdmin,
     isManager,

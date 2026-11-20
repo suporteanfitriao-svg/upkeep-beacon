@@ -216,7 +216,14 @@ serve(async (req) => {
       );
     }
 
-    console.log(`[geocode] Action: ${action}, PropertyId: ${propertyId}, Address: ${address}`);
+    // ---- AuthZ: caller must be able to see the property (tenant rules) ----
+    if (propertyId) {
+      const { data: visible } = await supabaseAuth.from('properties').select('id').eq('id', propertyId as string).maybeSingle();
+      if (!visible) {
+        return new Response(JSON.stringify({ error: 'Forbidden' }), { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+      }
+    }
+    console.log(`[geocode] Action: ${action}, PropertyId: ${propertyId}`);
 
     if (action === 'geocode_single') {
       // Geocode a single address (can be called from frontend or after property update)
@@ -264,8 +271,8 @@ serve(async (req) => {
     }
 
     if (action === 'geocode_all_missing') {
-      // Geocode all properties that have an address but no coordinates
-      const { data: properties, error: fetchError } = await supabase
+      // Geocode the caller's visible properties (tenant rules) that have an address but no coordinates
+      const { data: properties, error: fetchError } = await supabaseAuth
         .from('properties')
         .select('id, address, name')
         .not('address', 'is', null)

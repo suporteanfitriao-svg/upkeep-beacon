@@ -335,11 +335,11 @@ export default function Settings() {
                       <Clock className="h-5 w-5" />
                       Horários Padrão
                     </CardTitle>
-                    <CardDescription>Configure os horários de check-in e check-out padrão</CardDescription>
+                    <CardDescription>Configure os horários padrão de liberação e finalização da limpeza</CardDescription>
                   </CardHeader>
                   <CardContent className="grid grid-cols-2 gap-4">
                     <div className="space-y-2">
-                      <Label htmlFor="check-in">Check-in</Label>
+                      <Label htmlFor="check-in">Liberado para Limpeza</Label>
                       <Input
                         id="check-in"
                         type="time"
@@ -348,7 +348,7 @@ export default function Settings() {
                       />
                     </div>
                     <div className="space-y-2">
-                      <Label htmlFor="check-out">Check-out</Label>
+                      <Label htmlFor="check-out">Hora máxima para finalizar</Label>
                       <Input
                         id="check-out"
                         type="time"

@@ -105,7 +105,8 @@ const handler = createSecureHandler(
     const hottok = req.headers.get('x-hotmart-hottok');
     const expectedToken = Deno.env.get('HOTMART_WEBHOOK_TOKEN');
     
-    if (expectedToken && hottok !== expectedToken) {
+    // Reject everything until the Hotmart token is configured, so nobody can fake a purchase
+    if (!expectedToken || hottok !== expectedToken) {
       secureLog('warn', 'Invalid Hotmart webhook token', {
         request_id: requestId,
       });
