@@ -196,6 +196,7 @@ export default function Landing() {
           <nav className="hidden md:flex items-center gap-8 text-sm font-medium text-muted-foreground">
             <a href="#features" className="hover:text-foreground transition-colors">Recursos</a>
             <a href="#workflow" className="hover:text-foreground transition-colors">Como funciona</a>
+            <a href="#precos" className="hover:text-foreground transition-colors">Preços</a>
             <a href="#waitlist" className="hover:text-foreground transition-colors">Lista de espera</a>
           </nav>
           <Link to="/auth">
@@ -351,6 +352,29 @@ export default function Landing() {
       </section>
 
       {/* Waitlist Form */}
+      {/* Preço */}
+      <section id="precos" className="py-20 bg-gradient-soft">
+        <div className="container mx-auto px-4 sm:px-6">
+          <div className="max-w-md mx-auto text-center space-y-6 rounded-3xl border border-border bg-card p-8 shadow-brand">
+            <Badge className="bg-accent/10 text-primary border border-accent/30 rounded-full">Plano único</Badge>
+            <h2 className="font-display text-3xl font-bold">Plano Gestão</h2>
+            <p className="text-muted-foreground">Tudo incluso para até 10 imóveis</p>
+            <div>
+              <span className="font-display text-5xl font-extrabold">R$ 149,99</span>
+              <span className="text-muted-foreground">/mês</span>
+            </div>
+            <ul className="text-left space-y-2 text-sm">
+              {["Até 10 imóveis", "Sincronização com Airbnb e Booking", "Equipe de limpeza ilimitada", "Checklists com fotos antes/depois", "Manutenção e inventário", "App da equipe no celular"].map((f) => (
+                <li key={f} className="flex items-center gap-2"><CheckCircle2 className="h-4 w-4 text-primary shrink-0" />{f}</li>
+              ))}
+            </ul>
+            <Link to="/pricing">
+              <Button size="lg" className="w-full h-12 font-semibold">Assinar o Plano Gestão</Button>
+            </Link>
+          </div>
+        </div>
+      </section>
+
       <section id="waitlist" className="relative py-20 lg:py-28">
         <div className="container mx-auto px-4 sm:px-6">
           <div className="grid lg:grid-cols-5 gap-12 max-w-6xl mx-auto items-start">

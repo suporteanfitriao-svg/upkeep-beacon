@@ -16,6 +16,10 @@ import logo from '@/assets/logo.png';
 const WHATSAPP_NUMBER = '5534984256809';
 const WHATSAPP_MESSAGE = 'Quero implementar a solução de limpeza nos meus imóveis.';
 
+// Link do checkout da Hotmart. Preencha quando o produto estiver criado na Hotmart.
+// Enquanto vazio, o botão abre o WhatsApp.
+export const HOTMART_CHECKOUT_URL = '';
+
 const buildWhatsappUrl = (planName?: string) => {
   const message = planName
     ? `${WHATSAPP_MESSAGE} (Plano: ${planName})`
@@ -50,6 +54,12 @@ export default function Pricing() {
   const { subscription, hasActiveSubscription } = useSubscription();
 
   const handleSelectPlan = (planName: string) => {
+    if (HOTMART_CHECKOUT_URL) {
+      const url = new URL(HOTMART_CHECKOUT_URL);
+      if (user?.email) url.searchParams.set('email', user.email);
+      window.open(url.toString(), '_blank', 'noopener,noreferrer');
+      return;
+    }
     window.open(buildWhatsappUrl(planName), '_blank', 'noopener,noreferrer');
   };
 
@@ -83,7 +93,7 @@ export default function Pricing() {
           Planos e Preços
         </Badge>
         <h1 className="text-4xl md:text-5xl font-bold tracking-tight mb-4">
-          Escolha o plano ideal para você
+          Um plano, tudo incluso
         </h1>
         <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
           Gerencie suas propriedades de aluguel por temporada com eficiência. 
@@ -93,7 +103,7 @@ export default function Pricing() {
 
       {/* Plans Grid */}
       <section className="container mx-auto px-4 pb-20">
-        <div className="grid md:grid-cols-2 gap-8 max-w-4xl mx-auto">
+        <div className={cn("grid gap-8 mx-auto", plans.length > 1 ? "md:grid-cols-2 max-w-4xl" : "max-w-md")}>
           {plansLoading ? (
             // Loading skeleton
             Array.from({ length: 2 }).map((_, i) => (
@@ -114,7 +124,7 @@ export default function Pricing() {
             ))
           ) : (
             plans.map((plan, index) => {
-              const isPopular = plan.slug === 'padrao';
+              const isPopular = plan.slug === 'gestao' || plans.length === 1;
               const isCurrentPlan = subscription?.plan_id === plan.id;
               const features = Array.isArray(plan.features) ? plan.features : [];
               
@@ -130,7 +140,7 @@ export default function Pricing() {
                   {isPopular && (
                     <div className="absolute -top-3 left-1/2 -translate-x-1/2">
                       <Badge className="bg-primary text-primary-foreground">
-                        Mais Popular
+                        Plano único
                       </Badge>
                     </div>
                   )}
@@ -196,7 +206,7 @@ export default function Pricing() {
                       {isCurrentPlan ? (
                         'Plano Atual'
                       ) : (
-                        <><MessageCircle className="mr-2 h-4 w-4" /> Falar no WhatsApp</>
+                        HOTMART_CHECKOUT_URL ? 'Assinar agora' : <><MessageCircle className="mr-2 h-4 w-4" /> Falar no WhatsApp</>
                       )}
                     </Button>
                   </CardContent>

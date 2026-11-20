@@ -72,6 +72,9 @@ const PRODUCT_TO_PLAN: Record<string, string> = {
   'HOTMART_BASIC_PRODUCT_ID': 'basico',
   'HOTMART_STANDARD_PRODUCT_ID': 'padrao',
 };
+// Plano único (até 10 imóveis). Defina HOTMART_PRODUCT_ID com o ID do produto na Hotmart.
+const SINGLE_PLAN_PRODUCT_ID = Deno.env.get('HOTMART_PRODUCT_ID');
+if (SINGLE_PLAN_PRODUCT_ID) PRODUCT_TO_PLAN[SINGLE_PLAN_PRODUCT_ID] = 'gestao';
 
 // Rate limit: 10 requests per minute per webhook signature
 const RATE_LIMIT_CONFIG = {
@@ -151,7 +154,7 @@ const handler = createSecureHandler(
     const subscriptionId = data.subscription?.subscriber_code;
 
     // Determine which plan was purchased
-    const planSlug = PRODUCT_TO_PLAN[productId] || 'basico';
+    const planSlug = PRODUCT_TO_PLAN[String(productId)] || 'gestao';
     
     // Get plan from database
     const { data: planData, error: planError } = await supabaseAdmin
