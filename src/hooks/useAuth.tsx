@@ -14,7 +14,9 @@ interface AuthContextType {
   updatePassword: (newPassword: string) => Promise<{ error: Error | null }>;
 }
 
-const AuthContext = createContext<AuthContextType | undefined>(undefined);
+// Keep a single context instance across hot reloads so providers and consumers always match.
+const g = globalThis as unknown as { __authContext?: React.Context<AuthContextType | undefined> };
+const AuthContext = g.__authContext ?? (g.__authContext = createContext<AuthContextType | undefined>(undefined));
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
