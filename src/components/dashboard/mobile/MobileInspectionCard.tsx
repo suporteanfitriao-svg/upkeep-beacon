@@ -1,3 +1,4 @@
+import { SignedPropertyImg } from '@/components/properties/SignedPropertyImg';
 import { memo } from 'react';
 import { Clock, ClipboardCheck, Play, Eye, Check } from 'lucide-react';
 import { CleanerInspection } from '@/hooks/useCleanerInspections';
@@ -90,7 +91,7 @@ export const MobileInspectionCard = memo(function MobileInspectionCard({
           </button>
         </div>
         {inspection.property_image_url ? (
-          <img 
+          <SignedPropertyImg 
             src={inspection.property_image_url} 
             alt={inspection.property_name}
             className="w-28 shrink-0 rounded-xl object-cover"

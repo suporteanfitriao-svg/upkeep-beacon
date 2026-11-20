@@ -1,3 +1,4 @@
+import { SignedPropertyImg } from '@/components/properties/SignedPropertyImg';
 import { useMemo, useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { format, startOfMonth, endOfMonth, differenceInMinutes, isWithinInterval, subMonths, setMonth, setYear, getYear, getMonth } from 'date-fns';
@@ -323,7 +324,7 @@ export default function CleaningHistory() {
                   >
                     <div className="flex items-start gap-3">
                       {schedule.propertyImageUrl ? (
-                        <img
+                        <SignedPropertyImg
                           src={schedule.propertyImageUrl}
                           alt={schedule.propertyName}
                           className="w-14 h-14 rounded-xl object-cover shrink-0"

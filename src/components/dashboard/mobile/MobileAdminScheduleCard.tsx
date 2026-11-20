@@ -1,3 +1,4 @@
+import { SignedPropertyImg } from '@/components/properties/SignedPropertyImg';
 import { memo, useState, useEffect, useMemo } from 'react';
 import { format, startOfDay, isBefore, isSameDay, isAfter } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
@@ -375,7 +376,7 @@ export const MobileAdminScheduleCard = memo(function MobileAdminScheduleCard({
               {/* Property Image with status dot */}
               <div className="relative">
                 {schedule.propertyImageUrl ? (
-                  <img 
+                  <SignedPropertyImg 
                     src={schedule.propertyImageUrl}
                     alt={schedule.propertyName}
                     className="w-20 h-20 shrink-0 rounded-2xl object-cover border border-border"

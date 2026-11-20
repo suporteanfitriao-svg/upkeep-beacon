@@ -1,3 +1,4 @@
+import { SignedPropertyImg } from '@/components/properties/SignedPropertyImg';
 import { Schedule, ScheduleStatus } from '@/types/scheduling';
 import { cn } from '@/lib/utils';
 import { 
@@ -242,7 +243,7 @@ export function ScheduleCard({ schedule, onClick, isLoading = false }: ScheduleC
         {/* Right Image */}
         <div className="w-32 sm:w-40 shrink-0" onClick={onClick}>
           {schedule.propertyImageUrl ? (
-            <img 
+            <SignedPropertyImg 
               src={schedule.propertyImageUrl} 
               alt={schedule.propertyName}
               className="w-full h-full object-cover"

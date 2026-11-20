@@ -1,3 +1,4 @@
+import { SignedPropertyImg } from '@/components/properties/SignedPropertyImg';
 import { useState, useMemo, useEffect, useCallback, useRef, memo } from 'react';
 import { format, isSameDay, addDays, startOfWeek, endOfWeek, getWeek, isAfter, startOfDay, endOfDay, isToday as checkIsToday, startOfMonth, endOfMonth, eachDayOfInterval, addMonths, subMonths, getDay, formatDistanceToNow, isWithinInterval, parseISO } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
@@ -831,7 +832,7 @@ export function MobileDashboard({ schedules, onScheduleClick, onStartCleaning, o
                 >
                   <div className="flex flex-row p-4 gap-4">
                     {nextCheckout.propertyImageUrl ? (
-                      <img 
+                      <SignedPropertyImg 
                         src={nextCheckout.propertyImageUrl}
                         alt={nextCheckout.propertyName}
                         className="w-20 h-20 shrink-0 rounded-xl object-cover"

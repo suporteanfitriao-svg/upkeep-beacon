@@ -1,3 +1,4 @@
+import { SignedPropertyImg } from '@/components/properties/SignedPropertyImg';
 import { memo } from 'react';
 import { format, startOfDay, isBefore } from 'date-fns';
 import { Clock, Play, Check, ChevronRight, Building2, Loader2, AlertTriangle, AlertCircle } from 'lucide-react';
@@ -84,7 +85,7 @@ export const MobileScheduleCard = memo(function MobileScheduleCard({
       >
         <div className="flex flex-row p-4 gap-4">
           {schedule.propertyImageUrl ? (
-            <img 
+            <SignedPropertyImg 
               src={schedule.propertyImageUrl}
               alt={schedule.propertyName}
               className="w-20 h-20 shrink-0 rounded-xl object-cover"
@@ -122,7 +123,7 @@ export const MobileScheduleCard = memo(function MobileScheduleCard({
           {/* Image and status row */}
           <div className="flex flex-row p-3 pb-2 gap-3">
             {schedule.propertyImageUrl ? (
-              <img 
+              <SignedPropertyImg 
                 src={schedule.propertyImageUrl} 
                 alt={schedule.propertyName}
                 className="w-16 h-16 shrink-0 rounded-xl object-cover border border-slate-100 dark:border-slate-700"
@@ -265,7 +266,7 @@ export const MobileScheduleCard = memo(function MobileScheduleCard({
           </button>
         </div>
         {schedule.propertyImageUrl ? (
-          <img 
+          <SignedPropertyImg 
             src={schedule.propertyImageUrl} 
             alt={schedule.propertyName}
             className="w-28 shrink-0 rounded-xl object-cover"
