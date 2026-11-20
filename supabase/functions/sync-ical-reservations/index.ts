@@ -211,24 +211,21 @@ function extractAccessPassword(description: string): string | null {
   const phonePattern = /Phone Number \(Last 4 Digits\):\s*(\d{4})/i;
   const phoneMatch = description.match(phonePattern);
   if (phoneMatch) {
-    console.log(`[PASSWORD] Extracted phone last 4 digits: ${phoneMatch[1]}`);
-    return phoneMatch[1];
+        return phoneMatch[1];
   }
   
   // Pattern 2: "Código de acesso: XXXX" or "Access code: XXXX"
   const codePattern = /(?:Código de acesso|Access code|Code|Código):\s*(\d{4,8})/i;
   const codeMatch = description.match(codePattern);
   if (codeMatch) {
-    console.log(`[PASSWORD] Extracted access code: ${codeMatch[1]}`);
-    return codeMatch[1];
+        return codeMatch[1];
   }
   
   // Pattern 3: "PIN: XXXX"
   const pinPattern = /PIN:\s*(\d{4,8})/i;
   const pinMatch = description.match(pinPattern);
   if (pinMatch) {
-    console.log(`[PASSWORD] Extracted PIN: ${pinMatch[1]}`);
-    return pinMatch[1];
+        return pinMatch[1];
   }
   
   return null;
@@ -265,14 +262,19 @@ serve(async (req) => {
     // Allow requests authenticated with service_role_key (for cron jobs and system calls)
     const isServiceRoleRequest = token === supabaseKey;
     
-    // Allow requests with anon_key (for cron jobs that can only use anon key)
-    const isCronRequest = token === anonKey;
+    // Cron job authenticates with a private secret stored server-side
+    const cronHeader = req.headers.get('x-cron-secret') || '';
+    let isCronRequest = false;
+    if (cronHeader) {
+      const { data: cs } = await supabase.from('internal_cron_secrets').select('value').eq('name', 'sync_ical').maybeSingle();
+      isCronRequest = !!cs?.value && cs.value === cronHeader;
+    }
     let allowedPropertyIds: string[] | null = null;
     
     if (isServiceRoleRequest) {
       console.log('Service role authenticated - automatic/cron sync');
     } else if (isCronRequest) {
-      console.log('Anon key authenticated - cron job sync');
+      console.log('Cron secret authenticated - cron job sync');
     } else {
       // For user-initiated requests, verify authentication only (allow all authenticated users)
       if (!authHeader) {
@@ -298,7 +300,8 @@ serve(async (req) => {
         .select('role')
         .eq('user_id', user.id);
 
-      if (roleError || !roleData || roleData.length === 0) {
+      const allowedRoles = ['admin', 'manager', 'superadmin'];
+      if (roleError || !roleData || !roleData.some((r: { role: string }) => allowedRoles.includes(r.role))) {
         console.log(`User ${user.id} attempted sync without any role`);
         return new Response(
           JSON.stringify({ error: 'Acesso negado - usuário não tem permissão' }),
@@ -309,7 +312,12 @@ serve(async (req) => {
       // Limit manual syncs to the properties this user is allowed to see
       const userClient = createClient(Deno.env.get('SUPABASE_URL')!, anonKey, { global: { headers: { Authorization: `Bearer ${token}` } } });
       const { data: visibleProps } = await userClient.from('properties').select('id');
-      allowedPropertyIds = (visibleProps || []).map((p: { id: string }) => p.id);
+      const ids: string[] = [];
+      for (const p of (visibleProps || []) as { id: string }[]) {
+        const { data: ok } = await userClient.rpc('can_manage_property', { p_property_id: p.id });
+        if (ok) ids.push(p.id);
+      }
+      allowedPropertyIds = ids;
       const userRoles = roleData.map(r => r.role).join(', ');
       console.log(`User ${user.id} (${userRoles}) triggered manual sync`);
     }
@@ -406,14 +414,6 @@ serve(async (req) => {
           console.log(`Parsed ${events.length} reservations for ${source.custom_name || source.id}`);
           
           // Log full parsed events JSON for debugging (complete DESCRIPTION field)
-          console.log(`[ICAL_RAW_DATA] ${property.name}:`, JSON.stringify(events.map(e => ({
-            uid: e.uid,
-            dtstart: e.dtstart.toISOString(),
-            dtend: e.dtend.toISOString(),
-            summary: e.summary,
-            description_full: e.description || null,
-            extracted_password: extractAccessPassword(e.description)
-          })), null, 2));
 
           // Track UIDs from this sync to detect removed reservations
           const currentUIDs: string[] = [];
@@ -509,7 +509,6 @@ serve(async (req) => {
             // Set access_password if extracted and not already set (preserve manual passwords)
             if (accessPassword && (!existingSchedule || !existingSchedule.access_password)) {
               scheduleData.access_password = accessPassword;
-              console.log(`[SCHEDULE] Setting access_password: ${accessPassword} for ${property.name}`);
             }
 
             // For NEW schedules: set all times and status

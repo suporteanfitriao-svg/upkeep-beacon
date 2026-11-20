@@ -6,6 +6,16 @@ const resend = new Resend(Deno.env.get("RESEND_API_KEY"));
 const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
 const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 
+const ALLOWED_APP_ORIGINS = ['https://limpeza.superhostlab.com.br', 'https://upkeep-beacon.lovable.app'];
+function isAllowedAppUrl(u: string): boolean {
+  try {
+    const o = new URL(u);
+    return ALLOWED_APP_ORIGINS.includes(o.origin) || /^https:\/\/[a-z0-9-]+--64f4d3ea-6dbf-48c6-abef-31d672075244\.lovable\.app$/.test(o.origin);
+  } catch { return false; }
+}
+
+const escapeHtml = (v: string) => v.replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]!));
+
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers":
@@ -57,27 +67,44 @@ const handler = async (req: Request): Promise<Response> => {
     const callerEmail = userData.user.email;
 
     // Check if user has admin or manager role
-    const { data: roleData, error: roleError } = await supabase
-      .from("user_roles")
-      .select("role")
-      .eq("user_id", callerUserId)
-      .single();
-
-    if (roleError || !roleData || !["admin", "manager"].includes(roleData.role)) {
+    const { data: roleRows } = await supabase.from("user_roles").select("role").eq("user_id", callerUserId);
+    const callerRoles = (roleRows || []).map((r: { role: string }) => r.role);
+    if (!callerRoles.some((r) => ["admin", "manager", "superadmin"].includes(r))) {
       return new Response(
         JSON.stringify({ error: "Permissão negada. Apenas admin ou manager podem enviar reset de senha." }),
         { status: 403, headers: { "Content-Type": "application/json", ...corsHeaders } }
       );
     }
 
-    const { teamMemberId, teamMemberName, email, appUrl }: PasswordResetRequest = await req.json();
+    const { teamMemberId, appUrl: rawAppUrl }: PasswordResetRequest = await req.json();
+    const appUrl = rawAppUrl && isAllowedAppUrl(rawAppUrl) ? new URL(rawAppUrl).origin : ALLOWED_APP_ORIGINS[0];
 
-    if (!email || !teamMemberId) {
+    if (!teamMemberId) {
       return new Response(
         JSON.stringify({ error: "Email e ID do membro são obrigatórios" }),
         { status: 400, headers: { "Content-Type": "application/json", ...corsHeaders } }
       );
     }
+
+    // Load the target member and make sure it belongs to the caller's organization
+    const { data: target } = await supabase.from("team_members")
+      .select("id, name, email, role, owner_user_id").eq("id", teamMemberId).maybeSingle();
+    if (!target?.email) {
+      return new Response(JSON.stringify({ error: "Membro não encontrado" }),
+        { status: 404, headers: { "Content-Type": "application/json", ...corsHeaders } });
+    }
+    let allowed = callerRoles.includes("superadmin") || (callerRoles.includes("admin") && target.owner_user_id === callerUserId);
+    if (!allowed && callerRoles.includes("manager") && target.role === "cleaner") {
+      const { data: me } = await supabase.from("team_members").select("owner_user_id")
+        .eq("user_id", callerUserId).eq("is_active", true).maybeSingle();
+      allowed = !!me?.owner_user_id && me.owner_user_id === target.owner_user_id;
+    }
+    if (!allowed) {
+      return new Response(JSON.stringify({ error: "Permissão negada para este membro." }),
+        { status: 403, headers: { "Content-Type": "application/json", ...corsHeaders } });
+    }
+    const email: string = target.email;
+    const teamMemberName = escapeHtml(target.name || "");
 
     // Generate password reset link using Supabase Auth
     const { data: resetData, error: resetError } = await supabase.auth.admin.generateLink({
@@ -122,7 +149,7 @@ const handler = async (req: Request): Promise<Response> => {
       `,
     });
 
-    console.log("Password reset email sent:", emailResponse);
+    console.log("Password reset email sent");
 
     // Log audit event
     await supabase.from("team_member_audit_logs").insert({

@@ -45,7 +45,7 @@ function simplifyAddressForGeocoding(address: string): string {
     simplified = essentialParts.join(', ');
   }
   
-  console.log(`[geocode] Simplified address: "${address}" -> "${simplified}"`);
+  
   return simplified;
 }
 
@@ -53,7 +53,7 @@ function simplifyAddressForGeocoding(address: string): string {
  * Geocode an address using OpenStreetMap Nominatim API (free)
  */
 async function geocodeAddress(address: string): Promise<GeocodeResult | null> {
-  console.log(`[geocode] Geocoding address: ${address}`);
+  
   
   // Clean and encode the address
   const cleanAddress = address.trim();
@@ -69,7 +69,7 @@ async function geocodeAddress(address: string): Promise<GeocodeResult | null> {
   // Use Nominatim API (OpenStreetMap) - free and no API key required
   const url = `https://nominatim.openstreetmap.org/search?q=${encodedAddress}&format=json&limit=1&countrycodes=br`;
   
-  console.log(`[geocode] Calling Nominatim API: ${url}`);
+  
   
   const response = await fetch(url, {
     headers: {
@@ -84,7 +84,7 @@ async function geocodeAddress(address: string): Promise<GeocodeResult | null> {
   }
 
   const results = await response.json();
-  console.log(`[geocode] Nominatim results:`, JSON.stringify(results));
+  console.log(`[geocode] Nominatim results: ${results?.length ?? 0}`);
 
   if (!results || results.length === 0) {
     // Fallback: try with original address if simplified failed
@@ -218,8 +218,8 @@ serve(async (req) => {
 
     // ---- AuthZ: caller must be able to see the property (tenant rules) ----
     if (propertyId) {
-      const { data: visible } = await supabaseAuth.from('properties').select('id').eq('id', propertyId as string).maybeSingle();
-      if (!visible) {
+      const { data: canManage } = await supabaseAuth.rpc('can_manage_property', { p_property_id: propertyId as string });
+      if (!canManage) {
         return new Response(JSON.stringify({ error: 'Forbidden' }), { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
       }
     }

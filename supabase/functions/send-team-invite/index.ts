@@ -4,6 +4,14 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const resend = new Resend(Deno.env.get("RESEND_API_KEY"));
 
+const ALLOWED_APP_ORIGINS = ['https://limpeza.superhostlab.com.br', 'https://upkeep-beacon.lovable.app'];
+function isAllowedAppUrl(u: string): boolean {
+  try {
+    const o = new URL(u);
+    return ALLOWED_APP_ORIGINS.includes(o.origin) || /^https:\/\/[a-z0-9-]+--64f4d3ea-6dbf-48c6-abef-31d672075244\.lovable\.app$/.test(o.origin);
+  } catch { return false; }
+}
+
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
@@ -66,7 +74,7 @@ function validateInput(data: any): { valid: boolean; error?: string; parsed?: Te
 
   try {
     const url = new URL(appUrl);
-    if (url.protocol !== 'https:') {
+    if (url.protocol !== 'https:' || !isAllowedAppUrl(appUrl)) {
       return { valid: false, error: 'App URL must use HTTPS' };
     }
   } catch {
@@ -142,7 +150,7 @@ const handler = async (req: Request): Promise<Response> => {
     }
 
     const { name, email, role, appUrl } = validation.parsed;
-    console.log("Sending invite to:", email, "Role:", role);
+    console.log("Sending invite, role:", role);
 
     const roleLabel = roleLabels[role] || role;
     const escapedName = escapeHtml(name);

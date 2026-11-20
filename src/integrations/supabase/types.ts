@@ -474,6 +474,21 @@ export type Database = {
           },
         ]
       }
+      internal_cron_secrets: {
+        Row: {
+          name: string
+          value: string
+        }
+        Insert: {
+          name: string
+          value: string
+        }
+        Update: {
+          name?: string
+          value?: string
+        }
+        Relationships: []
+      }
       inventory_categories: {
         Row: {
           created_at: string
@@ -2199,7 +2214,6 @@ export type Database = {
         Returns: Json
       }
       can_manage_property: { Args: { p_property_id: string }; Returns: boolean }
-      can_submit_to_waitlist: { Args: { p_email: string }; Returns: boolean }
       check_rate_limit: {
         Args: {
           p_key: string
