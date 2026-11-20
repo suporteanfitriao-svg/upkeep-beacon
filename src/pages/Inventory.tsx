@@ -1096,7 +1096,7 @@ const Inventory = () => {
                       }
                     </CardTitle>
                     {!searchTerm.trim() && selectedCategory && (
-                      <CardDescription className="mt-1 flex items-center gap-2">
+                      <div className="mt-1 flex items-center gap-2 text-sm text-muted-foreground">
                         <Badge variant="outline" className="text-xs">
                           <Building2 className="h-3 w-3 mr-1" />
                           {getPropertyName(selectedCategory.property_id)}
@@ -1106,7 +1106,7 @@ const Inventory = () => {
                             {selectedCategory.description}
                           </span>
                         )}
-                      </CardDescription>
+                      </div>
                     )}
                     {searchTerm.trim() && (
                       <CardDescription className="mt-1">

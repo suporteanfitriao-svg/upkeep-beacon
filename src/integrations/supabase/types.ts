@@ -2186,6 +2186,10 @@ export type Database = {
         }
         Returns: undefined
       }
+      can_access_schedule_folder: {
+        Args: { p_folder: string }
+        Returns: boolean
+      }
       can_access_team_member_sensitive_data: {
         Args: { p_team_member_id: string }
         Returns: boolean
